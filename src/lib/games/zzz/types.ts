@@ -23,6 +23,8 @@ export type ZzzStatsValues = (typeof ZzzStats)[ZzzStatsKeys]
 export const MAX_DISC_LEVEL = 15
 
 export type DiscSlot = 1 | 2 | 3 | 4 | 5 | 6
+// The slots whose main stat varies
+export type MainStatSlot = 4 | 5 | 6
 export type DiscRarity = 'S' | 'A' | 'B'
 
 export type DiscSubstat = {

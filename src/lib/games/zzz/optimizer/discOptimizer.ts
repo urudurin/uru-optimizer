@@ -18,6 +18,7 @@ import {
 import type {
   Disc,
   DiscSlot,
+  MainStatSlot,
   ZzzStatsValues,
 } from 'lib/games/zzz/types'
 
@@ -25,7 +26,7 @@ import type {
 // with minimum stats, set and main stat filters. Every result is recomputed with computeStats, so the numbers shown
 // are exactly what the stats panel would show for the same discs.
 
-export type MainStatSlot = 4 | 5 | 6
+export type { MainStatSlot }
 
 export type OptimizerFilters = {
   // Allowed main stats per slot, missing or empty means any
@@ -49,6 +50,8 @@ export type OptimizerRequest = {
   // Compared against the unrounded stat
   minStats: Partial<Record<keyof FinalStats, number>>,
   sortBy: keyof FinalStats,
+  // Breaks ties in sortBy, compared in order
+  thenBy?: (keyof FinalStats)[],
   limit: number,
 }
 
@@ -111,7 +114,16 @@ function discVector(disc: Disc): Float64Array {
   return vector
 }
 
-type Candidate = { value: number, picks: number[] }
+// values holds the sortBy stat followed by the thenBy stats
+type Candidate = { values: number[], picks: number[] }
+
+// Positive when a ranks above b
+function compareValues(a: number[], b: number[]): number {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i] - b[i]
+  }
+  return 0
+}
 
 export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   const { agent, wEngine, conditions, filters, sortBy, limit } = request
@@ -152,6 +164,7 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   if (requiredFour === -2 || requiredTwo === -2) return { ok: true, builds: [], combinations, matched: 0 }
 
   const minEntries = Object.entries(request.minStats).filter(([, v]) => v !== undefined) as [keyof FinalStats, number][]
+  const rankKeys = [sortBy, ...(request.thenBy ?? []).filter((key) => key !== sortBy)]
 
   // sums[d] holds base + the first d discs
   const sums = Array.from({ length: 7 }, () => new Float64Array(STAT_COUNT))
@@ -181,12 +194,14 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
     for (const [key, min] of minEntries) if (stats[key] < min) return
     matched++
 
-    const value = stats[sortBy]
-    if (top.length === limit && value <= top[top.length - 1].value) return
-    // Insert keeping the list sorted from best to worst, ties keep the earlier find first
+    // Cheap check on the main stat first, most combinations stop here
+    if (top.length === limit && stats[sortBy] < top[top.length - 1].values[0]) return
+    const values = rankKeys.map((key) => stats[key])
+    if (top.length === limit && compareValues(values, top[top.length - 1].values) <= 0) return
+    // Insert keeping the list sorted from best to worst, full ties keep the earlier find first
     let at = top.length
-    while (at > 0 && top[at - 1].value < value) at--
-    top.splice(at, 0, { value, picks: [...picks] })
+    while (at > 0 && compareValues(values, top[at - 1].values) > 0) at--
+    top.splice(at, 0, { values, picks: [...picks] })
     if (top.length > limit) top.pop()
   }
 

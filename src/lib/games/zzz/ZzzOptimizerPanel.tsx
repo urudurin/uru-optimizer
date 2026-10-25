@@ -17,7 +17,15 @@ import type {
   ActiveConditions,
   AgentData,
   Condition,
+  WEngineData,
 } from 'lib/games/zzz/data/dataTypes'
+import {
+  daysSinceReview,
+  getPreset,
+  needsReview,
+  REVIEW_INTERVAL_DAYS,
+} from 'lib/games/zzz/data/presets'
+import { SETS } from 'lib/games/zzz/data/sets'
 import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
@@ -65,6 +73,15 @@ function defaultLoadout(agent: AgentData, builds: ImportedBuild[]): Loadout {
   return { wEngineId: engine.id, refinement: '1' }
 }
 
+function setName(setId: string): string {
+  return SETS[setId]?.name ?? setId
+}
+
+// How many of the six slots have at least one disc of this set
+function slotsWithSet(discs: Disc[], setId: string): number {
+  return new Set(discs.filter((d) => d.setId === setId).map((d) => d.slot)).size
+}
+
 function describeSets(discs: Disc[]): string {
   const counts = new Map<string, number>()
   for (const disc of discs) counts.set(disc.setName, (counts.get(disc.setName) ?? 0) + 1)
@@ -86,6 +103,8 @@ export function ZzzOptimizerPanel() {
   const [coreSkill, setCoreSkill] = useState('6')
   const [conditions, setConditions] = useState<ActiveConditions>(statScreenConditions())
   const [sortBy, setSortBy] = useState<keyof FinalStats>('critDmg')
+  const [thenBy, setThenBy] = useState<(keyof FinalStats)[]>([])
+  const [presetChoice, setPresetChoice] = useState('0')
   const [fourPieceSet, setFourPieceSet] = useState<string | null>(null)
   const [twoPieceSet, setTwoPieceSet] = useState<string | null>(null)
   const [mainStats, setMainStats] = useState<Partial<Record<MainStatSlot, ZzzStatsValues[]>>>({})
@@ -96,6 +115,8 @@ export function ZzzOptimizerPanel() {
   const [running, setRunning] = useState(false)
 
   const statRows = STAT_ROWS.filter((row) => !row.ruptureOnly || agent.specialty === 'Rupture')
+  const preset = getPreset(agent)
+  const reviewAge = daysSinceReview(preset, new Date())
   const ownerNames = useMemo(() => new Map(builds.map((b) => [b.agentId, b.name])), [builds])
 
   const setOptions = useMemo(() => {
@@ -120,6 +141,18 @@ export function ZzzOptimizerPanel() {
     if (!id || !AGENTS[id]) return
     setAgentId(id)
     setLoadout(defaultLoadout(AGENTS[id], builds))
+    setPresetChoice('0')
+    setOutcome(null)
+  }
+
+  // Fills the filters and ranking from the preset, minimum stats and conditions are left as they are
+  function applyPreset() {
+    const choice = preset.sets[Number(presetChoice)]
+    setFourPieceSet(choice?.fourPiece ?? null)
+    setTwoPieceSet(choice?.twoPiece ?? null)
+    setMainStats({ ...preset.mainStats })
+    setSortBy(preset.rankBy)
+    setThenBy(preset.thenBy.filter((key) => statRows.some((row) => row.key === key)))
     setOutcome(null)
   }
 
@@ -129,21 +162,33 @@ export function ZzzOptimizerPanel() {
     setRunning(true)
     // Let the button show its loading state before the search blocks the page for a moment
     setTimeout(() => {
-      setOutcome(optimizeDiscs({
-        agent,
-        wEngine,
-        wEngineRefinement: Number(loadout.refinement),
-        coreSkillLevel: Number(coreSkill),
-        conditions,
-        discs,
-        filters,
-        minStats,
-        sortBy,
-        limit: RESULT_LIMIT,
-      }))
-      setSelected(0)
-      setRunning(false)
+      try {
+        runSearch(wEngine)
+      } catch (e) {
+        // optimizeDiscs isn't expected to throw, but a stuck loading button would hide the problem
+        console.error('Disc optimizer failed', e)
+        setOutcome({ ok: false, reason: `The search failed: ${e instanceof Error ? e.message : String(e)}` })
+      } finally {
+        setRunning(false)
+      }
     }, 20)
+  }
+
+  function runSearch(wEngine: WEngineData) {
+    setOutcome(optimizeDiscs({
+      agent,
+      wEngine,
+      wEngineRefinement: Number(loadout.refinement),
+      coreSkillLevel: Number(coreSkill),
+      conditions,
+      discs,
+      filters,
+      minStats,
+      sortBy,
+      thenBy,
+      limit: RESULT_LIMIT,
+    }))
+    setSelected(0)
   }
 
   if (discs.length === 0) {
@@ -203,7 +248,56 @@ export function ZzzOptimizerPanel() {
           onChange={(value) => value && setSortBy(value as keyof FinalStats)}
           data={statRows.map((row) => ({ value: row.key, label: row.label }))}
         />
+        <MultiSelect
+          label='Then by (breaks ties)'
+          placeholder={thenBy.length ? undefined : 'None'}
+          w={260}
+          value={thenBy}
+          onChange={(value) => setThenBy(value as (keyof FinalStats)[])}
+          data={statRows.filter((row) => row.key !== sortBy).map((row) => ({ value: row.key, label: row.label }))}
+        />
       </Group>
+
+      <Stack gap={4} p='sm' style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 8 }}>
+        <Group align='flex-end' gap='md'>
+          <Text size='sm' fw={500}>{`Recommended for ${agent.name}`}</Text>
+          {preset.sets.length > 1 && (
+            <Select
+              size='xs'
+              allowDeselect={false}
+              value={presetChoice}
+              onChange={(value) => setPresetChoice(value ?? '0')}
+              data={preset.sets.map((choice, i) => ({
+                value: String(i),
+                label: `4pc ${setName(choice.fourPiece)} + 2pc ${setName(choice.twoPiece)}`,
+              }))}
+            />
+          )}
+          <Button size='xs' variant='light' onClick={applyPreset}>Apply preset</Button>
+        </Group>
+        {preset.sets.map((choice, i) => (
+          <Text key={i} size='xs'>
+            {`${i === 0 ? 'Sets' : 'Or'}: 4pc ${setName(choice.fourPiece)} (you have it in ${slotsWithSet(discs, choice.fourPiece)}/6 slots) + 2pc ${
+              setName(choice.twoPiece)
+            } (${slotsWithSet(discs, choice.twoPiece)}/6 slots)`}
+          </Text>
+        ))}
+        <Text size='xs'>
+          {`Main stats: slot 4 ${preset.mainStats[4].join(' / ')}, slot 5 ${preset.mainStats[5].join(' / ')}, slot 6 ${preset.mainStats[6].join(' / ')}`}
+        </Text>
+        <Text size='xs'>{`Substats to look for: ${preset.substatPriority.join(' > ')}`}</Text>
+        <Text size='xs'>{preset.notes}</Text>
+        <Text size='xs' c='dimmed'>
+          {`Source: ${preset.source}. Confidence: ${preset.confidence}. Last reviewed ${preset.reviewed}${
+            reviewAge === undefined ? '' : ` (${reviewAge} day${reviewAge === 1 ? '' : 's'} ago)`
+          }`}
+        </Text>
+        {needsReview(preset, new Date()) && (
+          <Text size='xs' c='yellow'>
+            {`Not reviewed in ${REVIEW_INTERVAL_DAYS} days or more: check it against the game and update data/presets.ts`}
+          </Text>
+        )}
+      </Stack>
 
       <Group gap='lg'>
         {(Object.keys(CONDITION_LABELS) as Condition[]).map((condition) => (

@@ -1,6 +1,7 @@
 import {
   type DiscRarity,
   type DiscSlot,
+  type MainStatSlot,
   ZzzStats,
   type ZzzStatsValues,
 } from 'lib/games/zzz/types'
@@ -10,6 +11,13 @@ export const FIXED_MAIN_STAT_BY_SLOT: Partial<Record<DiscSlot, ZzzStatsValues>> 
   1: ZzzStats.HP,
   2: ZzzStats.ATK,
   3: ZzzStats.DEF,
+}
+
+// Main stats slots 4-6 can roll
+export const MAIN_STATS_BY_SLOT: Record<MainStatSlot, ZzzStatsValues[]> = {
+  4: [ZzzStats.HP_P, ZzzStats.ATK_P, ZzzStats.DEF_P, ZzzStats.CRIT_RATE, ZzzStats.CRIT_DMG, ZzzStats.ANOMALY_PROFICIENCY],
+  5: [ZzzStats.HP_P, ZzzStats.ATK_P, ZzzStats.DEF_P, ZzzStats.PEN_RATIO, ZzzStats.ELEMENT_DMG],
+  6: [ZzzStats.HP_P, ZzzStats.ATK_P, ZzzStats.DEF_P, ZzzStats.ANOMALY_MASTERY, ZzzStats.IMPACT, ZzzStats.ENERGY_REGEN],
 }
 
 type RollValues = Partial<Record<ZzzStatsValues, number>>

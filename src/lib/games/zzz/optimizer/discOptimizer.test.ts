@@ -84,6 +84,22 @@ describe('optimizeDiscs', () => {
     }
   })
 
+  it('breaks ties with the thenBy stats in order', () => {
+    const keys = ['critDmg', 'critRate', 'atk'] as const
+    const request = makeRequest({ sortBy: 'critDmg', thenBy: ['critRate', 'atk'] })
+    const outcome = optimizeDiscs(request)
+    if (!outcome.ok) throw new Error(outcome.reason)
+
+    const expected = bruteForce(request)
+      .sort((a, b) => {
+        for (const key of keys) if (a.stats[key] !== b.stats[key]) return b.stats[key] - a.stats[key]
+        return 0
+      })
+      .slice(0, 10)
+      .map((r) => keys.map((key) => r.display[key]))
+    expect(outcome.builds.map((b) => keys.map((key) => b.display[key]))).toEqual(expected)
+  })
+
   it('returns builds in slot order with stats identical to the calculator', () => {
     const request = makeRequest({ conditions: { onField: true, inEtherVeil: false, veilTriggered: false } })
     const outcome = optimizeDiscs(request)
