@@ -1,3 +1,9 @@
+import { formatNumber } from 'lib/games/shared/format'
+import {
+  insertRanked,
+  type Ranked,
+  wouldRank,
+} from 'lib/games/shared/ranking'
 import type {
   ActiveConditions,
   AgentData,
@@ -114,17 +120,6 @@ function discVector(disc: Disc): Float64Array {
   return vector
 }
 
-// values holds the sortBy stat followed by the thenBy stats
-type Candidate = { values: number[], picks: number[] }
-
-// Positive when a ranks above b
-function compareValues(a: number[], b: number[]): number {
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return a[i] - b[i]
-  }
-  return 0
-}
-
 export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   const { agent, wEngine, conditions, filters, sortBy, limit } = request
   const pools = filterPools(request)
@@ -136,7 +131,7 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   if (combinations > MAX_COMBINATIONS) {
     return {
       ok: false,
-      reason: `${combinations.toLocaleString('en-US')} combinations is too many, narrow the main stats or sets first`,
+      reason: `${formatNumber(combinations)} combinations is too many, narrow the main stats or sets first`,
     }
   }
 
@@ -173,7 +168,8 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   const picks = [0, 0, 0, 0, 0, 0]
   const pickedSets = [0, 0, 0, 0, 0, 0]
   const leaf = new Float64Array(STAT_COUNT)
-  const top: Candidate[] = []
+  // values holds the sortBy stat followed by the thenBy stats, item is the disc index picked in each slot
+  const top: Ranked<number[]>[] = []
   let matched = 0
 
   const evaluate = () => {
@@ -197,12 +193,7 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
     // Cheap check on the main stat first, most combinations stop here
     if (top.length === limit && stats[sortBy] < top[top.length - 1].values[0]) return
     const values = rankKeys.map((key) => stats[key])
-    if (top.length === limit && compareValues(values, top[top.length - 1].values) <= 0) return
-    // Insert keeping the list sorted from best to worst, full ties keep the earlier find first
-    let at = top.length
-    while (at > 0 && compareValues(values, top[at - 1].values) > 0) at--
-    top.splice(at, 0, { values, picks: [...picks] })
-    if (top.length > limit) top.pop()
+    if (wouldRank(top, values, limit)) insertRanked(top, { values, item: [...picks] }, limit)
   }
 
   const search = (depth: number) => {
@@ -232,7 +223,7 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   search(0)
 
   const builds = top.map((candidate): OptimizerBuild => {
-    const discs = candidate.picks.map((p, slot) => pools[slot][p])
+    const discs = candidate.item.map((p, slot) => pools[slot][p])
     const result = computeStats({
       agent,
       wEngine,

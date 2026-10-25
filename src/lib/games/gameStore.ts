@@ -3,19 +3,14 @@ import {
   type GameId,
   parseGameId,
 } from 'lib/games/games'
+import {
+  readStorage,
+  writeStorage,
+} from 'lib/games/shared/storage'
 import { create } from 'zustand'
 
 // Kept outside of HSR's own 'state' save so the HSR save format is never touched
 const STORAGE_KEY = 'active-game'
-
-function readStoredGame(): GameId {
-  try {
-    return parseGameId(typeof localStorage === 'undefined' ? undefined : localStorage.getItem(STORAGE_KEY))
-  } catch {
-    // Storage can be unavailable (private mode, tests)
-    return DEFAULT_GAME
-  }
-}
 
 type GameStore = {
   activeGame: GameId,
@@ -23,13 +18,11 @@ type GameStore = {
 }
 
 export const useGameStore = create<GameStore>()((set) => ({
-  activeGame: readStoredGame(),
+  // Anything unreadable falls back to the default game
+  activeGame: parseGameId(readStorage(STORAGE_KEY) ?? DEFAULT_GAME),
   setActiveGame: (game) => {
-    try {
-      if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, game)
-    } catch {
-      // Not being able to remember the choice is fine
-    }
+    // Not being able to remember the choice is fine
+    writeStorage(STORAGE_KEY, game)
     set({ activeGame: game })
   },
 }))

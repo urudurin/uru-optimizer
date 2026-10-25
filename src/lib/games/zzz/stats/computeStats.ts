@@ -1,3 +1,4 @@
+import { roundHalfUp } from 'lib/games/shared/format'
 import type {
   ActiveConditions,
   AgentData,
@@ -65,12 +66,6 @@ export function defaultConditions(): ActiveConditions {
 // What the in-game agent stat screen shows: out of combat, so nothing that needs the agent on the field or an Ether Veil applies
 export function statScreenConditions(): ActiveConditions {
   return { onField: false, inEtherVeil: false, veilTriggered: false }
-}
-
-export function roundHalfUp(value: number, digits = 0): number {
-  const factor = 10 ** digits
-  // The small epsilon keeps values like 1.005 from rounding down because of float representation
-  return Math.round((value + Number.EPSILON) * factor) / factor
 }
 
 // Rounds the way the stat screen shows values

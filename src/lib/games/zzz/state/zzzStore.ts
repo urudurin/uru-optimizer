@@ -1,3 +1,9 @@
+import {
+  type ImportMode,
+  mergeById,
+  readStorage,
+  writeStorage,
+} from 'lib/games/shared/storage'
 import type {
   ImportedBuild,
   ParsedZzzExport,
@@ -5,28 +11,15 @@ import type {
 } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
   deserializeZzzData,
-  type ImportMode,
-  mergeById,
   serializeZzzData,
   ZZZ_STATE_KEY,
 } from 'lib/games/zzz/state/zzzState'
 import type { Disc } from 'lib/games/zzz/types'
 import { create } from 'zustand'
 
-function readStorage(): string | null {
-  try {
-    return typeof localStorage === 'undefined' ? null : localStorage.getItem(ZZZ_STATE_KEY)
-  } catch {
-    return null
-  }
-}
-
-function writeStorage(discs: Disc[], builds: ImportedBuild[]) {
-  try {
-    if (typeof localStorage === 'undefined') return
-    localStorage.setItem(ZZZ_STATE_KEY, serializeZzzData({ discs, builds }))
-  } catch (e) {
-    console.error('Failed to save ZZZ data (storage quota exceeded?)', e)
+function save(discs: Disc[], builds: ImportedBuild[]) {
+  if (!writeStorage(ZZZ_STATE_KEY, serializeZzzData({ discs, builds }))) {
+    console.error('Failed to save ZZZ data (storage blocked or quota exceeded?)')
   }
 }
 
@@ -39,7 +32,7 @@ type ZzzStore = {
   clear: () => void,
 }
 
-const initial = deserializeZzzData(readStorage())
+const initial = deserializeZzzData(readStorage(ZZZ_STATE_KEY))
 
 export const useZzzStore = create<ZzzStore>()((set, get) => ({
   discs: initial.discs,
@@ -56,12 +49,12 @@ export const useZzzStore = create<ZzzStore>()((set, get) => ({
     const state = get()
     const discs = mergeById(state.discs, parsed.discs, mode)
     const builds = mergeById(state.builds, parsed.builds, mode)
-    writeStorage(discs, builds)
+    save(discs, builds)
     set({ discs, builds, lastWarnings: parsed.warnings })
   },
 
   clear: () => {
-    writeStorage([], [])
+    save([], [])
     set({ discs: [], builds: [], lastWarnings: [] })
   },
 }))

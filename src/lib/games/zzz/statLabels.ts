@@ -1,3 +1,4 @@
+import { formatNumber } from 'lib/games/shared/format'
 import type { Condition } from 'lib/games/zzz/data/dataTypes'
 import { getSubstatValue } from 'lib/games/zzz/discStats'
 import type { FinalStats } from 'lib/games/zzz/stats/computeStats'
@@ -35,7 +36,7 @@ export const STAT_ROWS: StatRow[] = [
 ]
 
 export function formatStat(row: StatRow, value: number): string {
-  return `${value.toLocaleString('en-US')}${row.suffix ?? ''}`
+  return formatNumber(value, row.suffix)
 }
 
 export function formatSubstat(disc: Disc, substat: DiscSubstat): string {

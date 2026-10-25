@@ -12,6 +12,7 @@ import {
   Text,
   Title,
 } from '@mantine/core'
+import { formatNumber } from 'lib/games/shared/format'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type {
   ActiveConditions,
@@ -355,8 +356,8 @@ export function ZzzOptimizerPanel() {
         </Button>
         <Text size='sm'>
           {combinations > MAX_COMBINATIONS
-            ? `${combinations.toLocaleString('en-US')} combinations, narrow the main stats or sets first`
-            : `Up to ${combinations.toLocaleString('en-US')} combinations`}
+            ? `${formatNumber(combinations)} combinations, narrow the main stats or sets first`
+            : `Up to ${formatNumber(combinations)} combinations`}
         </Text>
       </Group>
 
@@ -364,7 +365,7 @@ export function ZzzOptimizerPanel() {
 
       {outcome?.ok && (
         <Text size='sm'>
-          {`${outcome.matched.toLocaleString('en-US')} combinations meet the filters, showing the best ${outcome.builds.length}`}
+          {`${formatNumber(outcome.matched)} combinations meet the filters, showing the best ${outcome.builds.length}`}
         </Text>
       )}
 

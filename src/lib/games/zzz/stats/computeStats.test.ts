@@ -4,7 +4,6 @@ import {
   type ComputeInput,
   computeStats,
   defaultConditions,
-  roundHalfUp,
   statScreenConditions,
   toDisplayStats,
 } from 'lib/games/zzz/stats/computeStats'
@@ -83,15 +82,6 @@ function makeInput(overrides: Partial<ComputeInput> = {}): ComputeInput {
     ...overrides,
   }
 }
-
-describe('roundHalfUp', () => {
-  it('rounds like the stat screen', () => {
-    expect(roundHalfUp(10563.6)).toBe(10564)
-    expect(roundHalfUp(0.5)).toBe(1)
-    expect(roundHalfUp(95.80000000000001, 1)).toBe(95.8)
-    expect(roundHalfUp(1.005, 2)).toBe(1.01)
-  })
-})
 
 describe('computeStats for Ye Shunguang', () => {
   it('matches every value on the in-game stat screen (screenshot)', () => {

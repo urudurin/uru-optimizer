@@ -9,8 +9,8 @@ import {
   Text,
   Title,
 } from '@mantine/core'
+import type { ImportMode } from 'lib/games/shared/storage'
 import { parseZzzBuildsExportJson } from 'lib/games/zzz/importer/zzzBuildsExportParser'
-import type { ImportMode } from 'lib/games/zzz/state/zzzState'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import { formatSubstat } from 'lib/games/zzz/statLabels'
 import { ZzzOptimizerPanel } from 'lib/games/zzz/ZzzOptimizerPanel'
