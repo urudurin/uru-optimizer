@@ -17,12 +17,14 @@ import {
 export type SetChoice = {
   // Set ids as produced by slugifySetName in the importer
   fourPiece: string,
-  twoPiece: string,
+  // Missing means any 2-piece
+  twoPiece?: string,
 }
 
 export type BuildPreset = {
   // First is the default, the rest are alternatives the user can switch to
   sets: SetChoice[],
+  // An empty list means any main stat
   mainStats: Record<MainStatSlot, ZzzStatsValues[]>,
   // What to look for in substats, best first. Shown as advice, not used by the search
   substatPriority: ZzzStatsValues[],

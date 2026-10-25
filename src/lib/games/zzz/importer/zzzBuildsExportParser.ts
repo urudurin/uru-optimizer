@@ -103,7 +103,8 @@ function parseRarity(value: unknown): DiscRarity | undefined {
   return value === 'S' || value === 'A' || value === 'B' ? value : undefined
 }
 
-function parseStat(value: unknown): ZzzStatsValues | undefined {
+// Also used by the preset import, which accepts the same stat names as the builds export
+export function parseStat(value: unknown): ZzzStatsValues | undefined {
   return typeof value === 'string' && Object.hasOwn(EXPORT_STAT_TO_STAT, value)
     ? EXPORT_STAT_TO_STAT[value]
     : undefined

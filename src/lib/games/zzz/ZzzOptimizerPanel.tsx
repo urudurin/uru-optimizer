@@ -1,9 +1,11 @@
 import {
   Alert,
   Button,
+  FileInput,
   Group,
   MultiSelect,
   NumberInput,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
@@ -20,11 +22,13 @@ import type {
   Condition,
   WEngineData,
 } from 'lib/games/zzz/data/dataTypes'
+import { parseImportedZzzPresets } from 'lib/games/zzz/data/importedPresets'
 import {
   daysSinceReview,
   getPreset,
   needsReview,
   REVIEW_INTERVAL_DAYS,
+  type SetChoice,
 } from 'lib/games/zzz/data/presets'
 import { SETS } from 'lib/games/zzz/data/sets'
 import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
@@ -39,6 +43,7 @@ import {
   type OptimizerFilters,
   type OptimizerOutcome,
 } from 'lib/games/zzz/optimizer/discOptimizer'
+import { usePresetImportStore } from 'lib/games/zzz/state/presetImportStore'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
   CONDITION_LABELS,
@@ -61,6 +66,7 @@ import {
 } from 'react'
 
 const RESULT_LIMIT = 50
+const MAX_IMPORT_WARNINGS = 6
 const MAIN_STAT_SLOTS: MainStatSlot[] = [4, 5, 6]
 const REFINEMENT_OPTIONS = [1, 2, 3, 4, 5].map((r) => ({ value: String(r), label: `R${r}` }))
 
@@ -81,6 +87,14 @@ function setName(setId: string): string {
 // How many of the six slots have at least one disc of this set
 function slotsWithSet(discs: Disc[], setId: string): number {
   return new Set(discs.filter((d) => d.setId === setId).map((d) => d.slot)).size
+}
+
+function describeChoice(choice: SetChoice): string {
+  return `4pc ${setName(choice.fourPiece)}${choice.twoPiece ? ` + 2pc ${setName(choice.twoPiece)}` : ''}`
+}
+
+function mainStatText(stats: ZzzStatsValues[]): string {
+  return stats.length > 0 ? stats.join(' / ') : 'any'
 }
 
 function describeSets(discs: Disc[]): string {
@@ -115,8 +129,16 @@ export function ZzzOptimizerPanel() {
   const [selected, setSelected] = useState(0)
   const [running, setRunning] = useState(false)
 
+  const storedImport = usePresetImportStore((s) => s.stored)
+  const importPresetText = usePresetImportStore((s) => s.importText)
+  const clearImportedPresets = usePresetImportStore((s) => s.clear)
+  const [presetSource, setPresetSource] = useState<'imported' | 'builtin'>('imported')
+
   const statRows = STAT_ROWS.filter((row) => !row.ruptureOnly || agent.specialty === 'Rupture')
-  const preset = getPreset(agent)
+  const imported = useMemo(() => storedImport ? parseImportedZzzPresets(storedImport, Object.values(AGENTS)) : undefined, [storedImport])
+  const importedPreset = imported?.presets[agent.id]
+  // The imported preset wins when there is one, unless the user picks the built-in one
+  const preset = importedPreset && presetSource === 'imported' ? importedPreset : getPreset(agent)
   const reviewAge = daysSinceReview(preset, new Date())
   const ownerNames = useMemo(() => new Map(builds.map((b) => [b.agentId, b.name])), [builds])
 
@@ -136,7 +158,9 @@ export function ZzzOptimizerPanel() {
     twoPieceSet: twoPieceSet ?? undefined,
     excludeEquippedByOthers,
   }
-  const combinations = countCombinations(filterPools({ agent, discs, filters }))
+  const pools = filterPools({ agent, discs, filters })
+  const combinations = countCombinations(pools)
+  const emptySlots = pools.flatMap((pool, i) => pool.length === 0 ? [i + 1] : [])
 
   function changeAgent(id: string | null) {
     if (!id || !AGENTS[id]) return
@@ -155,6 +179,17 @@ export function ZzzOptimizerPanel() {
     setSortBy(preset.rankBy)
     setThenBy(preset.thenBy.filter((key) => statRows.some((row) => row.key === key)))
     setOutcome(null)
+  }
+
+  async function handlePresetFile(file: File | null) {
+    if (!file) return
+    importPresetText(await file.text())
+    setPresetSource('imported')
+    setPresetChoice('0')
+  }
+
+  function removeImportedPresets() {
+    if (window.confirm('Remove the imported presets from this browser?')) clearImportedPresets()
   }
 
   function run() {
@@ -262,32 +297,43 @@ export function ZzzOptimizerPanel() {
       <Stack gap={4} p='sm' style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 8 }}>
         <Group align='flex-end' gap='md'>
           <Text size='sm' fw={500}>{`Recommended for ${agent.name}`}</Text>
+          {importedPreset && (
+            <SegmentedControl
+              size='xs'
+              value={presetSource}
+              onChange={(value) => {
+                setPresetSource(value === 'builtin' ? 'builtin' : 'imported')
+                setPresetChoice('0')
+              }}
+              data={[
+                { value: 'imported', label: `Imported: ${importedPreset.source}` },
+                { value: 'builtin', label: 'Built-in' },
+              ]}
+            />
+          )}
           {preset.sets.length > 1 && (
             <Select
               size='xs'
               allowDeselect={false}
               value={presetChoice}
               onChange={(value) => setPresetChoice(value ?? '0')}
-              data={preset.sets.map((choice, i) => ({
-                value: String(i),
-                label: `4pc ${setName(choice.fourPiece)} + 2pc ${setName(choice.twoPiece)}`,
-              }))}
+              data={preset.sets.map((choice, i) => ({ value: String(i), label: describeChoice(choice) }))}
             />
           )}
           <Button size='xs' variant='light' onClick={applyPreset}>Apply preset</Button>
         </Group>
         {preset.sets.map((choice, i) => (
           <Text key={i} size='xs'>
-            {`${i === 0 ? 'Sets' : 'Or'}: 4pc ${setName(choice.fourPiece)} (you have it in ${slotsWithSet(discs, choice.fourPiece)}/6 slots) + 2pc ${
-              setName(choice.twoPiece)
-            } (${slotsWithSet(discs, choice.twoPiece)}/6 slots)`}
+            {`${i === 0 ? 'Sets' : 'Or'}: 4pc ${setName(choice.fourPiece)} (you have it in ${slotsWithSet(discs, choice.fourPiece)}/6 slots)${
+              choice.twoPiece ? ` + 2pc ${setName(choice.twoPiece)} (${slotsWithSet(discs, choice.twoPiece)}/6 slots)` : ''
+            }`}
           </Text>
         ))}
         <Text size='xs'>
-          {`Main stats: slot 4 ${preset.mainStats[4].join(' / ')}, slot 5 ${preset.mainStats[5].join(' / ')}, slot 6 ${preset.mainStats[6].join(' / ')}`}
+          {`Main stats: slot 4 ${mainStatText(preset.mainStats[4])}, slot 5 ${mainStatText(preset.mainStats[5])}, slot 6 ${mainStatText(preset.mainStats[6])}`}
         </Text>
-        <Text size='xs'>{`Substats to look for: ${preset.substatPriority.join(' > ')}`}</Text>
-        <Text size='xs'>{preset.notes}</Text>
+        {preset.substatPriority.length > 0 && <Text size='xs'>{`Substats to look for: ${preset.substatPriority.join(' > ')}`}</Text>}
+        {preset.notes && <Text size='xs'>{preset.notes}</Text>}
         <Text size='xs' c='dimmed'>
           {`Source: ${preset.source}. Confidence: ${preset.confidence}. Last reviewed ${preset.reviewed}${
             reviewAge === undefined ? '' : ` (${reviewAge} day${reviewAge === 1 ? '' : 's'} ago)`
@@ -295,8 +341,38 @@ export function ZzzOptimizerPanel() {
         </Text>
         {needsReview(preset, new Date()) && (
           <Text size='xs' c='yellow'>
-            {`Not reviewed in ${REVIEW_INTERVAL_DAYS} days or more: check it against the game and update data/presets.ts`}
+            {preset === importedPreset
+              ? `Not updated in ${REVIEW_INTERVAL_DAYS} days or more: import a fresh copy of the file`
+              : `Not reviewed in ${REVIEW_INTERVAL_DAYS} days or more: check it against the game and update data/presets.ts`}
           </Text>
+        )}
+
+        <Group align='flex-end' gap='sm' mt='xs'>
+          <FileInput
+            size='xs'
+            w={240}
+            label='Import presets file'
+            placeholder='Choose a presets file (.json)'
+            accept='application/json,.json'
+            clearable
+            onChange={handlePresetFile}
+          />
+          {storedImport && <Button size='xs' variant='default' onClick={removeImportedPresets}>Remove imported presets</Button>}
+        </Group>
+        <Text size='xs' c='dimmed'>
+          {imported
+            ? `${Object.keys(imported.presets).length} imported presets from ${
+              imported.source || 'an unreadable file'
+            }, imported ${storedImport?.importedAt}. Kept in this browser only.`
+            : 'Your own presets file stays in this browser only, nothing is uploaded or committed.'}
+        </Text>
+        {imported && imported.warnings.length > 0 && (
+          <Alert color='yellow' p='xs'>
+            <Stack gap={2}>
+              {imported.warnings.slice(0, MAX_IMPORT_WARNINGS).map((warning, i) => <Text key={i} size='xs'>{warning}</Text>)}
+              {imported.warnings.length > MAX_IMPORT_WARNINGS && <Text size='xs'>{`...and ${imported.warnings.length - MAX_IMPORT_WARNINGS} more`}</Text>}
+            </Stack>
+          </Alert>
         )}
       </Stack>
 
@@ -355,7 +431,9 @@ export function ZzzOptimizerPanel() {
           Search
         </Button>
         <Text size='sm'>
-          {combinations > MAX_COMBINATIONS
+          {emptySlots.length > 0
+            ? `None of your discs fit slot ${emptySlots.join(', ')} with these filters, loosen its main stat`
+            : combinations > MAX_COMBINATIONS
             ? `${formatNumber(combinations)} combinations, narrow the main stats or sets first`
             : `Up to ${formatNumber(combinations)} combinations`}
         </Text>

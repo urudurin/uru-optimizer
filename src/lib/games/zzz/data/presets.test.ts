@@ -24,7 +24,7 @@ describe('presets', () => {
     for (const preset of Object.values(PRESETS)) {
       for (const choice of preset.sets) {
         expect(SETS[choice.fourPiece], choice.fourPiece).toBeDefined()
-        expect(SETS[choice.twoPiece], choice.twoPiece).toBeDefined()
+        if (choice.twoPiece) expect(SETS[choice.twoPiece], choice.twoPiece).toBeDefined()
       }
     }
   })
