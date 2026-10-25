@@ -72,16 +72,48 @@ describe('batch 1 agents against a user export', () => {
     expect(result.warnings).toEqual(['Branch & Blade Song 4-piece effects aren\'t modeled yet'])
   })
 
-  // Predictions for the in-game stat screen, to be checked against screenshots before tagging anything 'confirmed'
-  it('predicts the stat screen values', () => {
-    const anby = statsFor('1381', statScreenConditions()).stats
-    expect([anby.hp, anby.atk, anby.def, anby.critRate, anby.critDmg]).toEqual([11254, 3167, 973, 70.6, 171.2])
+  // Yixuan's discs changed after this export, so her screenshot can't be compared with this build
+  it('Miyabi matches every value on the in-game stat screen (screenshot)', () => {
+    const { stats } = statsFor('1091', statScreenConditions())
 
-    const yixuan = statsFor('1371', statScreenConditions()).stats
-    expect([yixuan.hp, yixuan.atk, yixuan.critRate, yixuan.critDmg, yixuan.sheerForce]).toEqual([19560, 2076, 93, 102.8, 2579])
+    expect(stats).toEqual({
+      hp: 10433,
+      atk: 3010,
+      def: 880,
+      impact: 86,
+      anomalyMastery: 116,
+      anomalyProficiency: 274,
+      critRate: 85,
+      // No Hailstorm Shrine passive: W-Engine passives don't show on the stat screen
+      critDmg: 123.6,
+      penRatio: 24,
+      pen: 0,
+      energyRegen: 1.2,
+      elementDmg: 0,
+      sheerForce: 0,
+    })
+  })
 
-    const miyabi = statsFor('1091', statScreenConditions()).stats
-    expect([miyabi.hp, miyabi.atk, miyabi.critRate, miyabi.critDmg]).toEqual([10433, 3010, 85, 173.6])
+  it('Soldier 0 - Anby matches every value on the in-game stat screen (screenshot)', () => {
+    const { stats } = statsFor('1381', statScreenConditions())
+
+    expect(stats).toEqual({
+      hp: 11255,
+      atk: 3166,
+      def: 972,
+      impact: 93,
+      anomalyMastery: 94,
+      anomalyProficiency: 93,
+      critRate: 70.6,
+      // No Severed Innocence passive, no Voltage Surge and no Shadow Harmony stacks
+      critDmg: 141.2,
+      penRatio: 0,
+      // PEN isn't on the screen, 18 is from her discs
+      pen: 18,
+      energyRegen: 1.2,
+      elementDmg: 30,
+      sheerForce: 0,
+    })
   })
 })
 

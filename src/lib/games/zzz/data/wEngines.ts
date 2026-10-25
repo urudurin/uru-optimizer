@@ -33,12 +33,15 @@ export const CLOUDCLEAVE_RADIANCE: WEngineData = {
   },
 }
 
+// W-Engine passives never show on the stat screen, even the always-on parts (confirmed with Hailstorm Shrine and
+// Severed Innocence screenshots), so they count as combat-only through onField
+
 // Builds the passive for an engine with one always-on stat bonus, R1 sourced and higher refinements from a user export
 function flatPassive(stat: ZzzStatsValues, values: number[], source: string): WEngineData['passive'] {
   return (refinement) => {
     const value = values[refinement - 1]
     if (value === undefined) return []
-    return [{ stat, value, source, confidence: refinement === 1 ? 'sourced' : 'unverified' } satisfies StatEffect]
+    return [{ stat, value, when: 'onField', source, confidence: refinement === 1 ? 'sourced' : 'unverified' } satisfies StatEffect]
   }
 }
 
@@ -81,7 +84,7 @@ export const SEVERED_INNOCENCE: WEngineData = {
     if (flat === undefined) return []
     const confidence = refinement === 1 ? 'sourced' : 'unverified'
     return [
-      { stat: ZzzStats.CRIT_DMG, value: flat, source: 'Severed Innocence passive', confidence },
+      { stat: ZzzStats.CRIT_DMG, value: flat, when: 'onField', source: 'Severed Innocence passive', confidence },
       {
         stat: ZzzStats.CRIT_DMG,
         value: flat,

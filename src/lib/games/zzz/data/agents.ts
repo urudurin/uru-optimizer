@@ -57,7 +57,7 @@ export const MIYABI: AgentData = {
   specialty: 'Anomaly',
   level: 60,
   // From Gachabase, includes the Core Skill ATK +75 and Anomaly Proficiency +90.
-  // HP, Impact, Anomaly Mastery, Anomaly Proficiency and CRIT match a user export
+  // Every value matched the in-game stat screen (screenshot of a real build)
   base: {
     hp: 7673,
     atk: 880,
@@ -92,7 +92,8 @@ export const YIXUAN: AgentData = {
     penRatio: 0,
     energyRegen: 1.2,
   },
-  // Core Passive: 0.1 Sheer Force per point of max HP, on top of the 0.3 per ATK every Rupture agent has
+  // Core Passive: 0.1 Sheer Force per point of max HP, on top of the 0.3 per ATK every Rupture agent has.
+  // A screenshot (ATK 2173, HP 20454, Sheer Force 2696) matches when each part is rounded down: 651 + 2045
   sheerForce: { fromAtk: 0.3, fromHp: 0.1 },
   // Meditation after her Ultimate, needs a Stun, Support or Defense teammate, which rides on onField like Anby's
   coreEffects: coreEffectsAtEveryLevel([{
@@ -110,11 +111,14 @@ export const SOLDIER_0_ANBY: AgentData = {
   element: 'Electric',
   specialty: 'Attack',
   level: 60,
-  // From Gachabase, includes the Core Skill CRIT Rate +14.4 and ATK +75. HP, Impact and CRIT match a user export
+  // From Gachabase, includes the Core Skill CRIT Rate +14.4 and ATK +75. Gachabase's 7673/929/612 are rounded and came
+  // out one point off on the stat screen. The game's base stats are fractional, so HP, ATK and DEF are fitted to a
+  // screenshot of a real build: ATK must be in [928.12, 928.72) with the 713 W-Engine, HP in [7673.6, 7674.4),
+  // DEF in [610.9, 611.7). Every value then matches the screen
   base: {
-    hp: 7673,
-    atk: 929,
-    def: 612,
+    hp: 7674,
+    atk: 928.4,
+    def: 611,
     impact: 93,
     critRate: 19.4,
     critDmg: 50,

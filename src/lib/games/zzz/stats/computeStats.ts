@@ -159,7 +159,10 @@ export function computeStats(input: ComputeInput): ComputeResult {
 
   const hp = agent.base.hp * percent(ZzzStats.HP_P) + total(ZzzStats.HP)
   const atk = (agent.base.atk + wEngine.baseAtk) * percent(ZzzStats.ATK_P) + total(ZzzStats.ATK)
-  const sheerForce = agent.sheerForce ? atk * agent.sheerForce.fromAtk + hp * agent.sheerForce.fromHp : 0
+  // Each part is rounded down, which is what makes a Yixuan screenshot match exactly (one data point so far)
+  const sheerForce = agent.sheerForce
+    ? Math.floor(atk * agent.sheerForce.fromAtk) + Math.floor(hp * agent.sheerForce.fromHp)
+    : 0
 
   const stats: FinalStats = {
     hp,

@@ -65,7 +65,7 @@ export const SETS: Record<string, SetData> = {
         stat: ZzzStats.CRIT_RATE,
         value: 8,
         source: 'Woodpecker Electro 2pc',
-        confidence: 'sourced',
+        confidence: 'confirmed',
       },
     ],
     // The 4pc stacks ATK on crits from specific skills
