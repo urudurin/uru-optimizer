@@ -67,6 +67,27 @@ export type Substat = {
   value: number,
 }
 
+// A character the user owns and how they're built, same shape as the WuwaEchoScorer save
+export type CharacterState = {
+  charId: string,
+  level: number,
+  // Resonance chain, 0-6
+  sequence: number,
+  weaponId?: string,
+  weaponLevel: number,
+  refinement: number,
+  // Whether the minor forte nodes are unlocked
+  minorFortes: boolean,
+  // 5 slots, slot 0 is the main echo. null is an empty slot
+  echoIds: (string | null)[],
+}
+
+export type SavedTeam = {
+  id: string,
+  name: string,
+  members: [string, string, string],
+}
+
 export type Echo = {
   id: string,
   // Which echo (monster) it is, decides the cost and which sonata sets it can drop in
