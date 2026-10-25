@@ -92,10 +92,10 @@ export function toDisplayStats(stats: FinalStats): FinalStats {
   }
 }
 
-function effectApplies(effect: StatEffect, input: ComputeInput): boolean {
-  if (effect.when && !input.conditions[effect.when]) return false
-  if (effect.specialty && effect.specialty !== input.agent.specialty) return false
-  if (effect.element && effect.element !== input.agent.element) return false
+export function effectApplies(effect: StatEffect, agent: AgentData, conditions: ActiveConditions): boolean {
+  if (effect.when && !conditions[effect.when]) return false
+  if (effect.specialty && effect.specialty !== agent.specialty) return false
+  if (effect.element && effect.element !== agent.element) return false
   return true
 }
 
@@ -106,7 +106,7 @@ export function computeStats(input: ComputeInput): ComputeResult {
 
   const addEffects = (effects: StatEffect[]) => {
     for (const effect of effects) {
-      if (!effectApplies(effect, input)) continue
+      if (!effectApplies(effect, agent, input.conditions)) continue
       contributions.push({ source: effect.source, stat: effect.stat, value: effect.value, condition: effect.when })
     }
   }
@@ -154,31 +154,48 @@ export function computeStats(input: ComputeInput): ComputeResult {
   if (coreEffects) addEffects(coreEffects)
   else warnings.push(`No Core Skill data for level ${input.coreSkillLevel}`)
 
-  const total = (stat: ZzzStatsValues) => contributions.reduce((sum, c) => c.stat === stat ? sum + c.value : sum, 0)
-  const percent = (stat: ZzzStatsValues) => 1 + total(stat) / 100
+  const totals = emptyTotals()
+  for (const c of contributions) totals[STAT_INDEX.get(c.stat)!] += c.value
 
-  const hp = agent.base.hp * percent(ZzzStats.HP_P) + total(ZzzStats.HP)
-  const atk = (agent.base.atk + wEngine.baseAtk) * percent(ZzzStats.ATK_P) + total(ZzzStats.ATK)
+  return { stats: finalizeStats(agent, wEngine, totals), contributions, warnings }
+}
+
+// Summed bonus points per stat before they are applied to the base stats, indexed by STAT_INDEX.
+// A typed array rather than an object because the disc optimizer fills one for every combination it tries
+export type StatTotals = Float64Array
+
+export const ALL_STATS: ZzzStatsValues[] = Object.values(ZzzStats)
+export const STAT_INDEX = new Map(ALL_STATS.map((stat, i) => [stat, i]))
+
+const I = Object.fromEntries(Object.keys(ZzzStats).map((key, i) => [key, i])) as Record<keyof typeof ZzzStats, number>
+
+export function emptyTotals(): StatTotals {
+  return new Float64Array(ALL_STATS.length)
+}
+
+// The one place that turns bonus totals into final stats, shared by the calculator and the disc optimizer
+export function finalizeStats(agent: AgentData, wEngine: WEngineData, totals: StatTotals): FinalStats {
+  const base = agent.base
+  const hp = base.hp * (1 + totals[I.HP_P] / 100) + totals[I.HP]
+  const atk = (base.atk + wEngine.baseAtk) * (1 + totals[I.ATK_P] / 100) + totals[I.ATK]
   // Each part is rounded down, without that a Yixuan screenshot comes out one point high
   const sheerForce = agent.sheerForce
     ? Math.floor(atk * agent.sheerForce.fromAtk) + Math.floor(hp * agent.sheerForce.fromHp)
     : 0
 
-  const stats: FinalStats = {
+  return {
     hp,
     atk,
-    def: agent.base.def * percent(ZzzStats.DEF_P) + total(ZzzStats.DEF),
-    impact: agent.base.impact * percent(ZzzStats.IMPACT),
-    anomalyMastery: agent.base.anomalyMastery * percent(ZzzStats.ANOMALY_MASTERY),
-    anomalyProficiency: agent.base.anomalyProficiency + total(ZzzStats.ANOMALY_PROFICIENCY),
-    critRate: agent.base.critRate + total(ZzzStats.CRIT_RATE),
-    critDmg: agent.base.critDmg + total(ZzzStats.CRIT_DMG),
-    penRatio: agent.base.penRatio + total(ZzzStats.PEN_RATIO),
-    pen: total(ZzzStats.PEN),
-    energyRegen: agent.base.energyRegen * percent(ZzzStats.ENERGY_REGEN),
-    elementDmg: total(ZzzStats.ELEMENT_DMG),
+    def: base.def * (1 + totals[I.DEF_P] / 100) + totals[I.DEF],
+    impact: base.impact * (1 + totals[I.IMPACT] / 100),
+    anomalyMastery: base.anomalyMastery * (1 + totals[I.ANOMALY_MASTERY] / 100),
+    anomalyProficiency: base.anomalyProficiency + totals[I.ANOMALY_PROFICIENCY],
+    critRate: base.critRate + totals[I.CRIT_RATE],
+    critDmg: base.critDmg + totals[I.CRIT_DMG],
+    penRatio: base.penRatio + totals[I.PEN_RATIO],
+    pen: totals[I.PEN],
+    energyRegen: base.energyRegen * (1 + totals[I.ENERGY_REGEN] / 100),
+    elementDmg: totals[I.ELEMENT_DMG],
     sheerForce,
   }
-
-  return { stats, contributions, warnings }
 }

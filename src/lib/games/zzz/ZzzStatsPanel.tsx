@@ -16,6 +16,12 @@ import type {
 } from 'lib/games/zzz/data/dataTypes'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
+  CONDITION_LABELS,
+  CORE_SKILL_OPTIONS,
+  formatStat,
+  STAT_ROWS,
+} from 'lib/games/zzz/statLabels'
+import {
   type ComputeResult,
   computeStats,
   type FinalStats,
@@ -30,30 +36,6 @@ import {
   useMemo,
   useState,
 } from 'react'
-
-const CONDITION_LABELS: Record<Condition, string> = {
-  onField: 'Agent is on the field (combat)',
-  inEtherVeil: 'Inside an Ether Veil',
-  veilTriggered: 'Ether Veil just activated',
-}
-
-const CORE_SKILL_OPTIONS = ['A', 'B', 'C', 'D', 'E', 'F'].map((label, i) => ({ value: String(i + 1), label: `Core Skill ${label}` }))
-
-const STAT_ROWS: { key: keyof FinalStats, label: string, suffix?: string, ruptureOnly?: boolean }[] = [
-  { key: 'hp', label: 'HP' },
-  { key: 'atk', label: 'ATK' },
-  { key: 'def', label: 'DEF' },
-  { key: 'impact', label: 'Impact' },
-  { key: 'critRate', label: 'CRIT Rate', suffix: '%' },
-  { key: 'critDmg', label: 'CRIT DMG', suffix: '%' },
-  { key: 'anomalyMastery', label: 'Anomaly Mastery' },
-  { key: 'anomalyProficiency', label: 'Anomaly Proficiency' },
-  { key: 'penRatio', label: 'PEN Ratio', suffix: '%' },
-  { key: 'pen', label: 'PEN' },
-  { key: 'energyRegen', label: 'Energy Regen' },
-  { key: 'elementDmg', label: 'Element DMG bonus (stats and sets)', suffix: '%' },
-  { key: 'sheerForce', label: 'Sheer Force', ruptureOnly: true },
-]
 
 type ComputedView =
   | { ok: false, reason: string }
@@ -158,7 +140,7 @@ export function ZzzStatsPanel() {
                 {STAT_ROWS.filter((row) => !row.ruptureOnly || computed.agentSpecialty === 'Rupture').map((row) => (
                   <Table.Tr key={row.key}>
                     <Table.Td>{row.label}</Table.Td>
-                    <Table.Td ta='right'>{`${computed.display[row.key].toLocaleString('en-US')}${row.suffix ?? ''}`}</Table.Td>
+                    <Table.Td ta='right'>{formatStat(row, computed.display[row.key])}</Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>

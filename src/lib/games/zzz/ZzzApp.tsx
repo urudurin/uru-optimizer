@@ -9,14 +9,11 @@ import {
   Text,
   Title,
 } from '@mantine/core'
-import { getSubstatValue } from 'lib/games/zzz/discStats'
 import { parseZzzBuildsExportJson } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import type { ImportMode } from 'lib/games/zzz/state/zzzState'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
-import type {
-  Disc,
-  DiscSubstat,
-} from 'lib/games/zzz/types'
+import { formatSubstat } from 'lib/games/zzz/statLabels'
+import { ZzzOptimizerPanel } from 'lib/games/zzz/ZzzOptimizerPanel'
 import { ZzzStatsPanel } from 'lib/games/zzz/ZzzStatsPanel'
 import {
   useMemo,
@@ -24,11 +21,6 @@ import {
 } from 'react'
 
 const MAX_WARNINGS_SHOWN = 8
-
-function formatSubstat(disc: Disc, substat: DiscSubstat): string {
-  const value = getSubstatValue(disc.rarity, substat.stat, substat.rolls)
-  return value === undefined ? `${substat.stat} x${substat.rolls}` : `${substat.stat} +${value}`
-}
 
 export function ZzzApp() {
   const discs = useZzzStore((s) => s.discs)
@@ -92,6 +84,8 @@ export function ZzzApp() {
       )}
 
       <ZzzStatsPanel />
+
+      <ZzzOptimizerPanel />
 
       {sortedDiscs.length > 0 && (
         <Table.ScrollContainer minWidth={640}>
