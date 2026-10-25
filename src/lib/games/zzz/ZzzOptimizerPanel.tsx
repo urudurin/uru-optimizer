@@ -366,6 +366,9 @@ export function ZzzOptimizerPanel() {
             }, imported ${storedImport?.importedAt}. Kept in this browser only.`
             : 'Your own presets file stays in this browser only, nothing is uploaded or committed.'}
         </Text>
+        <Text size='xs' c='dimmed'>
+          Imported presets are for personal, non-commercial use only. Follow the terms of wherever the data came from.
+        </Text>
         {imported && imported.warnings.length > 0 && (
           <Alert color='yellow' p='xs'>
             <Stack gap={2}>

@@ -6,7 +6,7 @@ import {
 
 // Build recommendations the user imports from a file of their own, for example notes taken from a guide site or a
 // community spreadsheet. The file lives only in this browser's storage: it's never committed to the repo, and nothing
-// here fetches or scrapes anything.
+// here fetches or scrapes anything. Imported data is for personal, non-commercial use only, see games/DATA-SOURCES.md.
 //
 // File format, shared by every game (the shape of each preset entry is up to the game):
 // {
