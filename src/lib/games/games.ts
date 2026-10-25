@@ -1,10 +1,11 @@
-export type GameId = 'hsr' | 'zzz'
+export type GameId = 'hsr' | 'zzz' | 'wuwa'
 
 export const DEFAULT_GAME: GameId = 'hsr'
 
 export const GAMES: readonly { id: GameId, label: string, shortLabel: string }[] = [
   { id: 'hsr', label: 'Honkai: Star Rail', shortLabel: 'HSR' },
   { id: 'zzz', label: 'Zenless Zone Zero', shortLabel: 'ZZZ' },
+  { id: 'wuwa', label: 'Wuthering Waves', shortLabel: 'WuWa' },
 ]
 
 // Anything unknown (missing, corrupted, or from a future version) falls back to the default game

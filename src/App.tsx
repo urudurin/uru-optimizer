@@ -25,6 +25,7 @@ import {
 
 // Loaded on first use so HSR-only users never download ZZZ code
 const ZzzApp = lazy(() => import('lib/games/zzz/ZzzApp').then((m) => ({ default: m.ZzzApp })))
+const WuwaApp = lazy(() => import('lib/games/wuwa/WuwaApp').then((m) => ({ default: m.WuwaApp })))
 
 // Initial gradient setup before first render
 {
@@ -73,6 +74,11 @@ export function App() {
             {activeGame === 'zzz' && (
               <Suspense fallback={null}>
                 <ZzzApp />
+              </Suspense>
+            )}
+            {activeGame === 'wuwa' && (
+              <Suspense fallback={null}>
+                <WuwaApp />
               </Suspense>
             )}
           </div>
