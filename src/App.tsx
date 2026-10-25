@@ -1,6 +1,7 @@
 import { MantineProvider } from '@mantine/core'
 import { ModalsProvider } from '@mantine/modals'
 import { Notifications } from '@mantine/notifications'
+import { useGameStore } from 'lib/games/gameStore'
 import { ConfirmModalProvider } from 'lib/interactions/confirmModal'
 import { checkForUpdatesNotification } from 'lib/interactions/notifications'
 import { LayoutHeader } from 'lib/layout/LayoutHeader'
@@ -16,9 +17,14 @@ import {
 } from 'lib/ui/theme'
 
 import {
+  lazy,
+  Suspense,
   useEffect,
   useMemo,
 } from 'react'
+
+// Loaded on first use so HSR-only users never download ZZZ code
+const ZzzApp = lazy(() => import('lib/games/zzz/ZzzApp').then((m) => ({ default: m.ZzzApp })))
 
 // Initial gradient setup before first render
 {
@@ -28,6 +34,7 @@ import {
 
 export function App() {
   const seedColor = useThemeStore((s) => s.seedColor)
+  const activeGame = useGameStore((s) => s.activeGame)
   const mantineTheme = useMemo(() => createMantineTheme(seedColor), [seedColor])
 
   useEffect(() => {
@@ -46,7 +53,8 @@ export function App() {
         <ConfirmModalProvider>
           <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
             <LayoutHeader />
-            <div style={{ display: 'flex', flex: 1 }}>
+            {/* HSR stays mounted while another game is shown, so in-progress HSR state isn't lost */}
+            <div style={{ display: activeGame === 'hsr' ? 'flex' : 'none', flex: 1 }}>
               <LayoutSider />
               <div
                 style={{
@@ -62,6 +70,11 @@ export function App() {
                 <Tabs />
               </div>
             </div>
+            {activeGame === 'zzz' && (
+              <Suspense fallback={null}>
+                <ZzzApp />
+              </Suspense>
+            )}
           </div>
           <GlobalModals />
         </ConfirmModalProvider>

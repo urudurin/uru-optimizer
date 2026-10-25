@@ -1,0 +1,773 @@
+{
+  "version": "3.0",
+  "builds": [
+    {
+      "id": "build_1783694186812_aram2g7s4",
+      "agentId": "1091",
+      "name": "Miyabi",
+      "element": "Ice",
+      "specialty": "Anomaly",
+      "level": 60,
+      "mindscapeLevel": 0,
+      "wEngineRefinement": 1,
+      "equippedDiscs": {
+        "Drive1": {
+          "uid": "enka-1783694184761-mn1eye",
+          "slot": "Drive1",
+          "set": "Branch & Blade Song",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "HP",
+            "value": 2200
+          },
+          "subStats": [
+            {
+              "type": "CRIT_Rate",
+              "value": 2.4,
+              "rolls": 1
+            },
+            {
+              "type": "ATK%",
+              "value": 9,
+              "rolls": 3
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 14.4,
+              "rolls": 3
+            },
+            {
+              "type": "DEF",
+              "value": 15,
+              "rolls": 1
+            }
+          ],
+          "equippedBy": "1091",
+          "lock": false
+        },
+        "Drive2": {
+          "uid": "enka-1783694184761-h7aq19",
+          "slot": "Drive2",
+          "set": "Woodpecker Electro",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "ATK",
+            "value": 316
+          },
+          "subStats": [
+            {
+              "type": "HP",
+              "value": 112,
+              "rolls": 1
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 4.8,
+              "rolls": 1
+            },
+            {
+              "type": "CRIT_Rate",
+              "value": 9.6,
+              "rolls": 4
+            },
+            {
+              "type": "ATK%",
+              "value": 6,
+              "rolls": 2
+            }
+          ],
+          "equippedBy": "1091",
+          "lock": false
+        },
+        "Drive3": {
+          "uid": "enka-1783694184761-h59tp",
+          "slot": "Drive3",
+          "set": "Branch & Blade Song",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "DEF",
+            "value": 184
+          },
+          "subStats": [
+            {
+              "type": "ATK%",
+              "value": 6,
+              "rolls": 2
+            },
+            {
+              "type": "Anomaly_Proficiency",
+              "value": 18,
+              "rolls": 2
+            },
+            {
+              "type": "CRIT_Rate",
+              "value": 4.8,
+              "rolls": 2
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 9.6,
+              "rolls": 2
+            }
+          ],
+          "equippedBy": "1091",
+          "lock": false
+        },
+        "Drive4": {
+          "uid": "enka-1783694184762-0a8s48",
+          "slot": "Drive4",
+          "set": "Branch & Blade Song",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "CRIT_Rate",
+            "value": 24
+          },
+          "subStats": [
+            {
+              "type": "Anomaly_Proficiency",
+              "value": 9,
+              "rolls": 1
+            },
+            {
+              "type": "HP",
+              "value": 224,
+              "rolls": 2
+            },
+            {
+              "type": "ATK%",
+              "value": 9,
+              "rolls": 3
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 14.4,
+              "rolls": 3
+            }
+          ],
+          "equippedBy": "1091",
+          "lock": false
+        },
+        "Drive5": {
+          "uid": "enka-1783694184762-weypee",
+          "slot": "Drive5",
+          "set": "Branch & Blade Song",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "PEN_Ratio",
+            "value": 24
+          },
+          "subStats": [
+            {
+              "type": "DEF",
+              "value": 30,
+              "rolls": 2
+            },
+            {
+              "type": "ATK%",
+              "value": 6,
+              "rolls": 2
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 9.6,
+              "rolls": 2
+            },
+            {
+              "type": "HP",
+              "value": 224,
+              "rolls": 2
+            }
+          ],
+          "equippedBy": "1091",
+          "lock": false
+        },
+        "Drive6": {
+          "uid": "enka-1783694184762-3nkno9",
+          "slot": "Drive6",
+          "set": "Woodpecker Electro",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "ATK%",
+            "value": 30
+          },
+          "subStats": [
+            {
+              "type": "CRIT_Rate",
+              "value": 7.2,
+              "rolls": 3
+            },
+            {
+              "type": "Anomaly_Proficiency",
+              "value": 9,
+              "rolls": 1
+            },
+            {
+              "type": "DEF",
+              "value": 45,
+              "rolls": 3
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 4.8,
+              "rolls": 1
+            }
+          ],
+          "equippedBy": "1091",
+          "lock": false
+        }
+      },
+      "enabledDiscs": {
+        "Drive1": true,
+        "Drive2": true,
+        "Drive3": true,
+        "Drive4": true,
+        "Drive5": true,
+        "Drive6": true
+      },
+      "createdAt": "2026-07-10T14:36:26.812Z",
+      "updatedAt": "2026-07-10T14:36:26.861Z",
+      "includeWEngineBonuses": true,
+      "includeMindscapeBonuses": true,
+      "includePassiveBonuses": true,
+      "calculatedStats": {
+        "hp": 10433,
+        "hppercent": 0,
+        "atk": 4081,
+        "atkpercent": 66,
+        "def": 880,
+        "defpercent": 0,
+        "impact": 86,
+        "impactpercent": 0,
+        "anomalyMastery": 116,
+        "anomalyMasteryPercent": 0,
+        "critRate": 97,
+        "critDmg": 203.6,
+        "anomalyProficiency": 274,
+        "pen": 0,
+        "penRatio": 24,
+        "energyRegen": 1.2,
+        "energyRegenPercent": 0
+      },
+      "equippedWEngine": {
+        "id": "14109",
+        "name": "Hailstorm Shrine"
+      }
+    },
+    {
+      "id": "build_1783694186896_k8j5ac73h",
+      "agentId": "1371",
+      "name": "Yixuan",
+      "element": "Ether",
+      "specialty": "Rupture",
+      "level": 60,
+      "mindscapeLevel": 0,
+      "wEngineRefinement": 1,
+      "equippedDiscs": {
+        "Drive1": {
+          "uid": "enka-1783694184762-m2k9es",
+          "slot": "Drive1",
+          "set": "Yunkui Tales",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "HP",
+            "value": 2200
+          },
+          "subStats": [
+            {
+              "type": "CRIT_Rate",
+              "value": 2.4,
+              "rolls": 1
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 14.4,
+              "rolls": 3
+            },
+            {
+              "type": "HP%",
+              "value": 9,
+              "rolls": 3
+            },
+            {
+              "type": "PEN",
+              "value": 18,
+              "rolls": 2
+            }
+          ],
+          "equippedBy": "1371",
+          "lock": false
+        },
+        "Drive2": {
+          "uid": "enka-1783694184762-2ll7zq",
+          "slot": "Drive2",
+          "set": "Yunkui Tales",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "ATK",
+            "value": 316
+          },
+          "subStats": [
+            {
+              "type": "CRIT_Rate",
+              "value": 7.2,
+              "rolls": 3
+            },
+            {
+              "type": "DEF",
+              "value": 30,
+              "rolls": 2
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 9.6,
+              "rolls": 2
+            },
+            {
+              "type": "HP",
+              "value": 112,
+              "rolls": 1
+            }
+          ],
+          "equippedBy": "1371",
+          "lock": false
+        },
+        "Drive3": {
+          "uid": "enka-1783694184762-h53zg",
+          "slot": "Drive3",
+          "set": "Woodpecker Electro",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "DEF",
+            "value": 184
+          },
+          "subStats": [
+            {
+              "type": "Anomaly_Proficiency",
+              "value": 27,
+              "rolls": 3
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 9.6,
+              "rolls": 2
+            },
+            {
+              "type": "DEF%",
+              "value": 4.8,
+              "rolls": 1
+            },
+            {
+              "type": "HP%",
+              "value": 9,
+              "rolls": 3
+            }
+          ],
+          "equippedBy": "1371",
+          "lock": false
+        },
+        "Drive4": {
+          "uid": "enka-1783694184762-gzmx8i",
+          "slot": "Drive4",
+          "set": "Yunkui Tales",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "CRIT_Rate",
+            "value": 24
+          },
+          "subStats": [
+            {
+              "type": "HP%",
+              "value": 12,
+              "rolls": 4
+            },
+            {
+              "type": "DEF",
+              "value": 15,
+              "rolls": 1
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 9.6,
+              "rolls": 2
+            },
+            {
+              "type": "ATK%",
+              "value": 3,
+              "rolls": 1
+            }
+          ],
+          "equippedBy": "1371",
+          "lock": false
+        },
+        "Drive5": {
+          "uid": "enka-1783694184762-ltqvlu",
+          "slot": "Drive5",
+          "set": "Woodpecker Electro",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "Element_DMG",
+            "value": 30
+          },
+          "subStats": [
+            {
+              "type": "CRIT_DMG",
+              "value": 9.6,
+              "rolls": 2
+            },
+            {
+              "type": "HP%",
+              "value": 6,
+              "rolls": 2
+            },
+            {
+              "type": "Anomaly_Proficiency",
+              "value": 27,
+              "rolls": 3
+            },
+            {
+              "type": "CRIT_Rate",
+              "value": 4.8,
+              "rolls": 2
+            }
+          ],
+          "equippedBy": "1371",
+          "lock": false
+        },
+        "Drive6": {
+          "uid": "enka-1783694184762-w6tsmc",
+          "slot": "Drive6",
+          "set": "Yunkui Tales",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "HP%",
+            "value": 30
+          },
+          "subStats": [
+            {
+              "type": "CRIT_Rate",
+              "value": 7.2,
+              "rolls": 3
+            },
+            {
+              "type": "ATK%",
+              "value": 6,
+              "rolls": 2
+            },
+            {
+              "type": "PEN",
+              "value": 9,
+              "rolls": 1
+            },
+            {
+              "type": "Anomaly_Proficiency",
+              "value": 18,
+              "rolls": 2
+            }
+          ],
+          "equippedBy": "1371",
+          "lock": false
+        }
+      },
+      "enabledDiscs": {
+        "Drive1": true,
+        "Drive2": true,
+        "Drive3": true,
+        "Drive4": true,
+        "Drive5": true,
+        "Drive6": true
+      },
+      "createdAt": "2026-07-10T14:36:26.896Z",
+      "updatedAt": "2026-07-10T14:36:27.028Z",
+      "includeWEngineBonuses": true,
+      "includeMindscapeBonuses": true,
+      "includePassiveBonuses": true,
+      "calculatedStats": {
+        "hp": 28436,
+        "hppercent": 106,
+        "atk": 2222,
+        "atkpercent": 9,
+        "def": 712,
+        "defpercent": 4.8,
+        "impact": 93,
+        "impactpercent": 0,
+        "anomalyMastery": 92,
+        "anomalyMasteryPercent": 0,
+        "critRate": 105,
+        "critDmg": 142.8,
+        "anomalyProficiency": 162,
+        "pen": 27,
+        "penRatio": 0,
+        "energyRegen": 1.2,
+        "energyRegenPercent": 0
+      },
+      "equippedWEngine": {
+        "id": "14137",
+        "name": "Qingming Birdcage"
+      }
+    },
+    {
+      "id": "build_1783694238328_ahlp7rc85",
+      "agentId": "1381",
+      "name": "Soldier 0 - Anby",
+      "element": "Electric",
+      "specialty": "Attack",
+      "level": 60,
+      "mindscapeLevel": 0,
+      "wEngineRefinement": 1,
+      "equippedDiscs": {
+        "Drive1": {
+          "uid": "1783694282972-0.9495621265225245",
+          "slot": "Drive1",
+          "set": "Shadow Harmony",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "HP",
+            "value": 2200
+          },
+          "subStats": [
+            {
+              "type": "CRIT_Rate",
+              "value": 2.4,
+              "rolls": 1
+            },
+            {
+              "type": "ATK%",
+              "value": 12,
+              "rolls": 4
+            },
+            {
+              "type": "HP%",
+              "value": 6,
+              "rolls": 2
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 4.8,
+              "rolls": 1
+            }
+          ],
+          "lock": false
+        },
+        "Drive2": {
+          "uid": "1783694319340-0.3755731174234783",
+          "slot": "Drive2",
+          "set": "Shadow Harmony",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "ATK",
+            "value": 316
+          },
+          "subStats": [
+            {
+              "type": "CRIT_DMG",
+              "value": 9.6,
+              "rolls": 2
+            },
+            {
+              "type": "ATK%",
+              "value": 9,
+              "rolls": 3
+            },
+            {
+              "type": "DEF",
+              "value": 30,
+              "rolls": 2
+            },
+            {
+              "type": "CRIT_Rate",
+              "value": 4.8,
+              "rolls": 2
+            }
+          ],
+          "lock": false
+        },
+        "Drive3": {
+          "uid": "1783694347859-0.5700023298207035",
+          "slot": "Drive3",
+          "set": "Woodpecker Electro",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "DEF",
+            "value": 184
+          },
+          "subStats": [
+            {
+              "type": "ATK",
+              "value": 19,
+              "rolls": 1
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 9.6,
+              "rolls": 2
+            },
+            {
+              "type": "ATK%",
+              "value": 12,
+              "rolls": 4
+            },
+            {
+              "type": "DEF%",
+              "value": 4.8,
+              "rolls": 1
+            }
+          ],
+          "lock": false
+        },
+        "Drive4": {
+          "uid": "1783694388530-0.6034476716259135",
+          "slot": "Drive4",
+          "set": "Shadow Harmony",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "CRIT_Rate",
+            "value": 24
+          },
+          "subStats": [
+            {
+              "type": "DEF%",
+              "value": 9.6,
+              "rolls": 2
+            },
+            {
+              "type": "HP%",
+              "value": 9,
+              "rolls": 3
+            },
+            {
+              "type": "ATK%",
+              "value": 6,
+              "rolls": 2
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 4.8,
+              "rolls": 1
+            }
+          ],
+          "lock": false
+        },
+        "Drive5": {
+          "uid": "1783694420563-0.3937498199600913",
+          "slot": "Drive5",
+          "set": "Woodpecker Electro",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "Element_DMG",
+            "value": 30
+          },
+          "subStats": [
+            {
+              "type": "DEF%",
+              "value": 9.6,
+              "rolls": 2
+            },
+            {
+              "type": "CRIT_Rate",
+              "value": 7.2,
+              "rolls": 3
+            },
+            {
+              "type": "PEN",
+              "value": 18,
+              "rolls": 2
+            },
+            {
+              "type": "ATK",
+              "value": 19,
+              "rolls": 1
+            }
+          ],
+          "lock": false
+        },
+        "Drive6": {
+          "uid": "1783694459438-0.4772686584241045",
+          "slot": "Drive6",
+          "set": "Shadow Harmony",
+          "rarity": "S",
+          "level": 15,
+          "mainStat": {
+            "type": "ATK%",
+            "value": 30
+          },
+          "subStats": [
+            {
+              "type": "HP%",
+              "value": 3,
+              "rolls": 1
+            },
+            {
+              "type": "CRIT_DMG",
+              "value": 14.4,
+              "rolls": 3
+            },
+            {
+              "type": "ATK",
+              "value": 38,
+              "rolls": 2
+            },
+            {
+              "type": "CRIT_Rate",
+              "value": 4.8,
+              "rolls": 2
+            }
+          ],
+          "lock": false
+        }
+      },
+      "enabledDiscs": {
+        "Drive1": true,
+        "Drive2": true,
+        "Drive3": true,
+        "Drive4": true,
+        "Drive5": true,
+        "Drive6": true
+      },
+      "createdAt": "2026-07-10T14:37:18.328Z",
+      "updatedAt": "2026-07-10T14:41:12.215Z",
+      "includeWEngineBonuses": true,
+      "includeMindscapeBonuses": true,
+      "includePassiveBonuses": true,
+      "calculatedStats": {
+        "hp": 12635,
+        "hppercent": 18,
+        "atk": 4694,
+        "atkpercent": 81,
+        "def": 1120,
+        "defpercent": 24,
+        "impact": 93,
+        "impactpercent": 0,
+        "anomalyMastery": 94,
+        "anomalyMasteryPercent": 0,
+        "critRate": 92.6,
+        "critDmg": 201.2,
+        "anomalyProficiency": 93,
+        "pen": 18,
+        "penRatio": 0,
+        "energyRegen": 1.2,
+        "energyRegenPercent": 0
+      },
+      "equippedWEngine": {
+        "id": "14138",
+        "name": "Severed Innocence"
+      }
+    }
+  ]
+}
