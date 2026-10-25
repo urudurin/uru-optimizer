@@ -43,7 +43,7 @@ export type AgentData = {
   // Base stats are for this level, with Core Skill bonuses to base stats included
   level: number,
   base: AgentBaseStats,
-  // Rupture agents only: Sheer Force per point of final ATK and max HP. Unverified against the stat screen
+  // Rupture agents only: Sheer Force per point of final ATK and max HP, each part rounded down (matched Yixuan's stat screen)
   sheerForce?: { fromAtk: number, fromHp: number },
   // Core Skill effects by Core Skill level (1 = A ... 6 = F)
   coreEffects: Record<number, StatEffect[]>,

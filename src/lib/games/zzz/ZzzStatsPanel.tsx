@@ -52,7 +52,7 @@ const STAT_ROWS: { key: keyof FinalStats, label: string, suffix?: string, ruptur
   { key: 'pen', label: 'PEN' },
   { key: 'energyRegen', label: 'Energy Regen' },
   { key: 'elementDmg', label: 'Element DMG bonus (stats and sets)', suffix: '%' },
-  { key: 'sheerForce', label: 'Sheer Force (unverified)', ruptureOnly: true },
+  { key: 'sheerForce', label: 'Sheer Force', ruptureOnly: true },
 ]
 
 type ComputedView =

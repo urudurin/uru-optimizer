@@ -79,9 +79,10 @@ export const YIXUAN: AgentData = {
   element: 'Ether',
   specialty: 'Rupture',
   level: 60,
-  // From Gachabase, includes the Core Skill CRIT Rate +14.4 and HP +420. HP, Impact and CRIT match a user export
+  // From Gachabase, includes the Core Skill CRIT Rate +14.4 and HP +420. Gachabase's HP 8373 is rounded and came out one
+  // point off on the stat screen, a screenshot of a real build needs HP in [8373.17, 8373.62). Every value then matches
   base: {
-    hp: 8373,
+    hp: 8373.4,
     atk: 872,
     def: 441,
     impact: 93,
@@ -93,7 +94,7 @@ export const YIXUAN: AgentData = {
     energyRegen: 1.2,
   },
   // Core Passive: 0.1 Sheer Force per point of max HP, on top of the 0.3 per ATK every Rupture agent has.
-  // A screenshot (ATK 2173, HP 20454, Sheer Force 2696) matches when each part is rounded down: 651 + 2045
+  // A screenshot (ATK 2173, HP 20454, Sheer Force 2696) only matches when each part is rounded down: 651 + 2045
   sheerForce: { fromAtk: 0.3, fromHp: 0.1 },
   // Meditation after her Ultimate, needs a Stun, Support or Defense teammate, which rides on onField like Anby's
   coreEffects: coreEffectsAtEveryLevel([{

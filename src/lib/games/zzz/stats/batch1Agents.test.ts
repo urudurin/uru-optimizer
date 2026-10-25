@@ -1,3 +1,5 @@
+import { YIXUAN } from 'lib/games/zzz/data/agents'
+import { QINGMING_BIRDCAGE } from 'lib/games/zzz/data/wEngines'
 import { parseZzzBuildsExport } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
   computeStats,
@@ -6,6 +8,10 @@ import {
 } from 'lib/games/zzz/stats/computeStats'
 import exportFixture from 'lib/games/zzz/stats/fixtures/batch1Builds.json'
 import { resolveBuild } from 'lib/games/zzz/stats/resolveBuild'
+import type {
+  Disc,
+  DiscSlot,
+} from 'lib/games/zzz/types'
 import {
   describe,
   expect,
@@ -72,7 +78,87 @@ describe('batch 1 agents against a user export', () => {
     expect(result.warnings).toEqual(['Branch & Blade Song 4-piece effects aren\'t modeled yet'])
   })
 
-  // Yixuan's discs changed after this export, so her screenshot can't be compared with this build
+  // Yixuan's discs changed after this export (slots 2 and 3), so her current discs were read from in-game screenshots
+  it('Yixuan matches every value on the in-game stat screen (screenshot)', () => {
+    const yunkui = { setId: 'yunkui-tales', setName: 'Yunkui Tales' }
+    const woodpecker = { setId: 'woodpecker-electro', setName: 'Woodpecker Electro' }
+    const disc = (slot: DiscSlot, set: typeof yunkui, main: Disc['main'], substats: Disc['substats']): Disc => ({
+      id: `yixuan-${slot}`,
+      slot,
+      ...set,
+      rarity: 'S',
+      level: 15,
+      main,
+      substats,
+      locked: true,
+    })
+    const discs = [
+      disc(1, yunkui, { stat: 'HP', value: 2200 }, [
+        { stat: 'CRIT Rate', rolls: 1 },
+        { stat: 'CRIT DMG', rolls: 3 },
+        { stat: 'HP%', rolls: 3 },
+        { stat: 'PEN', rolls: 2 },
+      ]),
+      disc(2, woodpecker, { stat: 'ATK', value: 316 }, [
+        { stat: 'ATK%', rolls: 1 },
+        { stat: 'CRIT DMG', rolls: 2 },
+        { stat: 'CRIT Rate', rolls: 2 },
+        { stat: 'HP%', rolls: 3 },
+      ]),
+      disc(3, yunkui, { stat: 'DEF', value: 184 }, [
+        { stat: 'ATK%', rolls: 1 },
+        { stat: 'CRIT DMG', rolls: 2 },
+        { stat: 'HP%', rolls: 4 },
+        { stat: 'DEF%', rolls: 1 },
+      ]),
+      disc(4, yunkui, { stat: 'CRIT Rate', value: 24 }, [
+        { stat: 'HP%', rolls: 4 },
+        { stat: 'DEF', rolls: 1 },
+        { stat: 'CRIT DMG', rolls: 2 },
+        { stat: 'ATK%', rolls: 1 },
+      ]),
+      disc(5, woodpecker, { stat: 'Element DMG%', value: 30 }, [
+        { stat: 'CRIT DMG', rolls: 2 },
+        { stat: 'HP%', rolls: 2 },
+        { stat: 'Anomaly Proficiency', rolls: 3 },
+        { stat: 'CRIT Rate', rolls: 2 },
+      ]),
+      disc(6, yunkui, { stat: 'HP%', value: 30 }, [
+        { stat: 'CRIT Rate', rolls: 3 },
+        { stat: 'ATK%', rolls: 2 },
+        { stat: 'PEN', rolls: 1 },
+        { stat: 'Anomaly Proficiency', rolls: 2 },
+      ]),
+    ]
+
+    const result = computeStats({
+      agent: YIXUAN,
+      wEngine: QINGMING_BIRDCAGE,
+      wEngineRefinement: 1,
+      coreSkillLevel: 6,
+      discs,
+      conditions: statScreenConditions(),
+    })
+
+    expect(toDisplayStats(result.stats)).toEqual({
+      hp: 20454,
+      atk: 2173,
+      def: 661,
+      impact: 93,
+      anomalyMastery: 92,
+      anomalyProficiency: 135,
+      // No Qingming Birdcage passive and no Yunkui Tales stacks
+      critRate: 70.6,
+      critDmg: 102.8,
+      penRatio: 0,
+      pen: 27,
+      energyRegen: 1.2,
+      elementDmg: 30,
+      sheerForce: 2696,
+    })
+    expect(result.warnings).toEqual([])
+  })
+
   it('Miyabi matches every value on the in-game stat screen (screenshot)', () => {
     const { stats } = statsFor('1091', statScreenConditions())
 
