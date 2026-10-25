@@ -9,8 +9,12 @@ import {
   Text,
   Title,
 } from '@mantine/core'
-import { roundHalfUp } from 'lib/games/shared/format'
+import {
+  formatNumber,
+  roundHalfUp,
+} from 'lib/games/shared/format'
 import type { ImportMode } from 'lib/games/shared/storage'
+import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
 import {
   characterName,
   ECHO_DEFINITIONS,
@@ -22,6 +26,11 @@ import { mainStatValue } from 'lib/games/wuwa/echoStats'
 import { parseWuwaUserDataJson } from 'lib/games/wuwa/importer/userDataParser'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import {
+  computeWuwaStats,
+  toDisplayStats,
+} from 'lib/games/wuwa/stats/computeStats'
+import {
+  type CharacterState,
   type Echo,
   statLabel,
 } from 'lib/games/wuwa/types'
@@ -42,6 +51,21 @@ function setName(setId: string): string {
 
 function describeMainStat(echo: Echo): string {
   return `${statLabel(echo.mainStat)} ${roundHalfUp(mainStatValue(echo.cost, echo.mainStat, echo.level), 1)}`
+}
+
+// What the overview screen should show, plus the element DMG bonus from the details screen
+function CalculatedStats({ character, loadout }: { character: CharacterState, loadout: Echo[] }) {
+  const { stats, warnings } = computeWuwaStats(character, loadout)
+  const shown = toDisplayStats(stats)
+  const element = CHARACTER_INFO[character.charId]?.element
+  return (
+    <Stack gap={0}>
+      <Text size='xs'>{`HP ${formatNumber(shown.hp)}, ATK ${formatNumber(shown.atk)}, DEF ${formatNumber(shown.def)}`}</Text>
+      <Text size='xs'>{`Crit ${shown.critRate}% / ${shown.critDmg}%, Energy Regen ${shown.energyRegen}%`}</Text>
+      {element && <Text size='xs'>{`${statLabel(element)} ${shown.elementDmg}%`}</Text>}
+      {warnings.map((warning, i) => <Text key={i} size='xs' c='yellow'>{warning}</Text>)}
+    </Stack>
+  )
 }
 
 export function WuwaApp() {
@@ -118,6 +142,7 @@ export function WuwaApp() {
                 <Table.Th>Weapon</Table.Th>
                 <Table.Th>Echoes (main first)</Table.Th>
                 <Table.Th>Cost</Table.Th>
+                <Table.Th>Stat screen (calculated)</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -142,6 +167,9 @@ export function WuwaApp() {
                     <Table.Td>
                       <Text size='sm'>{`${loadout.reduce((sum, echo) => sum + echo.cost, 0)} / 12`}</Text>
                       {problems.map((problem, i) => <Text key={i} size='xs' c='yellow'>{problem}</Text>)}
+                    </Table.Td>
+                    <Table.Td>
+                      <CalculatedStats character={character} loadout={loadout} />
                     </Table.Td>
                   </Table.Tr>
                 )
