@@ -12,6 +12,7 @@ import {
 import type {
   CharacterState,
   Echo,
+  ElementDmgKey,
   StatKey,
 } from 'lib/games/wuwa/types'
 
@@ -69,12 +70,28 @@ export function setPieceCounts(echoes: Echo[]): Map<string, number> {
   return new Map([...bySet].map(([setId, defs]) => [setId, defs.size]))
 }
 
-export function computeWuwaStats(character: CharacterState, echoes: Echo[]): WuwaStatsResult {
+type Bonus = Partial<Record<StatKey, number>>
+
+function addTo(sums: Bonus, stats: Bonus) {
+  for (const [stat, value] of Object.entries(stats)) sums[stat as StatKey] = (sums[stat as StatKey] ?? 0) + (value ?? 0)
+}
+
+// Everything that doesn't depend on echoes, worked out once per character
+export type PreparedWuwaCharacter = {
+  baseHp: number,
+  // Character plus weapon base ATK
+  baseAtk: number,
+  baseDef: number,
+  element?: ElementDmgKey,
+  // Starting stats, minor fortes and weapon bonuses
+  bonus: Bonus,
+  warnings: string[],
+}
+
+export function prepareWuwaCharacter(character: CharacterState): PreparedWuwaCharacter {
   const warnings: string[] = []
-  const sums: Partial<Record<StatKey, number>> = { ...STARTING }
-  const add = (stats: Partial<Record<StatKey, number>>) => {
-    for (const [stat, value] of Object.entries(stats)) sums[stat as StatKey] = (sums[stat as StatKey] ?? 0) + (value ?? 0)
-  }
+  const sums: Bonus = { ...STARTING }
+  const add = (stats: Bonus) => addTo(sums, stats)
 
   const base = CHARACTER_BASES[character.charId]
   if (!base) warnings.push(`No base stats for ${character.charId} in the game data, HP, ATK and DEF are missing their base`)
@@ -93,42 +110,56 @@ export function computeWuwaStats(character: CharacterState, echoes: Echo[]): Wuw
     add(weapon.passiveStats?.[String(character.refinement)] ?? {})
   }
 
-  for (const echo of echoes) {
-    add({ [echo.mainStat]: mainStatValue(echo.cost, echo.mainStat, echo.level) })
-    add({ [SECONDARY_MAIN[echo.cost].stat]: secondaryMainValue(echo.cost, echo.level) })
-    for (const substat of echo.substats) add({ [substat.stat]: substat.value })
-  }
-
-  for (const [setId, count] of setPieceCounts(echoes)) {
-    const set = SONATA_SETS[setId]
-    if (!set) {
-      if (count >= 2) warnings.push(`No data for sonata set ${setId}, its bonuses are left out`)
-      continue
-    }
-    for (const bonus of set.bonuses) if (bonus.pieces <= count) add(bonus.stats)
-  }
-
-  const total = (stat: StatKey) => sums[stat] ?? 0
   const charAtk = pick('atk')
   const weaponAtk = weapon ? atLevel(weapon.baseAtkByLevel, character.weaponLevel) : 0
+  return { baseHp: pick('hp'), baseAtk: charAtk + weaponAtk, baseDef: pick('def'), element: info?.element, bonus: sums, warnings }
+}
 
+// What one echo adds on its own: its two main stats and its substats
+export function echoStats(echo: Echo): Bonus {
+  const sums: Bonus = {}
+  addTo(sums, { [echo.mainStat]: mainStatValue(echo.cost, echo.mainStat, echo.level) })
+  addTo(sums, { [SECONDARY_MAIN[echo.cost].stat]: secondaryMainValue(echo.cost, echo.level) })
+  for (const substat of echo.substats) addTo(sums, { [substat.stat]: substat.value })
+  return sums
+}
+
+// The bonuses of the sonata sets these echoes complete
+export function sonataBonus(setId: string, pieces: number): Bonus {
+  const sums: Bonus = {}
+  for (const bonus of SONATA_SETS[setId]?.bonuses ?? []) if (bonus.pieces <= pieces) addTo(sums, bonus.stats)
+  return sums
+}
+
+// The overview screen from the prepared character plus echo and set bonuses (added into bonus by the caller)
+export function finalizeWuwaStats(prepared: PreparedWuwaCharacter, bonus: Bonus): WuwaStats {
+  const total = (stat: StatKey) => bonus[stat] ?? 0
   return {
-    stats: {
-      hp: pick('hp') * (1 + total('hpPct') / 100) + total('hpFlat'),
-      atk: (charAtk + weaponAtk) * (1 + total('atkPct') / 100) + total('atkFlat'),
-      def: pick('def') * (1 + total('defPct') / 100) + total('defFlat'),
-      critRate: total('critRate'),
-      critDmg: total('critDmg'),
-      energyRegen: total('energyRegen'),
-      healingBonus: total('healingBonus'),
-      elementDmg: info ? total(info.element) : 0,
-      basicDmg: total('basicDmg'),
-      heavyDmg: total('heavyDmg'),
-      skillDmg: total('skillDmg'),
-      libDmg: total('libDmg'),
-    },
-    warnings,
+    hp: prepared.baseHp * (1 + total('hpPct') / 100) + total('hpFlat'),
+    atk: prepared.baseAtk * (1 + total('atkPct') / 100) + total('atkFlat'),
+    def: prepared.baseDef * (1 + total('defPct') / 100) + total('defFlat'),
+    critRate: total('critRate'),
+    critDmg: total('critDmg'),
+    energyRegen: total('energyRegen'),
+    healingBonus: total('healingBonus'),
+    elementDmg: prepared.element ? total(prepared.element) : 0,
+    basicDmg: total('basicDmg'),
+    heavyDmg: total('heavyDmg'),
+    skillDmg: total('skillDmg'),
+    libDmg: total('libDmg'),
   }
+}
+
+export function computeWuwaStats(character: CharacterState, echoes: Echo[]): WuwaStatsResult {
+  const prepared = prepareWuwaCharacter(character)
+  const warnings = [...prepared.warnings]
+  const sums: Bonus = { ...prepared.bonus }
+  for (const echo of echoes) addTo(sums, echoStats(echo))
+  for (const [setId, count] of setPieceCounts(echoes)) {
+    if (!SONATA_SETS[setId] && count >= 2) warnings.push(`No data for sonata set ${setId}, its bonuses are left out`)
+    addTo(sums, sonataBonus(setId, count))
+  }
+  return { stats: finalizeWuwaStats(prepared, sums), warnings }
 }
 
 // The game rounds shown values down, not to nearest: Blooming Jadehaven's 587.5 base ATK shows as 587.

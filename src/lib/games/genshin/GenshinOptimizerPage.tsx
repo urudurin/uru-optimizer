@@ -195,7 +195,10 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
             </Stack>
           </Panel>
 
-          <Panel title='Filters' description='Sets and main stats narrow the search the most.'>
+          <Panel
+            title='Filters'
+            description='Only 2-piece bonuses the character screen shows are counted, not 4-piece effects, so pick the set you want to run here. Sets and main stats also narrow the search the most.'
+          >
             <Stack gap='sm'>
               <Select
                 label='4-piece set'
