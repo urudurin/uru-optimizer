@@ -1,5 +1,4 @@
 import {
-  Accordion,
   Button,
   MultiSelect,
   NumberInput,
@@ -22,6 +21,11 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import {
+  FormCard,
+  FormRow,
+  FormRows,
+} from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import {
   characterName,
@@ -178,6 +182,14 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const outcome = result?.outcome
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
+  const mainFilters = COSTS.filter((cost) => mainStats[cost]?.length).length
+  const minCount = Object.values(minStats).filter((v) => v !== undefined).length
+  const filterSummary = [
+    [fullSet ? `Full ${setName(fullSet)}` : '', ...twoPieceSets.slice(0, maxTwoPiece).map((id) => `2pc ${setName(id)}`)].filter(Boolean).join(' + ')
+    || 'Any sets',
+    mainFilters ? `${mainFilters} main stat filter${mainFilters === 1 ? '' : 's'}` : 'any main stats',
+    minCount ? `${minCount} minimum${minCount === 1 ? '' : 's'}` : 'no minimums',
+  ].join(' · ')
   const wornIds = new Set(character.echoIds.filter((id) => id !== null))
   const isWorn = !!build && build.echoes.length === wornIds.size && build.echoes.every((e) => wornIds.has(e.id))
 
@@ -204,84 +216,86 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
 
       <div className={classes.optimizerLayout}>
         <Stack gap='md'>
-          <Panel title='Resonator'>
-            <Stack gap='sm'>
-              <Select
-                label='Resonator'
-                searchable
-                allowDeselect={false}
-                value={character.charId}
-                onChange={(value) => {
-                  setCharacterId(value)
-                  setResult(undefined)
-                }}
-                data={characters.map((c) => ({ value: c.charId, label: characterName(c.charId) }))}
-              />
-              <Text size='xs' c='dimmed'>
-                {`Level ${character.level} · S${character.sequence} · ${weapon ? `${weapon.name} R${character.refinement}` : 'No weapon'}`}
-              </Text>
-              <Select
-                label='Rank by'
-                allowDeselect={false}
-                value={targetValue}
-                onChange={(value) => value && setTargetValue(value)}
-                data={TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) }))}
-              />
-            </Stack>
-          </Panel>
-
-          <Panel
-            title='Filters'
-            description='Only set bonuses the overview screen shows are counted (2-pieces, not most 5-piece effects), so pick the set you want to run here. Sets count distinct echoes: two copies of one echo count once.'
-          >
-            <Stack gap='sm'>
-              <Select
-                label='Full set (5-piece, or 3 for three-piece sets)'
-                placeholder='Any'
-                searchable
-                clearable
-                value={fullSet}
-                onChange={(value) => {
-                  setFullSet(value)
-                  setTwoPieceSets([])
-                }}
-                data={setOptions}
-              />
-              <MultiSelect
-                label='2-piece sets'
-                placeholder={maxTwoPiece === 0 ? 'No room with a 5-piece set' : twoPieceSets.length ? undefined : 'Any'}
-                searchable
-                disabled={maxTwoPiece === 0}
-                maxValues={maxTwoPiece}
-                value={twoPieceSets}
-                onChange={setTwoPieceSets}
-                data={twoPieceOptions}
-              />
-              {COSTS.map((cost) => (
-                <MultiSelect
-                  key={cost}
-                  label={`${cost}-cost main stat`}
-                  placeholder={mainStats[cost]?.length ? undefined : 'Any'}
-                  value={mainStats[cost] ?? []}
-                  onChange={(value) => setMainStats((prev) => ({ ...prev, [cost]: value as StatKey[] }))}
-                  data={(Object.keys(MAIN_STAT_MAX[cost]) as StatKey[]).map((stat) => ({ value: stat, label: statLabel(stat) }))}
+          <FormRows>
+            <FormRow id='wuwa-resonator' title='Resonator' summary={`${characterName(character.charId)} · ${targetLabel(target)}`}>
+              <FormCard title='Resonator'>
+                <Select
+                  aria-label='Resonator'
+                  searchable
+                  allowDeselect={false}
+                  value={character.charId}
+                  onChange={(value) => {
+                    setCharacterId(value)
+                    setResult(undefined)
+                  }}
+                  data={characters.map((c) => ({ value: c.charId, label: characterName(c.charId) }))}
                 />
-              ))}
-              <Switch
-                label='Leave out echoes other Resonators are wearing'
-                checked={excludeEquippedByOthers}
-                onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
-              />
-            </Stack>
-          </Panel>
+                <Text size='xs' c='dimmed'>
+                  {`Level ${character.level} · S${character.sequence} · ${weapon ? `${weapon.name} R${character.refinement}` : 'No weapon'}`}
+                </Text>
+              </FormCard>
+              <FormCard
+                title='Rank by'
+                description='The average hit is the scaling stat times the crit multiplier and DMG bonus, there is no full damage calculation.'
+              >
+                <Select
+                  aria-label='Rank by'
+                  allowDeselect={false}
+                  value={targetValue}
+                  onChange={(value) => value && setTargetValue(value)}
+                  data={TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) }))}
+                />
+              </FormCard>
+              <FormCard title='Options' size='narrow'>
+                <Switch
+                  label='Leave out echoes other Resonators are wearing'
+                  checked={excludeEquippedByOthers}
+                  onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
+                />
+              </FormCard>
+            </FormRow>
 
-          <Accordion variant='separated' radius='md'>
-            <Accordion.Item value='min'>
-              <Accordion.Control>
-                <Text size='sm' fw={600}>Minimum stats</Text>
-                <Text size='xs' c='dimmed'>{`${Object.values(minStats).filter((v) => v !== undefined).length} set`}</Text>
-              </Accordion.Control>
-              <Accordion.Panel>
+            <FormRow id='wuwa-filters' title='Echo filters' summary={filterSummary}>
+              <FormCard
+                title='Sonata sets'
+                description='Only bonuses the overview screen shows are counted (2-pieces, not most 5-piece effects), so pick the set you want to run here. Two copies of one echo count once.'
+              >
+                <Select
+                  label='Full set (5-piece, or 3 for three-piece sets)'
+                  placeholder='Any'
+                  searchable
+                  clearable
+                  value={fullSet}
+                  onChange={(value) => {
+                    setFullSet(value)
+                    setTwoPieceSets([])
+                  }}
+                  data={setOptions}
+                />
+                <MultiSelect
+                  label='2-piece sets'
+                  placeholder={maxTwoPiece === 0 ? 'No room with a 5-piece set' : twoPieceSets.length ? undefined : 'Any'}
+                  searchable
+                  disabled={maxTwoPiece === 0}
+                  maxValues={maxTwoPiece}
+                  value={twoPieceSets}
+                  onChange={setTwoPieceSets}
+                  data={twoPieceOptions}
+                />
+              </FormCard>
+              <FormCard title='Main stats'>
+                {COSTS.map((cost) => (
+                  <MultiSelect
+                    key={cost}
+                    label={`${cost}-cost`}
+                    placeholder={mainStats[cost]?.length ? undefined : 'Any'}
+                    value={mainStats[cost] ?? []}
+                    onChange={(value) => setMainStats((prev) => ({ ...prev, [cost]: value as StatKey[] }))}
+                    data={(Object.keys(MAIN_STAT_MAX[cost]) as StatKey[]).map((stat) => ({ value: stat, label: statLabel(stat) }))}
+                  />
+                ))}
+              </FormCard>
+              <FormCard title='Minimum stats' size='wide' description='Loadouts below any of these are left out, e.g. Energy Regen 120.'>
                 <SimpleGrid cols={2} spacing='sm'>
                   {MIN_STATS.map((stat) => (
                     <NumberInput
@@ -294,12 +308,10 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                     />
                   ))}
                 </SimpleGrid>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
-        </Stack>
+              </FormCard>
+            </FormRow>
+          </FormRows>
 
-        <Stack gap='md'>
           {!outcome && (
             <Panel>
               <EmptyState icon={<IconTrendingUp size={24} />} title={`Find the best echoes for ${characterName(character.charId)}`}>

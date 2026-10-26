@@ -1,9 +1,9 @@
-/* Optimizer pages: settings, results, and the sidebar (OptimizerSidebar.tsx) that stays in view.
-   Narrower screens put the sidebar in a bar across the top that stays in view, the narrowest stack everything */
+/* Optimizer pages: settings rows (OptimizerForm.tsx) and results on the left, the sidebar (OptimizerSidebar.tsx)
+   that stays in view on the right. Narrower screens put the sidebar in a bar across the top that stays in view */
 
 .optimizerLayout {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr) 210px;
+  grid-template-columns: minmax(0, 1fr) 210px;
   gap: 16px;
   align-items: start;
 }
@@ -32,13 +32,11 @@
 
 @media (max-width: 1250px) {
   .optimizerLayout {
-    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sidebar {
-    grid-column: 1 / -1;
     grid-row: 1;
-    position: sticky;
     top: 8px;
     z-index: 3;
     flex-direction: row;
@@ -61,10 +59,76 @@
   }
 }
 
-@media (max-width: 900px) {
-  .optimizerLayout {
-    grid-template-columns: minmax(0, 1fr);
-  }
+/* Settings: rows of cards, like HSR's optimizer form */
+
+.formRows {
+  border-radius: 8px;
+  background: var(--layer-1);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.formRow + .formRow {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.formRowHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+}
+
+.formRowHeader:hover {
+  background: var(--layer-0);
+}
+
+.formRowSummary {
+  flex: 1;
+  min-width: 0;
+}
+
+.formRowChevron {
+  margin-left: auto;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+  transition: transform 150ms ease;
+}
+
+.formRowChevron[data-open] {
+  transform: none;
+}
+
+.formCards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.formCard {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--layer-2);
+  box-shadow: var(--shadow-card);
+}
+
+.formCard[data-size='narrow'] {
+  flex-basis: 200px;
+}
+
+.formCard[data-size='wide'] {
+  flex-basis: 380px;
+}
+
+.formCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .resultRow {

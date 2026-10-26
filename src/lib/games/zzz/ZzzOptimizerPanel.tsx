@@ -24,6 +24,11 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import {
+  FormCard,
+  FormRow,
+  FormRows,
+} from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type {
@@ -263,6 +268,17 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     ? `${formatNumber(combinations)} combinations, narrow the filters first`
     : 'Every combination is checked.'
   const agentBuild = builds.find((b) => b.agentId === agent.id)
+  const rankLabel = statRows.find((row) => row.key === sortBy)?.label ?? sortBy
+  const agentSummary = `${agent.name} · ${W_ENGINES[loadout.wEngineId]?.name ?? 'No W-Engine'} R${loadout.refinement} · ranked by ${rankLabel}`
+  const mainFilters = MAIN_STAT_SLOTS.filter((slot) => mainStats[slot]?.length).length
+  const minCount = Object.values(minStats).filter((v) => v !== undefined).length
+  const conditionCount = Object.values(conditions).filter(Boolean).length
+  const filterSummary = [
+    [fourPieceSet ? `4pc ${setName(fourPieceSet)}` : '', twoPieceSet ? `2pc ${setName(twoPieceSet)}` : ''].filter(Boolean).join(' + ') || 'Any sets',
+    mainFilters ? `${mainFilters} main stat filter${mainFilters === 1 ? '' : 's'}` : 'any main stats',
+    conditionCount ? `${conditionCount} combat condition${conditionCount === 1 ? '' : 's'} on` : 'stat screen',
+    minCount ? `${minCount} minimum${minCount === 1 ? '' : 's'}` : 'no minimums',
+  ].join(' · ')
   const isWorn = !!best && best.discs.every((disc) => agentBuild?.discIds[disc.slot] === disc.id)
 
   function equipBuild() {
@@ -286,162 +302,175 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
 
       <div className={classes.optimizerLayout}>
         <Stack gap='md'>
-          <Panel title='Agent'>
-            <Stack gap='sm'>
-              <Select label='Agent' allowDeselect={false} value={agentId} onChange={changeAgent} data={agents.map((a) => ({ value: a.id, label: a.name }))} />
-              <Select
-                label='W-Engine'
-                allowDeselect={false}
-                value={loadout.wEngineId}
-                onChange={(value) => value && setLoadout((prev) => ({ ...prev, wEngineId: value }))}
-                data={Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name }))}
-              />
-              <SimpleGrid cols={2} spacing='sm'>
+          <FormRows>
+            <FormRow id='zzz-agent' title='Agent' summary={agentSummary}>
+              <FormCard title='Agent'>
                 <Select
-                  label='Refinement'
+                  aria-label='Agent'
                   allowDeselect={false}
-                  value={loadout.refinement}
-                  onChange={(value) => value && setLoadout((prev) => ({ ...prev, refinement: value }))}
-                  data={REFINEMENT_OPTIONS}
+                  value={agentId}
+                  onChange={changeAgent}
+                  data={agents.map((a) => ({ value: a.id, label: a.name }))}
                 />
-                <Select label='Core Skill' allowDeselect={false} value={coreSkill} onChange={(value) => setCoreSkill(value ?? '6')} data={CORE_SKILL_OPTIONS} />
-              </SimpleGrid>
-            </Stack>
-          </Panel>
-
-          <Panel
-            title='Recommended build'
-            description={`${preset.source} · ${preset.confidence}`}
-            actions={<Button size='xs' variant='light' onClick={applyPreset}>Apply</Button>}
-          >
-            <Stack gap='xs'>
-              {importedPreset && (
-                <SegmentedControl
-                  fullWidth
-                  value={presetSource}
-                  onChange={(value) => {
-                    setPresetSource(value === 'builtin' ? 'builtin' : 'imported')
-                    setPresetChoice('0')
-                  }}
-                  data={[
-                    { value: 'imported', label: `Imported: ${importedPreset.source}` },
-                    { value: 'builtin', label: 'Built-in' },
-                  ]}
-                />
-              )}
-              {preset.sets.length > 1 && (
                 <Select
+                  label='W-Engine'
                   allowDeselect={false}
-                  value={presetChoice}
-                  onChange={(value) => setPresetChoice(value ?? '0')}
-                  data={preset.sets.map((choice, i) => ({ value: String(i), label: describeChoice(choice) }))}
+                  value={loadout.wEngineId}
+                  onChange={(value) => value && setLoadout((prev) => ({ ...prev, wEngineId: value }))}
+                  data={Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name }))}
                 />
-              )}
-              {preset.sets.map((choice, i) => (
-                <Text key={i} size='xs'>
-                  <Text span size='xs' c='dimmed'>{i === 0 ? 'Sets ' : 'Or '}</Text>
-                  {`4pc ${setName(choice.fourPiece)} (${slotsWithSet(discs, choice.fourPiece)}/6 slots)${
-                    choice.twoPiece ? ` + 2pc ${setName(choice.twoPiece)} (${slotsWithSet(discs, choice.twoPiece)}/6)` : ''
-                  }`}
-                </Text>
-              ))}
-              {MAIN_STAT_SLOTS.map((slot) => (
-                <Text key={slot} size='xs'>
-                  <Text span size='xs' c='dimmed'>{`Slot ${slot} `}</Text>
-                  {mainStatText(preset.mainStats[slot])}
-                </Text>
-              ))}
-              {preset.substatPriority.length > 0 && (
-                <Text size='xs'>
-                  <Text span size='xs' c='dimmed'>Substats</Text>
-                  {preset.substatPriority.join(' > ')}
-                </Text>
-              )}
-              {preset.notes && <Text size='xs' c='dimmed'>{preset.notes}</Text>}
-              {needsReview(preset, new Date()) && (
-                <Text size='xs' c='yellow'>
-                  {preset === importedPreset
-                    ? `Not updated in ${REVIEW_INTERVAL_DAYS} days or more, import a fresh copy`
-                    : `Not reviewed in ${REVIEW_INTERVAL_DAYS} days or more`}
-                </Text>
-              )}
-              <Text size='xs' c='dimmed'>
-                {`Last reviewed ${preset.reviewed}${reviewAge === undefined ? '' : ` (${reviewAge} day${reviewAge === 1 ? '' : 's'} ago)`}`}
-              </Text>
+                <SimpleGrid cols={2} spacing='sm'>
+                  <Select
+                    label='Refinement'
+                    allowDeselect={false}
+                    value={loadout.refinement}
+                    onChange={(value) => value && setLoadout((prev) => ({ ...prev, refinement: value }))}
+                    data={REFINEMENT_OPTIONS}
+                  />
+                  <Select
+                    label='Core Skill'
+                    allowDeselect={false}
+                    value={coreSkill}
+                    onChange={(value) => setCoreSkill(value ?? '6')}
+                    data={CORE_SKILL_OPTIONS}
+                  />
+                </SimpleGrid>
+              </FormCard>
 
-              <Accordion variant='contained' radius='sm' mt={4}>
-                <Accordion.Item value='own'>
-                  <Accordion.Control>
-                    <Text size='xs'>
-                      {imported ? `Your presets: ${Object.keys(imported.presets).length} from ${imported.source || 'a file'}` : 'Use your own presets file'}
+              <FormCard title='Recommended build' size='wide' description={`${preset.source} · ${preset.confidence}`}>
+                <Button size='xs' variant='light' onClick={applyPreset}>Apply to the filters</Button>
+                {importedPreset && (
+                  <SegmentedControl
+                    fullWidth
+                    value={presetSource}
+                    onChange={(value) => {
+                      setPresetSource(value === 'builtin' ? 'builtin' : 'imported')
+                      setPresetChoice('0')
+                    }}
+                    data={[
+                      { value: 'imported', label: `Imported: ${importedPreset.source}` },
+                      { value: 'builtin', label: 'Built-in' },
+                    ]}
+                  />
+                )}
+                {preset.sets.length > 1 && (
+                  <Select
+                    allowDeselect={false}
+                    value={presetChoice}
+                    onChange={(value) => setPresetChoice(value ?? '0')}
+                    data={preset.sets.map((choice, i) => ({ value: String(i), label: describeChoice(choice) }))}
+                  />
+                )}
+                <Stack gap={2}>
+                  {preset.sets.map((choice, i) => (
+                    <Text key={i} size='xs'>
+                      <Text span size='xs' c='dimmed'>{i === 0 ? 'Sets ' : 'Or '}</Text>
+                      {`4pc ${setName(choice.fourPiece)} (${slotsWithSet(discs, choice.fourPiece)}/6 slots)${
+                        choice.twoPiece ? ` + 2pc ${setName(choice.twoPiece)} (${slotsWithSet(discs, choice.twoPiece)}/6)` : ''
+                      }`}
                     </Text>
-                  </Accordion.Control>
-                  <Accordion.Panel>
-                    <Stack gap='xs'>
-                      <FileInput placeholder='Choose a presets file (.json)' accept='application/json,.json' clearable onChange={handlePresetFile} />
-                      {storedImport && <Button size='xs' variant='subtle' color='red' onClick={removeImportedPresets}>Remove imported presets</Button>}
-                      <Text size='xs' c='dimmed'>
-                        Kept in this browser only. Imported presets are for personal, non-commercial use, follow the terms of wherever they came from.
+                  ))}
+                  {MAIN_STAT_SLOTS.map((slot) => (
+                    <Text key={slot} size='xs'>
+                      <Text span size='xs' c='dimmed'>{`Slot ${slot} `}</Text>
+                      {mainStatText(preset.mainStats[slot])}
+                    </Text>
+                  ))}
+                  {preset.substatPriority.length > 0 && (
+                    <Text size='xs'>
+                      <Text span size='xs' c='dimmed'>Substats</Text>
+                      {preset.substatPriority.join(' > ')}
+                    </Text>
+                  )}
+                </Stack>
+                {preset.notes && <Text size='xs' c='dimmed'>{preset.notes}</Text>}
+                {needsReview(preset, new Date()) && (
+                  <Text size='xs' c='yellow'>
+                    {preset === importedPreset
+                      ? `Not updated in ${REVIEW_INTERVAL_DAYS} days or more, import a fresh copy`
+                      : `Not reviewed in ${REVIEW_INTERVAL_DAYS} days or more`}
+                  </Text>
+                )}
+                <Text size='xs' c='dimmed'>
+                  {`Last reviewed ${preset.reviewed}${reviewAge === undefined ? '' : ` (${reviewAge} day${reviewAge === 1 ? '' : 's'} ago)`}`}
+                </Text>
+
+                <Accordion variant='contained' radius='sm'>
+                  <Accordion.Item value='own'>
+                    <Accordion.Control>
+                      <Text size='xs'>
+                        {imported ? `Your presets: ${Object.keys(imported.presets).length} from ${imported.source || 'a file'}` : 'Use your own presets file'}
                       </Text>
-                      {imported && <Notices messages={imported.warnings} max={MAX_IMPORT_WARNINGS} />}
-                    </Stack>
-                  </Accordion.Panel>
-                </Accordion.Item>
-              </Accordion>
-            </Stack>
-          </Panel>
+                    </Accordion.Control>
+                    <Accordion.Panel>
+                      <Stack gap='xs'>
+                        <FileInput placeholder='Choose a presets file (.json)' accept='application/json,.json' clearable onChange={handlePresetFile} />
+                        {storedImport && <Button size='xs' variant='subtle' color='red' onClick={removeImportedPresets}>Remove imported presets</Button>}
+                        <Text size='xs' c='dimmed'>
+                          Kept in this browser only. Imported presets are for personal, non-commercial use, follow the terms of wherever they came from.
+                        </Text>
+                        {imported && <Notices messages={imported.warnings} max={MAX_IMPORT_WARNINGS} />}
+                      </Stack>
+                    </Accordion.Panel>
+                  </Accordion.Item>
+                </Accordion>
+              </FormCard>
 
-          <Panel title='Ranking'>
-            <Stack gap='sm'>
-              <Select
-                label='Rank by'
-                allowDeselect={false}
-                value={sortBy}
-                onChange={(value) => value && setSortBy(value as keyof FinalStats)}
-                data={statRows.map((row) => ({ value: row.key, label: row.label }))}
-              />
-              <MultiSelect
-                label='Then by (breaks ties)'
-                placeholder={thenBy.length ? undefined : 'None'}
-                value={thenBy}
-                onChange={(value) => setThenBy(value as (keyof FinalStats)[])}
-                data={statRows.filter((row) => row.key !== sortBy).map((row) => ({ value: row.key, label: row.label }))}
-              />
-            </Stack>
-          </Panel>
+              <FormCard title='Ranking'>
+                <Select
+                  label='Rank by'
+                  allowDeselect={false}
+                  value={sortBy}
+                  onChange={(value) => value && setSortBy(value as keyof FinalStats)}
+                  data={statRows.map((row) => ({ value: row.key, label: row.label }))}
+                />
+                <MultiSelect
+                  label='Then by (breaks ties)'
+                  placeholder={thenBy.length ? undefined : 'None'}
+                  value={thenBy}
+                  onChange={(value) => setThenBy(value as (keyof FinalStats)[])}
+                  data={statRows.filter((row) => row.key !== sortBy).map((row) => ({ value: row.key, label: row.label }))}
+                />
+              </FormCard>
+            </FormRow>
 
-          <Panel title='Filters'>
-            <Stack gap='sm'>
-              <SimpleGrid cols={2} spacing='sm'>
+            <FormRow id='zzz-filters' title='Disc filters' summary={filterSummary}>
+              <FormCard title='Sets' size='narrow'>
                 <Select label='4-piece set' placeholder='Any' clearable value={fourPieceSet} onChange={setFourPieceSet} data={setOptions} />
                 <Select label='2-piece set' placeholder='Any' clearable value={twoPieceSet} onChange={setTwoPieceSet} data={setOptions} />
-              </SimpleGrid>
-              {MAIN_STAT_SLOTS.map((slot) => (
-                <MultiSelect
-                  key={slot}
-                  label={`Slot ${slot} main stat`}
-                  placeholder={mainStats[slot]?.length ? undefined : 'Any'}
-                  value={mainStats[slot] ?? []}
-                  onChange={(value) => setMainStats((prev) => ({ ...prev, [slot]: value as ZzzStatsValues[] }))}
-                  data={mainStatOptions[slot]}
+                <Switch
+                  label='Leave out discs other agents are wearing'
+                  checked={excludeEquippedByOthers}
+                  onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
                 />
-              ))}
-              <Switch
-                label='Leave out discs other agents are wearing'
-                checked={excludeEquippedByOthers}
-                onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
-              />
-            </Stack>
-          </Panel>
-
-          <Accordion variant='separated' radius='md'>
-            <Accordion.Item value='min'>
-              <Accordion.Control>
-                <Text size='sm' fw={600}>Minimum stats</Text>
-                <Text size='xs' c='dimmed'>{`${Object.values(minStats).filter((v) => v !== undefined).length} set`}</Text>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <SimpleGrid cols={2} spacing='sm'>
+              </FormCard>
+              <FormCard title='Main stats' size='narrow'>
+                {MAIN_STAT_SLOTS.map((slot) => (
+                  <MultiSelect
+                    key={slot}
+                    label={`Slot ${slot}`}
+                    placeholder={mainStats[slot]?.length ? undefined : 'Any'}
+                    value={mainStats[slot] ?? []}
+                    onChange={(value) => setMainStats((prev) => ({ ...prev, [slot]: value as ZzzStatsValues[] }))}
+                    data={mainStatOptions[slot]}
+                  />
+                ))}
+              </FormCard>
+              <FormCard title='Combat conditions' size='narrow' description='All off matches the stat screen. 4-pieces and most passives need combat.'>
+                {(Object.keys(CONDITION_LABELS) as Condition[]).map((condition) => (
+                  <Switch
+                    key={condition}
+                    label={CONDITION_LABELS[condition]}
+                    checked={conditions[condition]}
+                    onChange={(event) => {
+                      const checked = event.currentTarget.checked
+                      setConditions((prev) => ({ ...prev, [condition]: checked }))
+                    }}
+                  />
+                ))}
+              </FormCard>
+              <FormCard title='Minimum stats' size='wide' description='Builds below any of these are left out.'>
+                <SimpleGrid cols={3} spacing='sm'>
                   {statRows.map((row) => (
                     <NumberInput
                       key={row.key}
@@ -453,33 +482,10 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                     />
                   ))}
                 </SimpleGrid>
-              </Accordion.Panel>
-            </Accordion.Item>
-            <Accordion.Item value='conditions'>
-              <Accordion.Control>
-                <Text size='sm' fw={600}>Combat conditions</Text>
-                <Text size='xs' c='dimmed'>{`${Object.values(conditions).filter(Boolean).length} on. All off matches the stat screen`}</Text>
-              </Accordion.Control>
-              <Accordion.Panel>
-                <Stack gap='xs'>
-                  {(Object.keys(CONDITION_LABELS) as Condition[]).map((condition) => (
-                    <Switch
-                      key={condition}
-                      label={CONDITION_LABELS[condition]}
-                      checked={conditions[condition]}
-                      onChange={(event) => {
-                        const checked = event.currentTarget.checked
-                        setConditions((prev) => ({ ...prev, [condition]: checked }))
-                      }}
-                    />
-                  ))}
-                </Stack>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
-        </Stack>
+              </FormCard>
+            </FormRow>
+          </FormRows>
 
-        <Stack gap='md'>
           {!outcome && (
             <Panel>
               <EmptyState icon={<IconTrendingUp size={24} />} title={`Find the best discs for ${agent.name}`}>

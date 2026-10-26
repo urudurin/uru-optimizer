@@ -1,5 +1,4 @@
 import {
-  Accordion,
   Button,
   MultiSelect,
   NumberInput,
@@ -47,6 +46,11 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import {
+  FormCard,
+  FormRow,
+  FormRows,
+} from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import {
   useMemo,
@@ -163,6 +167,14 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
   const shown = statsToShow(character)
+  const setName = (id: string) => setOptions.find((o) => o.value === id)?.label ?? id
+  const mainFilters = MAIN_STAT_SLOTS.filter((slot) => mainStats[slot]?.length).length
+  const minCount = Object.values(minStats).filter((v) => v !== undefined).length
+  const filterSummary = [
+    fourPieceSet ? `4pc ${setName(fourPieceSet)}` : twoPieceSets.length ? twoPieceSets.map((id) => `2pc ${setName(id)}`).join(' + ') : 'Any sets',
+    mainFilters ? `${mainFilters} main stat filter${mainFilters === 1 ? '' : 's'}` : 'any main stats',
+    minCount ? `${minCount} minimum${minCount === 1 ? '' : 's'}` : 'no minimums',
+  ].join(' · ')
   const isWorn = build?.artifacts.every((a) => character.artifactIds[a.slot] === a.id) ?? false
 
   function equipBuild() {
@@ -188,86 +200,85 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
 
       <div className={classes.optimizerLayout}>
         <Stack gap='md'>
-          <Panel title='Character'>
-            <Stack gap='sm'>
-              <Select
-                label='Character'
-                searchable
-                allowDeselect={false}
-                value={character.id}
-                onChange={(value) => {
-                  setCharacterId(value)
-                  setResult(undefined)
-                }}
-                data={usable.map((c) => ({ value: c.id, label: c.name }))}
-              />
-              <Text size='xs' c='dimmed'>
-                {`Level ${character.level} · C${character.constellation} · ${
-                  character.weapon ? `${character.weapon.name} R${character.weapon.refinement}, level ${character.weapon.level}` : 'No weapon'
-                }`}
-              </Text>
-              <Select
-                label='Rank by'
-                allowDeselect={false}
-                value={targetValue}
-                onChange={(value) => value && setTargetValue(value)}
-                data={TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) }))}
-              />
-            </Stack>
-          </Panel>
-
-          <Panel
-            title='Filters'
-            description='Only 2-piece bonuses the character screen shows are counted, not 4-piece effects, so pick the set you want to run here. Sets and main stats also narrow the search the most.'
-          >
-            <Stack gap='sm'>
-              <Select
-                label='4-piece set'
-                placeholder='Any'
-                searchable
-                clearable
-                value={fourPieceSet}
-                onChange={(value) => {
-                  setFourPieceSet(value)
-                  if (value) setTwoPieceSets([])
-                }}
-                data={setOptions}
-              />
-              <MultiSelect
-                label='2-piece sets'
-                placeholder={fourPieceSet ? 'Not with a 4-piece set' : twoPieceSets.length ? undefined : 'Any'}
-                searchable
-                disabled={!!fourPieceSet}
-                maxValues={2}
-                value={twoPieceSets}
-                onChange={setTwoPieceSets}
-                data={setOptions}
-              />
-              {MAIN_STAT_SLOTS.map((slot) => (
-                <MultiSelect
-                  key={slot}
-                  label={`${SLOT_LABELS[slot]} main stat`}
-                  placeholder={mainStats[slot]?.length ? undefined : 'Any'}
-                  value={mainStats[slot] ?? []}
-                  onChange={(value) => setMainStats((prev) => ({ ...prev, [slot]: value as GenshinStatKey[] }))}
-                  data={MAIN_STAT_OPTIONS[slot].map((stat) => ({ value: stat, label: statLabel(stat) }))}
+          <FormRows>
+            <FormRow id='genshin-character' title='Character' summary={`${character.name} · ${targetLabel(target)}`}>
+              <FormCard title='Character'>
+                <Select
+                  aria-label='Character'
+                  searchable
+                  allowDeselect={false}
+                  value={character.id}
+                  onChange={(value) => {
+                    setCharacterId(value)
+                    setResult(undefined)
+                  }}
+                  data={usable.map((c) => ({ value: c.id, label: c.name }))}
                 />
-              ))}
-              <Switch
-                label='Leave out artifacts other characters are wearing'
-                checked={excludeEquippedByOthers}
-                onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
-              />
-            </Stack>
-          </Panel>
+                <Text size='xs' c='dimmed'>
+                  {`Level ${character.level} · C${character.constellation} · ${
+                    character.weapon ? `${character.weapon.name} R${character.weapon.refinement}, level ${character.weapon.level}` : 'No weapon'
+                  }`}
+                </Text>
+              </FormCard>
+              <FormCard title='Rank by' description='The average hit is the scaling stat times the crit multiplier, there is no full damage calculation.'>
+                <Select
+                  aria-label='Rank by'
+                  allowDeselect={false}
+                  value={targetValue}
+                  onChange={(value) => value && setTargetValue(value)}
+                  data={TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) }))}
+                />
+              </FormCard>
+              <FormCard title='Options' size='narrow'>
+                <Switch
+                  label='Leave out artifacts other characters are wearing'
+                  checked={excludeEquippedByOthers}
+                  onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
+                />
+              </FormCard>
+            </FormRow>
 
-          <Accordion variant='separated' radius='md'>
-            <Accordion.Item value='min'>
-              <Accordion.Control>
-                <Text size='sm' fw={600}>Minimum stats</Text>
-                <Text size='xs' c='dimmed'>{`${Object.values(minStats).filter((v) => v !== undefined).length} set`}</Text>
-              </Accordion.Control>
-              <Accordion.Panel>
+            <FormRow id='genshin-filters' title='Artifact filters' summary={filterSummary}>
+              <FormCard
+                title='Sets'
+                description='Only 2-piece bonuses the character screen shows are counted, not 4-piece effects, so pick the set you want to run here.'
+              >
+                <Select
+                  label='4-piece set'
+                  placeholder='Any'
+                  searchable
+                  clearable
+                  value={fourPieceSet}
+                  onChange={(value) => {
+                    setFourPieceSet(value)
+                    if (value) setTwoPieceSets([])
+                  }}
+                  data={setOptions}
+                />
+                <MultiSelect
+                  label='2-piece sets'
+                  placeholder={fourPieceSet ? 'Not with a 4-piece set' : twoPieceSets.length ? undefined : 'Any'}
+                  searchable
+                  disabled={!!fourPieceSet}
+                  maxValues={2}
+                  value={twoPieceSets}
+                  onChange={setTwoPieceSets}
+                  data={setOptions}
+                />
+              </FormCard>
+              <FormCard title='Main stats'>
+                {MAIN_STAT_SLOTS.map((slot) => (
+                  <MultiSelect
+                    key={slot}
+                    label={SLOT_LABELS[slot]}
+                    placeholder={mainStats[slot]?.length ? undefined : 'Any'}
+                    value={mainStats[slot] ?? []}
+                    onChange={(value) => setMainStats((prev) => ({ ...prev, [slot]: value as GenshinStatKey[] }))}
+                    data={MAIN_STAT_OPTIONS[slot].map((stat) => ({ value: stat, label: statLabel(stat) }))}
+                  />
+                ))}
+              </FormCard>
+              <FormCard title='Minimum stats' size='wide' description='Builds below any of these are left out, e.g. Energy Recharge 200.'>
                 <SimpleGrid cols={2} spacing='sm'>
                   {MIN_STATS.map((stat) => (
                     <NumberInput
@@ -280,12 +291,10 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                     />
                   ))}
                 </SimpleGrid>
-              </Accordion.Panel>
-            </Accordion.Item>
-          </Accordion>
-        </Stack>
+              </FormCard>
+            </FormRow>
+          </FormRows>
 
-        <Stack gap='md'>
           {!outcome && (
             <Panel>
               <EmptyState icon={<IconTrendingUp size={24} />} title={`Find the best artifacts for ${character.name}`}>
