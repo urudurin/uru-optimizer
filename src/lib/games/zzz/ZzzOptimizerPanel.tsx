@@ -14,6 +14,12 @@ import {
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
 import { formatNumber } from 'lib/games/shared/format'
+import {
+  fieldSetter,
+  readOptimizerSettings,
+  rememberCharacter,
+  useCharacterSettings,
+} from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
 import {
   EmptyState,
@@ -80,6 +86,7 @@ import type {
 } from 'lib/games/zzz/types'
 import { DiscCard } from 'lib/games/zzz/ui/DiscCard'
 import {
+  useCallback,
   useMemo,
   useState,
 } from 'react'
@@ -90,6 +97,23 @@ const MAIN_STAT_SLOTS: MainStatSlot[] = [4, 5, 6]
 const REFINEMENT_OPTIONS = [1, 2, 3, 4, 5].map((r) => ({ value: String(r), label: `R${r}` }))
 
 type Loadout = { wEngineId: string, refinement: string }
+
+const SETTINGS_KEY = 'zzz-optimizer-settings'
+
+// Everything on the page that's saved per agent, see shared/optimizerSettings.ts
+type ZzzOptimizerSettings = {
+  loadout: Loadout,
+  coreSkill: string,
+  conditions: ActiveConditions,
+  sortBy: keyof FinalStats,
+  thenBy: (keyof FinalStats)[],
+  presetChoice: string,
+  fourPieceSet: string | null,
+  twoPieceSet: string | null,
+  mainStats: Partial<Record<MainStatSlot, ZzzStatsValues[]>>,
+  minStats: Partial<Record<keyof FinalStats, number>>,
+  excludeEquippedByOthers: boolean,
+}
 
 // The user's own W-Engine for this agent when it's supported, otherwise the first one of the agent's specialty
 function defaultLoadout(agent: AgentData, builds: ImportedBuild[]): Loadout {
@@ -131,19 +155,38 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const builds = useZzzStore((s) => s.builds)
 
   const agents = Object.values(AGENTS)
-  const [agentId, setAgentId] = useState(() => (agents.find((a) => builds.some((b) => b.agentId === a.id)) ?? agents[0]).id)
+  const [agentId, setAgentId] = useState(() => {
+    const last = readOptimizerSettings(SETTINGS_KEY).last
+    return last && AGENTS[last] ? last : (agents.find((a) => builds.some((b) => b.agentId === a.id)) ?? agents[0]).id
+  })
   const agent = AGENTS[agentId]
-  const [loadout, setLoadout] = useState<Loadout>(() => defaultLoadout(agent, builds))
-  const [coreSkill, setCoreSkill] = useState('6')
-  const [conditions, setConditions] = useState<ActiveConditions>(statScreenConditions())
-  const [sortBy, setSortBy] = useState<keyof FinalStats>('critDmg')
-  const [thenBy, setThenBy] = useState<(keyof FinalStats)[]>([])
-  const [presetChoice, setPresetChoice] = useState('0')
-  const [fourPieceSet, setFourPieceSet] = useState<string | null>(null)
-  const [twoPieceSet, setTwoPieceSet] = useState<string | null>(null)
-  const [mainStats, setMainStats] = useState<Partial<Record<MainStatSlot, ZzzStatsValues[]>>>({})
-  const [minStats, setMinStats] = useState<Partial<Record<keyof FinalStats, number>>>({})
-  const [excludeEquippedByOthers, setExcludeEquippedByOthers] = useState(false)
+  // An agent nobody changed yet starts with the user's own W-Engine and the stat screen's conditions
+  const defaultSettings = useCallback((id: string): ZzzOptimizerSettings => ({
+    loadout: defaultLoadout(AGENTS[id] ?? agent, builds),
+    coreSkill: '6',
+    conditions: statScreenConditions(),
+    sortBy: 'critDmg',
+    thenBy: [],
+    presetChoice: '0',
+    fourPieceSet: null,
+    twoPieceSet: null,
+    mainStats: {},
+    minStats: {},
+    excludeEquippedByOthers: false,
+  }), [agent, builds])
+  const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, agentId, defaultSettings)
+  const { loadout, coreSkill, conditions, sortBy, thenBy, presetChoice, fourPieceSet, twoPieceSet, mainStats, minStats, excludeEquippedByOthers } = settings
+  const setLoadout = fieldSetter(updateSettings, 'loadout')
+  const setCoreSkill = fieldSetter(updateSettings, 'coreSkill')
+  const setConditions = fieldSetter(updateSettings, 'conditions')
+  const setSortBy = fieldSetter(updateSettings, 'sortBy')
+  const setThenBy = fieldSetter(updateSettings, 'thenBy')
+  const setPresetChoice = fieldSetter(updateSettings, 'presetChoice')
+  const setFourPieceSet = fieldSetter(updateSettings, 'fourPieceSet')
+  const setTwoPieceSet = fieldSetter(updateSettings, 'twoPieceSet')
+  const setMainStats = fieldSetter(updateSettings, 'mainStats')
+  const setMinStats = fieldSetter(updateSettings, 'minStats')
+  const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
   const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
   const [selected, setSelected] = useState(0)
   const [running, setRunning] = useState(false)
@@ -187,19 +230,20 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   function changeAgent(id: string | null) {
     if (!id || !AGENTS[id]) return
     setAgentId(id)
-    setLoadout(defaultLoadout(AGENTS[id], builds))
-    setPresetChoice('0')
+    rememberCharacter(SETTINGS_KEY, id)
     setOutcome(null)
   }
 
   // Fills the filters and ranking from the preset, minimum stats and conditions are left as they are
   function applyPreset() {
     const choice = preset.sets[Number(presetChoice)]
-    setFourPieceSet(choice?.fourPiece ?? null)
-    setTwoPieceSet(choice?.twoPiece ?? null)
-    setMainStats({ ...preset.mainStats })
-    setSortBy(preset.rankBy)
-    setThenBy(preset.thenBy.filter((key) => statRows.some((row) => row.key === key)))
+    updateSettings({
+      fourPieceSet: choice?.fourPiece ?? null,
+      twoPieceSet: choice?.twoPiece ?? null,
+      mainStats: { ...preset.mainStats },
+      sortBy: preset.rankBy,
+      thenBy: preset.thenBy.filter((key) => statRows.some((row) => row.key === key)),
+    })
     setOutcome(null)
   }
 

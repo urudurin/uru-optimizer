@@ -11,6 +11,12 @@ import {
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
 import { formatNumber } from 'lib/games/shared/format'
+import {
+  fieldSetter,
+  readOptimizerSettings,
+  rememberCharacter,
+  useCharacterSettings,
+} from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
 import {
   EmptyState,
@@ -108,21 +114,40 @@ function costOf(echoes: Echo[]): number {
   return echoes.reduce((sum, echo) => sum + echo.cost, 0)
 }
 
+const SETTINGS_KEY = 'wuwa-optimizer-settings'
+
+type WuwaOptimizerSettings = {
+  targetValue: string,
+  mainStats: Partial<Record<Cost, StatKey[]>>,
+  fullSet: string | null,
+  twoPieceSets: string[],
+  excludeEquippedByOthers: boolean,
+  minStats: Partial<Record<keyof WuwaStats, number>>,
+}
+
+// What a Resonator starts with before their settings are changed (and saved)
+function defaultSettings(): WuwaOptimizerSettings {
+  return { targetValue: 'avg:atk', mainStats: {}, fullSet: null, twoPieceSets: [], excludeEquippedByOthers: true, minStats: {} }
+}
+
 export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const echoes = useWuwaStore((s) => s.echoes)
   const characters = useWuwaStore((s) => s.characters)
   const teams = useWuwaStore((s) => s.teams)
   const priority = useWuwaStore((s) => s.priority)
   const equip = useWuwaStore((s) => s.equip)
-  const [characterId, setCharacterId] = useState<string | null>(null)
+  const [characterId, setCharacterId] = useState<string | null>(() => readOptimizerSettings(SETTINGS_KEY).last ?? null)
   const character = characters.find((c) => c.charId === characterId) ?? characters[0]
 
-  const [targetValue, setTargetValue] = useState('avg:atk')
-  const [mainStats, setMainStats] = useState<Partial<Record<Cost, StatKey[]>>>({})
-  const [fullSet, setFullSet] = useState<string | null>(null)
-  const [twoPieceSets, setTwoPieceSets] = useState<string[]>([])
-  const [excludeEquippedByOthers, setExcludeEquippedByOthers] = useState(true)
-  const [minStats, setMinStats] = useState<Partial<Record<keyof WuwaStats, number>>>({})
+  // Saved per Resonator, see shared/optimizerSettings.ts
+  const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.charId ?? '', defaultSettings)
+  const { targetValue, mainStats, fullSet, twoPieceSets, excludeEquippedByOthers, minStats } = settings
+  const setTargetValue = fieldSetter(updateSettings, 'targetValue')
+  const setMainStats = fieldSetter(updateSettings, 'mainStats')
+  const setFullSet = fieldSetter(updateSettings, 'fullSet')
+  const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
+  const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
+  const setMinStats = fieldSetter(updateSettings, 'minStats')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: EchoOutcome, ms: number, target: EchoTarget } | undefined>()
@@ -225,7 +250,9 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                   allowDeselect={false}
                   value={character.charId}
                   onChange={(value) => {
+                    if (!value) return
                     setCharacterId(value)
+                    rememberCharacter(SETTINGS_KEY, value)
                     setResult(undefined)
                   }}
                   data={characters.map((c) => ({ value: c.charId, label: characterName(c.charId) }))}

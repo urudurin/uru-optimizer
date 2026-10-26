@@ -36,6 +36,12 @@ import {
 } from 'lib/games/genshin/types'
 import { ArtifactCard } from 'lib/games/genshin/ui/ArtifactCard'
 import { formatNumber } from 'lib/games/shared/format'
+import {
+  fieldSetter,
+  readOptimizerSettings,
+  rememberCharacter,
+  useCharacterSettings,
+} from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
 import {
   EmptyState,
@@ -97,19 +103,38 @@ function statsToShow(character: GenshinCharacter): GenshinStatKey[] {
   return [...SHOWN_STATS, ...(character.element ? [ELEMENT_DMG_STAT[character.element]] : [])]
 }
 
+const SETTINGS_KEY = 'genshin-optimizer-settings'
+
+type GenshinOptimizerSettings = {
+  targetValue: string,
+  mainStats: Partial<Record<MainStatSlot, GenshinStatKey[]>>,
+  fourPieceSet: string | null,
+  twoPieceSets: string[],
+  excludeEquippedByOthers: boolean,
+  minStats: Partial<Record<GenshinStatKey, number>>,
+}
+
+// What a character starts with before their settings are changed (and saved)
+function defaultSettings(): GenshinOptimizerSettings {
+  return { targetValue: 'avg:atk', mainStats: {}, fourPieceSet: null, twoPieceSets: [], excludeEquippedByOthers: true, minStats: {} }
+}
+
 export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const artifacts = useGenshinStore((s) => s.artifacts)
   const characters = useGenshinStore((s) => s.characters)
   const usable = useMemo(() => characters.filter(hasStatData), [characters])
-  const [characterId, setCharacterId] = useState<string | null>(null)
+  const [characterId, setCharacterId] = useState<string | null>(() => readOptimizerSettings(SETTINGS_KEY).last ?? null)
   const character = usable.find((c) => c.id === characterId) ?? usable[0]
 
-  const [targetValue, setTargetValue] = useState('avg:atk')
-  const [mainStats, setMainStats] = useState<Partial<Record<MainStatSlot, GenshinStatKey[]>>>({})
-  const [fourPieceSet, setFourPieceSet] = useState<string | null>(null)
-  const [twoPieceSets, setTwoPieceSets] = useState<string[]>([])
-  const [excludeEquippedByOthers, setExcludeEquippedByOthers] = useState(true)
-  const [minStats, setMinStats] = useState<Partial<Record<GenshinStatKey, number>>>({})
+  // Saved per character, see shared/optimizerSettings.ts
+  const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.id ?? '', defaultSettings)
+  const { targetValue, mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, minStats } = settings
+  const setTargetValue = fieldSetter(updateSettings, 'targetValue')
+  const setMainStats = fieldSetter(updateSettings, 'mainStats')
+  const setFourPieceSet = fieldSetter(updateSettings, 'fourPieceSet')
+  const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
+  const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
+  const setMinStats = fieldSetter(updateSettings, 'minStats')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget } | undefined>()
@@ -209,7 +234,9 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                   allowDeselect={false}
                   value={character.id}
                   onChange={(value) => {
+                    if (!value) return
                     setCharacterId(value)
+                    rememberCharacter(SETTINGS_KEY, value)
                     setResult(undefined)
                   }}
                   data={usable.map((c) => ({ value: c.id, label: c.name }))}
