@@ -1,11 +1,17 @@
 import type {
   Artifact,
+  ArtifactSlot,
   GenshinCharacter,
 } from 'lib/games/genshin/types'
 import {
   backupKindOf,
   wrapBackup,
 } from 'lib/games/shared/backup'
+import {
+  equipSlots,
+  type Loadouts,
+  piecesTaken,
+} from 'lib/games/shared/equip'
 import {
   hasStringId,
   type ImportMode,
@@ -85,4 +91,29 @@ export function createGenshinBackup(data: GenshinData, savedAt: string): string 
 export function readGenshinBackup(text: string): GenshinData | undefined {
   if (backupKindOf(text) !== GENSHIN_BACKUP_KIND) return undefined
   return deserializeGenshinData(text)
+}
+
+// Makes these artifacts the character's current ones in the browser save, swapping with whoever wore them (see
+// shared/equip.ts). Characters whose artifacts changed lose their Enka stats, which no longer match; the Characters
+// page then shows calculated ones
+export function equipGenshinArtifacts(data: GenshinData, characterId: string, artifacts: Artifact[]): GenshinData {
+  const loadouts: Loadouts<ArtifactSlot> = new Map(data.characters.map((c) => [c.id, { ...c.artifactIds }]))
+  const change = equipSlots(loadouts, characterId, artifacts.map((a) => ({ slot: a.slot, id: a.id })))
+  return {
+    artifacts: data.artifacts.map((artifact) => {
+      if (!change.owners.has(artifact.id)) return artifact
+      const owner = change.owners.get(artifact.id)
+      const { equippedBy: _, ...rest } = artifact
+      return owner ? { ...rest, equippedBy: owner } : rest
+    }),
+    characters: data.characters.map((character) =>
+      change.changedOwners.has(character.id) ? { ...character, artifactIds: loadouts.get(character.id) ?? {}, stats: {} } : character
+    ),
+  }
+}
+
+// Who would lose artifacts to this character, by character id
+export function genshinPiecesTaken(data: GenshinData, characterId: string, artifacts: Artifact[]): string[] {
+  const loadouts: Loadouts<ArtifactSlot> = new Map(data.characters.map((c) => [c.id, c.artifactIds]))
+  return [...new Set(piecesTaken(loadouts, characterId, artifacts.map((a) => ({ slot: a.slot, id: a.id }))).map((t) => t.owner))]
 }

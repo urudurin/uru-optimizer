@@ -1,9 +1,15 @@
+import {
+  isProgressMessage,
+  type ProgressCallback,
+} from 'lib/games/shared/progress'
+
 // Runs one search at a time in a web worker, shared by the gear optimizers. Starting a new search (or cancelling) stops
-// the old worker, so its result never arrives. The worker posts back a single message with the result.
+// the old worker, so its result never arrives. The worker posts progress messages (see progress.ts) while it works,
+// then one message with the result.
 
 export type WorkerRunner<Request, Response> = {
   // Resolves undefined when cancelled or replaced by a newer search
-  run: (request: Request) => Promise<Response | undefined>,
+  run: (request: Request, onProgress?: ProgressCallback) => Promise<Response | undefined>,
   cancel: () => void,
 }
 
@@ -20,7 +26,7 @@ export function createWorkerRunner<Request, Response>(
     running = undefined
   }
 
-  const run = (request: Request) => {
+  const run = (request: Request, onProgress?: ProgressCallback) => {
     cancel()
     return new Promise<Response | undefined>((resolve) => {
       const worker = createWorker()
@@ -31,7 +37,10 @@ export function createWorkerRunner<Request, Response>(
         if (running === current) running = undefined
         resolve(response)
       }
-      worker.onmessage = (e: MessageEvent<Response>) => finish(e.data)
+      worker.onmessage = (e: MessageEvent<unknown>) => {
+        if (isProgressMessage(e.data)) onProgress?.(e.data.progress)
+        else finish(e.data as Response)
+      }
       worker.onerror = (e) => finish(onError(e.message))
       worker.postMessage(request)
     })

@@ -1,11 +1,13 @@
 import {
   deserializeGenshinData,
   EMPTY_GENSHIN_DATA,
+  equipGenshinArtifacts,
   GENSHIN_STATE_KEY,
   type GenshinData,
   mergeGenshinData,
   serializeGenshinData,
 } from 'lib/games/genshin/state/genshinState'
+import type { Artifact } from 'lib/games/genshin/types'
 import {
   type ImportMode,
   readStorage,
@@ -23,6 +25,8 @@ type GenshinStore = GenshinData & {
   // Warnings from the most recent import, not persisted
   lastWarnings: string[],
   importParsed: (parsed: GenshinData & { warnings: string[] }, mode: ImportMode) => void,
+  // Makes these the character's artifacts in this browser's save, see equipGenshinArtifacts
+  equip: (characterId: string, artifacts: Artifact[]) => void,
   clear: () => void,
 }
 
@@ -40,6 +44,13 @@ export const useGenshinStore = create<GenshinStore>()((set, get) => ({
     const data = mergeGenshinData({ artifacts, characters }, parsed, mode)
     save(data)
     set({ ...data, lastWarnings: parsed.warnings })
+  },
+
+  equip: (characterId, artifacts) => {
+    const { artifacts: saved, characters } = get()
+    const data = equipGenshinArtifacts({ artifacts: saved, characters }, characterId, artifacts)
+    save(data)
+    set(data)
   },
 
   clear: () => {

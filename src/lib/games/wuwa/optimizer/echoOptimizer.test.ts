@@ -1,6 +1,7 @@
 import { SUBSTAT_TIERS } from 'lib/games/wuwa/echoStats'
 import {
   costPatterns,
+  countLoadouts,
   type EchoFilters,
   type EchoTarget,
   optimizeEchoes,
@@ -105,6 +106,20 @@ describe('optimizeEchoes', () => {
       expect(outcome.builds.every((b) => b.echoes.reduce((sum, e) => sum + e.cost, 0) <= 12 && b.echoes.length <= 5)).toBe(true)
     })
   }
+
+  it('counts loadouts the same as listing them', () => {
+    const small = inventory({ 4: 3, 3: 4, 1: 4 })
+    let listed = 0
+    const walk = (start: number, chosen: Echo[], cost: number) => {
+      const roomLeft = chosen.length < 5 && small.some((e) => !chosen.includes(e) && cost + e.cost <= 12)
+      if (!roomLeft && chosen.length > 0) listed++
+      for (let i = start; i < small.length; i++) {
+        if (chosen.length < 5 && cost + small[i].cost <= 12) walk(i + 1, [...chosen, small[i]], cost + small[i].cost)
+      }
+    }
+    walk(0, [], 0)
+    expect(countLoadouts(small)).toBe(listed)
+  })
 
   it('lists cost patterns with no room for another echo', () => {
     const patterns = costPatterns([9, 9, 9]).map((p) => p.join(''))

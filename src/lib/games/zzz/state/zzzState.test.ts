@@ -1,8 +1,11 @@
 import {
   createZzzBackup,
   deserializeZzzData,
+  equipZzzDiscs,
   readZzzBackup,
   serializeZzzData,
+  type ZzzData,
+  zzzPiecesTaken,
 } from 'lib/games/zzz/state/zzzState'
 import type { Disc } from 'lib/games/zzz/types'
 import {
@@ -52,5 +55,21 @@ describe('ZZZ save', () => {
   it('drops entries without a string id', () => {
     const text = JSON.stringify({ version: 1, discs: [disc, { slot: 2 }], builds: 'oops' })
     expect(deserializeZzzData(text)).toEqual({ discs: [disc], builds: [] })
+  })
+})
+
+describe('equipZzzDiscs', () => {
+  const agent = { id: '1091', name: 'Miyabi', element: 'Ice', specialty: 'Anomaly', level: 60 }
+  const wEngine = { id: 'hailstorm-shrine', refinement: 1 }
+
+  it('swaps with the other wearer, counting discs the source says they wear', () => {
+    const worn: ZzzData = { discs: [{ ...disc, equippedBy: '1381' }, { ...disc, id: 'd2' }], builds: [] }
+    const equipped = equipZzzDiscs(worn, agent, wEngine, [{ ...disc, id: 'd1' }])
+
+    expect(equipped.discs.map((d) => [d.id, d.equippedBy])).toEqual([['d1', '1091'], ['d2', undefined]])
+    expect(equipped.builds).toEqual([
+      expect.objectContaining({ id: 'uru-1091', agentId: '1091', wEngineId: 'hailstorm-shrine', discIds: { 1: 'd1' } }),
+    ])
+    expect(zzzPiecesTaken(worn, '1091', [disc])).toEqual(['1381'])
   })
 })

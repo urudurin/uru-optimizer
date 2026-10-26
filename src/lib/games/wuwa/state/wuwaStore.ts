@@ -7,11 +7,13 @@ import type { ParsedWuwaData } from 'lib/games/wuwa/importer/userDataParser'
 import {
   deserializeWuwaData,
   EMPTY_WUWA_DATA,
+  equipWuwaEchoes,
   mergeWuwaData,
   serializeWuwaData,
   WUWA_STATE_KEY,
   type WuwaData,
 } from 'lib/games/wuwa/state/wuwaState'
+import type { Echo } from 'lib/games/wuwa/types'
 import { create } from 'zustand'
 
 function save(data: WuwaData) {
@@ -24,6 +26,8 @@ type WuwaStore = WuwaData & {
   // Warnings from the most recent import, not persisted
   lastWarnings: string[],
   importParsed: (parsed: ParsedWuwaData, mode: ImportMode) => void,
+  // Makes these the Resonator's echoes in this browser's save, see equipWuwaEchoes
+  equip: (charId: string, echoes: Echo[]) => void,
   clear: () => void,
 }
 
@@ -41,6 +45,13 @@ export const useWuwaStore = create<WuwaStore>()((set, get) => ({
     const data = mergeWuwaData({ echoes, characters, teams, priority }, parsed, mode)
     save(data)
     set({ ...data, lastWarnings: parsed.warnings })
+  },
+
+  equip: (charId, echoes) => {
+    const { echoes: saved, characters, teams, priority } = get()
+    const data = equipWuwaEchoes({ echoes: saved, characters, teams, priority }, charId, echoes)
+    save(data)
+    set(data)
   },
 
   clear: () => {

@@ -2,7 +2,6 @@ import {
   Accordion,
   Button,
   FileInput,
-  Group,
   MultiSelect,
   NumberInput,
   SegmentedControl,
@@ -13,11 +12,9 @@ import {
   Table,
   Text,
 } from '@mantine/core'
-import {
-  IconSearch,
-  IconTrendingUp,
-} from '@tabler/icons-react'
+import { IconTrendingUp } from '@tabler/icons-react'
 import { formatNumber } from 'lib/games/shared/format'
+import type { SearchProgress } from 'lib/games/shared/progress'
 import {
   EmptyState,
   Notices,
@@ -27,6 +24,7 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type {
   ActiveConditions,
@@ -58,6 +56,7 @@ import {
   runDiscOptimizer,
 } from 'lib/games/zzz/optimizer/optimizerClient'
 import { usePresetImportStore } from 'lib/games/zzz/state/presetImportStore'
+import { zzzPiecesTaken } from 'lib/games/zzz/state/zzzState'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
   CONDITION_LABELS,
@@ -143,6 +142,9 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
   const [selected, setSelected] = useState(0)
   const [running, setRunning] = useState(false)
+  const [progress, setProgress] = useState<SearchProgress | undefined>()
+  const [searchSeconds, setSearchSeconds] = useState(0)
+  const equip = useZzzStore((s) => s.equip)
 
   const storedImport = usePresetImportStore((s) => s.stored)
   const importPresetText = usePresetImportStore((s) => s.importText)
@@ -211,6 +213,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   async function run() {
     if (!W_ENGINES[loadout.wEngineId]) return
     setRunning(true)
+    setProgress(undefined)
     const response = await runDiscOptimizer({
       agentId: agent.id,
       wEngineId: loadout.wEngineId,
@@ -223,10 +226,11 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       sortBy,
       thenBy,
       limit: RESULT_LIMIT,
-    })
+    }, setProgress)
     // undefined: cancelled, or replaced by a newer search that is still running
     if (response) {
       setOutcome(response.outcome)
+      setSearchSeconds(response.ms / 1000)
       setSelected(0)
       setRunning(false)
     }
@@ -257,7 +261,21 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     ? `None of your discs fit slot ${emptySlots.join(', ')} with these filters`
     : combinations > MAX_COMBINATIONS
     ? `${formatNumber(combinations)} combinations, narrow the filters first`
-    : `Up to ${formatNumber(combinations)} combinations`
+    : 'Every combination is checked.'
+  const agentBuild = builds.find((b) => b.agentId === agent.id)
+  const isWorn = !!best && best.discs.every((disc) => agentBuild?.discIds[disc.slot] === disc.id)
+
+  function equipBuild() {
+    if (!best) return
+    const losing = zzzPiecesTaken({ discs, builds }, agent.id, best.discs).map((id) => ownerNames.get(id) ?? AGENTS[id]?.name ?? `Agent ${id}`)
+    const swap = losing.length > 0
+      ? `
+
+${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
+      : ''
+    if (!window.confirm(`Equip build #${selected + 1} on ${agent.name} in this browser's save?${swap}`)) return
+    equip(agent, { id: loadout.wEngineId, refinement: Number(loadout.refinement) }, best.discs)
+  }
 
   return (
     <Stack gap='lg'>
@@ -459,16 +477,6 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
               </Accordion.Panel>
             </Accordion.Item>
           </Accordion>
-
-          <div className={classes.stickyActions}>
-            <Group gap='xs' grow>
-              <Button size='sm' leftSection={<IconSearch size={16} />} onClick={run} loading={running} disabled={!canSearch}>
-                Search
-              </Button>
-              {running && <Button size='sm' variant='default' onClick={cancel}>Cancel</Button>}
-            </Group>
-            <Text size='xs' c={canSearch ? 'dimmed' : 'yellow'} ta='center' mt={6}>{searchHint}</Text>
-          </div>
         </Stack>
 
         <Stack gap='md'>
@@ -548,6 +556,19 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
             </Panel>
           )}
         </Stack>
+
+        <OptimizerSidebar
+          pools={pools.map((pool, i) => ({ label: `Slot ${i + 1}`, value: pool.length }))}
+          combinations={combinations}
+          hint={{ text: searchHint, warn: !canSearch }}
+          canStart={canSearch}
+          running={running}
+          progress={progress}
+          onStart={run}
+          onCancel={cancel}
+          results={outcome?.ok ? { count: outcome.builds.length, seconds: searchSeconds } : undefined}
+          equip={best ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+        />
       </div>
     </Stack>
   )

@@ -11,6 +11,7 @@ import type {
 } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
   deserializeZzzData,
+  equipZzzDiscs,
   serializeZzzData,
   ZZZ_STATE_KEY,
 } from 'lib/games/zzz/state/zzzState'
@@ -29,6 +30,8 @@ type ZzzStore = {
   // Warnings from the most recent import, not persisted
   lastWarnings: ParseWarning[],
   importParsed: (parsed: ParsedZzzExport, mode: ImportMode) => void,
+  // Makes these the agent's discs in this browser's save, see equipZzzDiscs
+  equip: (...args: Parameters<typeof equipZzzDiscs> extends [unknown, ...infer Rest] ? Rest : never) => void,
   clear: () => void,
 }
 
@@ -51,6 +54,13 @@ export const useZzzStore = create<ZzzStore>()((set, get) => ({
     const builds = mergeById(state.builds, parsed.builds, mode)
     save(discs, builds)
     set({ discs, builds, lastWarnings: parsed.warnings })
+  },
+
+  equip: (agent, wEngine, discs) => {
+    const state = get()
+    const data = equipZzzDiscs({ discs: state.discs, builds: state.builds }, agent, wEngine, discs)
+    save(data.discs, data.builds)
+    set(data)
   },
 
   clear: () => {

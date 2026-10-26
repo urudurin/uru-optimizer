@@ -1,3 +1,4 @@
+import type { ProgressMessage } from 'lib/games/shared/progress'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
 import {
@@ -20,7 +21,7 @@ self.onmessage = (e: MessageEvent<DiscWorkerRequest>) => {
   let outcome: OptimizerOutcome
   try {
     outcome = agent && wEngine
-      ? optimizeDiscs({ ...rest, agent, wEngine })
+      ? optimizeDiscs({ ...rest, agent, wEngine, onProgress: (progress) => self.postMessage({ progress } satisfies ProgressMessage) })
       : { ok: false, reason: `No data for ${agent ? `W-Engine ${wEngineId}` : `agent ${agentId}`}` }
   } catch (error) {
     outcome = { ok: false, reason: `The search failed: ${error instanceof Error ? error.message : String(error)}` }

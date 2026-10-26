@@ -56,7 +56,8 @@ export const PRESETS: Record<string, BuildPreset> = {
     substatPriority: [...CRIT_SUBS, ZzzStats.ATK_P, ZzzStats.PEN, ZzzStats.ATK],
     rankBy: 'critDmg',
     thenBy: ['critRate', 'atk'],
-    notes: 'Branch & Blade Song\'s 4-piece (CRIT Rate +12, CRIT DMG +30 for her) isn\'t modeled yet, so its builds look weaker here than they are',
+    notes:
+      'Branch & Blade Song\'s 4-piece (CRIT DMG +30 from 115 Anomaly Mastery, CRIT Rate +12 with Freeze or Shatter) only counts with the combat conditions on',
     source: 'Your own build, crit main stats from general knowledge',
     confidence: 'unverified',
     reviewed: '2026-10-25',

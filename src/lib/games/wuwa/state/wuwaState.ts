@@ -8,10 +8,11 @@ import {
   mergeById,
   parseVersionedSave,
 } from 'lib/games/shared/storage'
-import type {
-  CharacterState,
-  Echo,
-  SavedTeam,
+import {
+  type CharacterState,
+  type Echo,
+  MAX_LOADOUT_ECHOES,
+  type SavedTeam,
 } from 'lib/games/wuwa/types'
 
 // Pure save and merge logic for WuWa data. Storage and zustand wiring live in wuwaStore.ts.
@@ -77,4 +78,26 @@ export function deserializeWuwaData(text: string | null): WuwaData {
     teams: Array.isArray(save.teams) ? save.teams.filter(hasStringId) as SavedTeam[] : [],
     priority: Array.isArray(save.priority) ? save.priority.filter((id): id is string => typeof id === 'string') : [],
   }
+}
+
+// Makes these echoes the Resonator's current ones in the browser save, 4-cost first as the main echo. Echoes another
+// Resonator wore are taken off them (WuWa has no fixed slots to swap). Changes the browser save only, never the game
+export function equipWuwaEchoes(data: WuwaData, charId: string, echoes: Echo[]): WuwaData {
+  const ids = new Set(echoes.map((e) => e.id))
+  const ordered = [...echoes].sort((a, b) => b.cost - a.cost).map((e) => e.id)
+  const echoIds = Array.from({ length: MAX_LOADOUT_ECHOES }, (_, i) => ordered[i] ?? null)
+  return {
+    ...data,
+    characters: data.characters.map((character) => {
+      if (character.charId === charId) return { ...character, echoIds }
+      if (!character.echoIds.some((id) => id && ids.has(id))) return character
+      return { ...character, echoIds: character.echoIds.map((id) => (id && ids.has(id) ? null : id)) }
+    }),
+  }
+}
+
+// Who would lose echoes to this Resonator, by charId
+export function wuwaPiecesTaken(data: WuwaData, charId: string, echoes: Echo[]): string[] {
+  const ids = new Set(echoes.map((e) => e.id))
+  return data.characters.filter((c) => c.charId !== charId && c.echoIds.some((id) => id && ids.has(id))).map((c) => c.charId)
 }

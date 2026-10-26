@@ -2,7 +2,9 @@ import {
   createGenshinBackup,
   deserializeGenshinData,
   EMPTY_GENSHIN_DATA,
+  equipGenshinArtifacts,
   type GenshinData,
+  genshinPiecesTaken,
   mergeGenshinData,
   readGenshinBackup,
   serializeGenshinData,
@@ -79,5 +81,16 @@ describe('Genshin save', () => {
     expect(merged.characters[0]).toMatchObject({ stats: { hp: 20000 }, statsDate: '2026-10-26', artifactIds: { flower: 'a9' } })
     expect(merged.characters[0].weapon).toEqual({ ...weapon, refinement: 5 })
     expect(merged.characters[1].stats).toEqual({})
+  })
+})
+
+describe('equipGenshinArtifacts', () => {
+  it('swaps with the other wearer and clears both characters\' Enka stats', () => {
+    const equipped = equipGenshinArtifacts(data, 'c1', [artifact('a2', 'c2')])
+
+    expect(equipped.characters.map((c) => [c.id, c.artifactIds.flower, c.stats])).toEqual([['c1', 'a2', {}], ['c2', 'a1', {}]])
+    expect(equipped.artifacts.map((a) => [a.id, a.equippedBy])).toEqual([['a1', 'c2'], ['a2', 'c1']])
+    expect(genshinPiecesTaken(data, 'c1', [artifact('a2', 'c2')])).toEqual(['c2'])
+    expect(equipGenshinArtifacts(data, 'c1', [artifact('a1', 'c1')])).toEqual(data)
   })
 })

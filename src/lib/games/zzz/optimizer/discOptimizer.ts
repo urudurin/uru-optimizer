@@ -1,5 +1,11 @@
 import { formatNumber } from 'lib/games/shared/format'
 import {
+  nestedFraction,
+  PROGRESS_CHECK_MASK,
+  type ProgressCallback,
+  throttleProgress,
+} from 'lib/games/shared/progress'
+import {
   insertRanked,
   type Ranked,
   wouldRank,
@@ -60,6 +66,8 @@ export type OptimizerRequest = {
   // Breaks ties in sortBy, compared in order
   thenBy?: (keyof FinalStats)[],
   limit: number,
+  // Called now and then while searching (added by the worker, never sent to it)
+  onProgress?: ProgressCallback,
 }
 
 export type OptimizerBuild = {
@@ -216,7 +224,12 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
     if (wouldRank(top, values, limit)) insertRanked(top, { values, item: [...picks] }, limit)
   }
 
+  const report = throttleProgress(request.onProgress)
+  let visited = 0
   const search = (depth: number) => {
+    if (report && (++visited & PROGRESS_CHECK_MASK) === 0) {
+      report({ visited, fraction: nestedFraction(picks[0], poolVectors[0].length, picks[1], poolVectors[1].length) })
+    }
     // Stop as soon as the required sets can no longer be reached, this also rejects finished builds that miss them
     const remaining = 6 - depth
     if (requiredFour >= 0 && counts[requiredFour] + remaining < 4) return

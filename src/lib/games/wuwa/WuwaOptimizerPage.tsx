@@ -1,7 +1,6 @@
 import {
   Accordion,
   Button,
-  Group,
   MultiSelect,
   NumberInput,
   Select,
@@ -11,11 +10,9 @@ import {
   Table,
   Text,
 } from '@mantine/core'
-import {
-  IconSearch,
-  IconTrendingUp,
-} from '@tabler/icons-react'
+import { IconTrendingUp } from '@tabler/icons-react'
 import { formatNumber } from 'lib/games/shared/format'
+import type { SearchProgress } from 'lib/games/shared/progress'
 import {
   EmptyState,
   Notices,
@@ -25,6 +22,7 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import {
   characterName,
   SONATA_SETS,
@@ -32,8 +30,10 @@ import {
 } from 'lib/games/wuwa/data/gameData'
 import { MAIN_STAT_MAX } from 'lib/games/wuwa/echoStats'
 import {
+  countLoadouts,
   type EchoOutcome,
   type EchoTarget,
+  filterPool,
   targetLabel,
   wuwaStatLabel,
 } from 'lib/games/wuwa/optimizer/echoOptimizer'
@@ -41,6 +41,7 @@ import {
   cancelEchoOptimizer,
   runEchoOptimizer,
 } from 'lib/games/wuwa/optimizer/optimizerClient'
+import { wuwaPiecesTaken } from 'lib/games/wuwa/state/wuwaState'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import {
   setPieceCounts,
@@ -106,6 +107,9 @@ function costOf(echoes: Echo[]): number {
 export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const echoes = useWuwaStore((s) => s.echoes)
   const characters = useWuwaStore((s) => s.characters)
+  const teams = useWuwaStore((s) => s.teams)
+  const priority = useWuwaStore((s) => s.priority)
+  const equip = useWuwaStore((s) => s.equip)
   const [characterId, setCharacterId] = useState<string | null>(null)
   const character = characters.find((c) => c.charId === characterId) ?? characters[0]
 
@@ -116,6 +120,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const [excludeEquippedByOthers, setExcludeEquippedByOthers] = useState(true)
   const [minStats, setMinStats] = useState<Partial<Record<keyof WuwaStats, number>>>({})
   const [running, setRunning] = useState(false)
+  const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: EchoOutcome, ms: number, target: EchoTarget } | undefined>()
   const [selected, setSelected] = useState(0)
 
@@ -149,17 +154,14 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const twoPieceOptions = setOptions.filter((o) => o.value !== fullSet && (SONATA_SETS[o.value]?.fullPieces ?? 5) === 5)
   const weapon = character.weaponId ? WEAPONS[character.weaponId] : undefined
 
+  const filters = { mainStats, fullSet: fullSet ?? undefined, twoPieceSets: twoPieceSets.slice(0, maxTwoPiece), excludeEquippedByOthers }
+  // Echoes per cost after the filters, and the loadouts they make, live as the filters change
+  const pool = filterPool({ character, characters, echoes, filters })
+
   async function run() {
     setRunning(true)
-    const response = await runEchoOptimizer({
-      character,
-      characters,
-      echoes,
-      filters: { mainStats, fullSet: fullSet ?? undefined, twoPieceSets: twoPieceSets.slice(0, maxTwoPiece), excludeEquippedByOthers },
-      minStats,
-      target,
-      limit: RESULT_LIMIT,
-    })
+    setProgress(undefined)
+    const response = await runEchoOptimizer({ character, characters, echoes, filters, minStats, target, limit: RESULT_LIMIT }, setProgress)
     // undefined: cancelled, or replaced by a newer search that is still running
     if (response) {
       setResult({ ...response, target })
@@ -176,6 +178,22 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const outcome = result?.outcome
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
+  const wornIds = new Set(character.echoIds.filter((id) => id !== null))
+  const isWorn = !!build && build.echoes.length === wornIds.size && build.echoes.every((e) => wornIds.has(e.id))
+
+  function equipBuild() {
+    if (!build || !result) return
+    const losing = wuwaPiecesTaken({ echoes, characters, teams, priority }, character.charId, build.echoes).map(characterName)
+    const taken = losing.length > 0
+      ? `
+
+${losing.join(', ')} will lose the echoes this loadout takes.`
+      : ''
+    if (!window.confirm(`Equip loadout #${selected + 1} on ${characterName(character.charId)} in this browser's save?${taken}`)) return
+    equip(character.charId, build.echoes)
+    // The "Now" row is this loadout from here on
+    if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
+  }
 
   return (
     <Stack gap='lg'>
@@ -279,14 +297,6 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
               </Accordion.Panel>
             </Accordion.Item>
           </Accordion>
-
-          <div className={classes.stickyActions}>
-            <Group gap='xs' grow>
-              <Button size='sm' leftSection={<IconSearch size={16} />} onClick={run} loading={running}>Search</Button>
-              {running && <Button size='sm' variant='default' onClick={cancel}>Cancel</Button>}
-            </Group>
-            <Text size='xs' c='dimmed' ta='center' mt={6}>{`${formatNumber(echoes.length)} echoes`}</Text>
-          </div>
         </Stack>
 
         <Stack gap='md'>
@@ -381,6 +391,26 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
             </Panel>
           )}
         </Stack>
+
+        <OptimizerSidebar
+          pools={COSTS.map((cost) => ({ label: `${cost}-cost`, value: pool.filter((e) => e.cost === cost).length }))}
+          combinations={countLoadouts(pool)}
+          combinationsLabel='Loadouts'
+          hint={pool.length === 0 ? { text: 'No echoes left with these filters', warn: true } : undefined}
+          canStart={pool.length > 0}
+          running={running}
+          progress={progress}
+          onStart={run}
+          onCancel={cancel}
+          results={outcome?.ok && result
+            ? {
+              count: outcome.builds.length,
+              seconds: result.ms / 1000,
+              note: outcome.truncated ? 'Stopped at its limit: best found, maybe not the best.' : undefined,
+            }
+            : undefined}
+          equip={build ? { label: `loadout #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+        />
       </div>
     </Stack>
   )

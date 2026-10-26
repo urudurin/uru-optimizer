@@ -3,11 +3,20 @@ import {
   wrapBackup,
 } from 'lib/games/shared/backup'
 import {
+  equipSlots,
+  type Loadouts,
+  ownersOf,
+  piecesTaken,
+} from 'lib/games/shared/equip'
+import {
   hasStringId,
   parseVersionedSave,
 } from 'lib/games/shared/storage'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
-import type { Disc } from 'lib/games/zzz/types'
+import type {
+  Disc,
+  DiscSlot,
+} from 'lib/games/zzz/types'
 
 // Pure save logic for ZZZ data. Storage and zustand wiring live in zzzStore.ts.
 // ZZZ uses its own localStorage key so HSR's 'state' save is never read or written.
@@ -51,4 +60,57 @@ export function deserializeZzzData(text: string | null): ZzzData {
     discs: Array.isArray(save.discs) ? save.discs.filter(hasStringId) as Disc[] : [],
     builds: Array.isArray(save.builds) ? save.builds.filter(hasStringId) as ImportedBuild[] : [],
   }
+}
+
+// Makes these discs the agent's current ones in the browser save, swapping with whoever wore them (see
+// shared/equip.ts). An agent without a saved build gets one, with the W-Engine the optimizer used
+export function equipZzzDiscs(
+  data: ZzzData,
+  agent: { id: string, name: string, element: string, specialty: string, level: number },
+  wEngine: { id: string, refinement: number },
+  discs: Disc[],
+): ZzzData {
+  const loadouts: Loadouts<DiscSlot> = new Map(data.builds.map((b) => [b.agentId, { ...b.discIds }]))
+  // Discs the source says someone wears without a build for them still count as theirs
+  for (const disc of data.discs) {
+    if (!disc.equippedBy || ownersOf(loadouts).has(disc.id)) continue
+    const slots = loadouts.get(disc.equippedBy) ?? {}
+    if (!slots[disc.slot]) slots[disc.slot] = disc.id
+    loadouts.set(disc.equippedBy, slots)
+  }
+  const change = equipSlots(loadouts, agent.id, discs.map((d) => ({ slot: d.slot, id: d.id })))
+
+  const builds = data.builds.map((build) => change.changedOwners.has(build.agentId) ? { ...build, discIds: loadouts.get(build.agentId) ?? {} } : build)
+  if (!builds.some((b) => b.agentId === agent.id)) {
+    builds.push({
+      id: `uru-${agent.id}`,
+      agentId: agent.id,
+      name: agent.name,
+      element: agent.element,
+      specialty: agent.specialty,
+      level: agent.level,
+      mindscapeLevel: 0,
+      wEngineId: wEngine.id,
+      wEngineRefinement: wEngine.refinement,
+      discIds: loadouts.get(agent.id) ?? {},
+    })
+  }
+  return {
+    builds,
+    discs: data.discs.map((disc) => {
+      if (!change.owners.has(disc.id)) return disc
+      const owner = change.owners.get(disc.id)
+      const { equippedBy: _, ...rest } = disc
+      return owner ? { ...rest, equippedBy: owner } : rest
+    }),
+  }
+}
+
+// Who would lose discs to this agent, by agent id
+export function zzzPiecesTaken(data: ZzzData, agentId: string, discs: Disc[]): string[] {
+  const loadouts: Loadouts<DiscSlot> = new Map(data.builds.map((b) => [b.agentId, { ...b.discIds }]))
+  for (const disc of data.discs) {
+    if (disc.equippedBy && !ownersOf(loadouts).has(disc.id)) loadouts.set(disc.equippedBy, { ...loadouts.get(disc.equippedBy), [disc.slot]: disc.id })
+  }
+  return [...new Set(piecesTaken(loadouts, agentId, discs.map((d) => ({ slot: d.slot, id: d.id }))).map((t) => t.owner))]
 }

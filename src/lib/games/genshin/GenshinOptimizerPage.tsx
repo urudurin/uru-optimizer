@@ -1,7 +1,6 @@
 import {
   Accordion,
   Button,
-  Group,
   MultiSelect,
   NumberInput,
   Select,
@@ -11,11 +10,9 @@ import {
   Table,
   Text,
 } from '@mantine/core'
+import { IconTrendingUp } from '@tabler/icons-react'
 import {
-  IconSearch,
-  IconTrendingUp,
-} from '@tabler/icons-react'
-import {
+  filterPools,
   type MainStatSlot,
   type OptimizerOutcome,
   type OptimizerTarget,
@@ -25,10 +22,12 @@ import {
   cancelOptimizer,
   runOptimizer,
 } from 'lib/games/genshin/optimizer/optimizerClient'
+import { genshinPiecesTaken } from 'lib/games/genshin/state/genshinState'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import { hasStatData } from 'lib/games/genshin/stats/computeStats'
 import {
   type Artifact,
+  ARTIFACT_SLOTS,
   ELEMENT_DMG_STAT,
   formatStatValue,
   type GenshinCharacter,
@@ -38,6 +37,7 @@ import {
 } from 'lib/games/genshin/types'
 import { ArtifactCard } from 'lib/games/genshin/ui/ArtifactCard'
 import { formatNumber } from 'lib/games/shared/format'
+import type { SearchProgress } from 'lib/games/shared/progress'
 import {
   EmptyState,
   Notices,
@@ -47,6 +47,7 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import {
   useMemo,
   useState,
@@ -106,10 +107,21 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const [excludeEquippedByOthers, setExcludeEquippedByOthers] = useState(true)
   const [minStats, setMinStats] = useState<Partial<Record<GenshinStatKey, number>>>({})
   const [running, setRunning] = useState(false)
+  const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget } | undefined>()
   const [selected, setSelected] = useState(0)
 
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
+  const equip = useGenshinStore((s) => s.equip)
+  const filters = useMemo(
+    () => ({ mainStats, fourPieceSet: fourPieceSet ?? undefined, twoPieceSets, excludeEquippedByOthers }),
+    [mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers],
+  )
+  // Artifacts per slot after the filters, live as the filters change
+  const poolSizes = useMemo(
+    () => (character ? filterPools({ character, artifacts, filters }).map((pool) => pool.length) : []),
+    [character, artifacts, filters],
+  )
   const setOptions = useMemo(() => {
     const names = new Map(artifacts.map((a) => [a.setId, a.setName]))
     return [...names].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
@@ -132,14 +144,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
 
   async function run() {
     setRunning(true)
-    const response = await runOptimizer({
-      character,
-      artifacts,
-      filters: { mainStats, fourPieceSet: fourPieceSet ?? undefined, twoPieceSets, excludeEquippedByOthers },
-      minStats,
-      target,
-      limit: RESULT_LIMIT,
-    })
+    setProgress(undefined)
+    const response = await runOptimizer({ character, artifacts, filters, minStats, target, limit: RESULT_LIMIT }, setProgress)
     // undefined: cancelled, or replaced by a newer search that is still running
     if (response) {
       setResult({ ...response, target })
@@ -157,6 +163,21 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
   const shown = statsToShow(character)
+  const isWorn = build?.artifacts.every((a) => character.artifactIds[a.slot] === a.id) ?? false
+
+  function equipBuild() {
+    if (!build || !result) return
+    const losing = genshinPiecesTaken({ artifacts, characters }, character.id, build.artifacts).map((id) => ownerNames.get(id) ?? id)
+    const swap = losing.length > 0
+      ? `
+
+${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
+      : ''
+    if (!window.confirm(`Equip build #${selected + 1} on ${character.name} in this browser's save?${swap}`)) return
+    equip(character.id, build.artifacts)
+    // The "Now" row is this build from here on
+    if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
+  }
 
   return (
     <Stack gap='lg'>
@@ -262,14 +283,6 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
               </Accordion.Panel>
             </Accordion.Item>
           </Accordion>
-
-          <div className={classes.stickyActions}>
-            <Group gap='xs' grow>
-              <Button size='sm' leftSection={<IconSearch size={16} />} onClick={run} loading={running}>Search</Button>
-              {running && <Button size='sm' variant='default' onClick={cancel}>Cancel</Button>}
-            </Group>
-            <Text size='xs' c='dimmed' ta='center' mt={6}>{`${formatNumber(artifacts.length)} artifacts`}</Text>
-          </div>
         </Stack>
 
         <Stack gap='md'>
@@ -372,6 +385,27 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
             </Panel>
           )}
         </Stack>
+
+        <OptimizerSidebar
+          pools={ARTIFACT_SLOTS.map((slot, i) => ({ label: SLOT_LABELS[slot], value: poolSizes[i] ?? 0 }))}
+          combinations={poolSizes.reduce((product, size) => product * size, 1)}
+          hint={poolSizes.some((size) => size === 0)
+            ? { text: 'A slot has no artifacts left with these filters', warn: true }
+            : { text: 'Most combinations are ruled out without being checked one by one.' }}
+          canStart={poolSizes.every((size) => size > 0)}
+          running={running}
+          progress={progress}
+          onStart={run}
+          onCancel={cancel}
+          results={outcome?.ok && result
+            ? {
+              count: outcome.builds.length,
+              seconds: result.ms / 1000,
+              note: outcome.truncated ? 'Stopped at its limit: best found, maybe not the best.' : undefined,
+            }
+            : undefined}
+          equip={build ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+        />
       </div>
     </Stack>
   )

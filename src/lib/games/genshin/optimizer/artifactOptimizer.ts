@@ -18,6 +18,12 @@ import {
   STAT_LABELS,
 } from 'lib/games/genshin/types'
 import {
+  nestedFraction,
+  PROGRESS_CHECK_MASK,
+  type ProgressCallback,
+  throttleProgress,
+} from 'lib/games/shared/progress'
+import {
   insertRanked,
   type Ranked,
   wouldRank,
@@ -61,6 +67,8 @@ export type OptimizerRequest = {
   minStats: Partial<Record<GenshinStatKey, number>>,
   target: OptimizerTarget,
   limit: number,
+  // Called now and then while searching (added by the worker, never sent to it)
+  onProgress?: ProgressCallback,
 }
 
 export type OptimizerBuild = {
@@ -334,7 +342,9 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
   let truncated = false
 
   // 3. Branch and bound over the given pool indices per slot, adding to top
-  const search = (lists: number[][]) => {
+  // Only the full search reports progress, the quick first pass would fill the bar and start it over
+  const report = throttleProgress(request.onProgress)
+  const search = (lists: number[][], reportProgress = false) => {
     const slotVectors = lists.map((list, d) => list.map((a) => orderedVectors[d][a]))
     const slotSets = lists.map((list, d) => list.map((a) => orderedGroups[d][a]))
     // combos[d] = the most slots d..4 can add, one vector per mix of main stats
@@ -371,6 +381,9 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
       if (++visited > VISIT_BUDGET) {
         truncated = true
         return
+      }
+      if (reportProgress && report && (visited & PROGRESS_CHECK_MASK) === 0) {
+        report({ visited, fraction: nestedFraction(picks[0], lists[0].length, picks[1], lists[1].length) })
       }
       if (!setsReachable(5 - depth)) return
 
@@ -470,7 +483,7 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
   }
 
   // 3c. The full search, with the first pass's builds already setting the bar
-  if (candidates.every((list) => list.length > 0)) search(candidates)
+  if (candidates.every((list) => list.length > 0)) search(candidates, true)
 
   const builds = top.map((candidate): OptimizerBuild => {
     const chosen = candidate.item.map((a, slot) => pools[slot][a])

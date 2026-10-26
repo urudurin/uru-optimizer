@@ -2,10 +2,12 @@ import {
   createWuwaBackup,
   deserializeWuwaData,
   EMPTY_WUWA_DATA,
+  equipWuwaEchoes,
   mergeWuwaData,
   readWuwaBackup,
   serializeWuwaData,
   type WuwaData,
+  wuwaPiecesTaken,
 } from 'lib/games/wuwa/state/wuwaState'
 import type {
   CharacterState,
@@ -61,5 +63,23 @@ describe('WuWa save', () => {
     expect(merged.priority).toEqual(['x'])
 
     expect(mergeWuwaData(data, incoming, 'replace')).toEqual(incoming)
+  })
+})
+
+describe('equipWuwaEchoes', () => {
+  it('puts the 4-cost echo first and takes echoes off whoever wore them', () => {
+    const four: Echo = { ...echo('c'), cost: 4 }
+    const worn: WuwaData = {
+      ...data,
+      echoes: [...data.echoes, four],
+      characters: [character('x'), { ...character('y'), echoIds: ['a', null, null, null, null] }],
+    }
+    const equipped = equipWuwaEchoes(worn, 'x', [echo('a'), four])
+
+    expect(equipped.characters.map((c) => [c.charId, c.echoIds])).toEqual([
+      ['x', ['c', 'a', null, null, null]],
+      ['y', [null, null, null, null, null]],
+    ])
+    expect(wuwaPiecesTaken(worn, 'x', [echo('a')])).toEqual(['y'])
   })
 })

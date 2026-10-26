@@ -1,4 +1,10 @@
 import {
+  nestedFraction,
+  PROGRESS_CHECK_MASK,
+  type ProgressCallback,
+  throttleProgress,
+} from 'lib/games/shared/progress'
+import {
   insertRanked,
   type Ranked,
   wouldRank,
@@ -64,6 +70,8 @@ export type EchoRequest = {
   minStats: Partial<Record<keyof WuwaStats, number>>,
   target: EchoTarget,
   limit: number,
+  // Called now and then while searching (added by the worker, never sent to it)
+  onProgress?: ProgressCallback,
 }
 
 export type EchoBuild = {
@@ -111,6 +119,18 @@ export function costPatterns(available: [number, number, number]): [number, numb
     }
   }
   return patterns
+}
+
+function choose(n: number, k: number): number {
+  let result = 1
+  for (let i = 0; i < k; i++) result = (result * (n - i)) / (i + 1)
+  return Math.round(result)
+}
+
+// How many loadouts these echoes make, every cost pattern with no room left counted (before any pruning)
+export function countLoadouts(pool: Echo[]): number {
+  const available = COSTS.map((cost) => pool.filter((echo) => echo.cost === cost).length) as [number, number, number]
+  return costPatterns(available).reduce((sum, pattern) => sum + pattern.reduce((product, k, c) => product * choose(available[c], k), 1), 0)
 }
 
 export function scoreStats(stats: WuwaStats, target: EchoTarget): number {
@@ -312,8 +332,12 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
   const bound = new Float64Array(STAT_COUNT)
   const leaf = new Float64Array(STAT_COUNT)
   const chosen: Candidate[] = []
+  // Progress: which pattern, and where the first two positions are in their lists
+  const report = throttleProgress(request.onProgress)
+  const at = [0, 0]
+  const lengths = [1, 1]
 
-  for (const pattern of patterns) {
+  for (const [patternIndex, pattern] of patterns.entries()) {
     // Positions in cost order, 4-cost first
     const positions: Cost[] = COSTS.flatMap((cost, c) => Array<Cost>(pattern[c]).fill(cost))
     const count = positions.length
@@ -325,6 +349,9 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
       if (++visited > VISIT_BUDGET) {
         truncated = true
         return
+      }
+      if (report && (visited & PROGRESS_CHECK_MASK) === 0) {
+        report({ visited, fraction: (patternIndex + nestedFraction(at[0], lengths[0], at[1], lengths[1])) / patterns.length })
       }
       const remaining = count - depth
       let need = 0
@@ -368,6 +395,10 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
       // Within one cost, echoes are picked in list order so each loadout is visited once
       const start = depth > 0 && positions[depth - 1] === cost ? from + 1 : 0
       for (let p = start; p < list.length; p++) {
+        if (depth < 2) {
+          at[depth] = p
+          lengths[depth] = list.length
+        }
         const candidate = list[p]
         const vector = candidate.vector
         const next = sums[depth + 1]
