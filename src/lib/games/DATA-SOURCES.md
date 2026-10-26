@@ -54,7 +54,7 @@ Agent art and icons, W-Engine art and disc set icons are loaded from Enka.Networ
 
 Character icons and wish splash art, weapon icons and artifact piece icons are loaded from Enka.Network when the Characters page is viewed. Enka's Genshin store files (avatars SideIconName, weapons Icon, relics Items Icon) name them and enka.network serves them as /ui/<name>.png (Enka's API docs, "Icons and Images"). Nothing is copied into this repo (`genshin/data/images.ts`). The art belongs to HoYoverse; personal, non-commercial use.
 
-Wuthering Waves has no image source yet: Enka doesn't cover it and the datamine tables are text only, so its pages show initials.
+Wuthering Waves has no image source the site can fetch: Enka doesn't cover it, the datamine tables are text only, and Fandom's Terms of Use forbid automated access. The user can save art by hand into `wuwa/user-art/`, which is gitignored (only its README is committed); pages show initials for anyone without a file there. The art belongs to Kuro Games; personal use.
 
 ## Imported presets (any game)
 

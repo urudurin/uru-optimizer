@@ -168,3 +168,7 @@ goldenSimBuildResults.json
 
 # PR review plans
 /plans/
+
+# Uru: the user's own WuWa character art, never committed (see the README in that folder)
+src/lib/games/wuwa/user-art/*
+!src/lib/games/wuwa/user-art/README.md

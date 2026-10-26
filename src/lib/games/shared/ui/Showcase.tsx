@@ -87,7 +87,7 @@ export function Roster({ entries, active, onPick, groupColor, footer }: {
             onClick={() => onPick(entry.key)}
           >
             {entry.circle
-              ? <img className={classes.circle} src={entry.circle} alt='' />
+              ? <img className={classes.circle} src={entry.circle} alt='' loading='lazy' />
               : <span className={`${classes.circle} ${classes.initials}`}>{initials(entry.name)}</span>}
             <span className={classes.bannerText}>
               <span className={classes.bannerName} style={{ display: 'block' }}>{entry.name}</span>
@@ -140,7 +140,7 @@ export function ShowcaseCard({ name, accent, portrait, portraitFit = 'cover', we
         </div>
         {weapon && (
           <div className={classes.weapon}>
-            {weapon.image && <img src={weapon.image} alt='' />}
+            {weapon.image && <img src={weapon.image} alt='' loading='lazy' />}
             <div>
               <Text size='sm' fw={600}>{weapon.name}</Text>
               <Text size='xs' c='dimmed'>{weapon.meta}</Text>

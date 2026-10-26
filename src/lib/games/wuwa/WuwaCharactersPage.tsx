@@ -28,6 +28,7 @@ import {
   characterName,
   WEAPONS,
 } from 'lib/games/wuwa/data/gameData'
+import { useUserArt } from 'lib/games/wuwa/data/userArt'
 import { validateLoadout } from 'lib/games/wuwa/echoRules'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import {
@@ -54,8 +55,8 @@ import {
 } from 'react'
 
 // The Resonators page, after HSR's Characters page like ZZZ's Agents page: a roster of banners and one showcase card
-// (shared/ui/Showcase.tsx). There's no image source for WuWa yet (Enka doesn't cover it, the datamine is text only), so
-// banners and the card show initials on the element's color.
+// (shared/ui/Showcase.tsx). Art is whatever the user saved into wuwa/user-art/ (data/userArt.ts); without it, initials on
+// the element's color.
 
 // The datamine's weapon types
 const WEAPON_TYPES: Record<number, string> = { 1: 'Broadblade', 2: 'Sword', 3: 'Pistols', 4: 'Gauntlets', 5: 'Rectifier' }
@@ -65,6 +66,7 @@ const accentOf = (element: ElementDmgKey | undefined) => element && `var(--manti
 export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
   const echoes = useWuwaStore((s) => s.echoes)
   const characters = useWuwaStore((s) => s.characters)
+  const art = useUserArt()
   const [picked, setPicked] = useState<string | null>(null)
 
   const echoById = useMemo(() => new Map(echoes.map((echo) => [echo.id, echo])), [echoes])
@@ -137,6 +139,8 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
                 meta: `Lv ${c.level} · S${c.sequence} · ${w ? `${w.name} R${c.refinement}` : 'No weapon'}`,
                 group: info ? elementName(info.element) : 'Unknown',
                 subgroup: w ? WEAPON_TYPES[w.weaponType] : undefined,
+                portrait: art[c.charId]?.portrait,
+                circle: art[c.charId]?.icon ?? art[c.charId]?.portrait,
               }
             })}
           />
@@ -145,6 +149,7 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
         <ShowcaseCard
           name={name}
           accent={accentOf(element)}
+          portrait={art[character.charId]?.portrait}
           weapon={weapon
             && { name: weapon.name, meta: `${WEAPON_TYPES[weapon.weaponType] ?? 'Weapon'} · Lv ${character.weaponLevel} · R${character.refinement}` }}
           info={
