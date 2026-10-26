@@ -99,6 +99,7 @@ describe('parseEnkaGenshin', () => {
       name: 'Fading Twilight',
       rarity: 4,
       level: 80,
+      ascension: 5,
       refinement: 5,
       baseAtk: 497,
       secondary: { stat: 'energyRecharge', value: 27.9 },

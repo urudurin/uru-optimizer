@@ -7,6 +7,7 @@ import {
 } from '@mantine/core'
 import { IconUser } from '@tabler/icons-react'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
+import { computeGenshinStats } from 'lib/games/genshin/stats/computeStats'
 import {
   ARTIFACT_SLOTS,
   ELEMENT_DMG_STAT,
@@ -38,17 +39,17 @@ const MAIN_STATS: GenshinStatKey[] = ['hp', 'atk', 'def', 'elementalMastery', 'c
 const HIGHLIGHTED = new Set<GenshinStatKey>(['atk', 'critRate', 'critDmg'])
 
 // The character screen's main stats, then the DMG bonuses the character actually has
-function statTiles(character: GenshinCharacter): StatTileData[] {
+function statTiles(character: GenshinCharacter, stats: GenshinCharacter['stats']): StatTileData[] {
   const tile = (stat: GenshinStatKey) => ({
     key: stat,
     label: statLabel(stat),
-    value: formatStatValue(stat, character.stats[stat] ?? 0),
+    value: formatStatValue(stat, stats[stat] ?? 0),
     highlight: HIGHLIGHTED.has(stat),
   })
   const elementStat = character.element ? ELEMENT_DMG_STAT[character.element] : undefined
-  if (Object.keys(character.stats).length === 0) return []
-  const bonuses = (Object.keys(character.stats) as GenshinStatKey[])
-    .filter((stat) => !MAIN_STATS.includes(stat) && (stat === elementStat || (character.stats[stat] ?? 0) > 0))
+  if (Object.keys(stats).length === 0) return []
+  const bonuses = (Object.keys(stats) as GenshinStatKey[])
+    .filter((stat) => !MAIN_STATS.includes(stat) && (stat === elementStat || (stats[stat] ?? 0) > 0))
   return [...MAIN_STATS, ...bonuses].map(tile)
 }
 
@@ -79,13 +80,21 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
     return artifact ? [artifact] : []
   })
   const weapon = character.weapon
-  const tiles = statTiles(character)
+  // The game's own numbers from Enka when there are some, otherwise worked out from base stats and gear
+  const fromGame = Object.keys(character.stats).length > 0
+  const computed = fromGame ? undefined : computeGenshinStats(character, worn)
+  const tiles = statTiles(character, computed?.stats ?? character.stats)
+  const source = fromGame
+    ? ` · From the game, ${character.statsDate}`
+    : tiles.length > 0
+    ? ' · Calculated from base stats, weapon and artifacts'
+    : ''
 
   return (
     <Stack gap='lg'>
       <PageHeader
         title='Characters'
-        description='Stats exactly as your in-game character screen shows them, taken from the game through Enka.Network. A GOOD file adds every character and artifact, but no stats.'
+        description='Stats as your in-game character screen shows them: taken from the game through Enka.Network for showcased characters, calculated from base stats, weapon and artifacts for the rest (within display rounding of the game).'
       />
 
       <SideLayout
@@ -111,15 +120,18 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
               {character.element && <Badge size='sm' variant='light' color={elementColor(character.element)}>{character.element}</Badge>}
             </Group>
           }
-          description={`Level ${character.level} · Constellation ${character.constellation}${tiles.length > 0 ? ` · Stats from ${character.statsDate}` : ''}`}
+          description={`Level ${character.level} · Constellation ${character.constellation}${source}`}
         >
-          {tiles.length > 0
-            ? <StatGrid stats={tiles} />
-            : (
-              <Text size='sm' c='dimmed'>
-                No stats yet. Put this character in your in-game showcase and import from Enka.Network to see their stat screen numbers.
-              </Text>
-            )}
+          <Stack gap='sm'>
+            {tiles.length > 0
+              ? <StatGrid stats={tiles} />
+              : (
+                <Text size='sm' c='dimmed'>
+                  No stats yet. Put this character in your in-game showcase and import from Enka.Network to see their stat screen numbers.
+                </Text>
+              )}
+            {computed?.missing.map((note) => <Text key={note} size='xs' c='yellow'>{note}</Text>)}
+          </Stack>
         </Panel>
 
         {weapon && (

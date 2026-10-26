@@ -142,6 +142,7 @@ function parseWeapon(raw: Record<string, unknown>, tables: ReturnType<typeof nam
     name: known?.name ?? nameFromGoodKey(key),
     rarity: known?.rarity ?? 1,
     level: asNumber(raw.level) ?? 1,
+    ascension: asNumber(raw.ascension) ?? 0,
     refinement: asNumber(raw.refinement) ?? 1,
   }
 }
@@ -164,6 +165,7 @@ export function parseGood(input: unknown, store: EnkaGenshinStore, importedOn: s
       name: info.name,
       ...(info.element ? { element: info.element } : {}),
       level: asNumber(raw.level) ?? 1,
+      ascension: asNumber(raw.ascension) ?? 0,
       constellation: asNumber(raw.constellation) ?? 0,
       artifactIds: {},
       // GOOD has no final stats; an Enka import fills them in (and a GOOD import keeps them, see mergeGenshinData)

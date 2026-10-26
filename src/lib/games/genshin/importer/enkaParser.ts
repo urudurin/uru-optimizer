@@ -208,6 +208,7 @@ function parseWeapon(item: Record<string, unknown>, store: EnkaGenshinStore): Ge
     name,
     rarity: asNumber(flat.rankLevel) ?? 1,
     level: asNumber(weapon.level) ?? 1,
+    ascension: asNumber(weapon.promoteLevel) ?? 0,
     refinement: (affix ?? 0) + 1,
     baseAtk: isRecord(baseAtk) ? asNumber(baseAtk.statValue) ?? 0 : 0,
     ...(secondary ? { secondary } : {}),
@@ -240,6 +241,7 @@ export function parseEnkaGenshin(input: unknown, store: EnkaGenshinStore, import
 
     const props = isRecord(raw.propMap) ? raw.propMap : {}
     const levelProp = isRecord(props['4001']) ? props['4001'] : {}
+    const ascensionProp = isRecord(props['1002']) ? props['1002'] : {}
     const fight = isRecord(raw.fightPropMap) ? raw.fightPropMap : {}
     const stats: Partial<Record<GenshinStatKey, number>> = {}
     for (const [key, stat, isPercent] of FINAL_STATS) {
@@ -267,6 +269,7 @@ export function parseEnkaGenshin(input: unknown, store: EnkaGenshinStore, import
       name,
       element,
       level: asNumber(levelProp.val) ?? 1,
+      ascension: asNumber(ascensionProp.val) ?? 0,
       constellation: Array.isArray(raw.talentIdList) ? raw.talentIdList.length : 0,
       ...(weapon ? { weapon } : {}),
       artifactIds,

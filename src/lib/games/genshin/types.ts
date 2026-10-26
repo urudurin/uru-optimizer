@@ -123,6 +123,8 @@ export type GenshinWeapon = {
   name: string,
   rarity: number,
   level: number,
+  // 0-6, when the source says
+  ascension?: number,
   refinement: number,
   // Enka imports only, GOOD files don't have weapon stats
   baseAtk?: number,
@@ -135,6 +137,8 @@ export type GenshinCharacter = {
   name: string,
   element?: Element,
   level: number,
+  // 0-6, when the source says
+  ascension?: number,
   constellation: number,
   weapon?: GenshinWeapon,
   artifactIds: Partial<Record<ArtifactSlot, string>>,
