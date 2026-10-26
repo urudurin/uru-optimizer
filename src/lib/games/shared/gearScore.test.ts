@@ -1,4 +1,5 @@
 import {
+  benchmarkRating,
   idealUnits,
   ratingFor,
   scoreBuild,
@@ -39,11 +40,15 @@ describe('gear score', () => {
     expect(scoreGear([], 'hp', {}, rules)).toBeUndefined()
   })
 
-  it('scores a whole build as the average of its pieces, empty slots counting as 0', () => {
+  it('rates a whole build on the HSR benchmark scale: 100% at the benchmark, 200% perfect', () => {
     const piece = (percent: number) => ({ percent, rating: ratingFor(percent) })
-    expect(scoreBuild([piece(80), piece(60), piece(70), piece(50), piece(40)], 5)).toEqual({ percent: 60, rating: 'SS' })
-    expect(scoreBuild([piece(80), undefined, piece(70)], 6)).toEqual({ percent: 25, rating: 'C+' })
+    // HSR's own example: Himeko's relics score 66.2, 63.4, 48.8, 68.6, 65.9, 61.0 and HSR shows 100.8% · SS
+    expect(scoreBuild([66.2, 63.4, 48.8, 68.6, 65.9, 61.0].map(piece), 6)).toEqual({ percent: 100.8, rating: 'SS' })
+    expect(scoreBuild([piece(100), piece(100)], 2)).toEqual({ percent: 200, rating: 'WTF+' })
+    // Below the benchmark it scales from 0; an empty slot counts as 0
+    expect(scoreBuild([piece(62), undefined], 2)).toEqual({ percent: 50, rating: 'D' })
     expect(scoreBuild([undefined], 5)).toBeUndefined()
+    expect([139.9, 113, 99.9, 39].map(benchmarkRating)).toEqual(['WTF', 'SSS', 'S+', 'F'])
   })
 
   it('makes weights from build-analysis gains or a priority list', () => {

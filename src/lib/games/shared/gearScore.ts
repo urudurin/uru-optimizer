@@ -82,11 +82,49 @@ export function weightsFromPriority(priority: string[]): Record<string, number> 
   return Object.fromEntries(priority.slice(0, 5).map((stat, i) => [stat, Math.round((1 - i * 0.2) * 100) / 100]))
 }
 
-// The whole build's score, like the summary under HSR's stat block: the average of its pieces' scores, where an empty
-// slot (or a piece that can't be scored) counts as 0. slots is how many pieces a full build has
+// The whole build's rating, on the scale of the DPS Benchmark summary under HSR's stat block
+// (lib/scoring/scoringConfig.ts calculateScorePercent): 0% is a build with no useful substats, 100% the benchmark, 200%
+// perfection, with HSR's benchmark grades (lib/scoring/dpsScore.ts SimScoreGrades). Without a damage calculation it
+// stretches the average piece score instead, empty slots counting as 0.
+// The benchmark is a 62% average piece score, calibrated on HSR itself: a Himeko build whose six relic scores average
+// 62.3 gets 100.8% · SS from HSR's DPS Benchmark, and this scale gives the same 100.8%
+export const BENCHMARK_PIECE_PERCENT = 62
+
+const BENCHMARK_GRADES: [number, string][] = [
+  [140, 'WTF+'],
+  [130, 'WTF'],
+  [121, 'SSS+'],
+  [113, 'SSS'],
+  [106, 'SS+'],
+  [100, 'SS'],
+  [95, 'S+'],
+  [90, 'S'],
+  [85, 'A+'],
+  [80, 'A'],
+  [75, 'B+'],
+  [70, 'B'],
+  [65, 'C+'],
+  [60, 'C'],
+  [55, 'D+'],
+  [50, 'D'],
+  [45, 'F+'],
+  [40, 'F'],
+]
+
+export function benchmarkRating(percent: number): string {
+  return BENCHMARK_GRADES.find(([min]) => percent >= min)?.[1] ?? 'F'
+}
+
+// An average piece score (0-100) on the benchmark scale (0-200)
+export function benchmarkPercent(averagePiece: number): number {
+  const b = BENCHMARK_PIECE_PERCENT
+  return averagePiece <= b ? (averagePiece / b) * 100 : 100 + ((averagePiece - b) / (100 - b)) * 100
+}
+
+// slots is how many pieces a full build has
 export function scoreBuild(scores: (GearScore | undefined)[], slots: number): GearScore | undefined {
   if (slots <= 0 || scores.every((s) => !s)) return undefined
-  const total = scores.reduce((sum, s) => sum + (s?.percent ?? 0), 0)
-  const percent = Math.floor((total / slots) * 10) / 10
-  return { percent, rating: ratingFor(percent) }
+  const average = scores.reduce((sum, s) => sum + (s?.percent ?? 0), 0) / slots
+  const percent = Math.floor(benchmarkPercent(average) * 10) / 10
+  return { percent, rating: benchmarkRating(percent) }
 }
