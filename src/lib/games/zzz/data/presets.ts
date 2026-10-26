@@ -163,7 +163,8 @@ export function getPreset(agent: AgentData): BuildPreset {
   const preset = PRESETS[agent.id]
   if (preset) return preset
   return {
-    ...SPECIALTY_DEFAULTS[agent.specialty],
+    // Specialties newer than this list (Armorer) start from the Attack one
+    ...(SPECIALTY_DEFAULTS[agent.specialty] ?? SPECIALTY_DEFAULTS.Attack),
     sets: [],
     notes: `No preset for ${agent.name} yet, this is a generic ${agent.specialty} starting point`,
     source: 'Generic default for the specialty',

@@ -14,6 +14,7 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import { AGENTS } from 'lib/games/zzz/data/agents'
+import { useZzzGameData } from 'lib/games/zzz/data/enkaGameData'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
   scoreDisc,
@@ -31,6 +32,7 @@ const SLOT_FILTERS = ['all', '1', '2', '3', '4', '5', '6']
 export function ZzzDiscsPage({ onImport }: { onImport: () => void }) {
   const discs = useZzzStore((s) => s.discs)
   const builds = useZzzStore((s) => s.builds)
+  useZzzGameData()
   const [slot, setSlot] = useState('all')
   const [setId, setSetId] = useState<string | null>(null)
 

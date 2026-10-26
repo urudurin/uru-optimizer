@@ -31,6 +31,7 @@ import type {
   ActiveConditions,
   Condition,
 } from 'lib/games/zzz/data/dataTypes'
+import { useZzzGameData } from 'lib/games/zzz/data/enkaGameData'
 import {
   useZzzImages,
   type ZzzImages,
@@ -105,6 +106,8 @@ type RosterAgent = { agentId: string, name: string, element: string, specialty: 
 export function ZzzAgentsPage({ onImport }: { onImport: () => void }) {
   const builds = useZzzStore((s) => s.builds)
   const images = useZzzImages()
+  // Every agent and W-Engine, once Enka's data has loaded (data/enkaGameData.ts)
+  const gameData = useZzzGameData()
   const [agentId, setAgentId] = useState<string | null>(null)
 
   // Saved agents first, then everyone else by name
@@ -122,7 +125,7 @@ export function ZzzAgentsPage({ onImport }: { onImport: () => void }) {
     const others = new Map<string, RosterAgent>()
     for (const agent of known) if (!byAgent.has(agent.agentId) && !others.has(agent.agentId)) others.set(agent.agentId, agent)
     return [...byAgent.values(), ...[...others.values()].sort((a, b) => a.name.localeCompare(b.name))]
-  }, [builds, images])
+  }, [builds, images, gameData])
 
   const entry = roster.find((a) => a.agentId === agentId) ?? roster[0]
 
@@ -385,9 +388,7 @@ function NoDataAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages 
         <>
           <AgentHeading entry={entry} status={entry.builds.length > 0 ? 'Saved' : 'Not added'} />
           <Text size='sm' c='dimmed'>
-            {`No stat data for ${entry.name} yet, so their stats can't be worked out. Agents with data: ${
-              Object.values(AGENTS).map((a) => a.name).join(', ')
-            }.`}
+            {`No stat data for ${entry.name}: it comes from Enka.Network's game data, which hasn't loaded (or doesn't have them yet).`}
           </Text>
         </>
       }

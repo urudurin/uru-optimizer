@@ -23,6 +23,7 @@ import {
   Panel,
   StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
+import { useZzzGameData } from 'lib/games/zzz/data/enkaGameData'
 import { importEnkaZzzProfile } from 'lib/games/zzz/importer/enkaImport'
 import { isEnkaZzzResponse } from 'lib/games/zzz/importer/enkaParser'
 import { parseZzzBuildsExportJson } from 'lib/games/zzz/importer/zzzBuildsExportParser'
@@ -48,6 +49,7 @@ function readEnkaFile(text: string): unknown {
 export function ZzzDataPage() {
   const discs = useZzzStore((s) => s.discs)
   const builds = useZzzStore((s) => s.builds)
+  useZzzGameData()
   const warnings = useZzzStore((s) => s.lastWarnings)
   const importParsed = useZzzStore((s) => s.importParsed)
   const clear = useZzzStore((s) => s.clear)

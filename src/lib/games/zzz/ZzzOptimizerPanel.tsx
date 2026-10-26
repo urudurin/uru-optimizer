@@ -42,6 +42,7 @@ import type {
   AgentData,
   Condition,
 } from 'lib/games/zzz/data/dataTypes'
+import { useZzzGameData } from 'lib/games/zzz/data/enkaGameData'
 import { parseImportedZzzPresets } from 'lib/games/zzz/data/importedPresets'
 import {
   daysSinceReview,
@@ -160,6 +161,8 @@ function describeSets(discs: Disc[]): string {
 export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const discs = useZzzStore((s) => s.discs)
   const builds = useZzzStore((s) => s.builds)
+  // Every agent and W-Engine, once Enka's data has loaded (data/enkaGameData.ts)
+  useZzzGameData()
 
   const agents = Object.values(AGENTS)
   const [agentId, setAgentId] = useState(() => {
