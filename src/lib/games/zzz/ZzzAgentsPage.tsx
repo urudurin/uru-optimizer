@@ -7,6 +7,7 @@ import {
   SegmentedControl,
   Select,
   Stack,
+  Switch,
   Table,
   Text,
   TextInput,
@@ -28,6 +29,8 @@ import {
   IconTarget,
   IconTargetArrow,
 } from '@tabler/icons-react'
+import { scoreBuild } from 'lib/games/shared/gearScore'
+import { BuildRating } from 'lib/games/shared/ui/BuildRating'
 import {
   EmptyState,
   Notices,
@@ -55,6 +58,10 @@ import {
   statScreenConditions,
   toDisplayStats,
 } from 'lib/games/zzz/stats/computeStats'
+import {
+  scoreDisc,
+  zzzDiscWeights,
+} from 'lib/games/zzz/stats/discScore'
 import {
   isSupportedBuild,
   resolveBuild,
@@ -167,6 +174,7 @@ export function ZzzAgentsPage({ onImport }: { onImport: () => void }) {
   const display = computed ? toDisplayStats(computed.stats) : undefined
   const rows = STAT_ROWS.filter((row) => !row.ruptureOnly || agent?.specialty === 'Rupture')
   const notes = [...(resolved?.ok ? resolved.notes : []), ...(computed?.warnings ?? [])]
+  const discWeights = agent ? zzzDiscWeights(agent) : {}
 
   return (
     <Stack gap='lg'>
@@ -291,6 +299,10 @@ export function ZzzAgentsPage({ onImport }: { onImport: () => void }) {
                     </div>
                   ))}
                 </div>
+                <BuildRating
+                  score={resolved?.ok ? scoreBuild(resolved.build.discs.map((disc) => scoreDisc(disc, discWeights)), 6) : undefined}
+                  label='Disc score'
+                />
 
                 <SegmentedControl
                   size='xs'
@@ -305,23 +317,28 @@ export function ZzzAgentsPage({ onImport }: { onImport: () => void }) {
                     { value: 'custom', label: 'Custom', disabled: true },
                   ]}
                 />
-                <Group gap={4}>
+                {/* Switches, not chips: their labels wrap, so long ones stay inside the column */}
+                <Stack gap={6}>
                   {(Object.keys(CONDITION_LABELS) as Condition[]).map((condition) => (
-                    <Chip
+                    <Switch
                       key={condition}
                       size='xs'
-                      variant='light'
+                      label={CONDITION_LABELS[condition]}
                       checked={conditions[condition]}
-                      onChange={(checked) => setConditions((prev) => ({ ...prev, [condition]: checked }))}
-                    >
-                      {CONDITION_LABELS[condition]}
-                    </Chip>
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked
+                        setConditions((prev) => ({ ...prev, [condition]: checked }))
+                      }}
+                    />
                   ))}
-                </Group>
+                </Stack>
               </div>
 
               <div className={classes.discs}>
-                {resolved?.ok && resolved.build.discs.map((disc) => <DiscCard key={disc.id} disc={disc} icon={images.sets[disc.setId]} />)}
+                {resolved?.ok
+                  && resolved.build.discs.map((disc) => (
+                    <DiscCard key={disc.id} disc={disc} icon={images.sets[disc.setId]} score={scoreDisc(disc, discWeights)} />
+                  ))}
               </div>
             </div>
           )}

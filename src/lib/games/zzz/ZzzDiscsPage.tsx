@@ -13,7 +13,13 @@ import {
   Panel,
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
+import { AGENTS } from 'lib/games/zzz/data/agents'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
+import {
+  scoreDisc,
+  zzzDiscWeights,
+} from 'lib/games/zzz/stats/discScore'
+import type { Disc } from 'lib/games/zzz/types'
 import { DiscCard } from 'lib/games/zzz/ui/DiscCard'
 import {
   useMemo,
@@ -29,6 +35,11 @@ export function ZzzDiscsPage({ onImport }: { onImport: () => void }) {
   const [setId, setSetId] = useState<string | null>(null)
 
   const ownerNames = useMemo(() => new Map(builds.map((b) => [b.agentId, b.name])), [builds])
+  // Each disc is scored for the agent wearing it
+  const scoreFor = (disc: Disc) => {
+    const agent = disc.equippedBy ? AGENTS[disc.equippedBy] : undefined
+    return agent ? scoreDisc(disc, zzzDiscWeights(agent)) : undefined
+  }
   const setOptions = useMemo(() => {
     const names = new Map(discs.map((d) => [d.setId, d.setName]))
     return [...names].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
@@ -70,7 +81,14 @@ export function ZzzDiscsPage({ onImport }: { onImport: () => void }) {
       </Group>
 
       <div className={gear.grid}>
-        {shown.map((disc) => <DiscCard key={disc.id} disc={disc} owner={disc.equippedBy ? ownerNames.get(disc.equippedBy) : undefined} />)}
+        {shown.map((disc) => (
+          <DiscCard
+            key={disc.id}
+            disc={disc}
+            owner={disc.equippedBy ? ownerNames.get(disc.equippedBy) : undefined}
+            score={scoreFor(disc)}
+          />
+        ))}
       </div>
     </Stack>
   )

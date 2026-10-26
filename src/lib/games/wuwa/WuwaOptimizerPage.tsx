@@ -53,6 +53,11 @@ import {
   cancelEchoOptimizer,
   runEchoOptimizer,
 } from 'lib/games/wuwa/optimizer/optimizerClient'
+import {
+  WUWA_SETTINGS_KEY as SETTINGS_KEY,
+  WUWA_TARGETS as TARGETS,
+  wuwaTarget,
+} from 'lib/games/wuwa/optimizer/targets'
 import { wuwaPiecesTaken } from 'lib/games/wuwa/state/wuwaState'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import {
@@ -60,6 +65,10 @@ import {
   toDisplayStats,
   type WuwaStats,
 } from 'lib/games/wuwa/stats/computeStats'
+import {
+  scoreEcho,
+  wuwaEchoWeights,
+} from 'lib/games/wuwa/stats/echoScore'
 import {
   type Cost,
   type Echo,
@@ -81,20 +90,6 @@ const SHOWN_STATS: (keyof WuwaStats)[] = ['hp', 'atk', 'def', 'critRate', 'critD
 const MIN_STATS: (keyof WuwaStats)[] = ['energyRegen', 'critRate', 'critDmg', 'atk', 'hp', 'def', 'elementDmg']
 const FLAT_STATS = new Set<keyof WuwaStats>(['hp', 'atk', 'def'])
 const RESULT_LIMIT = 10
-
-// Targets as Select values
-const TARGETS: { value: string, target: EchoTarget }[] = [
-  { value: 'avg:atk', target: { kind: 'averageHit', stat: 'atk', bonus: 'none' } },
-  { value: 'avg:atk:skillDmg', target: { kind: 'averageHit', stat: 'atk', bonus: 'skillDmg' } },
-  { value: 'avg:atk:libDmg', target: { kind: 'averageHit', stat: 'atk', bonus: 'libDmg' } },
-  { value: 'avg:atk:basicDmg', target: { kind: 'averageHit', stat: 'atk', bonus: 'basicDmg' } },
-  { value: 'avg:atk:heavyDmg', target: { kind: 'averageHit', stat: 'atk', bonus: 'heavyDmg' } },
-  { value: 'avg:hp', target: { kind: 'averageHit', stat: 'hp', bonus: 'none' } },
-  { value: 'avg:def', target: { kind: 'averageHit', stat: 'def', bonus: 'none' } },
-  { value: 'cv', target: { kind: 'critValue' } },
-  ...(['atk', 'hp', 'def', 'critRate', 'critDmg', 'energyRegen', 'elementDmg', 'healingBonus'] as (keyof WuwaStats)[])
-    .map((stat) => ({ value: `stat:${stat}`, target: { kind: 'stat', stat } as EchoTarget })),
-]
 
 // As the overview screen shows it: rounded down
 function formatStat(stat: keyof WuwaStats, stats: WuwaStats): string {
@@ -120,8 +115,6 @@ function describeSets(echoes: Echo[]): string {
 function costOf(echoes: Echo[]): number {
   return echoes.reduce((sum, echo) => sum + echo.cost, 0)
 }
-
-const SETTINGS_KEY = 'wuwa-optimizer-settings'
 
 type WuwaOptimizerSettings = {
   targetValue: string,
@@ -183,7 +176,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     )
   }
 
-  const target = TARGETS.find((t) => t.value === targetValue)?.target ?? TARGETS[0].target
+  const target = wuwaTarget(targetValue)
   // A complete 5-piece set leaves no room for a 2-piece set, a 3-piece set leaves room for one
   const fullSetPieces = fullSet ? (SONATA_SETS[fullSet]?.fullPieces ?? 5) : 0
   const maxTwoPiece = fullSet ? Math.floor((5 - fullSetPieces) / 2) : 2
@@ -431,7 +424,14 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                 <StatGrid stats={SHOWN_STATS.map((stat) => ({ key: stat, label: wuwaStatLabel(stat), value: formatStat(stat, build.stats) }))} />
                 <Text size='xs' c='dimmed'>Pick the main echo (its skill) yourself: echo skills don't change the overview screen.</Text>
                 <div className={gear.grid}>
-                  {build.echoes.map((echo) => <EchoCard key={echo.id} echo={echo} owner={ownerOf.get(echo.id)} />)}
+                  {build.echoes.map((echo) => (
+                    <EchoCard
+                      key={echo.id}
+                      echo={echo}
+                      owner={ownerOf.get(echo.id)}
+                      score={scoreEcho(echo, wuwaEchoWeights(character, build.echoes, result.target))}
+                    />
+                  ))}
                 </div>
               </Stack>
             </Panel>

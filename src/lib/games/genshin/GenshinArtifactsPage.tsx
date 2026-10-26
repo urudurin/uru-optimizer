@@ -9,6 +9,11 @@ import {
 import { IconCards } from '@tabler/icons-react'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import {
+  genshinArtifactWeights,
+  scoreArtifact,
+} from 'lib/games/genshin/stats/artifactScore'
+import {
+  type Artifact,
   ARTIFACT_SLOTS,
   SLOT_LABELS,
 } from 'lib/games/genshin/types'
@@ -35,6 +40,22 @@ export function GenshinArtifactsPage({ onImport }: { onImport: () => void }) {
   const [limit, setLimit] = useState(PAGE_SIZE)
 
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
+  // Each artifact is scored for the character wearing it; their weights are worked out once, when first needed
+  const scoreFor = useMemo(() => {
+    const byCharacter = new Map(characters.map((c) => [c.id, c]))
+    const byId = new Map(artifacts.map((a) => [a.id, a]))
+    const cache = new Map<string, Record<string, number>>()
+    return (artifact: Artifact) => {
+      const wearer = artifact.equippedBy ? byCharacter.get(artifact.equippedBy) : undefined
+      if (!wearer) return undefined
+      let weights = cache.get(wearer.id)
+      if (!weights) {
+        weights = genshinArtifactWeights(wearer, ARTIFACT_SLOTS.flatMap((slot) => byId.get(wearer.artifactIds[slot] ?? '') ?? []))
+        cache.set(wearer.id, weights)
+      }
+      return scoreArtifact(artifact, weights)
+    }
+  }, [characters, artifacts])
   const setOptions = useMemo(() => {
     const names = new Map(artifacts.map((a) => [a.setId, a.setName]))
     return [...names].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
@@ -92,7 +113,12 @@ export function GenshinArtifactsPage({ onImport }: { onImport: () => void }) {
 
       <div className={gear.grid}>
         {shown.slice(0, limit).map((artifact) => (
-          <ArtifactCard key={artifact.id} artifact={artifact} owner={artifact.equippedBy ? ownerNames.get(artifact.equippedBy) : undefined} />
+          <ArtifactCard
+            key={artifact.id}
+            artifact={artifact}
+            owner={artifact.equippedBy ? ownerNames.get(artifact.equippedBy) : undefined}
+            score={scoreFor(artifact)}
+          />
         ))}
       </div>
       {shown.length > limit && (

@@ -16,6 +16,11 @@ import gear from 'lib/games/shared/ui/GearCard.module.css'
 import { characterName } from 'lib/games/wuwa/data/gameData'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import {
+  scoreEcho,
+  wuwaEchoWeights,
+} from 'lib/games/wuwa/stats/echoScore'
+import type { Echo } from 'lib/games/wuwa/types'
+import {
   EchoCard,
   setName,
 } from 'lib/games/wuwa/ui/EchoCard'
@@ -39,6 +44,23 @@ export function WuwaEchoesPage({ onImport }: { onImport: () => void }) {
     }
     return byEcho
   }, [characters])
+  // Each echo is scored for the Resonator wearing it; their weights are worked out once, when first needed
+  const scoreFor = useMemo(() => {
+    const byId = new Map(echoes.map((e) => [e.id, e]))
+    const owner = new Map<string, (typeof characters)[number]>()
+    for (const character of characters) for (const id of character.echoIds) if (id) owner.set(id, character)
+    const cache = new Map<string, Record<string, number>>()
+    return (echo: Echo) => {
+      const character = owner.get(echo.id)
+      if (!character) return undefined
+      let weights = cache.get(character.charId)
+      if (!weights) {
+        weights = wuwaEchoWeights(character, character.echoIds.flatMap((id) => (id ? byId.get(id) ?? [] : [])))
+        cache.set(character.charId, weights)
+      }
+      return scoreEcho(echo, weights)
+    }
+  }, [characters, echoes])
   const setOptions = useMemo(
     () => [...new Set(echoes.map((e) => e.setId))].map((id) => ({ value: id, label: setName(id) })).sort((a, b) => a.label.localeCompare(b.label)),
     [echoes],
@@ -79,7 +101,7 @@ export function WuwaEchoesPage({ onImport }: { onImport: () => void }) {
       </Group>
 
       <div className={gear.grid}>
-        {shown.map((echo) => <EchoCard key={echo.id} echo={echo} owner={wearer.get(echo.id)} />)}
+        {shown.map((echo) => <EchoCard key={echo.id} echo={echo} owner={wearer.get(echo.id)} score={scoreFor(echo)} />)}
       </div>
     </Stack>
   )

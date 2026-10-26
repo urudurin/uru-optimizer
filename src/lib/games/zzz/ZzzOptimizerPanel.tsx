@@ -83,6 +83,10 @@ import {
   statScreenConditions,
   toDisplayStats,
 } from 'lib/games/zzz/stats/computeStats'
+import {
+  scoreDisc,
+  zzzDiscWeights,
+} from 'lib/games/zzz/stats/discScore'
 import type {
   Disc,
   ZzzStatsValues,
@@ -599,7 +603,12 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                 <Notices messages={best.warnings} />
                 <div className={gear.grid}>
                   {best.discs.map((disc) => (
-                    <DiscCard key={disc.id} disc={disc} owner={disc.equippedBy ? (ownerNames.get(disc.equippedBy) ?? `Agent ${disc.equippedBy}`) : undefined} />
+                    <DiscCard
+                      key={disc.id}
+                      disc={disc}
+                      owner={disc.equippedBy ? (ownerNames.get(disc.equippedBy) ?? `Agent ${disc.equippedBy}`) : undefined}
+                      score={scoreDisc(disc, zzzDiscWeights(agent))}
+                    />
                   ))}
                 </div>
               </Stack>

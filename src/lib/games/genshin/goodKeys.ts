@@ -91,6 +91,11 @@ const MAX_5_STAR_ROLL: Partial<Record<GenshinStatKey, number>> = {
 // Every stat a 5-star substat can be
 export const SUBSTAT_STATS = Object.keys(MAX_5_STAR_ROLL) as GenshinStatKey[]
 
+// The highest single 5-star roll of a substat (0 for stats that can't be substats)
+export function maxRoll(stat: GenshinStatKey): number {
+  return MAX_5_STAR_ROLL[stat] ?? 0
+}
+
 // One average 5-star roll: rolls are 70, 80, 90 or 100% of the highest, equally likely
 export function averageRoll(stat: GenshinStatKey): number {
   return (MAX_5_STAR_ROLL[stat] ?? 0) * 0.85

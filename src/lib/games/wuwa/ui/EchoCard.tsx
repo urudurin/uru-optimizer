@@ -4,7 +4,9 @@ import {
   Text,
 } from '@mantine/core'
 import { roundHalfUp } from 'lib/games/shared/format'
+import type { GearScore } from 'lib/games/shared/gearScore'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
+import { GearScoreLine } from 'lib/games/shared/ui/GearScoreLine'
 import {
   ECHO_DEFINITIONS,
   SONATA_SETS,
@@ -58,7 +60,8 @@ function TierDots({ tier, of }: { tier: number, of: number }) {
   )
 }
 
-export function EchoCard({ echo, owner }: { echo: Echo, owner?: string }) {
+// score: for the Resonator shown (stats/echoScore.ts)
+export function EchoCard({ echo, owner, score }: { echo: Echo, owner?: string, score?: GearScore }) {
   const secondary = SECONDARY_MAIN[echo.cost]
   return (
     <div className={gear.card}>
@@ -88,6 +91,7 @@ export function EchoCard({ echo, owner }: { echo: Echo, owner?: string }) {
           )
         })}
       </div>
+      <GearScoreLine score={score} />
       {owner && <div className={gear.footer}>{`Worn by ${owner}`}</div>}
     </div>
   )

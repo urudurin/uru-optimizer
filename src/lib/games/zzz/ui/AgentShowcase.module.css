@@ -147,6 +147,7 @@
 }
 
 .artColumn {
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -196,6 +197,8 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* Grid items don't shrink below their content by default, so a long label could spill into the discs */
+  min-width: 0;
 }
 
 .statList {

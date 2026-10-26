@@ -7,6 +7,8 @@ import {
 } from '@mantine/core'
 import { IconUsers } from '@tabler/icons-react'
 import { formatNumber } from 'lib/games/shared/format'
+import { scoreBuild } from 'lib/games/shared/gearScore'
+import { BuildRating } from 'lib/games/shared/ui/BuildRating'
 import {
   EmptyState,
   Notices,
@@ -28,6 +30,10 @@ import {
   computeWuwaStats,
   toDisplayStats,
 } from 'lib/games/wuwa/stats/computeStats'
+import {
+  scoreEcho,
+  wuwaEchoWeights,
+} from 'lib/games/wuwa/stats/echoScore'
 import {
   MAX_LOADOUT_COST,
   statLabel,
@@ -67,6 +73,8 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
     const echo = id ? echoById.get(id) : undefined
     return echo ? [echo] : []
   })
+  // Scored for this Resonator, see stats/echoScore.ts
+  const echoWeights = wuwaEchoWeights(character, loadout)
   const { stats, warnings } = computeWuwaStats(character, loadout)
   const shown = toDisplayStats(stats)
   const element = CHARACTER_INFO[character.charId]?.element
@@ -125,6 +133,7 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
                 ...(shown.healingBonus > 0 ? [{ key: 'heal', label: 'Healing Bonus', value: `${shown.healingBonus}%` }] : []),
               ]}
             />
+            <BuildRating score={scoreBuild(loadout.map((echo) => scoreEcho(echo, echoWeights)), 5)} label='Echo score' />
             <Notices messages={[...warnings, ...validateLoadout(loadout)]} />
           </Stack>
         </Panel>
@@ -135,7 +144,7 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
           actions={<Text size='sm' c={cost > MAX_LOADOUT_COST ? 'red' : 'dimmed'}>{`Cost ${cost} / ${MAX_LOADOUT_COST}`}</Text>}
         >
           <div className={gear.grid}>
-            {loadout.map((echo) => <EchoCard key={echo.id} echo={echo} />)}
+            {loadout.map((echo) => <EchoCard key={echo.id} echo={echo} score={scoreEcho(echo, echoWeights)} />)}
           </div>
         </Panel>
       </SideLayout>

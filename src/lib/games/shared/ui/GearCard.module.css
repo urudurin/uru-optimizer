@@ -87,3 +87,44 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* The Score line (GearScoreLine.tsx) under the substats, like HSR's relic cards */
+
+.score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+  font-variant-numeric: tabular-nums;
+}
+
+.score svg {
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.scoreValue {
+  margin-left: auto;
+  font-weight: 600;
+}
+
+/* The build's rating under the stat block (BuildRating.tsx), after HSR's DPS Benchmark summary */
+
+.buildRating {
+  padding: 10px 8px;
+  text-align: center;
+  color: #f0a64a;
+  font-weight: 600;
+}
+
+.buildRatingValue {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+
+.buildRatingLabel {
+  font-size: 14px;
+}

@@ -10,7 +10,9 @@ import {
   SLOT_LABELS,
   statLabel,
 } from 'lib/games/genshin/types'
+import type { GearScore } from 'lib/games/shared/gearScore'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
+import { GearScoreLine } from 'lib/games/shared/ui/GearScoreLine'
 
 // Mantine colors for Genshin elements, used for character badges
 const ELEMENT_COLORS: Record<Element, string> = {
@@ -36,7 +38,8 @@ function RollDots({ rolls }: { rolls: number }) {
   )
 }
 
-export function ArtifactCard({ artifact, owner }: { artifact: Artifact, owner?: string }) {
+// score: for the character shown (stats/artifactScore.ts)
+export function ArtifactCard({ artifact, owner, score }: { artifact: Artifact, owner?: string, score?: GearScore }) {
   return (
     <div className={gear.card}>
       <Group justify='space-between' gap={6} wrap='nowrap'>
@@ -57,6 +60,7 @@ export function ArtifactCard({ artifact, owner }: { artifact: Artifact, owner?: 
           </div>
         ))}
       </div>
+      <GearScoreLine score={score} />
       {owner && <div className={gear.footer}>{`Worn by ${owner}`}</div>}
     </div>
   )

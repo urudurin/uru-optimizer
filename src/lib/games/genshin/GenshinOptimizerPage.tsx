@@ -26,8 +26,17 @@ import {
   cancelOptimizer,
   runOptimizer,
 } from 'lib/games/genshin/optimizer/optimizerClient'
+import {
+  GENSHIN_SETTINGS_KEY as SETTINGS_KEY,
+  GENSHIN_TARGETS as TARGETS,
+  genshinTarget,
+} from 'lib/games/genshin/optimizer/targets'
 import { genshinPiecesTaken } from 'lib/games/genshin/state/genshinState'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
+import {
+  genshinArtifactWeights,
+  scoreArtifact,
+} from 'lib/games/genshin/stats/artifactScore'
 import { hasStatData } from 'lib/games/genshin/stats/computeStats'
 import type { BuffSetting } from 'lib/games/genshin/team/buffs'
 import { teamBuffsFor } from 'lib/games/genshin/team/teamBuffs'
@@ -81,18 +90,6 @@ const MAIN_STAT_SLOTS = Object.keys(MAIN_STAT_OPTIONS) as MainStatSlot[]
 const MIN_STATS: GenshinStatKey[] = ['energyRecharge', 'critRate', 'critDmg', 'elementalMastery', 'atk', 'hp', 'def']
 const SHOWN_STATS: GenshinStatKey[] = ['hp', 'atk', 'def', 'elementalMastery', 'critRate', 'critDmg', 'energyRecharge']
 
-// Targets as Select values
-const TARGETS: { value: string, target: OptimizerTarget }[] = [
-  { value: 'avg:atk', target: { kind: 'averageHit', stat: 'atk' } },
-  { value: 'avg:hp', target: { kind: 'averageHit', stat: 'hp' } },
-  { value: 'avg:def', target: { kind: 'averageHit', stat: 'def' } },
-  { value: 'avg:elementalMastery', target: { kind: 'averageHit', stat: 'elementalMastery' } },
-  { value: 'cv', target: { kind: 'critValue' } },
-  ...SHOWN_STATS.map((stat) => ({ value: `stat:${stat}`, target: { kind: 'stat', stat } as OptimizerTarget })),
-  ...(['pyroDmg', 'hydroDmg', 'anemoDmg', 'electroDmg', 'dendroDmg', 'cryoDmg', 'geoDmg', 'physicalDmg', 'healingBonus'] as GenshinStatKey[])
-    .map((stat) => ({ value: `stat:${stat}`, target: { kind: 'stat', stat } as OptimizerTarget })),
-]
-
 const RESULT_LIMIT = 10
 
 function formatScore(target: OptimizerTarget, score: number): string {
@@ -115,8 +112,6 @@ function describeSets(artifacts: Artifact[]): string {
 function statsToShow(character: GenshinCharacter): GenshinStatKey[] {
   return [...SHOWN_STATS, ...(character.element ? [ELEMENT_DMG_STAT[character.element]] : [])]
 }
-
-const SETTINGS_KEY = 'genshin-optimizer-settings'
 
 type GenshinOptimizerSettings = {
   targetValue: string,
@@ -199,9 +194,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     )
   }
 
-  const picked = TARGETS.find((t) => t.value === targetValue)?.target ?? TARGETS[0].target
-  // The average hit counts the character's own element's DMG Bonus
-  const target: OptimizerTarget = picked.kind === 'averageHit' ? { ...picked, element: character.element } : picked
+  const target = genshinTarget(targetValue, character.element)
   // What the team gives this character, the same for every build
   const team = { teammates, onField, settings: teamSettings }
   const teamResult = teamBuffsFor(character, team, { characters, artifacts })
@@ -463,6 +456,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                     key={artifact.id}
                     artifact={artifact}
                     owner={artifact.equippedBy ? (ownerNames.get(artifact.equippedBy) ?? artifact.equippedBy) : undefined}
+                    score={scoreArtifact(artifact, genshinArtifactWeights(character, build.artifacts, result.target))}
                   />
                 ))}
               </div>
