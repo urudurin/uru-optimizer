@@ -103,7 +103,7 @@ export function isEnkaZzzResponse(input: unknown): boolean {
   return isRecord(input) && isRecord(input.PlayerInfo)
 }
 
-function elementOf(agentId: string, types: string[] | undefined): string {
+export function elementOf(agentId: string, types: string[] | undefined): string {
   const known = AGENTS[agentId]?.element
   if (known) return known
   // Agents with a special element list the base one too (Miyabi: ["FireFrost", "Ice"])

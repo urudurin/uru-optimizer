@@ -3,6 +3,7 @@ import {
   deserializeZzzData,
   equipZzzDiscs,
   readZzzBackup,
+  saveZzzBuild,
   serializeZzzData,
   type ZzzData,
   zzzPiecesTaken,
@@ -25,6 +26,25 @@ const disc: Disc = {
   substats: [{ stat: 'CRIT Rate', rolls: 1 }],
   locked: false,
 }
+
+describe('saveZzzBuild', () => {
+  it('adds a build by id, or replaces the one with the same id', () => {
+    const build = {
+      id: 'uru-1091',
+      agentId: '1091',
+      name: 'Miyabi',
+      element: 'Ice',
+      specialty: 'Anomaly',
+      level: 60,
+      mindscapeLevel: 0,
+      wEngineRefinement: 1,
+      discIds: {},
+    }
+    const added = saveZzzBuild({ discs: [], builds: [] }, build)
+    expect(added.builds).toEqual([build])
+    expect(saveZzzBuild(added, { ...build, mindscapeLevel: 2 }).builds).toEqual([{ ...build, mindscapeLevel: 2 }])
+  })
+})
 
 describe('ZZZ save', () => {
   it('round-trips discs and builds', () => {

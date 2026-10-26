@@ -7,6 +7,7 @@ import {
   genshinPiecesTaken,
   mergeGenshinData,
   readGenshinBackup,
+  saveGenshinCharacter,
   serializeGenshinData,
 } from 'lib/games/genshin/state/genshinState'
 import type {
@@ -41,6 +42,27 @@ const character = (id: string, flower?: string): GenshinCharacter => ({
 })
 
 const data: GenshinData = { artifacts: [artifact('a1', 'c1'), artifact('a2', 'c2')], characters: [character('c1', 'a1'), character('c2', 'a2')] }
+
+describe('saveGenshinCharacter', () => {
+  it('adds a character with no artifacts or stats, and an edit that changes something clears Enka stats', () => {
+    const added = saveGenshinCharacter(data, { id: 'Bennett', name: 'Bennett', element: 'Pyro', level: 80, constellation: 6 })
+    expect(added.characters.at(-1)).toEqual({
+      id: 'Bennett',
+      name: 'Bennett',
+      element: 'Pyro',
+      level: 80,
+      constellation: 6,
+      artifactIds: {},
+      stats: {},
+      statsDate: '',
+    })
+
+    const same = saveGenshinCharacter(data, { id: 'c1', name: 'Character c1', level: 90, constellation: 0 })
+    expect(same.characters[0].stats).toEqual({ hp: 20000 })
+    const changed = saveGenshinCharacter(data, { id: 'c1', name: 'Character c1', level: 80, constellation: 0 })
+    expect(changed.characters[0]).toMatchObject({ level: 80, stats: {}, artifactIds: { flower: 'a1' } })
+  })
+})
 
 describe('Genshin save', () => {
   it('round-trips, and loads bad saves as empty', () => {

@@ -106,6 +106,12 @@ export function equipZzzDiscs(
   }
 }
 
+// Adds a build by hand (an agent the save didn't have) or changes a saved one, matched by id. Its discs stay as they are
+export function saveZzzBuild(data: ZzzData, build: ImportedBuild): ZzzData {
+  const exists = data.builds.some((b) => b.id === build.id)
+  return { ...data, builds: exists ? data.builds.map((b) => (b.id === build.id ? build : b)) : [...data.builds, build] }
+}
+
 // Who would lose discs to this agent, by agent id
 export function zzzPiecesTaken(data: ZzzData, agentId: string, discs: Disc[]): string[] {
   const loadouts: Loadouts<DiscSlot> = new Map(data.builds.map((b) => [b.agentId, { ...b.discIds }]))

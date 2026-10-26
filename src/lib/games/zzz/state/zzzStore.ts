@@ -12,6 +12,7 @@ import type {
 import {
   deserializeZzzData,
   equipZzzDiscs,
+  saveZzzBuild,
   serializeZzzData,
   ZZZ_STATE_KEY,
 } from 'lib/games/zzz/state/zzzState'
@@ -32,6 +33,8 @@ type ZzzStore = {
   importParsed: (parsed: ParsedZzzExport, mode: ImportMode) => void,
   // Makes these the agent's discs in this browser's save, see equipZzzDiscs
   equip: (...args: Parameters<typeof equipZzzDiscs> extends [unknown, ...infer Rest] ? Rest : never) => void,
+  // Adds an agent by hand or changes a saved build's Mindscape and W-Engine, see saveZzzBuild
+  saveBuild: (build: ImportedBuild) => void,
   clear: () => void,
 }
 
@@ -59,6 +62,13 @@ export const useZzzStore = create<ZzzStore>()((set, get) => ({
   equip: (agent, wEngine, discs) => {
     const state = get()
     const data = equipZzzDiscs({ discs: state.discs, builds: state.builds }, agent, wEngine, discs)
+    save(data.discs, data.builds)
+    set(data)
+  },
+
+  saveBuild: (build) => {
+    const state = get()
+    const data = saveZzzBuild({ discs: state.discs, builds: state.builds }, build)
     save(data.discs, data.builds)
     set(data)
   },

@@ -106,7 +106,7 @@ const SLOTS: Record<string, ArtifactSlot> = {
   EQUIP_DRESS: 'circlet',
 }
 
-const ELEMENTS: Record<string, Element> = {
+export const ELEMENTS: Record<string, Element> = {
   Fire: 'Pyro',
   Water: 'Hydro',
   Wind: 'Anemo',

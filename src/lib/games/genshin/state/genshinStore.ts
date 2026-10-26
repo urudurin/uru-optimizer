@@ -3,8 +3,10 @@ import {
   EMPTY_GENSHIN_DATA,
   equipGenshinArtifacts,
   GENSHIN_STATE_KEY,
+  type GenshinCharacterDetails,
   type GenshinData,
   mergeGenshinData,
+  saveGenshinCharacter,
   serializeGenshinData,
 } from 'lib/games/genshin/state/genshinState'
 import type { Artifact } from 'lib/games/genshin/types'
@@ -27,6 +29,8 @@ type GenshinStore = GenshinData & {
   importParsed: (parsed: GenshinData & { warnings: string[] }, mode: ImportMode) => void,
   // Makes these the character's artifacts in this browser's save, see equipGenshinArtifacts
   equip: (characterId: string, artifacts: Artifact[]) => void,
+  // Adds a character by hand or changes their level, constellation or weapon, see saveGenshinCharacter
+  saveCharacter: (details: GenshinCharacterDetails) => void,
   clear: () => void,
 }
 
@@ -49,6 +53,13 @@ export const useGenshinStore = create<GenshinStore>()((set, get) => ({
   equip: (characterId, artifacts) => {
     const { artifacts: saved, characters } = get()
     const data = equipGenshinArtifacts({ artifacts: saved, characters }, characterId, artifacts)
+    save(data)
+    set(data)
+  },
+
+  saveCharacter: (details) => {
+    const { artifacts, characters } = get()
+    const data = saveGenshinCharacter({ artifacts, characters }, details)
     save(data)
     set(data)
   },

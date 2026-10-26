@@ -112,6 +112,23 @@ export function equipGenshinArtifacts(data: GenshinData, characterId: string, ar
   }
 }
 
+// What a character added by hand has (or what can be changed on a saved one)
+export type GenshinCharacterDetails = Pick<GenshinCharacter, 'id' | 'name' | 'element' | 'level' | 'constellation' | 'weapon'>
+
+// Adds a character by hand, or changes a saved one's level, constellation or weapon. A change clears their Enka stats,
+// which no longer match; the Characters page then shows calculated ones. Their artifacts stay as they are
+export function saveGenshinCharacter(data: GenshinData, details: GenshinCharacterDetails): GenshinData {
+  const existing = data.characters.find((c) => c.id === details.id)
+  if (!existing) {
+    const added: GenshinCharacter = { ...details, artifactIds: {}, stats: {}, statsDate: '' }
+    return { ...data, characters: [...data.characters, added] }
+  }
+  const same = (a?: GenshinCharacter['weapon'], b?: GenshinCharacter['weapon']) => a?.id === b?.id && a?.level === b?.level && a?.refinement === b?.refinement
+  const changed = existing.level !== details.level || existing.constellation !== details.constellation || !same(existing.weapon, details.weapon)
+  const updated: GenshinCharacter = { ...existing, ...details, ...(changed ? { stats: {}, ascension: undefined } : {}) }
+  return { ...data, characters: data.characters.map((c) => (c === existing ? updated : c)) }
+}
+
 // Who would lose artifacts to this character, by character id
 export function genshinPiecesTaken(data: GenshinData, characterId: string, artifacts: Artifact[]): string[] {
   const loadouts: Loadouts<ArtifactSlot> = new Map(data.characters.map((c) => [c.id, c.artifactIds]))
