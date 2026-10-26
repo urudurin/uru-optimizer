@@ -56,7 +56,7 @@ Character icons and wish splash art, weapon icons and artifact piece icons are l
 
 Wuthering Waves has no image source the site can fetch: Enka doesn't cover it, the datamine tables are text only, and Fandom's Terms of Use forbid automated access. The user can save art by hand into `wuwa/user-art/`, which is gitignored (only its README is committed); pages show initials for anyone without a file there. The art belongs to Kuro Games; personal use.
 
-WuWa echo score weights (`wuwa/data/statPriorities.ts`): our own table from in-game skill descriptions, edited by hand, never copied from third-party guide sites; unverified entries need review. Suoming's and Hsin's entries follow the substat priority on Kuro's own guide site (wuwaguide.kurogames.com), read by hand (guides credited to a community contributor, Void Enigma). The WuWa build rating's 100% is our own standard build modelled on KQM Standards (`wuwa/stats/echoScore.ts`): there is no community standard for WuWa.
+WuWa echo score weights (`wuwa/data/statPriorities.ts`): our own table from in-game skill descriptions, edited by hand, never copied from third-party guide sites; unverified entries need review. Entries marked 'guide' (Suoming, Hsin, Shorekeeper, Phoebe, Yuanwu, Chixia, Aalto, Jianxin, Roccia, Yangyang, Youhu and the three Rovers) follow the substat priority on Kuro's own guide site (wuwaguide.kurogames.com), read by hand one page at a time; each cites its guide by role_id and contributor (Void Enigma, Krow, WW Echoes). The WuWa build rating's 100% is our own standard build modelled on KQM Standards (`wuwa/stats/echoScore.ts`): there is no community standard for WuWa.
 
 ## Imported presets (any game)
 

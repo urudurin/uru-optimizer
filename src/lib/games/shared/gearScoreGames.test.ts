@@ -108,7 +108,7 @@ describe('gear scores per game', () => {
     }
     const weights = wuwaEchoWeights({ ...hsin, charId: 'jiyan' })
     expect(weights).toMatchObject({ critRate: 1, critDmg: 1, atkPct: 0.75, heavyDmg: 0.5, energyRegen: 0.5 })
-    expect(wuwaEchoWeights({ ...hsin, charId: 'the-shorekeeper' })).toEqual({ hpPct: 1, hpFlat: 0.33, energyRegen: 1 })
+    expect(wuwaEchoWeights({ ...hsin, charId: 'the-shorekeeper' })).toEqual({ hpPct: 1, hpFlat: 0.33, energyRegen: 1.25 })
     const echo: Echo = {
       id: 'e',
       defId: 'd',
