@@ -50,6 +50,10 @@ Agent art and icons, W-Engine art and disc set icons are loaded from Enka.Networ
 | Artifact set 2-piece bonuses                                                                      | In-game set descriptions; newer sets checked against genshin-optimizer's set sheets (MIT). Confidence: sourced                                                                                                                                                                                  | `genshin/data/setBonuses.ts`                                  |
 | Always-on passives shown on the stat screen (Raiden, Engulfing Lightning, Staff of Homa...)       | In-game descriptions; Raiden and Engulfing Lightning confirmed against her stat screen. Confidence tag on each                                                                                                                                                                                  | `genshin/data/screenPassives.ts`                              |
 
+Character icons and wish splash art, weapon icons and artifact piece icons are loaded from Enka.Network when the Characters page is viewed. Enka's Genshin store files (avatars SideIconName, weapons Icon, relics Items Icon) name them and enka.network serves them as /ui/<name>.png (Enka's API docs, "Icons and Images"). Nothing is copied into this repo (`genshin/data/images.ts`). The art belongs to HoYoverse; personal, non-commercial use.
+
+Wuthering Waves has no image source yet: Enka doesn't cover it and the datamine tables are text only, so its pages show initials.
+
 ## Imported presets (any game)
 
 Users can import a presets file of their own, for example notes taken from a guide site such as Prydwen or a community

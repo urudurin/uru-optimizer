@@ -14,11 +14,15 @@ import {
   Notices,
   PageHeader,
   Panel,
-  PickList,
-  SideLayout,
-  StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
-import gear from 'lib/games/shared/ui/GearCard.module.css'
+import {
+  Roster,
+  RosterLayout,
+  ShowcaseCard,
+  StatList,
+  type StatListRow,
+} from 'lib/games/shared/ui/Showcase'
+import { statIcon } from 'lib/games/shared/ui/statIcons'
 import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
 import {
   characterName,
@@ -35,6 +39,7 @@ import {
   wuwaEchoWeights,
 } from 'lib/games/wuwa/stats/echoScore'
 import {
+  type ElementDmgKey,
   MAX_LOADOUT_COST,
   statLabel,
 } from 'lib/games/wuwa/types'
@@ -48,6 +53,15 @@ import {
   useState,
 } from 'react'
 
+// The Resonators page, after HSR's Characters page like ZZZ's Agents page: a roster of banners and one showcase card
+// (shared/ui/Showcase.tsx). There's no image source for WuWa yet (Enka doesn't cover it, the datamine is text only), so
+// banners and the card show initials on the element's color.
+
+// The datamine's weapon types
+const WEAPON_TYPES: Record<number, string> = { 1: 'Broadblade', 2: 'Sword', 3: 'Pistols', 4: 'Gauntlets', 5: 'Rectifier' }
+
+const accentOf = (element: ElementDmgKey | undefined) => element && `var(--mantine-color-${elementColor(element)}-6)`
+
 export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
   const echoes = useWuwaStore((s) => s.echoes)
   const characters = useWuwaStore((s) => s.characters)
@@ -55,6 +69,11 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
 
   const echoById = useMemo(() => new Map(echoes.map((echo) => [echo.id, echo])), [echoes])
   const character = characters.find((c) => c.charId === picked) ?? characters[0]
+  // Roster groups are element names; this finds their colors again
+  const elementByName = useMemo(
+    () => new Map(Object.values(CHARACTER_INFO).map((info) => [elementName(info.element), info.element])),
+    [],
+  )
 
   if (!character) {
     return (
@@ -80,6 +99,21 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
   const element = CHARACTER_INFO[character.charId]?.element
   const weapon = character.weaponId ? WEAPONS[character.weaponId] : undefined
   const cost = loadout.reduce((sum, echo) => sum + echo.cost, 0)
+  const name = characterName(character.charId)
+
+  const rows: StatListRow[] = [
+    { key: 'hp', icon: statIcon('hp'), label: 'HP', value: formatNumber(shown.hp) },
+    { key: 'atk', icon: statIcon('atk'), label: 'ATK', value: formatNumber(shown.atk), highlight: true },
+    { key: 'def', icon: statIcon('def'), label: 'DEF', value: formatNumber(shown.def) },
+    { key: 'er', icon: statIcon('energy'), label: 'Energy Regen', value: `${shown.energyRegen}%` },
+    { key: 'cr', icon: statIcon('critRate'), label: 'Crit Rate', value: `${shown.critRate}%`, highlight: true },
+    { key: 'cd', icon: statIcon('critDmg'), label: 'Crit DMG', value: `${shown.critDmg}%`, highlight: true },
+    ...(element ? [{ key: 'element', icon: statIcon('elementDmg'), label: statLabel(element), value: `${shown.elementDmg}%`, highlight: true }] : []),
+    { key: 'skill', icon: statIcon('dmgBonus'), label: 'Resonance Skill DMG', value: `${shown.skillDmg}%` },
+    { key: 'lib', icon: statIcon('dmgBonus'), label: 'Liberation DMG', value: `${shown.libDmg}%` },
+    { key: 'basic', icon: statIcon('dmgBonus'), label: 'Basic Attack DMG', value: `${shown.basicDmg}%` },
+    ...(shown.healingBonus > 0 ? [{ key: 'heal', icon: statIcon('heal'), label: 'Healing Bonus', value: `${shown.healingBonus}%` }] : []),
+  ]
 
   return (
     <Stack gap='lg'>
@@ -88,66 +122,51 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
         description='What the in-game overview screen shows, worked out from base stats, weapon, minor fortes and echoes. Matches the game to within 0.2%.'
       />
 
-      <SideLayout
-        side={
-          <Panel title='Your Resonators' description={`${characters.length} imported`}>
-            <PickList
-              active={character.charId}
-              onPick={setPicked}
-              items={characters.map((c) => {
-                const info = CHARACTER_INFO[c.charId]
-                const w = c.weaponId ? WEAPONS[c.weaponId] : undefined
-                return {
-                  key: c.charId,
-                  title: characterName(c.charId),
-                  meta: `Lv ${c.level} · S${c.sequence} · ${w ? `${w.name} R${c.refinement}` : 'No weapon'}`,
-                  badge: info ? <Badge size='xs' variant='light' color={elementColor(info.element)}>{elementName(info.element)}</Badge> : undefined,
-                }
-              })}
-            />
-          </Panel>
+      <RosterLayout
+        roster={
+          <Roster
+            active={character.charId}
+            onPick={setPicked}
+            groupColor={(group) => elementColor(elementByName.get(group))}
+            entries={characters.map((c) => {
+              const info = CHARACTER_INFO[c.charId]
+              const w = c.weaponId ? WEAPONS[c.weaponId] : undefined
+              return {
+                key: c.charId,
+                name: characterName(c.charId),
+                meta: `Lv ${c.level} · S${c.sequence} · ${w ? `${w.name} R${c.refinement}` : 'No weapon'}`,
+                group: info ? elementName(info.element) : 'Unknown',
+                subgroup: w ? WEAPON_TYPES[w.weaponType] : undefined,
+              }
+            })}
+          />
         }
       >
-        <Panel
-          title={
-            <Group gap={8}>
-              <span>{characterName(character.charId)}</span>
-              {element && <Badge size='sm' variant='light' color={elementColor(element)}>{elementName(element)}</Badge>}
-            </Group>
+        <ShowcaseCard
+          name={name}
+          accent={accentOf(element)}
+          weapon={weapon
+            && { name: weapon.name, meta: `${WEAPON_TYPES[weapon.weaponType] ?? 'Weapon'} · Lv ${character.weaponLevel} · R${character.refinement}` }}
+          info={
+            <>
+              <div>
+                <Text size='xl' fw={700}>{name}</Text>
+                <Group gap={6} mt={4}>
+                  {element && <Badge size='sm' variant='light' color={elementColor(element)}>{elementName(element)}</Badge>}
+                  <Text size='xs' c='dimmed'>{`Lv ${character.level} · S${character.sequence}`}</Text>
+                </Group>
+              </div>
+              <StatList rows={rows} />
+              <BuildRating score={scoreBuild(loadout.map((echo) => scoreEcho(echo, echoWeights)), 5)} label='Echo score' />
+              <Text size='xs' c={cost > MAX_LOADOUT_COST ? 'red' : 'dimmed'}>{`Echo cost ${cost} / ${MAX_LOADOUT_COST} · main echo first`}</Text>
+              <Notices messages={[...warnings, ...validateLoadout(loadout)]} />
+            </>
           }
-          description={`Level ${character.level} · Sequence ${character.sequence} · ${weapon ? `${weapon.name} R${character.refinement}` : 'No weapon'}`}
-        >
-          <Stack gap='md'>
-            <StatGrid
-              stats={[
-                { key: 'hp', label: 'HP', value: formatNumber(shown.hp) },
-                { key: 'atk', label: 'ATK', value: formatNumber(shown.atk), highlight: true },
-                { key: 'def', label: 'DEF', value: formatNumber(shown.def) },
-                { key: 'er', label: 'Energy Regen', value: `${shown.energyRegen}%` },
-                { key: 'cr', label: 'Crit Rate', value: `${shown.critRate}%`, highlight: true },
-                { key: 'cd', label: 'Crit DMG', value: `${shown.critDmg}%`, highlight: true },
-                ...(element ? [{ key: 'element', label: statLabel(element), value: `${shown.elementDmg}%` }] : []),
-                { key: 'skill', label: 'Resonance Skill DMG', value: `${shown.skillDmg}%` },
-                { key: 'lib', label: 'Liberation DMG', value: `${shown.libDmg}%` },
-                { key: 'basic', label: 'Basic Attack DMG', value: `${shown.basicDmg}%` },
-                ...(shown.healingBonus > 0 ? [{ key: 'heal', label: 'Healing Bonus', value: `${shown.healingBonus}%` }] : []),
-              ]}
-            />
-            <BuildRating score={scoreBuild(loadout.map((echo) => scoreEcho(echo, echoWeights)), 5)} label='Echo score' />
-            <Notices messages={[...warnings, ...validateLoadout(loadout)]} />
-          </Stack>
-        </Panel>
-
-        <Panel
-          title='Echoes'
-          description='Main echo first'
-          actions={<Text size='sm' c={cost > MAX_LOADOUT_COST ? 'red' : 'dimmed'}>{`Cost ${cost} / ${MAX_LOADOUT_COST}`}</Text>}
-        >
-          <div className={gear.grid}>
-            {loadout.map((echo) => <EchoCard key={echo.id} echo={echo} score={scoreEcho(echo, echoWeights)} />)}
-          </div>
-        </Panel>
-      </SideLayout>
+          gear={loadout.length > 0
+            ? loadout.map((echo) => <EchoCard key={echo.id} echo={echo} score={scoreEcho(echo, echoWeights)} />)
+            : <Text size='sm' c='dimmed'>No echoes equipped.</Text>}
+        />
+      </RosterLayout>
     </Stack>
   )
 }

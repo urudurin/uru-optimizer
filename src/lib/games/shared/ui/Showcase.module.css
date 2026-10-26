@@ -1,5 +1,5 @@
-/* ZZZ Agents page, after HSR's Characters page: a roster with art banners on the left, one showcase card on the right
-   (art, stats column, discs). Images come from Enka (data/images.ts); everything still reads without them */
+/* Character pages (ZZZ Agents, Genshin Characters, WuWa Resonators), after HSR's Characters page: a roster with art banners
+   on the left, one showcase card on the right (art, stats column, gear). Used by Showcase.tsx; it reads without images too */
 
 .layout {
   display: grid;
@@ -8,9 +8,15 @@
   align-items: start;
 }
 
-@media (max-width: 1000px) {
+/* Below 1200px the card's stats column gets too narrow beside the roster, so the roster goes on top and scrolls */
+@media (max-width: 1200px) {
   .layout {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rosterList {
+    max-height: 340px;
+    overflow-y: auto;
   }
 }
 
@@ -135,7 +141,7 @@
     grid-template-columns: 240px minmax(0, 1fr);
   }
 
-  .discs {
+  .gear {
     grid-column: 1 / -1;
   }
 }
@@ -177,7 +183,7 @@
   color: rgba(255, 255, 255, 0.35);
 }
 
-.wEngine {
+.weapon {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -186,7 +192,7 @@
   background: rgba(0, 0, 0, 0.2);
 }
 
-.wEngine img {
+.weapon img {
   width: 64px;
   height: 64px;
   object-fit: contain;
@@ -234,7 +240,7 @@
   font-weight: 600;
 }
 
-.discs {
+.gear {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 10px;

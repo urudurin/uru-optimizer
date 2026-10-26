@@ -38,15 +38,18 @@ function RollDots({ rolls }: { rolls: number }) {
   )
 }
 
-// score: for the character shown (stats/artifactScore.ts)
-export function ArtifactCard({ artifact, owner, score }: { artifact: Artifact, owner?: string, score?: GearScore }) {
+// icon: the piece's art (data/images.ts), when it has loaded; score: for the character shown (stats/artifactScore.ts)
+export function ArtifactCard({ artifact, owner, icon, score }: { artifact: Artifact, owner?: string, icon?: string, score?: GearScore }) {
   return (
     <div className={gear.card}>
       <Group justify='space-between' gap={6} wrap='nowrap'>
         <Badge size='sm' variant='light' radius='sm'>{SLOT_LABELS[artifact.slot]}</Badge>
         <Text size='xs' c='dimmed'>{`${artifact.rarity}★ · +${artifact.level}`}</Text>
       </Group>
-      <div className={gear.title}>{artifact.setName}</div>
+      <Group gap={8} wrap='nowrap'>
+        {icon && <img src={icon} alt='' width={30} height={30} style={{ objectFit: 'contain', flexShrink: 0 }} />}
+        <div className={gear.title}>{artifact.setName}</div>
+      </Group>
       <div className={gear.main}>
         <span>{statLabel(artifact.main.stat)}</span>
         <span>{formatStatValue(artifact.main.stat, artifact.main.value)}</span>
