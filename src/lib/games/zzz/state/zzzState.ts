@@ -1,4 +1,8 @@
 import {
+  backupKindOf,
+  wrapBackup,
+} from 'lib/games/shared/backup'
+import {
   hasStringId,
   parseVersionedSave,
 } from 'lib/games/shared/storage'
@@ -23,6 +27,19 @@ type ZzzSaveFormat = ZzzData & {
 export function serializeZzzData(data: ZzzData): string {
   const save: ZzzSaveFormat = { version: ZZZ_STATE_VERSION, discs: data.discs, builds: data.builds }
   return JSON.stringify(save)
+}
+
+export const ZZZ_BACKUP_KIND = 'uru-zzz-backup'
+
+// A backup file of the browser save, see shared/backup.ts. savedAt is YYYY-MM-DD
+export function createZzzBackup(data: ZzzData, savedAt: string): string {
+  return wrapBackup(ZZZ_BACKUP_KIND, savedAt, serializeZzzData(data))
+}
+
+// The data in a ZZZ backup file, or undefined when the text isn't one. Never throws
+export function readZzzBackup(text: string): ZzzData | undefined {
+  if (backupKindOf(text) !== ZZZ_BACKUP_KIND) return undefined
+  return deserializeZzzData(text)
 }
 
 // Never throws: missing, corrupted or newer-version data loads as empty

@@ -1,4 +1,8 @@
 import {
+  backupKindOf,
+  wrapBackup,
+} from 'lib/games/shared/backup'
+import {
   hasStringId,
   type ImportMode,
   mergeById,
@@ -42,6 +46,20 @@ export function mergeWuwaData(existing: WuwaData, incoming: WuwaData, mode: Impo
 
 export function serializeWuwaData(data: WuwaData): string {
   return JSON.stringify({ version: WUWA_STATE_VERSION, ...data })
+}
+
+export const WUWA_BACKUP_KIND = 'uru-wuwa-backup'
+
+// A backup file of the browser save, see shared/backup.ts. savedAt is YYYY-MM-DD.
+// It's a different shape from the WuwaEchoScorer user-data file, which the "kind" marker tells apart
+export function createWuwaBackup(data: WuwaData, savedAt: string): string {
+  return wrapBackup(WUWA_BACKUP_KIND, savedAt, serializeWuwaData(data))
+}
+
+// The data in a WuWa backup file, or undefined when the text isn't one. Never throws
+export function readWuwaBackup(text: string): WuwaData | undefined {
+  if (backupKindOf(text) !== WUWA_BACKUP_KIND) return undefined
+  return deserializeWuwaData(text)
 }
 
 function hasCharId(value: unknown): value is CharacterState {

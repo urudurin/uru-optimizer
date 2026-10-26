@@ -1,4 +1,9 @@
 import {
+  backupFileName,
+  backupKindOf,
+  wrapBackup,
+} from 'lib/games/shared/backup'
+import {
   formatNumber,
   roundHalfUp,
 } from 'lib/games/shared/format'
@@ -18,6 +23,28 @@ import {
   expect,
   it,
 } from 'vitest'
+
+describe('backup', () => {
+  it('wraps a save with its kind and date', () => {
+    expect(JSON.parse(wrapBackup('uru-zzz-backup', '2026-10-26', '{"version":1,"discs":[]}'))).toEqual({
+      kind: 'uru-zzz-backup',
+      savedAt: '2026-10-26',
+      version: 1,
+      discs: [],
+    })
+  })
+
+  it('reads the kind of a backup and never throws', () => {
+    expect(backupKindOf('{"kind":"uru-wuwa-backup"}')).toBe('uru-wuwa-backup')
+    expect(backupKindOf('{"version":1}')).toBeUndefined()
+    expect(backupKindOf('[1]')).toBeUndefined()
+    expect(backupKindOf('not json')).toBeUndefined()
+  })
+
+  it('names files by game and date', () => {
+    expect(backupFileName('zzz', '2026-10-26')).toBe('zzz-backup-2026-10-26.json')
+  })
+})
 
 describe('format', () => {
   it('rounds half up like the stat screens', () => {

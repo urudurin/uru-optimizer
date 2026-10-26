@@ -1,7 +1,9 @@
 import {
+  createWuwaBackup,
   deserializeWuwaData,
   EMPTY_WUWA_DATA,
   mergeWuwaData,
+  readWuwaBackup,
   serializeWuwaData,
   type WuwaData,
 } from 'lib/games/wuwa/state/wuwaState'
@@ -31,6 +33,16 @@ const data: WuwaData = { echoes: [echo('a'), echo('b')], characters: [character(
 describe('WuWa save', () => {
   it('round-trips', () => {
     expect(deserializeWuwaData(serializeWuwaData(data))).toEqual(data)
+  })
+
+  it('round-trips a backup file and tells it apart from a WuwaEchoScorer user-data file', () => {
+    const backup = createWuwaBackup(data, '2026-10-26')
+
+    expect(JSON.parse(backup)).toMatchObject({ kind: 'uru-wuwa-backup', savedAt: '2026-10-26', version: 1 })
+    expect(readWuwaBackup(backup)).toEqual(data)
+    // A user-data file is also version 1 but has no backup marker, so it goes to the user-data importer instead
+    expect(readWuwaBackup(JSON.stringify({ version: 1, echoes: {}, characters: {} }))).toBeUndefined()
+    expect(readWuwaBackup(JSON.stringify({ kind: 'uru-zzz-backup', version: 1 }))).toBeUndefined()
   })
 
   it('loads missing, corrupted or other-version saves as empty', () => {
