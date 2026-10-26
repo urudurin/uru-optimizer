@@ -1,11 +1,15 @@
+import { DEFAULT_PRIORITY } from 'lib/games/genshin/data/statPriorities'
 import {
   genshinArtifactWeights,
+  kqmsBenchmark,
   scoreArtifact,
+  weightsFromPriority,
 } from 'lib/games/genshin/stats/artifactScore'
 import type {
   Artifact,
   GenshinCharacter,
 } from 'lib/games/genshin/types'
+import { scoreBuild } from 'lib/games/shared/gearScore'
 import {
   scoreEcho,
   wuwaEchoWeights,
@@ -51,9 +55,8 @@ describe('gear scores per game', () => {
     expect(scoreDisc(disc([{ stat: 'CRIT Rate', rolls: 6 }], 'A'), weights)).toBeUndefined()
   })
 
-  it('Genshin: weights follow the target, so crit beats DEF for Crit Value', () => {
-    const venti: GenshinCharacter = { id: 'Venti', name: 'Venti', level: 90, ascension: 6, constellation: 0, artifactIds: {}, stats: {}, statsDate: '' }
-    const weights = genshinArtifactWeights(venti, [], { kind: 'critValue' })
+  it('Genshin: fixed weights per character, so crit beats DEF and Furina wants HP, not ATK', () => {
+    const character = (id: string): GenshinCharacter => ({ id, name: id, level: 90, ascension: 6, constellation: 0, artifactIds: {}, stats: {}, statsDate: '' })
     const artifact = (substats: Artifact['substats']): Artifact => ({
       id: 'a',
       slot: 'flower',
@@ -64,14 +67,29 @@ describe('gear scores per game', () => {
       main: { stat: 'hp', value: 4780 },
       substats,
     })
-    const crit = scoreArtifact(artifact([{ stat: 'critRate', value: 3.89 * 4, rolls: 4 }, { stat: 'critDmg', value: 7.77 * 3, rolls: 3 }]), weights)
-    const def = scoreArtifact(artifact([{ stat: 'def', value: 23.15 * 4, rolls: 4 }, { stat: 'defPct', value: 7.29 * 3, rolls: 3 }]), weights)
-
-    expect(weights).toMatchObject({ critRate: 1, critDmg: 1, def: 0 })
-    // Only the 2 crit stats count for Crit Value, so the best artifact has them plus 5 upgrades: 7 top rolls, all here
-    expect(crit?.percent).toBe(100)
-    expect(crit?.rating).toBe('WTF+')
+    const venti = genshinArtifactWeights(character('Venti'))
+    const crit = scoreArtifact(artifact([{ stat: 'critRate', value: 3.89 * 4, rolls: 4 }, { stat: 'critDmg', value: 7.77 * 3, rolls: 3 }]), venti)
+    const def = scoreArtifact(artifact([{ stat: 'def', value: 23.15 * 4, rolls: 4 }, { stat: 'defPct', value: 7.29 * 3, rolls: 3 }]), venti)
+    expect(venti).toMatchObject({ critRate: 1, critDmg: 1, atkPct: 0.75, atk: 0.25 })
+    expect(crit!.percent).toBeGreaterThan(80)
     expect(def?.rating ?? '?').toBe('?')
+
+    const furina = genshinArtifactWeights(character('Furina'))
+    expect(furina).toMatchObject({ critRate: 1, critDmg: 1, hpPct: 0.75, hp: 0.25 })
+    expect(furina.atkPct).toBeUndefined()
+    // Supports without crits: their scaling stat is the top weight
+    expect(genshinArtifactWeights(character('KaedeharaKazuha'))).toEqual({ elementalMastery: 1, energyRecharge: 0.5 })
+  })
+
+  it('Genshin: a KQM Standards build rates 100%, a perfect one 200%', () => {
+    const weights = weightsFromPriority(DEFAULT_PRIORITY)
+    const benchmark = kqmsBenchmark(weights)
+    // 40 average rolls against 5 perfect artifacts (9 max rolls each, mostly on the best stats)
+    expect(benchmark).toBeGreaterThan(50)
+    expect(benchmark).toBeLessThan(62)
+    const piece = (percent: number) => ({ percent, rating: '' })
+    expect(scoreBuild([1, 2, 3, 4, 5].map(() => piece(benchmark)), 5, benchmark)?.percent).toBeCloseTo(100, 0)
+    expect(scoreBuild([1, 2, 3, 4, 5].map(() => piece(100)), 5, benchmark)?.percent).toBe(200)
   })
 
   it('WuWa: an echo with the wanted stats at top rolls scores 100', () => {

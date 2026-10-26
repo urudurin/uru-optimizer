@@ -115,16 +115,16 @@ export function benchmarkRating(percent: number): string {
   return BENCHMARK_GRADES.find(([min]) => percent >= min)?.[1] ?? 'F'
 }
 
-// An average piece score (0-100) on the benchmark scale (0-200)
-export function benchmarkPercent(averagePiece: number): number {
-  const b = BENCHMARK_PIECE_PERCENT
+// An average piece score (0-100) on the benchmark scale (0-200). benchmark is the average piece score that counts as 100%
+export function benchmarkPercent(averagePiece: number, benchmark = BENCHMARK_PIECE_PERCENT): number {
+  const b = Math.min(Math.max(benchmark, 1), 99)
   return averagePiece <= b ? (averagePiece / b) * 100 : 100 + ((averagePiece - b) / (100 - b)) * 100
 }
 
-// slots is how many pieces a full build has
-export function scoreBuild(scores: (GearScore | undefined)[], slots: number): GearScore | undefined {
+// slots is how many pieces a full build has; a game can pass its own benchmark (Genshin: a KQM Standards build)
+export function scoreBuild(scores: (GearScore | undefined)[], slots: number, benchmark = BENCHMARK_PIECE_PERCENT): GearScore | undefined {
   if (slots <= 0 || scores.every((s) => !s)) return undefined
   const average = scores.reduce((sum, s) => sum + (s?.percent ?? 0), 0) / slots
-  const percent = Math.floor(benchmarkPercent(average) * 10) / 10
+  const percent = Math.floor(benchmarkPercent(average, benchmark) * 10) / 10
   return { percent, rating: benchmarkRating(percent) }
 }

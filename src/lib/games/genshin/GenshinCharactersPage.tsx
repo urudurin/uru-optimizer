@@ -10,6 +10,7 @@ import { useGenshinImages } from 'lib/games/genshin/data/images'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import {
   genshinArtifactWeights,
+  genshinBuildScore,
   scoreArtifact,
 } from 'lib/games/genshin/stats/artifactScore'
 import { computeGenshinStats } from 'lib/games/genshin/stats/computeStats'
@@ -26,7 +27,6 @@ import {
   ArtifactCard,
   elementColor,
 } from 'lib/games/genshin/ui/ArtifactCard'
-import { scoreBuild } from 'lib/games/shared/gearScore'
 import { BuildRating } from 'lib/games/shared/ui/BuildRating'
 import {
   EmptyState,
@@ -122,7 +122,7 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
     return artifact ? [artifact] : []
   })
   // Scored for this character, see stats/artifactScore.ts
-  const artifactWeights = genshinArtifactWeights(character, worn)
+  const artifactWeights = genshinArtifactWeights(character)
   const weapon = character.weapon
   // The game's own numbers from Enka when there are some, otherwise worked out from base stats and gear
   const fromGame = Object.keys(character.stats).length > 0
@@ -185,7 +185,7 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
                     No stats yet. Put this character in your in-game showcase and import from Enka.Network to see their stat screen numbers.
                   </Text>
                 )}
-              <BuildRating score={scoreBuild(worn.map((artifact) => scoreArtifact(artifact, artifactWeights)), 5)} label='Artifact score' />
+              <BuildRating score={genshinBuildScore(character, worn)} label='Artifact score' />
               {computed?.missing.map((note) => <Text key={note} size='xs' c='yellow'>{note}</Text>)}
             </>
           }

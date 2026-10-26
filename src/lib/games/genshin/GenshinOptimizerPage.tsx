@@ -456,7 +456,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                     key={artifact.id}
                     artifact={artifact}
                     owner={artifact.equippedBy ? (ownerNames.get(artifact.equippedBy) ?? artifact.equippedBy) : undefined}
-                    score={scoreArtifact(artifact, genshinArtifactWeights(character, build.artifacts, result.target))}
+                    score={scoreArtifact(artifact, genshinArtifactWeights(character))}
                   />
                 ))}
               </div>
