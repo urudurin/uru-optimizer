@@ -86,6 +86,12 @@ function weaponBase(weapon: GenshinWeapon, bonus: Partial<Record<GenshinStatKey,
   return atLevel(data.atk, weapon.level) + (data.ascensionAtk[ascension] ?? 0)
 }
 
+// Buffs from teammates (team/teamBuffs.ts): premod ones are added with the other bonuses, total ones to the final stat
+export type TeamBuffTotals = {
+  premod: Partial<Record<GenshinStatKey, number>>,
+  total: Partial<Record<GenshinStatKey, number>>,
+}
+
 // Everything that doesn't depend on artifacts, worked out once per character
 export type PreparedCharacter = {
   character: GenshinCharacter,
@@ -94,10 +100,12 @@ export type PreparedCharacter = {
   baseDef: number,
   // Character and weapon bonuses, including the 5% CRIT Rate, 50% CRIT DMG and 100% Energy Recharge everyone has
   bonus: Partial<Record<GenshinStatKey, number>>,
+  // Team buffs added to final stats
+  totalBonus: Partial<Record<GenshinStatKey, number>>,
   missing: string[],
 }
 
-export function prepareCharacter(character: GenshinCharacter): PreparedCharacter | undefined {
+export function prepareCharacter(character: GenshinCharacter, team?: TeamBuffTotals): PreparedCharacter | undefined {
   const missing: string[] = []
   const data = characterData(character.id)
   if (!data) return undefined
@@ -115,7 +123,8 @@ export function prepareCharacter(character: GenshinCharacter): PreparedCharacter
   const baseDef = atLevel(data.def, character.level) + ascended('def')
   let baseAtk = atLevel(data.atk, character.level) + ascended('atk')
   if (character.weapon) baseAtk += weaponBase(character.weapon, bonus, missing)
-  return { character, baseHp, baseAtk, baseDef, bonus, missing }
+  for (const [stat, value] of Object.entries(team?.premod ?? {}) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
+  return { character, baseHp, baseAtk, baseDef, bonus, totalBonus: { ...team?.total }, missing }
 }
 
 // The character screen from the prepared character plus artifact and set bonuses (added into bonus by the caller)
@@ -138,6 +147,7 @@ export function finalizeStats(prepared: PreparedCharacter, bonus: Partial<Record
   for (const passive of passives) {
     for (const [stat, value] of Object.entries(passive || {}) as [GenshinStatKey, number][]) addTo(result, stat, value)
   }
+  for (const [stat, value] of Object.entries(prepared.totalBonus) as [GenshinStatKey, number][]) addTo(result, stat, value)
   return result
 }
 
@@ -158,8 +168,14 @@ export function artifactBonus(artifacts: Artifact[]): Partial<Record<GenshinStat
 }
 
 // extra: stat points to add on top, e.g. one more substat roll for the build analysis
-export function computeGenshinStats(character: GenshinCharacter, artifacts: Artifact[], extra: Partial<Record<GenshinStatKey, number>> = {}): ComputedStats {
-  const prepared = prepareCharacter(character)
+// team: buffs from teammates, see team/teamBuffs.ts
+export function computeGenshinStats(
+  character: GenshinCharacter,
+  artifacts: Artifact[],
+  extra: Partial<Record<GenshinStatKey, number>> = {},
+  team?: TeamBuffTotals,
+): ComputedStats {
+  const prepared = prepareCharacter(character, team)
   if (!prepared) return { stats: {}, missing: [`${character.name} isn't in the stat data yet`] }
   const bonus = { ...prepared.bonus }
   for (const [stat, value] of Object.entries(artifactBonus(artifacts)) as [GenshinStatKey, number][]) addTo(bonus, stat, value)

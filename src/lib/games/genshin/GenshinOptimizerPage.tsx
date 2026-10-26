@@ -10,6 +10,10 @@ import {
   Text,
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
+import {
+  GenshinTeamCards,
+  teamSummary,
+} from 'lib/games/genshin/GenshinTeamCards'
 import { genshinSubstatUpgrades } from 'lib/games/genshin/optimizer/analysis'
 import {
   filterPools,
@@ -25,6 +29,8 @@ import {
 import { genshinPiecesTaken } from 'lib/games/genshin/state/genshinState'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import { hasStatData } from 'lib/games/genshin/stats/computeStats'
+import type { BuffSetting } from 'lib/games/genshin/team/buffs'
+import { teamBuffsFor } from 'lib/games/genshin/team/teamBuffs'
 import {
   type Artifact,
   ARTIFACT_SLOTS,
@@ -119,11 +125,25 @@ type GenshinOptimizerSettings = {
   twoPieceSets: string[],
   excludeEquippedByOthers: boolean,
   minStats: Partial<Record<GenshinStatKey, number>>,
+  // The team (team/teamBuffs.ts): teammate ids, whether this character is on the field, buff toggles
+  teammates: string[],
+  onField: boolean,
+  teamSettings: Record<string, BuffSetting>,
 }
 
 // What a character starts with before their settings are changed (and saved)
 function defaultSettings(): GenshinOptimizerSettings {
-  return { targetValue: 'avg:atk', mainStats: {}, fourPieceSet: null, twoPieceSets: [], excludeEquippedByOthers: true, minStats: {} }
+  return {
+    targetValue: 'avg:atk',
+    mainStats: {},
+    fourPieceSet: null,
+    twoPieceSets: [],
+    excludeEquippedByOthers: true,
+    minStats: {},
+    teammates: [],
+    onField: true,
+    teamSettings: {},
+  }
 }
 
 export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
@@ -135,13 +155,16 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
 
   // Saved per character, see shared/optimizerSettings.ts
   const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.id ?? '', defaultSettings)
-  const { targetValue, mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, minStats } = settings
+  const { targetValue, mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, minStats, teammates, onField, teamSettings } = settings
   const setTargetValue = fieldSetter(updateSettings, 'targetValue')
   const setMainStats = fieldSetter(updateSettings, 'mainStats')
   const setFourPieceSet = fieldSetter(updateSettings, 'fourPieceSet')
   const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
+  const setTeammates = fieldSetter(updateSettings, 'teammates')
+  const setOnField = fieldSetter(updateSettings, 'onField')
+  const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget } | undefined>()
@@ -176,12 +199,18 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     )
   }
 
-  const target = TARGETS.find((t) => t.value === targetValue)?.target ?? TARGETS[0].target
+  const picked = TARGETS.find((t) => t.value === targetValue)?.target ?? TARGETS[0].target
+  // The average hit counts the character's own element's DMG Bonus
+  const target: OptimizerTarget = picked.kind === 'averageHit' ? { ...picked, element: character.element } : picked
+  // What the team gives this character, the same for every build
+  const team = { teammates, onField, settings: teamSettings }
+  const teamResult = teamBuffsFor(character, team, { characters, artifacts })
+  const teamBuffs = { premod: teamResult.premod, total: teamResult.total }
 
   async function run() {
     setRunning(true)
     setProgress(undefined)
-    const response = await runOptimizer({ character, artifacts, filters, minStats, target, limit: RESULT_LIMIT }, setProgress)
+    const response = await runOptimizer({ character, artifacts, filters, minStats, target, limit: RESULT_LIMIT, teamBuffs }, setProgress)
     // undefined: cancelled, or replaced by a newer search that is still running
     if (response) {
       setResult({ ...response, target })
@@ -270,6 +299,27 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                   onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
                 />
               </FormCard>
+            </FormRow>
+
+            <FormRow id='genshin-team' title='Team' summary={teamSummary(team, teamResult, characters)}>
+              <GenshinTeamCards
+                character={character}
+                characters={characters}
+                team={team}
+                result={teamResult}
+                onTeammates={(ids) => {
+                  setTeammates(ids)
+                  setResult(undefined)
+                }}
+                onField={(value) => {
+                  setOnField(value)
+                  setResult(undefined)
+                }}
+                onSetting={(key, value) => {
+                  setTeamSettings((current) => ({ ...current, [key]: value }))
+                  setResult(undefined)
+                }}
+              />
             </FormRow>
 
             <FormRow id='genshin-filters' title='Artifact filters' summary={filterSummary}>
@@ -439,7 +489,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                   format: (value: number) => formatStatValue(stat, value),
                 })),
               ]}
-              upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target)}
+              upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs)}
               scoreLabel={targetLabel(result.target)}
               formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
             />

@@ -89,7 +89,8 @@ function characterInfo(key: string, tables: ReturnType<typeof nameTables>): { na
 
 // The main stat at this rarity and level, as the game shows it
 function mainStatValue(store: EnkaGenshinStore, rarity: number, level: number, stat: keyof typeof NUMERIC_STAT_IDS): number | undefined {
-  const raw = store.relicLevels[String(rarity)]?.[String(level + 1)]?.[String(NUMERIC_STAT_IDS[stat])]
+  const id = NUMERIC_STAT_IDS[stat]
+  const raw = id === undefined ? undefined : store.relicLevels[String(rarity)]?.[String(level + 1)]?.[String(id)]
   if (raw === undefined) return undefined
   return PERCENT_STATS.has(stat) ? Math.round(raw * 1000) / 10 : Math.round(raw)
 }
@@ -167,6 +168,9 @@ export function parseGood(input: unknown, store: EnkaGenshinStore, importedOn: s
       level: asNumber(raw.level) ?? 1,
       ascension: asNumber(raw.ascension) ?? 0,
       constellation: asNumber(raw.constellation) ?? 0,
+      ...(isRecord(raw.talent)
+        ? { talents: { auto: asNumber(raw.talent.auto) ?? 1, skill: asNumber(raw.talent.skill) ?? 1, burst: asNumber(raw.talent.burst) ?? 1 } }
+        : {}),
       artifactIds: {},
       // GOOD has no final stats; an Enka import fills them in (and a GOOD import keeps them, see mergeGenshinData)
       stats: {},

@@ -4,7 +4,10 @@ import {
   type OptimizerTarget,
   scoreStats,
 } from 'lib/games/genshin/optimizer/artifactOptimizer'
-import { computeGenshinStats } from 'lib/games/genshin/stats/computeStats'
+import {
+  computeGenshinStats,
+  type TeamBuffTotals,
+} from 'lib/games/genshin/stats/computeStats'
 import {
   type Artifact,
   ARTIFACT_SLOTS,
@@ -75,7 +78,13 @@ function inventory(perSlot: number): Artifact[] {
 }
 
 // Every combination, scored the slow way
-function bruteForce(artifacts: Artifact[], target: OptimizerTarget, minStats: Partial<Record<GenshinStatKey, number>>, filters: OptimizerFilters) {
+function bruteForce(
+  artifacts: Artifact[],
+  target: OptimizerTarget,
+  minStats: Partial<Record<GenshinStatKey, number>>,
+  filters: OptimizerFilters,
+  teamBuffs?: TeamBuffTotals,
+) {
   const pools = ARTIFACT_SLOTS.map((slot) => artifacts.filter((a) => a.slot === slot))
   const scores: number[] = []
   const walk = (depth: number, chosen: Artifact[]) => {
@@ -83,7 +92,7 @@ function bruteForce(artifacts: Artifact[], target: OptimizerTarget, minStats: Pa
       const count = (id: string) => chosen.filter((a) => a.setId === id).length
       if (filters.fourPieceSet && count(filters.fourPieceSet) < 4) return
       if (filters.twoPieceSets.some((id) => count(id) < 2)) return
-      const { stats } = computeGenshinStats(raiden, chosen)
+      const { stats } = computeGenshinStats(raiden, chosen, {}, teamBuffs)
       if (Object.entries(minStats).some(([stat, min]) => (stats[stat as GenshinStatKey] ?? 0) < min)) return
       scores.push(scoreStats(stats, target))
       return
@@ -116,6 +125,17 @@ describe('optimizeArtifacts', () => {
       expect(outcome.visited).toBeLessThan(7 ** 5)
     })
   }
+
+  it('finds the same top 5 with team buffs and DMG Bonus in the average hit', () => {
+    const target: OptimizerTarget = { kind: 'averageHit', stat: 'atk', element: 'Electro' }
+    const teamBuffs: TeamBuffTotals = { premod: { atkPct: 20, electroDmg: 30, allDmg: 15, energyRecharge: 20 }, total: { atk: 800 } }
+    const outcome = optimizeArtifacts({ character: raiden, artifacts, filters: noFilters, minStats: {}, target, limit: 5, teamBuffs })
+    if (!outcome.ok) throw new Error(outcome.reason)
+    const expected = bruteForce(artifacts, target, {}, noFilters, teamBuffs).slice(0, 5)
+
+    expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
+    expect(outcome.builds[0].stats.allDmg).toBe(15)
+  })
 
   it('respects main stat filters and leaves out artifacts others wear', () => {
     const worn = artifacts.map((a) => (a.slot === 'circlet' ? { ...a, equippedBy: 'Bennett' } : a))

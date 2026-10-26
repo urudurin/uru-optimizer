@@ -21,6 +21,8 @@ export type GenshinStatKey =
   | 'dendroDmg'
   | 'cryoDmg'
   | 'geoDmg'
+  // DMG Bonus for every element, from team buffs (Furina, Geo resonance). Not on artifacts or the stat screen
+  | 'allDmg'
 
 export const STAT_LABELS: Record<GenshinStatKey, string> = {
   hp: 'HP',
@@ -42,6 +44,7 @@ export const STAT_LABELS: Record<GenshinStatKey, string> = {
   dendroDmg: 'Dendro DMG Bonus',
   cryoDmg: 'Cryo DMG Bonus',
   geoDmg: 'Geo DMG Bonus',
+  allDmg: 'DMG Bonus',
 }
 
 // Stats shown with a percent sign
@@ -61,6 +64,7 @@ export const PERCENT_STATS = new Set<GenshinStatKey>([
   'dendroDmg',
   'cryoDmg',
   'geoDmg',
+  'allDmg',
 ])
 
 export function statLabel(stat: string): string {
@@ -140,6 +144,8 @@ export type GenshinCharacter = {
   // 0-6, when the source says
   ascension?: number,
   constellation: number,
+  // Talent levels without constellation boosts (1-10), when the source says
+  talents?: { auto: number, skill: number, burst: number },
   weapon?: GenshinWeapon,
   artifactIds: Partial<Record<ArtifactSlot, string>>,
   // Final stats as the character screen shows them, from the game via Enka. Empty for characters only in a GOOD file

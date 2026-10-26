@@ -52,7 +52,7 @@ export const GOOD_STATS: Record<string, GenshinStatKey> = {
 }
 
 // The game's numeric property ids, used by Enka's relic_levels.json main stat table
-export const NUMERIC_STAT_IDS: Record<GenshinStatKey, number> = {
+export const NUMERIC_STAT_IDS: Partial<Record<GenshinStatKey, number>> = {
   hp: 2,
   hpPct: 3,
   atk: 5,

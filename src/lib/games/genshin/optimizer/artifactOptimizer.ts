@@ -8,11 +8,14 @@ import {
   finalizeStats,
   prepareCharacter,
   type PreparedCharacter,
+  type TeamBuffTotals,
 } from 'lib/games/genshin/stats/computeStats'
 import {
   type Artifact,
   ARTIFACT_SLOTS,
   type ArtifactSlot,
+  type Element,
+  ELEMENT_DMG_STAT,
   type GenshinCharacter,
   type GenshinStatKey,
   STAT_LABELS,
@@ -44,8 +47,9 @@ export type OptimizerTarget =
   | { kind: 'stat', stat: GenshinStatKey }
   // 2 x CRIT Rate + CRIT DMG
   | { kind: 'critValue' }
-  // The stat a character scales on x (1 + CRIT Rate x CRIT DMG), CRIT Rate capped at 100%
-  | { kind: 'averageHit', stat: 'atk' | 'hp' | 'def' | 'elementalMastery' }
+  // The stat a character scales on x (1 + CRIT Rate x CRIT DMG) x (1 + DMG Bonus), CRIT Rate capped at 100%. The DMG
+  // Bonus is the element's (when given) plus all-element DMG Bonus from team buffs
+  | { kind: 'averageHit', stat: 'atk' | 'hp' | 'def' | 'elementalMastery', element?: Element }
 
 export type MainStatSlot = 'sands' | 'goblet' | 'circlet'
 
@@ -67,6 +71,8 @@ export type OptimizerRequest = {
   minStats: Partial<Record<GenshinStatKey, number>>,
   target: OptimizerTarget,
   limit: number,
+  // Buffs from teammates (team/teamBuffs.ts), the same for every build
+  teamBuffs?: TeamBuffTotals,
   // Called now and then while searching (added by the worker, never sent to it)
   onProgress?: ProgressCallback,
 }
@@ -112,7 +118,8 @@ export function scoreStats(stats: Stats, target: OptimizerTarget): number {
   const critDmg = stats.critDmg ?? 0
   if (target.kind === 'critValue') return 2 * critRate + critDmg
   const capped = Math.min(Math.max(critRate, 0), 100)
-  return (stats[target.stat] ?? 0) * (1 + capped / 100 * critDmg / 100)
+  const dmgBonus = (target.element ? stats[ELEMENT_DMG_STAT[target.element]] ?? 0 : 0) + (stats.allDmg ?? 0)
+  return (stats[target.stat] ?? 0) * (1 + capped / 100 * critDmg / 100) * (1 + dmgBonus / 100)
 }
 
 export function targetLabel(target: OptimizerTarget): string {
@@ -147,6 +154,7 @@ const DEF_PCT = STAT_INDEX.get('defPct')!
 
 function vectorFinalizer(prepared: PreparedCharacter) {
   const { character, baseHp, baseAtk, baseDef } = prepared
+  const totalBonus = (Object.entries(prepared.totalBonus) as [GenshinStatKey, number][]).map(([stat, value]) => [STAT_INDEX.get(stat)!, value] as const)
   const passives = [
     CHARACTER_SCREEN_PASSIVES[character.id] && { passive: CHARACTER_SCREEN_PASSIVES[character.id], refinement: 1 },
     character.weapon && WEAPON_SCREEN_PASSIVES[character.weapon.id]
@@ -163,6 +171,7 @@ function vectorFinalizer(prepared: PreparedCharacter) {
         for (const [stat, value] of Object.entries(passive.apply(screen, refinement)) as [GenshinStatKey, number][]) out[STAT_INDEX.get(stat)!] += value
       }
     }
+    for (const [index, value] of totalBonus) out[index] += value
     return out
   }
 }
@@ -176,7 +185,11 @@ function vectorScorer(target: OptimizerTarget): (stats: Float64Array) => number 
   }
   if (target.kind === 'critValue') return (s) => 2 * s[critRate] + s[critDmg]
   const index = STAT_INDEX.get(target.stat)!
-  return (s) => s[index] * (1 + Math.min(Math.max(s[critRate], 0), 100) / 100 * s[critDmg] / 100)
+  const allDmg = STAT_INDEX.get('allDmg')!
+  const elementDmg = target.element ? STAT_INDEX.get(ELEMENT_DMG_STAT[target.element])! : -1
+  return (s) =>
+    s[index] * (1 + Math.min(Math.max(s[critRate], 0), 100) / 100 * s[critDmg] / 100)
+    * (1 + ((elementDmg >= 0 ? s[elementDmg] : 0) + s[allDmg]) / 100)
 }
 
 function artifactVector(artifact: Artifact): Float64Array {
@@ -198,17 +211,17 @@ export function filterPools(request: Pick<OptimizerRequest, 'character' | 'artif
   )
 }
 
-function currentBuild(character: GenshinCharacter, artifacts: Artifact[], target: OptimizerTarget): OptimizerBuild | undefined {
+function currentBuild(character: GenshinCharacter, artifacts: Artifact[], target: OptimizerTarget, teamBuffs?: TeamBuffTotals): OptimizerBuild | undefined {
   const byId = new Map(artifacts.map((a) => [a.id, a]))
   const worn = ARTIFACT_SLOTS.map((slot: ArtifactSlot) => byId.get(character.artifactIds[slot] ?? ''))
   if (worn.some((a) => !a)) return undefined
-  const { stats } = computeGenshinStats(character, worn as Artifact[])
+  const { stats } = computeGenshinStats(character, worn as Artifact[], {}, teamBuffs)
   return { artifacts: worn as Artifact[], stats, score: scoreStats(stats, target) }
 }
 
 export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
   const { character, filters, target, limit } = request
-  const prepared = prepareCharacter(character)
+  const prepared = prepareCharacter(character, request.teamBuffs)
   if (!prepared) return { ok: false, reason: `${character.name} isn't in the stat data yet` }
   // Five artifacts fit one 4-piece set or two 2-piece sets
   if (filters.twoPieceSets.length > (filters.fourPieceSet ? 0 : 2)) {
@@ -487,14 +500,14 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
 
   const builds = top.map((candidate): OptimizerBuild => {
     const chosen = candidate.item.map((a, slot) => pools[slot][a])
-    const { stats } = computeGenshinStats(character, chosen)
+    const { stats } = computeGenshinStats(character, chosen, {}, request.teamBuffs)
     return { artifacts: chosen, stats, score: scoreStats(stats, target) }
   })
 
   return {
     ok: true,
     builds,
-    current: currentBuild(character, request.artifacts, target),
+    current: currentBuild(character, request.artifacts, target, request.teamBuffs),
     poolSizes: pools.map((pool) => pool.length),
     prunedSizes: ARTIFACT_SLOTS.map((_, slot) => candidates[order.indexOf(slot)].length),
     visited,

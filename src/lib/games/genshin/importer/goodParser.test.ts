@@ -100,7 +100,15 @@ describe('parseGood', () => {
     )
 
     const [venti, traveler, unknown] = result.characters
-    expect(venti).toMatchObject({ id: 'Venti', name: 'Venti', element: 'Anemo', level: 90, constellation: 2, stats: {} })
+    expect(venti).toMatchObject({
+      id: 'Venti',
+      name: 'Venti',
+      element: 'Anemo',
+      level: 90,
+      constellation: 2,
+      stats: {},
+      talents: { auto: 1, skill: 9, burst: 9 },
+    })
     expect(venti.artifactIds.flower).toBe(result.artifacts[0].id)
     expect(venti.weapon).toEqual({ id: 'FadingTwilight', name: 'Fading Twilight', rarity: 4, level: 90, ascension: 0, refinement: 5 })
     expect(traveler).toMatchObject({ id: 'TravelerElectro', name: 'Traveler (Electro)', element: 'Electro' })

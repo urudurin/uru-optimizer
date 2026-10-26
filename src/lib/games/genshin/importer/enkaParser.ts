@@ -19,7 +19,8 @@ import type {
 // Enka and from GOOD files lines up. Never throws: bad parts are skipped with a warning.
 
 export type EnkaGenshinStore = {
-  avatars: Record<string, { Element?: string, NameTextMapHash?: number | string }>,
+  // SkillOrder: the normal attack, skill and burst skill ids, for reading talent levels
+  avatars: Record<string, { Element?: string, NameTextMapHash?: number | string, SkillOrder?: number[] }>,
   // English names by text hash or key
   locs: Record<string, string>,
   // relics.json "Sets": set id -> name hash
@@ -113,6 +114,13 @@ const ELEMENTS: Record<string, Element> = {
   Grass: 'Dendro',
   Ice: 'Cryo',
   Rock: 'Geo',
+}
+
+// Talent levels from skillLevelMap (skill id -> level, without constellation boosts), in SkillOrder: attack, skill, burst
+function talentsOf(levels: unknown, order: number[] | undefined): Pick<GenshinCharacter, 'talents'> {
+  if (!isRecord(levels) || !order || order.length < 3) return {}
+  const level = (id: number) => asNumber(levels[String(id)]) ?? 1
+  return { talents: { auto: level(order[0]), skill: level(order[1]), burst: level(order[2]) } }
 }
 
 // Aether and Lumine: GOOD keys the Traveler by element instead
@@ -271,6 +279,7 @@ export function parseEnkaGenshin(input: unknown, store: EnkaGenshinStore, import
       level: asNumber(levelProp.val) ?? 1,
       ascension: asNumber(ascensionProp.val) ?? 0,
       constellation: Array.isArray(raw.talentIdList) ? raw.talentIdList.length : 0,
+      ...talentsOf(raw.skillLevelMap, info?.SkillOrder),
       ...(weapon ? { weapon } : {}),
       artifactIds,
       stats,
