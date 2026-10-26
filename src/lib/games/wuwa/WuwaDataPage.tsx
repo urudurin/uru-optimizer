@@ -38,10 +38,10 @@ export function WuwaDataPage() {
 
   return (
     <Stack gap='lg'>
-      <PageHeader title='Import & data' description='Your echoes and characters are kept in this browser only. Nothing is uploaded.' />
+      <PageHeader title='Import / Save' description='Your echoes and Resonators are kept in this browser only. Nothing is uploaded.' />
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing='lg'>
-        <Panel title='Import echoes and characters' description='Use the user-data file (.json) exported from WuwaEchoScorer.'>
+        <Panel title='Import echoes and Resonators' description='Use the user-data file (.json) exported from WuwaEchoScorer.'>
           <Stack gap='sm'>
             <FileInput
               size='sm'
@@ -72,7 +72,7 @@ export function WuwaDataPage() {
           <StatGrid
             stats={[
               { key: 'echoes', label: 'Echoes', value: formatNumber(echoes.length) },
-              { key: 'characters', label: 'Characters', value: formatNumber(characters.length) },
+              { key: 'characters', label: 'Resonators', value: formatNumber(characters.length) },
             ]}
           />
         </Panel>

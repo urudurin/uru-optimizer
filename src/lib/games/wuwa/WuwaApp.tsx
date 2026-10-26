@@ -2,7 +2,7 @@ import {
   IconCards,
   IconTrendingUp,
   IconUpload,
-  IconUsers,
+  IconUser,
 } from '@tabler/icons-react'
 import {
   EmptyState,
@@ -16,30 +16,26 @@ import { WuwaCharactersPage } from 'lib/games/wuwa/WuwaCharactersPage'
 import { WuwaDataPage } from 'lib/games/wuwa/WuwaDataPage'
 import { WuwaEchoesPage } from 'lib/games/wuwa/WuwaEchoesPage'
 
-const PAGES = ['characters', 'optimizer', 'echoes', 'data'] as const
+const PAGES = ['optimizer', 'characters', 'echoes', 'data'] as const
 type WuwaPage = (typeof PAGES)[number]
 
 const ICON_SIZE = 18
 
+// Same names and order as HSR's Optimization group: Optimizer, Characters, Relics, Import / Save
 const GROUPS: GameNavGroup<WuwaPage>[] = [
   {
-    label: 'Tools',
+    label: 'Optimization',
     items: [
-      { key: 'characters', label: 'Characters', icon: <IconUsers size={ICON_SIZE} /> },
-      { key: 'optimizer', label: 'Echo optimizer', icon: <IconTrendingUp size={ICON_SIZE} />, badge: 'Soon' },
-    ],
-  },
-  {
-    label: 'Your account',
-    items: [
+      { key: 'optimizer', label: 'Optimizer', icon: <IconTrendingUp size={ICON_SIZE} />, badge: 'Soon' },
+      { key: 'characters', label: 'Resonators', icon: <IconUser size={ICON_SIZE} /> },
       { key: 'echoes', label: 'Echoes', icon: <IconCards size={ICON_SIZE} /> },
-      { key: 'data', label: 'Import & data', icon: <IconUpload size={ICON_SIZE} /> },
+      { key: 'data', label: 'Import / Save', icon: <IconUpload size={ICON_SIZE} /> },
     ],
   },
 ]
 
 export function WuwaApp() {
-  const [page, setPage] = useStoredPage<WuwaPage>('wuwa-page', PAGES, 'characters')
+  const [page, setPage] = useStoredPage<WuwaPage>('wuwa-page', PAGES, 'optimizer')
   const goToImport = () => setPage('data')
 
   return (
@@ -55,7 +51,7 @@ export function WuwaApp() {
 function OptimizerComingSoon() {
   return (
     <>
-      <PageHeader title='Echo optimizer' />
+      <PageHeader title='Optimizer' />
       <Panel>
         <EmptyState icon={<IconTrendingUp size={24} />} title='Coming next'>
           The echo optimizer will search your echoes for the best 5-echo loadout under the 12-cost limit, ranked by the stat you pick, with set and main stat

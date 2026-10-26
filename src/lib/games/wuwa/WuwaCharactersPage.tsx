@@ -53,10 +53,10 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
   if (!character) {
     return (
       <Stack gap='lg'>
-        <PageHeader title='Characters' />
+        <PageHeader title='Resonators' />
         <Panel>
-          <EmptyState icon={<IconUsers size={24} />} title='Import your characters to get started' action={<Button onClick={onImport}>Import data</Button>}>
-            See the stats your in-game overview screen shows for each character, with the echoes they wear.
+          <EmptyState icon={<IconUsers size={24} />} title='Import your Resonators to get started' action={<Button onClick={onImport}>Import data</Button>}>
+            See the stats your in-game overview screen shows for each Resonator, with the echoes they wear.
           </EmptyState>
         </Panel>
       </Stack>
@@ -76,13 +76,13 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
   return (
     <Stack gap='lg'>
       <PageHeader
-        title='Characters'
+        title='Resonators'
         description='What the in-game overview screen shows, worked out from base stats, weapon, minor fortes and echoes. Matches the game to within 0.2%.'
       />
 
       <SideLayout
         side={
-          <Panel title='Your characters' description={`${characters.length} imported`}>
+          <Panel title='Your Resonators' description={`${characters.length} imported`}>
             <PickList
               active={character.charId}
               onPick={setPicked}

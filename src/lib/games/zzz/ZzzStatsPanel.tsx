@@ -84,7 +84,7 @@ export function ZzzStatsPanel({ onImport }: { onImport: () => void }) {
   if (builds.length === 0) {
     return (
       <Stack gap='lg'>
-        <PageHeader title='Agent stats' />
+        <PageHeader title='Agents' />
         <Panel>
           <EmptyState icon={<IconChartBar size={24} />} title='Import your builds to get started' action={<Button onClick={onImport}>Import discs</Button>}>
             See the exact numbers your in-game stat screen shows, and where each one comes from.
@@ -103,7 +103,7 @@ export function ZzzStatsPanel({ onImport }: { onImport: () => void }) {
   return (
     <Stack gap='lg'>
       <PageHeader
-        title='Agent stats'
+        title='Agents'
         description='What the in-game stat screen shows for your saved builds, worked out from the discs, W-Engine and Core Skill.'
       />
 

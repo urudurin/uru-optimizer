@@ -242,7 +242,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   if (discs.length === 0) {
     return (
       <Stack gap='lg'>
-        <PageHeader title='Disc optimizer' />
+        <PageHeader title='Optimizer' />
         <Panel>
           <EmptyState icon={<IconTrendingUp size={24} />} title='Import your discs first' action={<Button onClick={onImport}>Import discs</Button>}>
             The optimizer searches every combination of the discs you own for the best build.
@@ -264,7 +264,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   return (
     <Stack gap='lg'>
       <PageHeader
-        title='Disc optimizer'
+        title='Optimizer'
         description='Searches every combination of your discs and ranks them by the stat you pick. There is no damage calculation yet, so set minimums for the stats you also need.'
       />
 
