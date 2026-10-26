@@ -98,6 +98,16 @@ export default defineConfig({
         '**/.*/**',
       ],
     },
+    // ZZZ import from Enka.Network (src/lib/games/zzz/importer/enkaClient.ts). Enka doesn't accept requests made
+    // directly from other sites' pages, so the dev server forwards them. Enka asks for a custom User-Agent
+    proxy: {
+      '/enka-proxy': {
+        target: 'https://enka.network',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/enka-proxy/, ''),
+        headers: { 'User-Agent': 'uru-optimizer/1.0 (personal tool, https://github.com/urudurin/uru-optimizer)' },
+      },
+    },
   },
   test: {
     environment: 'node',

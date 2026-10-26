@@ -23,6 +23,8 @@ import {
   Panel,
   StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
+import { importEnkaZzzProfile } from 'lib/games/zzz/importer/enkaImport'
+import { isEnkaZzzResponse } from 'lib/games/zzz/importer/enkaParser'
 import { parseZzzBuildsExportJson } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
   createZzzBackup,
@@ -30,7 +32,18 @@ import {
 } from 'lib/games/zzz/state/zzzState'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import { isSupportedBuild } from 'lib/games/zzz/stats/resolveBuild'
+import { ZzzEnkaImportPanel } from 'lib/games/zzz/ZzzEnkaImportPanel'
 import { useState } from 'react'
+
+// A saved Enka.Network profile page, or undefined for any other file. Never throws
+function readEnkaFile(text: string): unknown {
+  try {
+    const parsed: unknown = JSON.parse(text)
+    return isEnkaZzzResponse(parsed) ? parsed : undefined
+  } catch {
+    return undefined
+  }
+}
 
 export function ZzzDataPage() {
   const discs = useZzzStore((s) => s.discs)
@@ -44,11 +57,15 @@ export function ZzzDataPage() {
   async function handleFile(file: File | null) {
     if (!file) return
     const text = await file.text()
-    // A backup saved from this page restores as-is, anything else is read as a builds export
+    // A backup saved from this page restores as-is, a saved Enka profile merges in, anything else is a builds export
     const backup = readZzzBackup(text)
+    const enka = backup ? undefined : readEnkaFile(text)
     if (backup) {
       importParsed({ ...backup, warnings: [] }, mode)
       setRestored(`Restored a backup with ${backup.discs.length} discs and ${backup.builds.length} builds`)
+    } else if (enka) {
+      const outcome = await importEnkaZzzProfile(enka)
+      setRestored(outcome.ok ? outcome.data : outcome.reason)
     } else {
       importParsed(parseZzzBuildsExportJson(text), mode)
       setRestored(null)
@@ -74,13 +91,15 @@ export function ZzzDataPage() {
         description='Your discs and builds are kept in this browser only. Nothing is uploaded. Save a backup to keep a copy or move them to another browser.'
       />
 
-      <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing='lg'>
-        <Panel title='Import' description='A builds export (.json) from your ZZZ optimizer tool, or a backup saved here.'>
+      <SimpleGrid cols={{ base: 1, md: 2 }} spacing='lg'>
+        <ZzzEnkaImportPanel />
+
+        <Panel title='Import' description='A builds export (.json) from your ZZZ optimizer tool, a saved Enka.Network profile, or a backup saved here.'>
           <Stack gap='sm'>
             <FileInput
               size='sm'
               leftSection={<IconFileImport size={16} />}
-              placeholder='Choose a builds export or backup (.json)'
+              placeholder='Choose a .json file'
               accept='application/json,.json'
               clearable
               onChange={handleFile}
