@@ -58,6 +58,8 @@ export const STAT_PRIORITIES: Record<string, StatPriority> = {
   // Kuro's official guide site (wuwaguide.kurogames.com, Suoming guide): "Energy Regen >= 118% > Crit DMG / Crit Rate >
   // ATK > Basic Attack DMG Bonus"
   'suoming': dps(['basicDmg'], { er: 0.75 }),
+  // Same site, Hsin: Moonlit Mechanism: "Energy Regen >= 118% > Crit DMG / Crit Rate > ATK > Resonance Skill DMG Bonus"
+  'hsin': dps(['skillDmg'], { er: 0.75 }),
 
   // Supports
   'verina': support('atk', { er: 1 }),
