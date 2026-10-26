@@ -30,6 +30,8 @@ export type RosterEntry = {
   // Background art and the round icon
   portrait?: string,
   circle?: string,
+  // Shown faded, e.g. a character the user hasn't added yet
+  dimmed?: boolean,
 }
 
 export function Roster({ entries, active, onPick, groupColor, footer }: {
@@ -83,6 +85,7 @@ export function Roster({ entries, active, onPick, groupColor, footer }: {
             className={classes.banner}
             data-active={entry.key === active || undefined}
             data-compact={compact || undefined}
+            data-dimmed={entry.dimmed || undefined}
             style={entry.portrait ? { backgroundImage: `url(${entry.portrait})` } : undefined}
             onClick={() => onPick(entry.key)}
           >

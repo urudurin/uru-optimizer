@@ -1,3 +1,4 @@
+import { CHARACTERS } from 'lib/games/wuwa/data/gameData'
 import {
   useEffect,
   useState,
@@ -23,6 +24,13 @@ export function parseArtPath(path: string): [id: string, isIcon: boolean] | unde
   return name.endsWith('-icon') ? [name.slice(0, -'-icon'.length), true] : [name, false]
 }
 
+// A file can be named after the Resonator's id or their name ('the-shorekeeper' or 'Shorekeeper')
+export function resolveArtId(name: string): string {
+  if (CHARACTERS[name]) return name
+  const byName = Object.values(CHARACTERS).find((c) => c.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') === name)
+  return byName?.id ?? name
+}
+
 let pending: Promise<Record<string, ResonatorArt>> | undefined
 
 export function loadUserArt(): Promise<Record<string, ResonatorArt>> {
@@ -31,7 +39,7 @@ export function loadUserArt(): Promise<Record<string, ResonatorArt>> {
     const icons: Record<string, string> = {}
     for (const [path, url] of entries) {
       const parsed = parseArtPath(path)
-      if (parsed) (parsed[1] ? icons : portraits)[parsed[0]] = url
+      if (parsed) (parsed[1] ? icons : portraits)[resolveArtId(parsed[0])] = url
     }
     // An icon alone still gives the roster something; the card then shows it too
     const ids = new Set([...Object.keys(portraits), ...Object.keys(icons)])

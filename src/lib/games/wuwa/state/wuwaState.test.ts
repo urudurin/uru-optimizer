@@ -5,6 +5,7 @@ import {
   equipWuwaEchoes,
   mergeWuwaData,
   readWuwaBackup,
+  saveWuwaCharacter,
   serializeWuwaData,
   type WuwaData,
   wuwaPiecesTaken,
@@ -63,6 +64,18 @@ describe('WuWa save', () => {
     expect(merged.priority).toEqual(['x'])
 
     expect(mergeWuwaData(data, incoming, 'replace')).toEqual(incoming)
+  })
+})
+
+describe('saveWuwaCharacter', () => {
+  it('adds a Resonator with empty echo slots, or updates one and keeps their echoes', () => {
+    const { echoIds: _, ...details } = character('y', 70)
+    const added = saveWuwaCharacter(data, details)
+    expect(added.characters.map((c) => [c.charId, c.level, c.echoIds.length])).toEqual([['x', 90, 5], ['y', 70, 5]])
+
+    const worn: WuwaData = { ...data, characters: [{ ...character('x'), echoIds: ['a', null, null, null, null] }] }
+    const updated = saveWuwaCharacter(worn, { ...details, charId: 'x', sequence: 2, weaponId: 'w' })
+    expect(updated.characters).toEqual([{ ...character('x', 70), sequence: 2, weaponId: 'w', echoIds: ['a', null, null, null, null] }])
   })
 })
 

@@ -81,6 +81,15 @@
   box-shadow: 0 0 0 1px var(--mantine-color-primary-filled);
 }
 
+.banner[data-dimmed] {
+  opacity: 0.45;
+}
+
+.banner[data-dimmed]:hover,
+.banner[data-dimmed][data-active] {
+  opacity: 0.8;
+}
+
 .banner[data-compact] {
   height: 46px;
   background-image: none !important;

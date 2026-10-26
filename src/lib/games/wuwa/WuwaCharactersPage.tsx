@@ -5,14 +5,11 @@ import {
   Stack,
   Text,
 } from '@mantine/core'
-import { IconUsers } from '@tabler/icons-react'
 import { formatNumber } from 'lib/games/shared/format'
 import { BuildRating } from 'lib/games/shared/ui/BuildRating'
 import {
-  EmptyState,
   Notices,
   PageHeader,
-  Panel,
 } from 'lib/games/shared/ui/GameLayout'
 import {
   Roster,
@@ -25,9 +22,13 @@ import { statIcon } from 'lib/games/shared/ui/statIcons'
 import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
 import {
   characterName,
+  CHARACTERS,
   WEAPONS,
 } from 'lib/games/wuwa/data/gameData'
-import { useUserArt } from 'lib/games/wuwa/data/userArt'
+import {
+  type ResonatorArt,
+  useUserArt,
+} from 'lib/games/wuwa/data/userArt'
 import { validateLoadout } from 'lib/games/wuwa/echoRules'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import {
@@ -40,6 +41,7 @@ import {
   wuwaEchoWeights,
 } from 'lib/games/wuwa/stats/echoScore'
 import {
+  type CharacterState,
   type ElementDmgKey,
   MAX_LOADOUT_COST,
   statLabel,
@@ -50,46 +52,89 @@ import {
   elementName,
 } from 'lib/games/wuwa/ui/EchoCard'
 import {
+  type ResonatorDetails,
+  ResonatorForm,
+  WEAPON_TYPES,
+} from 'lib/games/wuwa/ui/ResonatorForm'
+import {
   useMemo,
   useState,
 } from 'react'
 
 // The Resonators page, after HSR's Characters page like ZZZ's Agents page: a roster of banners and one showcase card
-// (shared/ui/Showcase.tsx). Art is whatever the user saved into wuwa/user-art/ (data/userArt.ts); without it, initials on
-// the element's color.
-
-// The datamine's weapon types
-const WEAPON_TYPES: Record<number, string> = { 1: 'Broadblade', 2: 'Sword', 3: 'Pistols', 4: 'Gauntlets', 5: 'Rectifier' }
+// (shared/ui/Showcase.tsx). The roster lists every Resonator in the datamine; ones not in the save are dimmed and can be
+// added by hand (level, sequence, weapon), since WuWa has no whole-account export like Genshin's GOOD files. Art is
+// whatever the user saved into wuwa/user-art/ (data/userArt.ts); without it, initials on the element's color.
 
 const accentOf = (element: ElementDmgKey | undefined) => element && `var(--mantine-color-${elementColor(element)}-6)`
 
+const NEW_RESONATOR: Omit<ResonatorDetails, 'charId'> = { level: 90, sequence: 0, weaponLevel: 90, refinement: 1, minorFortes: true }
+
 export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
-  const echoes = useWuwaStore((s) => s.echoes)
   const characters = useWuwaStore((s) => s.characters)
   const art = useUserArt()
   const [picked, setPicked] = useState<string | null>(null)
 
-  const echoById = useMemo(() => new Map(echoes.map((echo) => [echo.id, echo])), [echoes])
-  const character = characters.find((c) => c.charId === picked) ?? characters[0]
   // Roster groups are element names; this finds their colors again
   const elementByName = useMemo(
     () => new Map(Object.values(CHARACTER_INFO).map((info) => [elementName(info.element), info.element])),
     [],
   )
+  // Saved Resonators first, then everyone else by name
+  const rosterIds = useMemo(() => {
+    const saved = new Set(characters.map((c) => c.charId))
+    const others = Object.values(CHARACTERS).filter((c) => !saved.has(c.id)).sort((a, b) => a.name.localeCompare(b.name)).map((c) => c.id)
+    return [...characters.map((c) => c.charId), ...others]
+  }, [characters])
 
-  if (!character) {
-    return (
-      <Stack gap='lg'>
-        <PageHeader title='Resonators' />
-        <Panel>
-          <EmptyState icon={<IconUsers size={24} />} title='Import your Resonators to get started' action={<Button onClick={onImport}>Import data</Button>}>
-            See the stats your in-game overview screen shows for each Resonator, with the echoes they wear.
-          </EmptyState>
-        </Panel>
-      </Stack>
-    )
-  }
+  const activeId = picked ?? rosterIds[0]
+  const character = characters.find((c) => c.charId === activeId)
 
+  return (
+    <Stack gap='lg'>
+      <PageHeader
+        title='Resonators'
+        description='What the in-game overview screen shows, worked out from base stats, weapon, minor fortes and echoes. Matches the game to within 0.2%.'
+      />
+
+      <RosterLayout
+        roster={
+          <Roster
+            active={activeId}
+            onPick={setPicked}
+            groupColor={(group) => elementColor(elementByName.get(group))}
+            entries={rosterIds.map((charId) => {
+              const c = characters.find((saved) => saved.charId === charId)
+              const info = CHARACTER_INFO[charId]
+              const w = c?.weaponId ? WEAPONS[c.weaponId] : undefined
+              return {
+                key: charId,
+                name: characterName(charId),
+                meta: c ? `Lv ${c.level} · S${c.sequence} · ${w ? `${w.name} R${c.refinement}` : 'No weapon'}` : 'Not added',
+                group: info ? elementName(info.element) : 'Unknown',
+                subgroup: w ? WEAPON_TYPES[w.weaponType] : undefined,
+                portrait: art[charId]?.portrait,
+                circle: art[charId]?.icon ?? art[charId]?.portrait,
+                dimmed: !c,
+              }
+            })}
+          />
+        }
+      >
+        {character
+          ? <SavedResonator key={character.charId} character={character} art={art[character.charId]} />
+          : activeId && <NewResonator key={activeId} charId={activeId} art={art[activeId]} onImport={characters.length === 0 ? onImport : undefined} />}
+      </RosterLayout>
+    </Stack>
+  )
+}
+
+function SavedResonator({ character, art }: { character: CharacterState, art?: ResonatorArt }) {
+  const echoes = useWuwaStore((s) => s.echoes)
+  const saveCharacter = useWuwaStore((s) => s.saveCharacter)
+  const [editing, setEditing] = useState(false)
+
+  const echoById = useMemo(() => new Map(echoes.map((echo) => [echo.id, echo])), [echoes])
   const loadout = character.echoIds.flatMap((id) => {
     const echo = id ? echoById.get(id) : undefined
     return echo ? [echo] : []
@@ -118,60 +163,74 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
   ]
 
   return (
-    <Stack gap='lg'>
-      <PageHeader
-        title='Resonators'
-        description='What the in-game overview screen shows, worked out from base stats, weapon, minor fortes and echoes. Matches the game to within 0.2%.'
-      />
+    <ShowcaseCard
+      name={name}
+      accent={accentOf(element)}
+      portrait={art?.portrait}
+      weapon={weapon
+        && { name: weapon.name, meta: `${WEAPON_TYPES[weapon.weaponType] ?? 'Weapon'} · Lv ${character.weaponLevel} · R${character.refinement}` }}
+      info={
+        <>
+          <div>
+            <Group justify='space-between' wrap='nowrap'>
+              <Text size='xl' fw={700}>{name}</Text>
+              {!editing && <Button size='compact-xs' variant='subtle' onClick={() => setEditing(true)}>Edit</Button>}
+            </Group>
+            <Group gap={6} mt={4}>
+              {element && <Badge size='sm' variant='light' color={elementColor(element)}>{elementName(element)}</Badge>}
+              <Text size='xs' c='dimmed'>{`Lv ${character.level} · S${character.sequence}`}</Text>
+            </Group>
+          </div>
+          {editing && (
+            <ResonatorForm
+              initial={character}
+              submitLabel='Save'
+              onSubmit={(details) => {
+                saveCharacter(details)
+                setEditing(false)
+              }}
+              onCancel={() => setEditing(false)}
+            />
+          )}
+          <StatList rows={rows} />
+          <BuildRating score={wuwaBuildScore(character, loadout)} label='Echo score' />
+          <Text size='xs' c={cost > MAX_LOADOUT_COST ? 'red' : 'dimmed'}>{`Echo cost ${cost} / ${MAX_LOADOUT_COST} · main echo first`}</Text>
+          <Notices messages={[...warnings, ...validateLoadout(loadout)]} />
+        </>
+      }
+      gear={loadout.length > 0
+        ? loadout.map((echo) => <EchoCard key={echo.id} echo={echo} score={scoreEcho(echo, echoWeights)} />)
+        : <Text size='sm' c='dimmed'>No echoes equipped. Pick some on the Optimizer page and equip them.</Text>}
+    />
+  )
+}
 
-      <RosterLayout
-        roster={
-          <Roster
-            active={character.charId}
-            onPick={setPicked}
-            groupColor={(group) => elementColor(elementByName.get(group))}
-            entries={characters.map((c) => {
-              const info = CHARACTER_INFO[c.charId]
-              const w = c.weaponId ? WEAPONS[c.weaponId] : undefined
-              return {
-                key: c.charId,
-                name: characterName(c.charId),
-                meta: `Lv ${c.level} · S${c.sequence} · ${w ? `${w.name} R${c.refinement}` : 'No weapon'}`,
-                group: info ? elementName(info.element) : 'Unknown',
-                subgroup: w ? WEAPON_TYPES[w.weaponType] : undefined,
-                portrait: art[c.charId]?.portrait,
-                circle: art[c.charId]?.icon ?? art[c.charId]?.portrait,
-              }
-            })}
-          />
-        }
-      >
-        <ShowcaseCard
-          name={name}
-          accent={accentOf(element)}
-          portrait={art[character.charId]?.portrait}
-          weapon={weapon
-            && { name: weapon.name, meta: `${WEAPON_TYPES[weapon.weaponType] ?? 'Weapon'} · Lv ${character.weaponLevel} · R${character.refinement}` }}
-          info={
-            <>
-              <div>
-                <Text size='xl' fw={700}>{name}</Text>
-                <Group gap={6} mt={4}>
-                  {element && <Badge size='sm' variant='light' color={elementColor(element)}>{elementName(element)}</Badge>}
-                  <Text size='xs' c='dimmed'>{`Lv ${character.level} · S${character.sequence}`}</Text>
-                </Group>
-              </div>
-              <StatList rows={rows} />
-              <BuildRating score={wuwaBuildScore(character, loadout)} label='Echo score' />
-              <Text size='xs' c={cost > MAX_LOADOUT_COST ? 'red' : 'dimmed'}>{`Echo cost ${cost} / ${MAX_LOADOUT_COST} · main echo first`}</Text>
-              <Notices messages={[...warnings, ...validateLoadout(loadout)]} />
-            </>
-          }
-          gear={loadout.length > 0
-            ? loadout.map((echo) => <EchoCard key={echo.id} echo={echo} score={scoreEcho(echo, echoWeights)} />)
-            : <Text size='sm' c='dimmed'>No echoes equipped.</Text>}
-        />
-      </RosterLayout>
-    </Stack>
+// A Resonator who isn't in the save yet
+function NewResonator({ charId, art, onImport }: { charId: string, art?: ResonatorArt, onImport?: () => void }) {
+  const saveCharacter = useWuwaStore((s) => s.saveCharacter)
+  const element = CHARACTER_INFO[charId]?.element
+  const name = characterName(charId)
+
+  return (
+    <ShowcaseCard
+      name={name}
+      accent={accentOf(element)}
+      portrait={art?.portrait}
+      info={
+        <>
+          <div>
+            <Text size='xl' fw={700}>{name}</Text>
+            <Group gap={6} mt={4}>
+              {element && <Badge size='sm' variant='light' color={elementColor(element)}>{elementName(element)}</Badge>}
+              <Text size='xs' c='dimmed'>Not added</Text>
+            </Group>
+          </div>
+          <Text size='sm' c='dimmed'>Add their level, sequence and weapon to see their stats. Echoes come from an import or the Optimizer.</Text>
+          <ResonatorForm initial={{ ...NEW_RESONATOR, charId }} submitLabel='Add Resonator' onSubmit={saveCharacter} />
+          {onImport && <Button size='xs' variant='light' onClick={onImport}>Import data instead</Button>}
+        </>
+      }
+      gear={<Text size='sm' c='dimmed'>No echoes yet.</Text>}
+    />
   )
 }

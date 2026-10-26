@@ -96,6 +96,14 @@ export function equipWuwaEchoes(data: WuwaData, charId: string, echoes: Echo[]):
   }
 }
 
+// Adds a Resonator by hand, or updates the details of one already saved. Their echoes stay as they are
+export function saveWuwaCharacter(data: WuwaData, details: Omit<CharacterState, 'echoIds'>): WuwaData {
+  const existing = data.characters.find((c) => c.charId === details.charId)
+  if (existing) return { ...data, characters: data.characters.map((c) => (c === existing ? { ...existing, ...details } : c)) }
+  const added: CharacterState = { ...details, echoIds: Array.from({ length: MAX_LOADOUT_ECHOES }, () => null) }
+  return { ...data, characters: [...data.characters, added] }
+}
+
 // Who would lose echoes to this Resonator, by charId
 export function wuwaPiecesTaken(data: WuwaData, charId: string, echoes: Echo[]): string[] {
   const ids = new Set(echoes.map((e) => e.id))
