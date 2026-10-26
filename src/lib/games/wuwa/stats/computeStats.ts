@@ -87,8 +87,11 @@ export function computeWuwaStats(character: CharacterState, echoes: Echo[]): Wuw
 
   const weapon = character.weaponId ? WEAPONS[character.weaponId] : undefined
   if (character.weaponId && !weapon) warnings.push(`No data for weapon ${character.weaponId}, its ATK and secondary stat are left out`)
-  if (weapon) add({ [weapon.secondary.stat]: atLevel(weapon.secondary.byLevel, character.weaponLevel) })
-  // Weapon passives aren't in the datamine copy. Their always-on bonuses (e.g. All-Attribute DMG) aren't counted yet
+  if (weapon) {
+    add({ [weapon.secondary.stat]: atLevel(weapon.secondary.byLevel, character.weaponLevel) })
+    // Always-on passive bonuses do show on the stat screen (Unspoken Rue's 12% ATK on Suoming's screen)
+    add(weapon.passiveStats?.[String(character.refinement)] ?? {})
+  }
 
   for (const echo of echoes) {
     add({ [echo.mainStat]: mainStatValue(echo.cost, echo.mainStat, echo.level) })

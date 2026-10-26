@@ -22,7 +22,15 @@ import {
 describe('WuWa datamine data', () => {
   it('says where it came from', () => {
     expect(DATA_PROVENANCE.source).toContain('Arikatsu/WutheringWaves_Data')
-    expect(DATA_PROVENANCE.included).toEqual(['bases.baseByLevel', 'weapons', 'echoes', 'sets', 'characters (element, minorFortes)'])
+    expect(DATA_PROVENANCE.included).toEqual([
+      'bases.baseByLevel',
+      'weapons',
+      'echoes',
+      'sets',
+      'characters (element, minorFortes)',
+      'weapons.passiveStats',
+    ])
+    expect(DATA_PROVENANCE.weaponPassives).toContain('weaponconf.json')
     expect(DATA_PROVENANCE.characters).toContain('extractCharacters.mjs')
   })
 
@@ -74,6 +82,19 @@ describe('WuWa datamine data', () => {
       expect(Object.keys(character.minorFortes).length, character.id).toBeGreaterThan(0)
       for (const stat of Object.keys(character.minorFortes)) expect(STAT_LABELS[stat as keyof typeof STAT_LABELS], `${character.id} ${stat}`).toBeDefined()
     }
+  })
+
+  it('has always-on weapon passives with five refinements and known stats', () => {
+    const withPassive = Object.values(WEAPONS).filter((weapon) => weapon.passiveStats)
+    expect(withPassive.length).toBeGreaterThan(0)
+    for (const weapon of withPassive) {
+      expect(Object.keys(weapon.passiveStats!), weapon.id).toEqual(['1', '2', '3', '4', '5'])
+      for (const stat of Object.keys(weapon.passiveStats!['1'])) expect(STAT_LABELS[stat as keyof typeof STAT_LABELS], `${weapon.id} ${stat}`).toBeDefined()
+    }
+    // Suoming's stat screen confirms this one
+    expect(WEAPONS['unspoken-rue'].passiveStats!['1']).toEqual({ atkPct: 12 })
+    // A passive that only triggers on skill use isn't counted
+    expect(WEAPONS.variation.passiveStats).toBeUndefined()
   })
 
   it('has the minor fortes the stat screen confirms for Hsin', () => {

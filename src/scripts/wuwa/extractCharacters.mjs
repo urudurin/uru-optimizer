@@ -1,12 +1,13 @@
-// Adds each WuWa character's element and minor forte bonuses to src/lib/games/wuwa/data/generated/datamine.json,
-// read straight from the community datamine Arikatsu/WutheringWaves_Data. Run by hand when the datamine updates:
+// Adds each WuWa character's element and minor forte bonuses, and each weapon's always-on passive bonuses, to
+// src/lib/games/wuwa/data/generated/datamine.json, read straight from the community datamine
+// Arikatsu/WutheringWaves_Data. Run by hand when the datamine updates:
 //
 //   node src/scripts/wuwa/extractCharacters.mjs <datamine folder> <branch>
 //
 // The datamine folder must hold these files, downloaded from
 // https://raw.githubusercontent.com/Arikatsu/WutheringWaves_Data/<branch>/<path>:
 //   BinData/role/roleinfo.json, BinData/skillTree/skilltree.json, BinData/property/propertyindex.json,
-//   Textmaps/en/multi_text/MultiText.json
+//   BinData/weapon/weaponconf.json, Textmaps/en/multi_text/MultiText.json
 // Only data files are read, nothing is fetched or run. Personal, non-commercial use, see src/lib/games/DATA-SOURCES.md.
 
 import {
@@ -101,9 +102,46 @@ for (const role of read('BinData/role/roleinfo.json')) {
   characters[id] = { id, name, element: element ?? null, minorFortes }
 }
 
+// Weapon passives: only a first sentence that is exactly one of these always-on phrasings is used. Anything with a
+// trigger ("When ...", "Casting ...", "upon ...") is left out, so the result is what the stat screen counts
+const ELEMENTS = Object.values(ELEMENT_IDS)
+const PASSIVE_PATTERNS = [
+  [/^(Increases ATK by|ATK is increased by|Increase ATK by|ATK increased by) \{0\}\.$/, ['atkPct']],
+  [/^Increase HP by \{0\}\.$/, ['hpPct']],
+  [/^Increases Energy Regen by \{0\}\.$/, ['energyRegen']],
+  [/^(Grants \{0\} (All-)?Attribute DMG Bonus|Increases Attribute DMG Bonus by \{0\}|Gain \{0\} Attribute DMG Bonus)\.$/, ELEMENTS],
+  [/^Resonance Skill DMG Bonus is increased by \{0\}\.$/, ['skillDmg']],
+  [/^Increases Resonance Liberation DMG Bonus by \{0\}\.$/, ['libDmg']],
+  [/^Increases Basic Attack( DMG Bonus)? and Heavy Attack DMG Bonus by \{0\}\.$/, ['basicDmg', 'heavyDmg']],
+]
+
+// Same id form as the existing weapon ids: "Blooming Jadehaven" -> "blooming-jadehaven"
+function slugify(name) {
+  return normalise(name).normalize('NFD').replace(/&/g, ' and ').replace(/[^a-z0-9 ]/g, '').trim().replace(/\s+/g, '-')
+}
+
+let weaponsWithPassive = 0
+for (const weapon of read('BinData/weapon/weaponconf.json')) {
+  const name = text.get(weapon.WeaponName)
+  const target = name ? data.weapons[slugify(name)] : undefined
+  const description = text.get(weapon.Desc)
+  if (!target || !description) continue
+  const first = description.replace(/<[^>]+>/g, '').split(/(?<=\.)\s/)[0].trim()
+  const match = PASSIVE_PATTERNS.find(([pattern]) => pattern.test(first))
+  const values = weapon.DescParams?.[0]?.ArrayString
+  // Only percentages, one per refinement
+  if (!match || !Array.isArray(values) || values.length !== 5 || !values.every((v) => /^\d+(\.\d+)?%$/.test(v))) continue
+  target.passiveStats = Object.fromEntries(
+    values.map((value, i) => [i + 1, Object.fromEntries(match[1].map((stat) => [stat, Number.parseFloat(value)]))]),
+  )
+  weaponsWithPassive++
+}
+
 const missing = Object.keys(data.bases).filter((id) => !characters[id])
 data.characters = Object.fromEntries(Object.keys(characters).sort().map((id) => [id, characters[id]]))
-data.provenance.included = ['bases.baseByLevel', 'weapons', 'echoes', 'sets', 'characters (element, minorFortes)']
+data.provenance.included = ['bases.baseByLevel', 'weapons', 'echoes', 'sets', 'characters (element, minorFortes)', 'weapons.passiveStats']
+data.provenance.weaponPassives =
+  `Always-on weapon passive bonuses per refinement, from the first sentence of each passive description and its values (BinData/weapon/weaponconf.json Desc, DescParams), branch ${branch}, same script and date as characters`
 data.provenance.characters =
   `Element (BinData/role/roleinfo.json ElementId) and minor fortes (BinData/skillTree/skilltree.json stat nodes) read directly from the datamine branch ${branch} by src/scripts/wuwa/extractCharacters.mjs on ${
     new Date().toISOString().slice(0, 10)
@@ -111,4 +149,5 @@ data.provenance.characters =
 writeFileSync(OUTPUT, `${JSON.stringify(data, null, 2)}\n`)
 
 console.log(`characters: ${Object.keys(characters).length}, without a match: ${missing.join(', ') || 'none'}`)
+console.log(`weapons with an always-on passive: ${weaponsWithPassive} of ${Object.keys(data.weapons).length}`)
 if (unknownProperties.size > 0) console.log(`unmapped forte properties: ${[...unknownProperties].join(', ')}`)

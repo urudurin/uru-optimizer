@@ -10,11 +10,13 @@
       "weapons",
       "echoes",
       "sets",
-      "characters (element, minorFortes)"
+      "characters (element, minorFortes)",
+      "weapons.passiveStats"
     ],
     "excluded": "Everything from Prydwen: character build profiles (sets, main stats, substat weights, targets, teams, weapons ranking, element) and minor fortes",
     "confidence": "sourced",
-    "characters": "Element (BinData/role/roleinfo.json ElementId) and minor fortes (BinData/skillTree/skilltree.json stat nodes) read directly from the datamine branch 3.7 by src/scripts/wuwa/extractCharacters.mjs on 2026-10-25"
+    "characters": "Element (BinData/role/roleinfo.json ElementId) and minor fortes (BinData/skillTree/skilltree.json stat nodes) read directly from the datamine branch 3.7 by src/scripts/wuwa/extractCharacters.mjs on 2026-10-26",
+    "weaponPassives": "Always-on weapon passive bonuses per refinement, from the first sentence of each passive description and its values (BinData/weapon/weaponconf.json Desc, DescParams), branch 3.7, same script and date as characters"
   },
   "bases": {
     "aalto": {
@@ -27509,7 +27511,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "energyRegen": 12.8
+        },
+        "2": {
+          "energyRegen": 16
+        },
+        "3": {
+          "energyRegen": 19.2
+        },
+        "4": {
+          "energyRegen": 22.4
+        },
+        "5": {
+          "energyRegen": 25.6
+        }
+      }
     },
     "aether-strike": {
       "baseAtkByLevel": {
@@ -27893,7 +27912,49 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "glacioDmg": 12,
+          "fusionDmg": 12,
+          "electroDmg": 12,
+          "aeroDmg": 12,
+          "spectroDmg": 12,
+          "havocDmg": 12
+        },
+        "2": {
+          "glacioDmg": 15,
+          "fusionDmg": 15,
+          "electroDmg": 15,
+          "aeroDmg": 15,
+          "spectroDmg": 15,
+          "havocDmg": 15
+        },
+        "3": {
+          "glacioDmg": 18,
+          "fusionDmg": 18,
+          "electroDmg": 18,
+          "aeroDmg": 18,
+          "spectroDmg": 18,
+          "havocDmg": 18
+        },
+        "4": {
+          "glacioDmg": 21,
+          "fusionDmg": 21,
+          "electroDmg": 21,
+          "aeroDmg": 21,
+          "spectroDmg": 21,
+          "havocDmg": 21
+        },
+        "5": {
+          "glacioDmg": 24,
+          "fusionDmg": 24,
+          "electroDmg": 24,
+          "aeroDmg": 24,
+          "spectroDmg": 24,
+          "havocDmg": 24
+        }
+      }
     },
     "amity-accord": {
       "baseAtkByLevel": {
@@ -28853,7 +28914,49 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "glacioDmg": 12,
+          "fusionDmg": 12,
+          "electroDmg": 12,
+          "aeroDmg": 12,
+          "spectroDmg": 12,
+          "havocDmg": 12
+        },
+        "2": {
+          "glacioDmg": 15,
+          "fusionDmg": 15,
+          "electroDmg": 15,
+          "aeroDmg": 15,
+          "spectroDmg": 15,
+          "havocDmg": 15
+        },
+        "3": {
+          "glacioDmg": 18,
+          "fusionDmg": 18,
+          "electroDmg": 18,
+          "aeroDmg": 18,
+          "spectroDmg": 18,
+          "havocDmg": 18
+        },
+        "4": {
+          "glacioDmg": 21,
+          "fusionDmg": 21,
+          "electroDmg": 21,
+          "aeroDmg": 21,
+          "spectroDmg": 21,
+          "havocDmg": 21
+        },
+        "5": {
+          "glacioDmg": 24,
+          "fusionDmg": 24,
+          "electroDmg": 24,
+          "aeroDmg": 24,
+          "spectroDmg": 24,
+          "havocDmg": 24
+        }
+      }
     },
     "beguiling-melody": {
       "baseAtkByLevel": {
@@ -29237,7 +29340,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "blazing-justice": {
       "baseAtkByLevel": {
@@ -29429,7 +29549,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "bloodpacts-pledge": {
       "baseAtkByLevel": {
@@ -29813,7 +29950,49 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "glacioDmg": 12,
+          "fusionDmg": 12,
+          "electroDmg": 12,
+          "aeroDmg": 12,
+          "spectroDmg": 12,
+          "havocDmg": 12
+        },
+        "2": {
+          "glacioDmg": 15,
+          "fusionDmg": 15,
+          "electroDmg": 15,
+          "aeroDmg": 15,
+          "spectroDmg": 15,
+          "havocDmg": 15
+        },
+        "3": {
+          "glacioDmg": 18,
+          "fusionDmg": 18,
+          "electroDmg": 18,
+          "aeroDmg": 18,
+          "spectroDmg": 18,
+          "havocDmg": 18
+        },
+        "4": {
+          "glacioDmg": 21,
+          "fusionDmg": 21,
+          "electroDmg": 21,
+          "aeroDmg": 21,
+          "spectroDmg": 21,
+          "havocDmg": 21
+        },
+        "5": {
+          "glacioDmg": 24,
+          "fusionDmg": 24,
+          "electroDmg": 24,
+          "aeroDmg": 24,
+          "spectroDmg": 24,
+          "havocDmg": 24
+        }
+      }
     },
     "boson-astrolabe": {
       "baseAtkByLevel": {
@@ -30005,7 +30184,24 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "broadblade-of-night": {
       "baseAtkByLevel": {
@@ -31733,7 +31929,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "energyRegen": 12.8
+        },
+        "2": {
+          "energyRegen": 16
+        },
+        "3": {
+          "energyRegen": 19.2
+        },
+        "4": {
+          "energyRegen": 22.4
+        },
+        "5": {
+          "energyRegen": 25.6
+        }
+      }
     },
     "dauntless-evernight": {
       "baseAtkByLevel": {
@@ -32117,7 +32330,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "defiers-thorn": {
       "baseAtkByLevel": {
@@ -32693,7 +32923,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "energyRegen": 12.8
+        },
+        "2": {
+          "energyRegen": 16
+        },
+        "3": {
+          "energyRegen": 19.2
+        },
+        "4": {
+          "energyRegen": 22.4
+        },
+        "5": {
+          "energyRegen": 25.6
+        }
+      }
     },
     "emerald-sentence": {
       "baseAtkByLevel": {
@@ -32885,7 +33132,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "endless-collapse": {
       "baseAtkByLevel": {
@@ -34037,7 +34301,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "freeze-frame": {
       "baseAtkByLevel": {
@@ -34229,7 +34510,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "frostburn": {
       "baseAtkByLevel": {
@@ -34421,7 +34719,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "fusion-accretion": {
       "baseAtkByLevel": {
@@ -35381,7 +35696,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "guardian-broadblade": {
       "baseAtkByLevel": {
@@ -35573,7 +35905,29 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "basicDmg": 12,
+          "heavyDmg": 12
+        },
+        "2": {
+          "basicDmg": 15,
+          "heavyDmg": 15
+        },
+        "3": {
+          "basicDmg": 18,
+          "heavyDmg": 18
+        },
+        "4": {
+          "basicDmg": 21,
+          "heavyDmg": 21
+        },
+        "5": {
+          "basicDmg": 24,
+          "heavyDmg": 24
+        }
+      }
     },
     "guardian-gauntlets": {
       "baseAtkByLevel": {
@@ -35765,7 +36119,24 @@
         },
         "stat": "defPct"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "libDmg": 12
+        },
+        "2": {
+          "libDmg": 15
+        },
+        "3": {
+          "libDmg": 18
+        },
+        "4": {
+          "libDmg": 21
+        },
+        "5": {
+          "libDmg": 24
+        }
+      }
     },
     "guardian-pistols": {
       "baseAtkByLevel": {
@@ -35957,7 +36328,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "skillDmg": 12
+        },
+        "2": {
+          "skillDmg": 15
+        },
+        "3": {
+          "skillDmg": 18
+        },
+        "4": {
+          "skillDmg": 21
+        },
+        "5": {
+          "skillDmg": 24
+        }
+      }
     },
     "guardian-rectifier": {
       "baseAtkByLevel": {
@@ -36149,7 +36537,29 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "basicDmg": 12,
+          "heavyDmg": 12
+        },
+        "2": {
+          "basicDmg": 15,
+          "heavyDmg": 15
+        },
+        "3": {
+          "basicDmg": 18,
+          "heavyDmg": 18
+        },
+        "4": {
+          "basicDmg": 21,
+          "heavyDmg": 21
+        },
+        "5": {
+          "basicDmg": 24,
+          "heavyDmg": 24
+        }
+      }
     },
     "guardian-sword": {
       "baseAtkByLevel": {
@@ -36341,7 +36751,24 @@
         },
         "stat": "hpPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "skillDmg": 12
+        },
+        "2": {
+          "skillDmg": 15
+        },
+        "3": {
+          "skillDmg": 18
+        },
+        "4": {
+          "skillDmg": 21
+        },
+        "5": {
+          "skillDmg": 24
+        }
+      }
     },
     "helios-cleaver": {
       "baseAtkByLevel": {
@@ -37109,7 +37536,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "laser-shearer": {
       "baseAtkByLevel": {
@@ -37301,7 +37745,24 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "last-dance": {
       "baseAtkByLevel": {
@@ -37493,7 +37954,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "legend-of-drunken-hero": {
       "baseAtkByLevel": {
@@ -37877,7 +38355,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "lumingloss": {
       "baseAtkByLevel": {
@@ -38261,7 +38756,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "lunar-cutter": {
       "baseAtkByLevel": {
@@ -38645,7 +39157,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "energyRegen": 12.8
+        },
+        "2": {
+          "energyRegen": 16
+        },
+        "3": {
+          "energyRegen": 19.2
+        },
+        "4": {
+          "energyRegen": 22.4
+        },
+        "5": {
+          "energyRegen": 25.6
+        }
+      }
     },
     "lux-and-umbra": {
       "baseAtkByLevel": {
@@ -38837,7 +39366,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "marcato": {
       "baseAtkByLevel": {
@@ -39413,7 +39959,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "novaburst": {
       "baseAtkByLevel": {
@@ -41141,7 +41704,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "pistols-of-night": {
       "baseAtkByLevel": {
@@ -41909,7 +42489,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "radiance-cleaver": {
       "baseAtkByLevel": {
@@ -42101,7 +42698,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "radiant-dawn": {
       "baseAtkByLevel": {
@@ -43061,7 +43675,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "relativistic-jet": {
       "baseAtkByLevel": {
@@ -43445,7 +44076,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "romance-in-farewell": {
       "baseAtkByLevel": {
@@ -43829,7 +44477,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "solar-flame": {
       "baseAtkByLevel": {
@@ -44213,7 +44878,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "somnoire-anchor": {
       "baseAtkByLevel": {
@@ -44597,7 +45279,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "spectrum-blaster": {
       "baseAtkByLevel": {
@@ -44789,7 +45488,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "starfield-calibrator": {
       "baseAtkByLevel": {
@@ -45173,7 +45889,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "energyRegen": 12.8
+        },
+        "2": {
+          "energyRegen": 16
+        },
+        "3": {
+          "energyRegen": 19.2
+        },
+        "4": {
+          "energyRegen": 22.4
+        },
+        "5": {
+          "energyRegen": 25.6
+        }
+      }
     },
     "stellar-symphony": {
       "baseAtkByLevel": {
@@ -45365,7 +46098,24 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "hpPct": 12
+        },
+        "2": {
+          "hpPct": 15
+        },
+        "3": {
+          "hpPct": 18
+        },
+        "4": {
+          "hpPct": 21
+        },
+        "5": {
+          "hpPct": 24
+        }
+      }
     },
     "stonard": {
       "baseAtkByLevel": {
@@ -45749,7 +46499,49 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "glacioDmg": 12,
+          "fusionDmg": 12,
+          "electroDmg": 12,
+          "aeroDmg": 12,
+          "spectroDmg": 12,
+          "havocDmg": 12
+        },
+        "2": {
+          "glacioDmg": 15,
+          "fusionDmg": 15,
+          "electroDmg": 15,
+          "aeroDmg": 15,
+          "spectroDmg": 15,
+          "havocDmg": 15
+        },
+        "3": {
+          "glacioDmg": 18,
+          "fusionDmg": 18,
+          "electroDmg": 18,
+          "aeroDmg": 18,
+          "spectroDmg": 18,
+          "havocDmg": 18
+        },
+        "4": {
+          "glacioDmg": 21,
+          "fusionDmg": 21,
+          "electroDmg": 21,
+          "aeroDmg": 21,
+          "spectroDmg": 21,
+          "havocDmg": 21
+        },
+        "5": {
+          "glacioDmg": 24,
+          "fusionDmg": 24,
+          "electroDmg": 24,
+          "aeroDmg": 24,
+          "spectroDmg": 24,
+          "havocDmg": 24
+        }
+      }
     },
     "sword-of-night": {
       "baseAtkByLevel": {
@@ -46517,7 +47309,49 @@
         },
         "stat": "hpPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "glacioDmg": 12,
+          "fusionDmg": 12,
+          "electroDmg": 12,
+          "aeroDmg": 12,
+          "spectroDmg": 12,
+          "havocDmg": 12
+        },
+        "2": {
+          "glacioDmg": 15,
+          "fusionDmg": 15,
+          "electroDmg": 15,
+          "aeroDmg": 15,
+          "spectroDmg": 15,
+          "havocDmg": 15
+        },
+        "3": {
+          "glacioDmg": 18,
+          "fusionDmg": 18,
+          "electroDmg": 18,
+          "aeroDmg": 18,
+          "spectroDmg": 18,
+          "havocDmg": 18
+        },
+        "4": {
+          "glacioDmg": 21,
+          "fusionDmg": 21,
+          "electroDmg": 21,
+          "aeroDmg": 21,
+          "spectroDmg": 21,
+          "havocDmg": 21
+        },
+        "5": {
+          "glacioDmg": 24,
+          "fusionDmg": 24,
+          "electroDmg": 24,
+          "aeroDmg": 24,
+          "spectroDmg": 24,
+          "havocDmg": 24
+        }
+      }
     },
     "thunderbolt": {
       "baseAtkByLevel": {
@@ -46901,7 +47735,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "tragicomedy": {
       "baseAtkByLevel": {
@@ -47093,7 +47944,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "training-broadblade": {
       "baseAtkByLevel": {
@@ -47285,7 +48153,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "atkPct": 4
+        },
+        "2": {
+          "atkPct": 5
+        },
+        "3": {
+          "atkPct": 6
+        },
+        "4": {
+          "atkPct": 7
+        },
+        "5": {
+          "atkPct": 8
+        }
+      }
     },
     "training-gauntlets": {
       "baseAtkByLevel": {
@@ -47477,7 +48362,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "atkPct": 4
+        },
+        "2": {
+          "atkPct": 5
+        },
+        "3": {
+          "atkPct": 6
+        },
+        "4": {
+          "atkPct": 7
+        },
+        "5": {
+          "atkPct": 8
+        }
+      }
     },
     "training-pistols": {
       "baseAtkByLevel": {
@@ -47669,7 +48571,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "atkPct": 4
+        },
+        "2": {
+          "atkPct": 5
+        },
+        "3": {
+          "atkPct": 6
+        },
+        "4": {
+          "atkPct": 7
+        },
+        "5": {
+          "atkPct": 8
+        }
+      }
     },
     "training-rectifier": {
       "baseAtkByLevel": {
@@ -47861,7 +48780,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "atkPct": 4
+        },
+        "2": {
+          "atkPct": 5
+        },
+        "3": {
+          "atkPct": 6
+        },
+        "4": {
+          "atkPct": 7
+        },
+        "5": {
+          "atkPct": 8
+        }
+      }
     },
     "training-sword": {
       "baseAtkByLevel": {
@@ -48053,7 +48989,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "atkPct": 4
+        },
+        "2": {
+          "atkPct": 5
+        },
+        "3": {
+          "atkPct": 6
+        },
+        "4": {
+          "atkPct": 7
+        },
+        "5": {
+          "atkPct": 8
+        }
+      }
     },
     "tyro-broadblade": {
       "baseAtkByLevel": {
@@ -48245,7 +49198,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "atkPct": 5
+        },
+        "2": {
+          "atkPct": 6.25
+        },
+        "3": {
+          "atkPct": 7.5
+        },
+        "4": {
+          "atkPct": 8.75
+        },
+        "5": {
+          "atkPct": 10
+        }
+      }
     },
     "tyro-gauntlets": {
       "baseAtkByLevel": {
@@ -48437,7 +49407,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "atkPct": 5
+        },
+        "2": {
+          "atkPct": 6.25
+        },
+        "3": {
+          "atkPct": 7.5
+        },
+        "4": {
+          "atkPct": 8.75
+        },
+        "5": {
+          "atkPct": 10
+        }
+      }
     },
     "tyro-pistols": {
       "baseAtkByLevel": {
@@ -48629,7 +49616,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "atkPct": 5
+        },
+        "2": {
+          "atkPct": 6.25
+        },
+        "3": {
+          "atkPct": 7.5
+        },
+        "4": {
+          "atkPct": 8.75
+        },
+        "5": {
+          "atkPct": 10
+        }
+      }
     },
     "tyro-rectifier": {
       "baseAtkByLevel": {
@@ -48821,7 +49825,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "atkPct": 5
+        },
+        "2": {
+          "atkPct": 6.25
+        },
+        "3": {
+          "atkPct": 7.5
+        },
+        "4": {
+          "atkPct": 8.75
+        },
+        "5": {
+          "atkPct": 10
+        }
+      }
     },
     "tyro-sword": {
       "baseAtkByLevel": {
@@ -49013,7 +50034,24 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "atkPct": 5
+        },
+        "2": {
+          "atkPct": 6.25
+        },
+        "3": {
+          "atkPct": 7.5
+        },
+        "4": {
+          "atkPct": 8.75
+        },
+        "5": {
+          "atkPct": 10
+        }
+      }
     },
     "undying-flame": {
       "baseAtkByLevel": {
@@ -49589,7 +50627,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "variation": {
       "baseAtkByLevel": {
@@ -49973,7 +51028,49 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "glacioDmg": 12,
+          "fusionDmg": 12,
+          "electroDmg": 12,
+          "aeroDmg": 12,
+          "spectroDmg": 12,
+          "havocDmg": 12
+        },
+        "2": {
+          "glacioDmg": 15,
+          "fusionDmg": 15,
+          "electroDmg": 15,
+          "aeroDmg": 15,
+          "spectroDmg": 15,
+          "havocDmg": 15
+        },
+        "3": {
+          "glacioDmg": 18,
+          "fusionDmg": 18,
+          "electroDmg": 18,
+          "aeroDmg": 18,
+          "spectroDmg": 18,
+          "havocDmg": 18
+        },
+        "4": {
+          "glacioDmg": 21,
+          "fusionDmg": 21,
+          "electroDmg": 21,
+          "aeroDmg": 21,
+          "spectroDmg": 21,
+          "havocDmg": 21
+        },
+        "5": {
+          "glacioDmg": 24,
+          "fusionDmg": 24,
+          "electroDmg": 24,
+          "aeroDmg": 24,
+          "spectroDmg": 24,
+          "havocDmg": 24
+        }
+      }
     },
     "veritys-handle": {
       "baseAtkByLevel": {
@@ -50165,7 +51262,49 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "passiveStats": {
+        "1": {
+          "glacioDmg": 12,
+          "fusionDmg": 12,
+          "electroDmg": 12,
+          "aeroDmg": 12,
+          "spectroDmg": 12,
+          "havocDmg": 12
+        },
+        "2": {
+          "glacioDmg": 15,
+          "fusionDmg": 15,
+          "electroDmg": 15,
+          "aeroDmg": 15,
+          "spectroDmg": 15,
+          "havocDmg": 15
+        },
+        "3": {
+          "glacioDmg": 18,
+          "fusionDmg": 18,
+          "electroDmg": 18,
+          "aeroDmg": 18,
+          "spectroDmg": 18,
+          "havocDmg": 18
+        },
+        "4": {
+          "glacioDmg": 21,
+          "fusionDmg": 21,
+          "electroDmg": 21,
+          "aeroDmg": 21,
+          "spectroDmg": 21,
+          "havocDmg": 21
+        },
+        "5": {
+          "glacioDmg": 24,
+          "fusionDmg": 24,
+          "electroDmg": 24,
+          "aeroDmg": 24,
+          "spectroDmg": 24,
+          "havocDmg": 24
+        }
+      }
     },
     "waltz-in-masquerade": {
       "baseAtkByLevel": {
@@ -50741,7 +51880,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "wildfire-mark": {
       "baseAtkByLevel": {
@@ -50933,7 +52089,24 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     },
     "woodland-aria": {
       "baseAtkByLevel": {
@@ -51125,7 +52298,24 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "passiveStats": {
+        "1": {
+          "atkPct": 12
+        },
+        "2": {
+          "atkPct": 15
+        },
+        "3": {
+          "atkPct": 18
+        },
+        "4": {
+          "atkPct": 21
+        },
+        "5": {
+          "atkPct": 24
+        }
+      }
     }
   },
   "echoes": {

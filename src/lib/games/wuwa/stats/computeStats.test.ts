@@ -119,16 +119,18 @@ describe('computeWuwaStats for Hsin', () => {
   })
 
   it('comes out 2 ATK above the stat screen, a known open gap', () => {
-    // Screen: 2255. (462.5 + 587.5) x (1 + 81.7%) + 350 = 2257.85. Likely the game's real ATK% roll values are a little
-    // below the one-decimal values it shows. Unverified until another character's screen narrows it down
+    // Screen: 2255. (462.5 + 587.5) x (1 + 81.7%) + 350 = 2257.85. Suoming and Shorekeeper show the same pattern: every
+    // percent-scaled stat lands 0.03-0.2% above the screen while flat and additive stats are exact. Most likely the
+    // game's real percent substat rolls are a little below the one-decimal values it shows, and those aren't in the
+    // datamine
     expect(toDisplayStats(computeWuwaStats(HSIN, HSIN_ECHOES).stats).atk).toBe(2257)
   })
 
   it('counts the element, set and DMG bonuses that are not on the overview screen', () => {
     const shown = toDisplayStats(computeWuwaStats(HSIN, HSIN_ECHOES).stats)
 
-    // 30 + 30 from the 3-cost main stats and 10 from the 2-piece. The weapon's 12% All-Attribute DMG isn't counted yet
-    expect(shown.elementDmg).toBe(70)
+    // 30 + 30 from the 3-cost main stats, 10 from the 2-piece and 12 from Blooming Jadehaven's All-Attribute DMG passive
+    expect(shown.elementDmg).toBe(82)
     expect(shown.skillDmg).toBe(43.8)
     expect(shown.basicDmg).toBe(7.9)
     expect(shown.libDmg).toBe(10.9)
@@ -150,6 +152,23 @@ describe('computeWuwaStats for Hsin', () => {
       'No data for weapon new-blade, its ATK and secondary stat are left out',
       'No data for sonata set new-set, its bonuses are left out',
     ])
+  })
+})
+
+describe('weapon passives', () => {
+  it('counts the always-on passive at the weapon refinement', () => {
+    const r1 = computeWuwaStats(HSIN, HSIN_ECHOES).stats.elementDmg
+    const r5 = computeWuwaStats({ ...HSIN, refinement: 5 }, HSIN_ECHOES).stats.elementDmg
+
+    expect(r5 - r1).toBeCloseTo(12, 6)
+  })
+
+  it('adds a 12% ATK passive like Unspoken Rue to ATK', () => {
+    const withRue = computeWuwaStats({ ...HSIN, weaponId: 'unspoken-rue' }, HSIN_ECHOES).stats
+    const without = computeWuwaStats(HSIN, HSIN_ECHOES).stats
+
+    // Same base ATK at level 90, so the only ATK difference is the passive's 12% of (462.5 + 587.5)
+    expect(withRue.atk - without.atk).toBeCloseTo(1050 * 0.12, 6)
   })
 })
 

@@ -16,6 +16,7 @@ export type DataProvenance = {
   included: string[],
   // How the characters table was made, it's read straight from the datamine rather than the old pipeline
   characters: string,
+  weaponPassives: string,
   excluded: string,
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
@@ -33,6 +34,8 @@ export type WeaponData = {
   weaponType: number,
   baseAtkByLevel: Record<string, number>,
   secondary: { stat: StatKey, byLevel: Record<string, number> },
+  // Always-on passive bonuses by refinement (1-5), only for passives without a trigger
+  passiveStats?: Record<string, Partial<Record<StatKey, number>>>,
 }
 
 // Only the bonuses that always apply, the ones the stat screen shows
