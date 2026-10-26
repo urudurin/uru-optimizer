@@ -10,6 +10,7 @@ import {
   Text,
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
+import { genshinSubstatUpgrades } from 'lib/games/genshin/optimizer/analysis'
 import {
   filterPools,
   type MainStatSlot,
@@ -31,6 +32,7 @@ import {
   formatStatValue,
   type GenshinCharacter,
   type GenshinStatKey,
+  PERCENT_STATS,
   SLOT_LABELS,
   statLabel,
 } from 'lib/games/genshin/types'
@@ -43,12 +45,12 @@ import {
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
+import { BuildAnalysis } from 'lib/games/shared/ui/BuildAnalysis'
 import {
   EmptyState,
   Notices,
   PageHeader,
   Panel,
-  StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
@@ -90,6 +92,11 @@ const RESULT_LIMIT = 10
 function formatScore(target: OptimizerTarget, score: number): string {
   if (target.kind === 'stat') return formatStatValue(target.stat, score)
   return target.kind === 'critValue' ? score.toFixed(1) : formatNumber(Math.round(score))
+}
+
+// A stat rounded the way formatStatValue shows it
+function roundStat(stat: GenshinStatKey, value: number): number {
+  return PERCENT_STATS.has(stat) ? Math.round(value * 10) / 10 : Math.round(value)
 }
 
 function describeSets(artifacts: Artifact[]): string {
@@ -400,25 +407,42 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                 current ? ` · ${build.score >= current.score ? '+' : ''}${(((build.score / current.score) - 1) * 100).toFixed(1)}% vs current` : ''
               }`}
             >
-              <Stack gap='md'>
-                <StatGrid
-                  stats={shown.map((stat) => {
-                    const diff = current ? (build.stats[stat] ?? 0) - (current.stats[stat] ?? 0) : 0
-                    const change = current && Math.abs(diff) >= 0.05 ? ` (${diff > 0 ? '+' : '-'}${formatStatValue(stat, Math.abs(diff))})` : ''
-                    return { key: stat, label: statLabel(stat), value: `${formatStatValue(stat, build.stats[stat] ?? 0)}${change}` }
-                  })}
-                />
-                <div className={gear.grid}>
-                  {build.artifacts.map((artifact) => (
-                    <ArtifactCard
-                      key={artifact.id}
-                      artifact={artifact}
-                      owner={artifact.equippedBy ? (ownerNames.get(artifact.equippedBy) ?? artifact.equippedBy) : undefined}
-                    />
-                  ))}
-                </div>
-              </Stack>
+              <div className={gear.grid}>
+                {build.artifacts.map((artifact) => (
+                  <ArtifactCard
+                    key={artifact.id}
+                    artifact={artifact}
+                    owner={artifact.equippedBy ? (ownerNames.get(artifact.equippedBy) ?? artifact.equippedBy) : undefined}
+                  />
+                ))}
+              </div>
             </Panel>
+          )}
+
+          {build && result && (
+            <BuildAnalysis
+              buildLabel={`Build #${selected + 1}`}
+              rows={[
+                {
+                  key: 'score',
+                  label: targetLabel(result.target),
+                  build: build.score,
+                  current: current?.score,
+                  format: (value: number) => formatScore(result.target, value),
+                },
+                ...shown.map((stat) => ({
+                  key: stat,
+                  label: statLabel(stat),
+                  // Rounded like the screen first, so the change matches the numbers shown
+                  build: roundStat(stat, build.stats[stat] ?? 0),
+                  current: current ? roundStat(stat, current.stats[stat] ?? 0) : undefined,
+                  format: (value: number) => formatStatValue(stat, value),
+                })),
+              ]}
+              upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target)}
+              scoreLabel={targetLabel(result.target)}
+              formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
+            />
           )}
         </Stack>
 

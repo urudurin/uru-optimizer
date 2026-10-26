@@ -21,12 +21,12 @@ import {
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
+import { BuildAnalysis } from 'lib/games/shared/ui/BuildAnalysis'
 import {
   EmptyState,
   Notices,
   PageHeader,
   Panel,
-  StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
@@ -53,6 +53,7 @@ import {
 import { SETS } from 'lib/games/zzz/data/sets'
 import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
+import { zzzSubstatUpgrades } from 'lib/games/zzz/optimizer/analysis'
 import {
   countCombinations,
   filterPools,
@@ -77,8 +78,10 @@ import {
   type StatRow,
 } from 'lib/games/zzz/statLabels'
 import {
+  computeStats,
   type FinalStats,
   statScreenConditions,
+  toDisplayStats,
 } from 'lib/games/zzz/stats/computeStats'
 import type {
   Disc,
@@ -312,6 +315,11 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     ? `${formatNumber(combinations)} combinations, narrow the filters first`
     : 'Every combination is checked.'
   const agentBuild = builds.find((b) => b.agentId === agent.id)
+  // The settings on the page now, for the build analysis: the agent's current discs, and the picked build again
+  const wEngine = W_ENGINES[loadout.wEngineId]
+  const computeInput = wEngine ? { agent, wEngine, wEngineRefinement: Number(loadout.refinement), coreSkillLevel: Number(coreSkill), conditions } : undefined
+  const currentDiscs = agentBuild ? Object.values(agentBuild.discIds).flatMap((id) => discs.find((d) => d.id === id) ?? []) : []
+  const currentDisplay = computeInput && currentDiscs.length > 0 ? toDisplayStats(computeStats({ ...computeInput, discs: currentDiscs }).stats) : undefined
   const rankLabel = statRows.find((row) => row.key === sortBy)?.label ?? sortBy
   const agentSummary = `${agent.name} · ${W_ENGINES[loadout.wEngineId]?.name ?? 'No W-Engine'} R${loadout.refinement} · ranked by ${rankLabel}`
   const mainFilters = MAIN_STAT_SLOTS.filter((slot) => mainStats[slot]?.length).length
@@ -588,14 +596,6 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
           {best && (
             <Panel title={`Build #${selected + 1}`} description={describeSets(best.discs)}>
               <Stack gap='md'>
-                <StatGrid
-                  stats={statRows.map((row) => ({
-                    key: row.key,
-                    label: row.label,
-                    value: formatStat(row, best.display[row.key]),
-                    highlight: row.key === sortBy,
-                  }))}
-                />
                 <Notices messages={best.warnings} />
                 <div className={gear.grid}>
                   {best.discs.map((disc) => (
@@ -604,6 +604,22 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                 </div>
               </Stack>
             </Panel>
+          )}
+
+          {best && computeInput && (
+            <BuildAnalysis
+              buildLabel={`Build #${selected + 1}`}
+              rows={statRows.map((row) => ({
+                key: row.key,
+                label: row.label,
+                build: best.display[row.key],
+                current: currentDisplay?.[row.key],
+                format: (value: number) => formatStat(row, value),
+              }))}
+              upgrades={zzzSubstatUpgrades({ ...computeInput, discs: best.discs }, sortBy)}
+              scoreLabel={rankLabel}
+              formatRoll={(upgrade) => /%|CRIT/.test(upgrade.stat) ? `${upgrade.roll}%` : String(upgrade.roll)}
+            />
           )}
         </Stack>
 

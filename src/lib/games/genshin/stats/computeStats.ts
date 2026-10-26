@@ -157,10 +157,12 @@ export function artifactBonus(artifacts: Artifact[]): Partial<Record<GenshinStat
   return bonus
 }
 
-export function computeGenshinStats(character: GenshinCharacter, artifacts: Artifact[]): ComputedStats {
+// extra: stat points to add on top, e.g. one more substat roll for the build analysis
+export function computeGenshinStats(character: GenshinCharacter, artifacts: Artifact[], extra: Partial<Record<GenshinStatKey, number>> = {}): ComputedStats {
   const prepared = prepareCharacter(character)
   if (!prepared) return { stats: {}, missing: [`${character.name} isn't in the stat data yet`] }
   const bonus = { ...prepared.bonus }
   for (const [stat, value] of Object.entries(artifactBonus(artifacts)) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
+  for (const [stat, value] of Object.entries(extra) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
   return { stats: finalizeStats(prepared, bonus), missing: prepared.missing }
 }

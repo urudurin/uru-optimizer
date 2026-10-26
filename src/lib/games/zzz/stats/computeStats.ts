@@ -50,6 +50,8 @@ export type ComputeInput = {
   coreSkillLevel: number,
   discs: Disc[],
   conditions: ActiveConditions,
+  // Stat points to add on top, e.g. one more substat roll for the build analysis
+  extraStats?: Partial<Record<ZzzStatsValues, number>>,
 }
 
 export type ComputeResult = {
@@ -123,6 +125,10 @@ export function computeStats(input: ComputeInput): ComputeResult {
       }
       contributions.push({ source: `Disc ${disc.slot} substat`, stat: substat.stat, value })
     }
+  }
+
+  for (const [stat, value] of Object.entries(input.extraStats ?? {}) as [ZzzStatsValues, number][]) {
+    contributions.push({ source: 'Extra substat roll', stat, value })
   }
 
   // Set bonuses: a 4-piece also has its 2-piece, and 2-pieces from different sets stack

@@ -37,6 +37,9 @@ const S_RANK_ROLL_VALUES: RollValues = {
   [ZzzStats.PEN]: 9,
 }
 
+// Every stat an S-rank disc substat can be
+export const SUBSTAT_STATS = Object.keys(S_RANK_ROLL_VALUES) as ZzzStatsValues[]
+
 const ROLL_VALUES_BY_RARITY: Partial<Record<DiscRarity, RollValues>> = {
   S: S_RANK_ROLL_VALUES,
 }

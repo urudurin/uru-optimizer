@@ -138,3 +138,40 @@
 .resultRow[data-active] {
   background: var(--mantine-color-primary-light) !important;
 }
+
+/* Build analysis (BuildAnalysis.tsx): one bar per substat, sized against the best one */
+
+.upgradeList {
+  display: grid;
+  gap: 8px;
+}
+
+.upgradeRow {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 60px;
+  align-items: center;
+  gap: 10px;
+}
+
+.upgradeLabel {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.upgradeTrack {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--layer-1);
+  overflow: hidden;
+}
+
+.upgradeBar {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--mantine-color-primary-filled);
+}
+
+.upgradeValue {
+  text-align: right;
+}

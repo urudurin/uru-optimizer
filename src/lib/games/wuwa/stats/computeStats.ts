@@ -150,11 +150,13 @@ export function finalizeWuwaStats(prepared: PreparedWuwaCharacter, bonus: Bonus)
   }
 }
 
-export function computeWuwaStats(character: CharacterState, echoes: Echo[]): WuwaStatsResult {
+// extra: stat points to add on top, e.g. one more substat roll for the build analysis
+export function computeWuwaStats(character: CharacterState, echoes: Echo[], extra: Bonus = {}): WuwaStatsResult {
   const prepared = prepareWuwaCharacter(character)
   const warnings = [...prepared.warnings]
   const sums: Bonus = { ...prepared.bonus }
   for (const echo of echoes) addTo(sums, echoStats(echo))
+  addTo(sums, extra)
   for (const [setId, count] of setPieceCounts(echoes)) {
     if (!SONATA_SETS[setId] && count >= 2) warnings.push(`No data for sonata set ${setId}, its bonuses are left out`)
     addTo(sums, sonataBonus(setId, count))

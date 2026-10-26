@@ -18,6 +18,7 @@ import {
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
+import { BuildAnalysis } from 'lib/games/shared/ui/BuildAnalysis'
 import {
   EmptyState,
   Notices,
@@ -39,6 +40,7 @@ import {
   WEAPONS,
 } from 'lib/games/wuwa/data/gameData'
 import { MAIN_STAT_MAX } from 'lib/games/wuwa/echoStats'
+import { wuwaSubstatUpgrades } from 'lib/games/wuwa/optimizer/analysis'
 import {
   countLoadouts,
   type EchoOutcome,
@@ -98,6 +100,11 @@ const TARGETS: { value: string, target: EchoTarget }[] = [
 function formatStat(stat: keyof WuwaStats, stats: WuwaStats): string {
   const shown = toDisplayStats(stats)[stat]
   return FLAT_STATS.has(stat) ? formatNumber(shown) : `${shown}%`
+}
+
+// One stat value as the overview screen rounds it: down
+function formatValue(stat: keyof WuwaStats, value: number): string {
+  return FLAT_STATS.has(stat) ? formatNumber(Math.floor(value + 1e-6)) : `${Math.floor(value * 10 + 1e-6) / 10}%`
 }
 
 function formatScore(target: EchoTarget, score: number): string {
@@ -428,6 +435,32 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                 </div>
               </Stack>
             </Panel>
+          )}
+
+          {build && result && (
+            <BuildAnalysis
+              buildLabel={`Loadout #${selected + 1}`}
+              rows={[
+                {
+                  key: 'score',
+                  label: targetLabel(result.target),
+                  build: build.score,
+                  current: current?.score,
+                  format: (value: number) => formatScore(result.target, value),
+                },
+                ...SHOWN_STATS.map((stat) => ({
+                  key: stat,
+                  label: wuwaStatLabel(stat),
+                  // Rounded like the screen first, so the change matches the numbers shown
+                  build: toDisplayStats(build.stats)[stat],
+                  current: current ? toDisplayStats(current.stats)[stat] : undefined,
+                  format: (value: number) => formatValue(stat, value),
+                })),
+              ]}
+              upgrades={wuwaSubstatUpgrades(character, build.echoes, result.target)}
+              scoreLabel={targetLabel(result.target)}
+              formatRoll={(upgrade) => upgrade.stat.endsWith('Flat') ? String(Math.round(upgrade.roll)) : `${upgrade.roll.toFixed(1)}%`}
+            />
           )}
         </Stack>
 

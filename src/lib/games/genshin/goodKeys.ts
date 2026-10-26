@@ -88,6 +88,14 @@ const MAX_5_STAR_ROLL: Partial<Record<GenshinStatKey, number>> = {
   critDmg: 7.77,
 }
 
+// Every stat a 5-star substat can be
+export const SUBSTAT_STATS = Object.keys(MAX_5_STAR_ROLL) as GenshinStatKey[]
+
+// One average 5-star roll: rolls are 70, 80, 90 or 100% of the highest, equally likely
+export function averageRoll(stat: GenshinStatKey): number {
+  return (MAX_5_STAR_ROLL[stat] ?? 0) * 0.85
+}
+
 // How many times a substat rolled, from its total: the fewest rolls that can reach it. GOOD files only have totals
 export function estimateRolls(stat: GenshinStatKey, value: number, rarity: number): number {
   const max = MAX_5_STAR_ROLL[stat]
