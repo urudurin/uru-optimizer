@@ -10,8 +10,11 @@ import type {
   GenshinCharacter,
 } from 'lib/games/genshin/types'
 import { scoreBuild } from 'lib/games/shared/gearScore'
+import { DEFAULT_PRIORITY as WUWA_DEFAULT_PRIORITY } from 'lib/games/wuwa/data/statPriorities'
 import {
   scoreEcho,
+  standardBenchmark,
+  weightsFromPriority as wuwaWeightsFromPriority,
   wuwaEchoWeights,
 } from 'lib/games/wuwa/stats/echoScore'
 import type {
@@ -92,7 +95,7 @@ describe('gear scores per game', () => {
     expect(scoreBuild([1, 2, 3, 4, 5].map(() => piece(100)), 5, benchmark)?.percent).toBe(200)
   })
 
-  it('WuWa: an echo with the wanted stats at top rolls scores 100', () => {
+  it('WuWa: fixed weights per Resonator; their wanted stats at top rolls score 100', () => {
     const hsin: CharacterState = {
       charId: 'hsin',
       level: 90,
@@ -103,7 +106,9 @@ describe('gear scores per game', () => {
       minorFortes: true,
       echoIds: [],
     }
-    const weights = wuwaEchoWeights(hsin, [], { kind: 'critValue' })
+    const weights = wuwaEchoWeights({ ...hsin, charId: 'jiyan' })
+    expect(weights).toMatchObject({ critRate: 1, critDmg: 1, atkPct: 0.75, heavyDmg: 0.5, energyRegen: 0.5 })
+    expect(wuwaEchoWeights({ ...hsin, charId: 'the-shorekeeper' })).toEqual({ hpPct: 1, hpFlat: 0.33, energyRegen: 1 })
     const echo: Echo = {
       id: 'e',
       defId: 'd',
@@ -114,9 +119,21 @@ describe('gear scores per game', () => {
       substats: [
         { stat: 'critRate', value: 10.5 },
         { stat: 'critDmg', value: 21 },
+        { stat: 'atkPct', value: 11.6 },
+        { stat: 'heavyDmg', value: 11.6 },
+        { stat: 'energyRegen', value: 12.4 },
       ],
     }
-    // Only two stats matter for Crit Value, so the best echo is those two at top rolls
+    // Jiyan's five best stats at top rolls
     expect(scoreEcho(echo, weights)).toEqual({ percent: 100, rating: 'WTF+' })
+  })
+
+  it('WuWa: a standard build rates 100%, a perfect one 200%', () => {
+    const benchmark = standardBenchmark(wuwaWeightsFromPriority(WUWA_DEFAULT_PRIORITY))
+    expect(benchmark).toBeGreaterThan(50)
+    expect(benchmark).toBeLessThan(75)
+    const piece = (percent: number) => ({ percent, rating: '' })
+    expect(scoreBuild([1, 2, 3, 4, 5].map(() => piece(benchmark)), 5, benchmark)?.percent).toBeCloseTo(100, 0)
+    expect(scoreBuild([1, 2, 3, 4, 5].map(() => piece(100)), 5, benchmark)?.percent).toBe(200)
   })
 })

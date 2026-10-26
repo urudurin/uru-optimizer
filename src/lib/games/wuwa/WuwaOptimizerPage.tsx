@@ -429,7 +429,7 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                       key={echo.id}
                       echo={echo}
                       owner={ownerOf.get(echo.id)}
-                      score={scoreEcho(echo, wuwaEchoWeights(character, build.echoes, result.target))}
+                      score={scoreEcho(echo, wuwaEchoWeights(character))}
                     />
                   ))}
                 </div>

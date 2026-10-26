@@ -44,23 +44,18 @@ export function WuwaEchoesPage({ onImport }: { onImport: () => void }) {
     }
     return byEcho
   }, [characters])
-  // Each echo is scored for the Resonator wearing it; their weights are worked out once, when first needed
+  // Each echo is scored for the Resonator wearing it (stats/echoScore.ts)
   const scoreFor = useMemo(() => {
-    const byId = new Map(echoes.map((e) => [e.id, e]))
-    const owner = new Map<string, (typeof characters)[number]>()
-    for (const character of characters) for (const id of character.echoIds) if (id) owner.set(id, character)
-    const cache = new Map<string, Record<string, number>>()
-    return (echo: Echo) => {
-      const character = owner.get(echo.id)
-      if (!character) return undefined
-      let weights = cache.get(character.charId)
-      if (!weights) {
-        weights = wuwaEchoWeights(character, character.echoIds.flatMap((id) => (id ? byId.get(id) ?? [] : [])))
-        cache.set(character.charId, weights)
-      }
-      return scoreEcho(echo, weights)
+    const weightsByEcho = new Map<string, Record<string, number>>()
+    for (const character of characters) {
+      const weights = wuwaEchoWeights(character)
+      for (const id of character.echoIds) if (id) weightsByEcho.set(id, weights)
     }
-  }, [characters, echoes])
+    return (echo: Echo) => {
+      const weights = weightsByEcho.get(echo.id)
+      return weights ? scoreEcho(echo, weights) : undefined
+    }
+  }, [characters])
   const setOptions = useMemo(
     () => [...new Set(echoes.map((e) => e.setId))].map((id) => ({ value: id, label: setName(id) })).sort((a, b) => a.label.localeCompare(b.label)),
     [echoes],
