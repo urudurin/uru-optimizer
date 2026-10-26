@@ -11,8 +11,9 @@ export const CHARACTER_BASES = data.bases
 export const WEAPONS = data.weapons
 export const ECHO_DEFINITIONS = data.echoes
 export const SONATA_SETS = data.sets
+export const CHARACTERS = data.characters
 
-// Characters have no display name in the datamine tables, so it's derived from the id: "rover-havoc" -> "Rover Havoc"
+// The in-game name from the datamine, or one derived from the id for characters it doesn't have: "rover-havoc" -> "Rover Havoc"
 export function characterName(id: string): string {
-  return id.split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+  return CHARACTERS[id]?.name ?? id.split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
 }

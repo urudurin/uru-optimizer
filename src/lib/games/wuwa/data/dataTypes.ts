@@ -1,5 +1,6 @@
 import type {
   Cost,
+  ElementDmgKey,
   StatKey,
 } from 'lib/games/wuwa/types'
 
@@ -13,6 +14,8 @@ export type DataProvenance = {
   extractedBy: string,
   copiedIntoUru: string,
   included: string[],
+  // How the characters table was made, it's read straight from the datamine rather than the old pipeline
+  characters: string,
   excluded: string,
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
@@ -49,8 +52,17 @@ export type EchoDefinition = {
   setIds: string[],
 }
 
+// Element and minor forte stat nodes, from the role and skill tree tables
+export type CharacterData = {
+  id: string,
+  name: string,
+  element: ElementDmgKey | null,
+  minorFortes: Partial<Record<StatKey, number>>,
+}
+
 export type DatamineFile = {
   provenance: DataProvenance,
+  characters: Record<string, CharacterData>,
   bases: Record<string, CharacterBase>,
   weapons: Record<string, WeaponData>,
   echoes: Record<string, EchoDefinition>,

@@ -1,6 +1,7 @@
 import {
   CHARACTER_BASES,
   characterName,
+  CHARACTERS,
   DATA_PROVENANCE,
   ECHO_DEFINITIONS,
   SONATA_SETS,
@@ -21,11 +22,12 @@ import {
 describe('WuWa datamine data', () => {
   it('says where it came from', () => {
     expect(DATA_PROVENANCE.source).toContain('Arikatsu/WutheringWaves_Data')
-    expect(DATA_PROVENANCE.included).toEqual(['bases.baseByLevel', 'weapons', 'echoes', 'sets'])
+    expect(DATA_PROVENANCE.included).toEqual(['bases.baseByLevel', 'weapons', 'echoes', 'sets', 'characters (element, minorFortes)'])
+    expect(DATA_PROVENANCE.characters).toContain('extractCharacters.mjs')
   })
 
   it('holds only datamine tables, nothing from guide sites', () => {
-    expect(Object.keys(datamine).sort()).toEqual(['bases', 'echoes', 'provenance', 'sets', 'weapons'])
+    expect(Object.keys(datamine).sort()).toEqual(['bases', 'characters', 'echoes', 'provenance', 'sets', 'weapons'])
     for (const base of Object.values(CHARACTER_BASES)) expect(Object.keys(base).sort()).toEqual(['baseByLevel', 'id'])
   })
 
@@ -65,7 +67,22 @@ describe('WuWa datamine data', () => {
     expect(validateEcho(legal, echo)).toEqual([])
   })
 
-  it('derives readable names from ids', () => {
-    expect(characterName('rover-havoc')).toBe('Rover Havoc')
+  it('gives every character an element and known minor forte stats', () => {
+    expect(Object.keys(CHARACTERS).sort()).toEqual(Object.keys(CHARACTER_BASES).sort())
+    for (const character of Object.values(CHARACTERS)) {
+      expect(character.element, character.id).not.toBeNull()
+      expect(Object.keys(character.minorFortes).length, character.id).toBeGreaterThan(0)
+      for (const stat of Object.keys(character.minorFortes)) expect(STAT_LABELS[stat as keyof typeof STAT_LABELS], `${character.id} ${stat}`).toBeDefined()
+    }
+  })
+
+  it('has the minor fortes the stat screen confirms for Hsin', () => {
+    expect(CHARACTERS.hsin).toEqual({ id: 'hsin', name: 'Hsin', element: 'electroDmg', minorFortes: { critRate: 8, atkPct: 12 } })
+  })
+
+  it('uses the in-game name, or one derived from the id', () => {
+    expect(characterName('the-shorekeeper')).toBe('Shorekeeper')
+    expect(characterName('rover-havoc')).toBe('Rover: Havoc')
+    expect(characterName('someone-brand-new')).toBe('Someone Brand New')
   })
 })

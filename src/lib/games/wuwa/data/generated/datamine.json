@@ -9,10 +9,12 @@
       "bases.baseByLevel",
       "weapons",
       "echoes",
-      "sets"
+      "sets",
+      "characters (element, minorFortes)"
     ],
     "excluded": "Everything from Prydwen: character build profiles (sets, main stats, substat weights, targets, teams, weapons ranking, element) and minor fortes",
-    "confidence": "sourced"
+    "confidence": "sourced",
+    "characters": "Element (BinData/role/roleinfo.json ElementId) and minor fortes (BinData/skillTree/skilltree.json stat nodes) read directly from the datamine branch 3.7 by src/scripts/wuwa/extractCharacters.mjs on 2026-10-25"
   },
   "bases": {
     "aalto": {
@@ -53576,6 +53578,548 @@
       "fullPieces": 5,
       "id": "wishes-of-quiet-snowfall",
       "name": "Wishes of Quiet Snowfall"
+    }
+  },
+  "characters": {
+    "aalto": {
+      "id": "aalto",
+      "name": "Aalto",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "aeroDmg": 12,
+        "atkPct": 12
+      }
+    },
+    "aemeath": {
+      "id": "aemeath",
+      "name": "Aemeath",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "augusta": {
+      "id": "augusta",
+      "name": "Augusta",
+      "element": "electroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "baizhi": {
+      "id": "baizhi",
+      "name": "Baizhi",
+      "element": "glacioDmg",
+      "minorFortes": {
+        "healingBonus": 12,
+        "hpPct": 12
+      }
+    },
+    "brant": {
+      "id": "brant",
+      "name": "Brant",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "buling": {
+      "id": "buling",
+      "name": "Buling",
+      "element": "electroDmg",
+      "minorFortes": {
+        "healingBonus": 12,
+        "atkPct": 12
+      }
+    },
+    "calcharo": {
+      "id": "calcharo",
+      "name": "Calcharo",
+      "element": "electroDmg",
+      "minorFortes": {
+        "atkPct": 12,
+        "critDmg": 16
+      }
+    },
+    "camellya": {
+      "id": "camellya",
+      "name": "Camellya",
+      "element": "havocDmg",
+      "minorFortes": {
+        "critDmg": 16,
+        "atkPct": 12
+      }
+    },
+    "cantarella": {
+      "id": "cantarella",
+      "name": "Cantarella",
+      "element": "havocDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "carlotta": {
+      "id": "carlotta",
+      "name": "Carlotta",
+      "element": "glacioDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "cartethyia": {
+      "id": "cartethyia",
+      "name": "Cartethyia",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "hpPct": 12
+      }
+    },
+    "changli": {
+      "id": "changli",
+      "name": "Changli",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "chisa": {
+      "id": "chisa",
+      "name": "Chisa",
+      "element": "havocDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "chixia": {
+      "id": "chixia",
+      "name": "Chixia",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "fusionDmg": 12,
+        "atkPct": 12
+      }
+    },
+    "ciaccona": {
+      "id": "ciaccona",
+      "name": "Ciaccona",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "critDmg": 16,
+        "atkPct": 12
+      }
+    },
+    "danjin": {
+      "id": "danjin",
+      "name": "Danjin",
+      "element": "havocDmg",
+      "minorFortes": {
+        "havocDmg": 12,
+        "atkPct": 12
+      }
+    },
+    "denia": {
+      "id": "denia",
+      "name": "Denia",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "critDmg": 16,
+        "atkPct": 12
+      }
+    },
+    "encore": {
+      "id": "encore",
+      "name": "Encore",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "fusionDmg": 12,
+        "atkPct": 12
+      }
+    },
+    "galbrena": {
+      "id": "galbrena",
+      "name": "Galbrena",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "critDmg": 16,
+        "atkPct": 12
+      }
+    },
+    "hiyuki": {
+      "id": "hiyuki",
+      "name": "Hiyuki",
+      "element": "glacioDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "hsin": {
+      "id": "hsin",
+      "name": "Hsin",
+      "element": "electroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "iuno": {
+      "id": "iuno",
+      "name": "Iuno",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "jianxin": {
+      "id": "jianxin",
+      "name": "Jianxin",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "jingran": {
+      "id": "jingran",
+      "name": "Jingran",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "hpPct": 12
+      }
+    },
+    "jinhsi": {
+      "id": "jinhsi",
+      "name": "Jinhsi",
+      "element": "spectroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "jiyan": {
+      "id": "jiyan",
+      "name": "Jiyan",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "lingyang": {
+      "id": "lingyang",
+      "name": "Lingyang",
+      "element": "glacioDmg",
+      "minorFortes": {
+        "glacioDmg": 12,
+        "atkPct": 12
+      }
+    },
+    "lucilla": {
+      "id": "lucilla",
+      "name": "Lucilla",
+      "element": "glacioDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "lucy": {
+      "id": "lucy",
+      "name": "Lucy",
+      "element": "spectroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "lumi": {
+      "id": "lumi",
+      "name": "Lumi",
+      "element": "electroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "lupa": {
+      "id": "lupa",
+      "name": "Lupa",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "luuk-herssen": {
+      "id": "luuk-herssen",
+      "name": "Luuk Herssen",
+      "element": "spectroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "lynae": {
+      "id": "lynae",
+      "name": "Lynae",
+      "element": "spectroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "mornye": {
+      "id": "mornye",
+      "name": "Mornye",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "healingBonus": 12,
+        "defPct": 15.2
+      }
+    },
+    "mortefi": {
+      "id": "mortefi",
+      "name": "Mortefi",
+      "element": "fusionDmg",
+      "minorFortes": {
+        "fusionDmg": 12,
+        "atkPct": 12
+      }
+    },
+    "phoebe": {
+      "id": "phoebe",
+      "name": "Phoebe",
+      "element": "spectroDmg",
+      "minorFortes": {
+        "critDmg": 16,
+        "atkPct": 12
+      }
+    },
+    "phrolova": {
+      "id": "phrolova",
+      "name": "Phrolova",
+      "element": "havocDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "qingxiao": {
+      "id": "qingxiao",
+      "name": "Qingxiao",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "critDmg": 16,
+        "atkPct": 12
+      }
+    },
+    "qiuyuan": {
+      "id": "qiuyuan",
+      "name": "Qiuyuan",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "rebecca": {
+      "id": "rebecca",
+      "name": "Rebecca",
+      "element": "electroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "roccia": {
+      "id": "roccia",
+      "name": "Roccia",
+      "element": "havocDmg",
+      "minorFortes": {
+        "critDmg": 16,
+        "atkPct": 12
+      }
+    },
+    "rover-aero": {
+      "id": "rover-aero",
+      "name": "Rover: Aero",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "healingBonus": 12,
+        "atkPct": 12
+      }
+    },
+    "rover-electro": {
+      "id": "rover-electro",
+      "name": "Rover: Electro",
+      "element": "electroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "rover-havoc": {
+      "id": "rover-havoc",
+      "name": "Rover: Havoc",
+      "element": "havocDmg",
+      "minorFortes": {
+        "atkPct": 12,
+        "havocDmg": 12
+      }
+    },
+    "rover-spectro": {
+      "id": "rover-spectro",
+      "name": "Rover: Spectro",
+      "element": "spectroDmg",
+      "minorFortes": {
+        "spectroDmg": 12,
+        "atkPct": 12
+      }
+    },
+    "sanhua": {
+      "id": "sanhua",
+      "name": "Sanhua",
+      "element": "glacioDmg",
+      "minorFortes": {
+        "glacioDmg": 12,
+        "atkPct": 12
+      }
+    },
+    "sigrika": {
+      "id": "sigrika",
+      "name": "Sigrika",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "suisui": {
+      "id": "suisui",
+      "name": "Suisui",
+      "element": "glacioDmg",
+      "minorFortes": {
+        "healingBonus": 12,
+        "hpPct": 12
+      }
+    },
+    "suoming": {
+      "id": "suoming",
+      "name": "Suoming",
+      "element": "electroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "taoqi": {
+      "id": "taoqi",
+      "name": "Taoqi",
+      "element": "havocDmg",
+      "minorFortes": {
+        "havocDmg": 12,
+        "defPct": 15.2
+      }
+    },
+    "the-shorekeeper": {
+      "id": "the-shorekeeper",
+      "name": "Shorekeeper",
+      "element": "spectroDmg",
+      "minorFortes": {
+        "healingBonus": 12,
+        "hpPct": 12
+      }
+    },
+    "verina": {
+      "id": "verina",
+      "name": "Verina",
+      "element": "spectroDmg",
+      "minorFortes": {
+        "healingBonus": 12,
+        "atkPct": 12
+      }
+    },
+    "xiangli-yao": {
+      "id": "xiangli-yao",
+      "name": "Xiangli Yao",
+      "element": "electroDmg",
+      "minorFortes": {
+        "critDmg": 16,
+        "atkPct": 12
+      }
+    },
+    "yangyang": {
+      "id": "yangyang",
+      "name": "Yangyang",
+      "element": "aeroDmg",
+      "minorFortes": {
+        "atkPct": 12,
+        "aeroDmg": 12
+      }
+    },
+    "yangyang-xuanling": {
+      "id": "yangyang-xuanling",
+      "name": "Yangyang: Xuanling",
+      "element": "havocDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "yinlin": {
+      "id": "yinlin",
+      "name": "Yinlin",
+      "element": "electroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "youhu": {
+      "id": "youhu",
+      "name": "Youhu",
+      "element": "glacioDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "yuanwu": {
+      "id": "yuanwu",
+      "name": "Yuanwu",
+      "element": "electroDmg",
+      "minorFortes": {
+        "electroDmg": 12,
+        "defPct": 15.2
+      }
+    },
+    "zani": {
+      "id": "zani",
+      "name": "Zani",
+      "element": "spectroDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
+    },
+    "zhezhi": {
+      "id": "zhezhi",
+      "name": "Zhezhi",
+      "element": "glacioDmg",
+      "minorFortes": {
+        "critRate": 8,
+        "atkPct": 12
+      }
     }
   }
 }
