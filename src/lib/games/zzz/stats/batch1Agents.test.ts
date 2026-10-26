@@ -22,7 +22,7 @@ import {
 // and double count percent bonuses, so only CRIT, Anomaly, Impact, PEN and Energy Regen are compared against it
 const parsed = parseZzzBuildsExport(exportFixture)
 
-function statsFor(agentId: string, conditions = { onField: true, inEtherVeil: true, veilTriggered: true }) {
+function statsFor(agentId: string, conditions = { onField: true, inEtherVeil: true, veilTriggered: true, freezeOrShatter: true }) {
   const build = parsed.builds.find((b) => b.agentId === agentId)
   if (!build) throw new Error(`No build for ${agentId} in the fixture`)
   const resolved = resolveBuild(build, parsed.discs)
@@ -62,7 +62,7 @@ describe('batch 1 agents against a user export', () => {
     expect(stats.energyRegen).toBe(exported.energyRegen)
   })
 
-  it('Miyabi matches the export except for the unmodeled Branch & Blade Song 4-piece', () => {
+  it('Miyabi matches the export, Branch & Blade Song 4-piece included', () => {
     const { stats, exported, result } = statsFor('1091')
 
     // HP has no percent bonuses on this build, so the export's double counting doesn't affect it
@@ -72,10 +72,10 @@ describe('batch 1 agents against a user export', () => {
     expect(stats.anomalyProficiency).toBe(exported.anomalyProficiency)
     expect(stats.penRatio).toBe(exported.penRatio)
     expect(stats.energyRegen).toBe(exported.energyRegen)
-    // The 4-piece gives CRIT Rate +12 (Freeze or Shatter) and CRIT DMG +30 (Anomaly Mastery 115 or more)
-    expect(stats.critRate).toBe(exported.critRate - 12)
-    expect(stats.critDmg).toBe(roundTo1(exported.critDmg - 30))
-    expect(result.warnings).toEqual(['Branch & Blade Song 4-piece effects aren\'t modeled yet'])
+    // The 4-piece gives CRIT Rate +12 (Freeze or Shatter) and CRIT DMG +30 (her Anomaly Mastery is 116, at least 115)
+    expect(stats.critRate).toBe(exported.critRate)
+    expect(stats.critDmg).toBe(roundTo1(exported.critDmg))
+    expect(result.warnings).toEqual([])
   })
 
   // Yixuan's discs changed after this export (slots 2 and 3), so her current discs were read from in-game screenshots

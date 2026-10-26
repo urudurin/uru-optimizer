@@ -8,6 +8,7 @@ export const CONDITION_LABELS: Record<Condition, string> = {
   onField: 'Agent is on the field (combat)',
   inEtherVeil: 'Inside an Ether Veil',
   veilTriggered: 'Ether Veil just activated',
+  freezeOrShatter: 'A squad member applied Freeze or triggered Shatter',
 }
 
 export const CORE_SKILL_OPTIONS = ['A', 'B', 'C', 'D', 'E', 'F'].map((label, i) => ({ value: String(i + 1), label: `Core Skill ${label}` }))

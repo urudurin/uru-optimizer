@@ -78,7 +78,7 @@ function makeInput(overrides: Partial<ComputeInput> = {}): ComputeInput {
     wEngineRefinement: 1,
     coreSkillLevel: 6,
     discs: YE_DISCS,
-    conditions: { onField: true, inEtherVeil: true, veilTriggered: true },
+    conditions: { onField: true, inEtherVeil: true, veilTriggered: true, freezeOrShatter: false },
     ...overrides,
   }
 }
@@ -151,7 +151,7 @@ describe('computeStats for Ye Shunguang', () => {
 
     const offField = toDisplayStats(
       computeStats(makeInput({
-        conditions: { onField: false, inEtherVeil: true, veilTriggered: true },
+        conditions: { onField: false, inEtherVeil: true, veilTriggered: true, freezeOrShatter: false },
       })).stats,
     )
     expect(offField.critRate).toBe(65.8)
@@ -187,17 +187,31 @@ describe('computeStats for Ye Shunguang', () => {
     expect(result.warnings).toEqual([])
   })
 
-  it('warns instead of silently ignoring unknown sets and unmodeled 4-pieces', () => {
+  it('warns instead of silently ignoring unknown sets', () => {
     const unknownPair = [
       disc(1, 'mystery-set', 'Mystery Set', { stat: 'HP', value: 2200 }, []),
       disc(2, 'mystery-set', 'Mystery Set', { stat: 'ATK', value: 316 }, []),
     ]
     const unknown = computeStats(makeInput({ discs: unknownPair }))
     expect(unknown.warnings).toEqual(['No set data for "Mystery Set", its bonuses are left out'])
+  })
 
+  it('applies Branch & Blade Song\'s CRIT DMG only from 115 Anomaly Mastery', () => {
     const fourBbs = [1, 2, 3, 4].map((slot) => disc(slot as DiscSlot, ...BBS, { stat: 'HP', value: 1 }, []))
-    const four = computeStats(makeInput({ discs: fourBbs }))
-    expect(four.warnings).toEqual(['Branch & Blade Song 4-piece effects aren\'t modeled yet'])
+    const mastery = disc(6, ...WWB, { stat: 'Anomaly Mastery', value: 30 }, [])
+    const inCombat = { onField: true, inEtherVeil: false, veilTriggered: false, freezeOrShatter: true }
+    const run = (discs: Disc[]) => computeStats(makeInput({ discs, conditions: inCombat }))
+    const fourPieces = (result: ReturnType<typeof run>) => result.contributions.map((c) => c.source).filter((s) => s.includes('4pc'))
+
+    const low = run(fourBbs)
+    expect(low.stats.anomalyMastery).toBeLessThan(115)
+    expect(fourPieces(low)).toEqual(['Branch & Blade Song 4pc (Freeze or Shatter)'])
+    expect(low.warnings).toEqual([])
+
+    const high = run([...fourBbs, mastery])
+    expect(high.stats.anomalyMastery).toBeGreaterThanOrEqual(115)
+    expect(fourPieces(high)).toEqual(['Branch & Blade Song 4pc (Freeze or Shatter)', 'Branch & Blade Song 4pc (Anomaly Mastery 115+)'])
+    expect(high.stats.critDmg - low.stats.critDmg).toBeCloseTo(30)
   })
 
   it('warns about substats it has no roll value for', () => {

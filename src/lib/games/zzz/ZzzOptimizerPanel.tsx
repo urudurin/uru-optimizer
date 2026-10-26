@@ -2,6 +2,7 @@ import {
   Accordion,
   Button,
   FileInput,
+  Group,
   MultiSelect,
   NumberInput,
   SegmentedControl,
@@ -31,7 +32,6 @@ import type {
   ActiveConditions,
   AgentData,
   Condition,
-  WEngineData,
 } from 'lib/games/zzz/data/dataTypes'
 import { parseImportedZzzPresets } from 'lib/games/zzz/data/importedPresets'
 import {
@@ -49,11 +49,14 @@ import {
   filterPools,
   type MainStatSlot,
   MAX_COMBINATIONS,
-  optimizeDiscs,
   type OptimizerBuild,
   type OptimizerFilters,
   type OptimizerOutcome,
 } from 'lib/games/zzz/optimizer/discOptimizer'
+import {
+  cancelDiscOptimizer,
+  runDiscOptimizer,
+} from 'lib/games/zzz/optimizer/optimizerClient'
 import { usePresetImportStore } from 'lib/games/zzz/state/presetImportStore'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
@@ -204,28 +207,13 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     if (window.confirm('Remove the imported presets from this browser?')) clearImportedPresets()
   }
 
-  function run() {
-    const wEngine = W_ENGINES[loadout.wEngineId]
-    if (!wEngine) return
+  // The search runs in a web worker, so the page stays responsive while it works
+  async function run() {
+    if (!W_ENGINES[loadout.wEngineId]) return
     setRunning(true)
-    // Let the button show its loading state before the search blocks the page for a moment
-    setTimeout(() => {
-      try {
-        runSearch(wEngine)
-      } catch (e) {
-        // optimizeDiscs isn't expected to throw, but a stuck loading button would hide the problem
-        console.error('Disc optimizer failed', e)
-        setOutcome({ ok: false, reason: `The search failed: ${e instanceof Error ? e.message : String(e)}` })
-      } finally {
-        setRunning(false)
-      }
-    }, 20)
-  }
-
-  function runSearch(wEngine: WEngineData) {
-    setOutcome(optimizeDiscs({
-      agent,
-      wEngine,
+    const response = await runDiscOptimizer({
+      agentId: agent.id,
+      wEngineId: loadout.wEngineId,
       wEngineRefinement: Number(loadout.refinement),
       coreSkillLevel: Number(coreSkill),
       conditions,
@@ -235,8 +223,18 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       sortBy,
       thenBy,
       limit: RESULT_LIMIT,
-    }))
-    setSelected(0)
+    })
+    // undefined: cancelled, or replaced by a newer search that is still running
+    if (response) {
+      setOutcome(response.outcome)
+      setSelected(0)
+      setRunning(false)
+    }
+  }
+
+  function cancel() {
+    cancelDiscOptimizer()
+    setRunning(false)
   }
 
   if (discs.length === 0) {
@@ -463,9 +461,12 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
           </Accordion>
 
           <div className={classes.stickyActions}>
-            <Button fullWidth size='sm' leftSection={<IconSearch size={16} />} onClick={run} loading={running} disabled={!canSearch}>
-              Search
-            </Button>
+            <Group gap='xs' grow>
+              <Button size='sm' leftSection={<IconSearch size={16} />} onClick={run} loading={running} disabled={!canSearch}>
+                Search
+              </Button>
+              {running && <Button size='sm' variant='default' onClick={cancel}>Cancel</Button>}
+            </Group>
             <Text size='xs' c={canSearch ? 'dimmed' : 'yellow'} ta='center' mt={6}>{searchHint}</Text>
           </div>
         </Stack>

@@ -53,9 +53,26 @@ export const SETS: Record<string, SetData> = {
         confidence: 'confirmed',
       },
     ],
-    // The 4pc depends on Anomaly Mastery and on Freeze/Shatter from teammates
-    fourPiece: [],
-    fourPieceModeled: false,
+    // In-game description: CRIT DMG +30% while Anomaly Mastery is at least 115, and CRIT Rate +12% for 15s when any
+    // squad member applies Freeze or triggers Shatter. Combat effects, so off on the stat screen
+    fourPiece: [
+      {
+        stat: ZzzStats.CRIT_DMG,
+        value: 30,
+        when: 'onField',
+        minStat: { stat: 'anomalyMastery', atLeast: 115 },
+        source: 'Branch & Blade Song 4pc (Anomaly Mastery 115+)',
+        confidence: 'sourced',
+      },
+      {
+        stat: ZzzStats.CRIT_RATE,
+        value: 12,
+        when: 'freezeOrShatter',
+        source: 'Branch & Blade Song 4pc (Freeze or Shatter)',
+        confidence: 'sourced',
+      },
+    ],
+    fourPieceModeled: true,
   },
   'woodpecker-electro': {
     id: 'woodpecker-electro',
@@ -68,9 +85,18 @@ export const SETS: Record<string, SetData> = {
         confidence: 'confirmed',
       },
     ],
-    // The 4pc stacks ATK on crits from specific skills
-    fourPiece: [],
-    fourPieceModeled: false,
+    // In-game description: a crit from a Basic Attack, Dodge Counter or EX Special Attack gives ATK +9% for 6s, each of
+    // the three counted separately. Modeled as all three active in combat
+    fourPiece: [
+      {
+        stat: ZzzStats.ATK_P,
+        value: 27,
+        when: 'onField',
+        source: 'Woodpecker Electro 4pc (3 stacks)',
+        confidence: 'sourced',
+      },
+    ],
+    fourPieceModeled: true,
   },
   'shadow-harmony': {
     id: 'shadow-harmony',

@@ -60,12 +60,12 @@ export type ComputeResult = {
 }
 
 export function defaultConditions(): ActiveConditions {
-  return { onField: true, inEtherVeil: false, veilTriggered: false }
+  return { onField: true, inEtherVeil: false, veilTriggered: false, freezeOrShatter: false }
 }
 
 // What the in-game agent stat screen shows: out of combat, so nothing that needs the agent on the field or an Ether Veil applies
 export function statScreenConditions(): ActiveConditions {
-  return { onField: false, inEtherVeil: false, veilTriggered: false }
+  return { onField: false, inEtherVeil: false, veilTriggered: false, freezeOrShatter: false }
 }
 
 // Rounds the way the stat screen shows values
@@ -99,9 +99,15 @@ export function computeStats(input: ComputeInput): ComputeResult {
   const contributions: Contribution[] = []
   const warnings: string[] = []
 
+  // Effects that need a final stat to reach a value wait until the other stats are known
+  const thresholdEffects: StatEffect[] = []
   const addEffects = (effects: StatEffect[]) => {
     for (const effect of effects) {
       if (!effectApplies(effect, agent, input.conditions)) continue
+      if (effect.minStat) {
+        thresholdEffects.push(effect)
+        continue
+      }
       contributions.push({ source: effect.source, stat: effect.stat, value: effect.value, condition: effect.when })
     }
   }
@@ -151,8 +157,20 @@ export function computeStats(input: ComputeInput): ComputeResult {
 
   const totals = emptyTotals()
   for (const c of contributions) totals[STAT_INDEX.get(c.stat)!] += c.value
+  const before = finalizeStats(agent, wEngine, totals)
+  const reached = metThresholds(before, thresholdEffects)
+  for (const effect of reached) {
+    contributions.push({ source: effect.source, stat: effect.stat, value: effect.value, condition: effect.when })
+    totals[STAT_INDEX.get(effect.stat)!] += effect.value
+  }
 
-  return { stats: finalizeStats(agent, wEngine, totals), contributions, warnings }
+  return { stats: reached.length > 0 ? finalizeStats(agent, wEngine, totals) : before, contributions, warnings }
+}
+
+// The threshold effects (minStat) whose stat reaches its value. Checked against the stats without any of them, so the
+// order they're listed in never matters
+export function metThresholds(stats: FinalStats, effects: StatEffect[]): StatEffect[] {
+  return effects.filter((effect) => effect.minStat && stats[effect.minStat.stat] >= effect.minStat.atLeast)
 }
 
 // Summed bonus points per stat before they are applied to the base stats, indexed by STAT_INDEX.

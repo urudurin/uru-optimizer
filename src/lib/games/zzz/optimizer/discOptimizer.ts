@@ -18,6 +18,7 @@ import {
   effectApplies,
   finalizeStats,
   type FinalStats,
+  metThresholds,
   STAT_INDEX,
   toDisplayStats,
 } from 'lib/games/zzz/stats/computeStats'
@@ -101,12 +102,17 @@ function addToVector(vector: Float64Array, stat: ZzzStatsValues, value: number) 
   if (index !== undefined) vector[index] += value
 }
 
+// Effects that always add their stat. Threshold effects (minStat) are checked per build, see thresholdEffects
 function effectsVector(effects: StatEffect[], agent: AgentData, conditions: ActiveConditions): Float64Array {
   const vector = new Float64Array(STAT_COUNT)
   for (const effect of effects) {
-    if (effectApplies(effect, agent, conditions)) addToVector(vector, effect.stat, effect.value)
+    if (!effect.minStat && effectApplies(effect, agent, conditions)) addToVector(vector, effect.stat, effect.value)
   }
   return vector
+}
+
+function thresholdEffects(effects: StatEffect[], agent: AgentData, conditions: ActiveConditions): StatEffect[] {
+  return effects.filter((effect) => effect.minStat && effectApplies(effect, agent, conditions))
 }
 
 function discVector(disc: Disc): Float64Array {
@@ -138,8 +144,11 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   // Everything that doesn't depend on the discs
   const base = new Float64Array(STAT_COUNT)
   addToVector(base, wEngine.subStat.stat, wEngine.subStat.value)
-  const passiveVector = effectsVector(wEngine.passive(request.wEngineRefinement), agent, conditions)
-  const coreVector = effectsVector(agent.coreEffects[request.coreSkillLevel] ?? [], agent, conditions)
+  const passive = wEngine.passive(request.wEngineRefinement)
+  const core = agent.coreEffects[request.coreSkillLevel] ?? []
+  const passiveVector = effectsVector(passive, agent, conditions)
+  const coreVector = effectsVector(core, agent, conditions)
+  const baseThresholds = [...thresholdEffects(passive, agent, conditions), ...thresholdEffects(core, agent, conditions)]
   for (let i = 0; i < STAT_COUNT; i++) base[i] += passiveVector[i] + coreVector[i]
 
   // Sets are numbered so counting pieces is an array lookup
@@ -147,6 +156,8 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   const setIndex = new Map(setIds.map((id, i) => [id, i]))
   const twoPiece = setIds.map((id) => effectsVector(SETS[id]?.twoPiece ?? [], agent, conditions))
   const fourPiece = setIds.map((id) => effectsVector(SETS[id]?.fourPiece ?? [], agent, conditions))
+  const twoThresholds = setIds.map((id) => thresholdEffects(SETS[id]?.twoPiece ?? [], agent, conditions))
+  const fourThresholds = setIds.map((id) => thresholdEffects(SETS[id]?.fourPiece ?? [], agent, conditions))
 
   const poolVectors = pools.map((pool) => pool.map(discVector))
   const poolSets = pools.map((pool) => pool.map((disc) => setIndex.get(disc.setId) ?? -1))
@@ -174,6 +185,7 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
 
   const evaluate = () => {
     leaf.set(sums[6])
+    const thresholds: StatEffect[] = [...baseThresholds]
     for (let j = 0; j < 6; j++) {
       const s = pickedSets[j]
       let seen = false
@@ -181,12 +193,20 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
       if (seen || counts[s] < 2) continue
       const two = twoPiece[s]
       for (let i = 0; i < STAT_COUNT; i++) leaf[i] += two[i]
+      thresholds.push(...twoThresholds[s])
       if (counts[s] >= 4) {
         const four = fourPiece[s]
         for (let i = 0; i < STAT_COUNT; i++) leaf[i] += four[i]
+        thresholds.push(...fourThresholds[s])
       }
     }
-    const stats = finalizeStats(agent, wEngine, leaf)
+    let stats = finalizeStats(agent, wEngine, leaf)
+    // Same as computeStats: threshold effects are checked against the stats without them
+    if (thresholds.length > 0) {
+      const reached = metThresholds(stats, thresholds)
+      for (const effect of reached) addToVector(leaf, effect.stat, effect.value)
+      if (reached.length > 0) stats = finalizeStats(agent, wEngine, leaf)
+    }
     for (const [key, min] of minEntries) if (stats[key] < min) return
     matched++
 

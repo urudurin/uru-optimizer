@@ -84,6 +84,18 @@ describe('optimizeDiscs', () => {
     }
   })
 
+  it('matches every combination with all 4-pieces on, Branch & Blade Song\'s Anomaly Mastery threshold included', () => {
+    const inCombat = { onField: true, inEtherVeil: true, veilTriggered: true, freezeOrShatter: true }
+    for (const sortBy of ['critDmg', 'critRate', 'atk'] as const) {
+      const request = makeRequest({ agent: MIYABI, wEngine: HAILSTORM_SHRINE, conditions: inCombat, sortBy })
+      const outcome = optimizeDiscs(request)
+      if (!outcome.ok) throw new Error(outcome.reason)
+
+      const expected = bruteForce(request).slice(0, 10).map((r) => r.display[sortBy])
+      expect(outcome.builds.map((b) => b.display[sortBy])).toEqual(expected)
+    }
+  })
+
   it('breaks ties with the thenBy stats in order', () => {
     const keys = ['critDmg', 'critRate', 'atk'] as const
     const request = makeRequest({ sortBy: 'critDmg', thenBy: ['critRate', 'atk'] })
@@ -101,7 +113,7 @@ describe('optimizeDiscs', () => {
   })
 
   it('returns builds in slot order with stats identical to the calculator', () => {
-    const request = makeRequest({ conditions: { onField: true, inEtherVeil: false, veilTriggered: false } })
+    const request = makeRequest({ conditions: { onField: true, inEtherVeil: false, veilTriggered: false, freezeOrShatter: false } })
     const outcome = optimizeDiscs(request)
     if (!outcome.ok) throw new Error(outcome.reason)
 
@@ -112,7 +124,7 @@ describe('optimizeDiscs', () => {
   })
 
   it('applies set bonuses the same way as the calculator, including conditional 4-pieces', () => {
-    const request = makeRequest({ sortBy: 'critRate', conditions: { onField: true, inEtherVeil: true, veilTriggered: true } })
+    const request = makeRequest({ sortBy: 'critRate', conditions: { onField: true, inEtherVeil: true, veilTriggered: true, freezeOrShatter: false } })
     const outcome = optimizeDiscs(request)
     if (!outcome.ok) throw new Error(outcome.reason)
 

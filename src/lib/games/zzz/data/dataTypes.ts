@@ -1,9 +1,10 @@
+import type { FinalStats } from 'lib/games/zzz/stats/computeStats'
 import type { ZzzStatsValues } from 'lib/games/zzz/types'
 
 export type Specialty = 'Attack' | 'Stun' | 'Anomaly' | 'Support' | 'Defense' | 'Rupture'
 
 // Situations a conditional effect can depend on
-export type Condition = 'onField' | 'inEtherVeil' | 'veilTriggered'
+export type Condition = 'onField' | 'inEtherVeil' | 'veilTriggered' | 'freezeOrShatter'
 export type ActiveConditions = Record<Condition, boolean>
 
 // confirmed = matched against the in-game stat screen, sourced = from community data, unverified = single or older source
@@ -18,6 +19,8 @@ export type StatEffect = {
   specialty?: Specialty,
   // Only applies to agents of this element, used for element-specific DMG bonuses
   element?: string,
+  // Only applies when this final stat (before any effects like this one) reaches the value, e.g. 115 Anomaly Mastery
+  minStat?: { stat: keyof FinalStats, atLeast: number },
   source: string,
   confidence: Confidence,
 }
