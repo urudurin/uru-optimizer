@@ -1,3 +1,7 @@
+import {
+  toGoodKey,
+  travelerKey,
+} from 'lib/games/genshin/goodKeys'
 import type {
   Artifact,
   ArtifactSlot,
@@ -11,7 +15,8 @@ import type {
 // Converts an Enka.Network Genshin showcase response (https://enka.network/api/uid/<uid>) into characters and the
 // artifacts they wear. Enka only has the characters in the player's showcase, not the whole inventory. Character stats
 // are the game's own final values (fightPropMap), so they match the in-game character screen.
-// Names come from Enka's store files (store/gi), loaded at import time. Never throws: bad parts are skipped with a warning.
+// Names come from Enka's store files (store/gi), loaded at import time. Ids are GOOD keys (see goodKeys.ts) so data from
+// Enka and from GOOD files lines up. Never throws: bad parts are skipped with a warning.
 
 export type EnkaGenshinStore = {
   avatars: Record<string, { Element?: string, NameTextMapHash?: number | string }>,
@@ -21,6 +26,10 @@ export type EnkaGenshinStore = {
   sets: Record<string, { Name: string }>,
   // affixes.json: substat roll id -> the numeric property it rolled
   affixes: Record<string, { PropType: number }>,
+  // relic_levels.json: rarity -> level + 1 -> numeric property -> main stat value (percents as fractions)
+  relicLevels: Record<string, Record<string, Record<string, number>>>,
+  // weapons.json: weapon id -> name hash and rarity
+  weapons: Record<string, { NameTextMapHash?: number | string, Rarity?: number }>,
 }
 
 export type ParsedEnkaGenshin = {
@@ -106,6 +115,9 @@ const ELEMENTS: Record<string, Element> = {
   Rock: 'Geo',
 }
 
+// Aether and Lumine: GOOD keys the Traveler by element instead
+const TRAVELER_AVATAR_IDS = new Set(['10000005', '10000007'])
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -120,8 +132,17 @@ export function isEnkaGenshinResponse(input: unknown): boolean {
   return isRecord(input) && isRecord(input.playerInfo)
 }
 
-// Enka has no id for an artifact, so it's named after its contents: unchanged artifacts keep their id across imports
-function artifactId(parts: (string | number)[]): string {
+// Neither Enka nor GOOD has an id for an artifact, so it's named after its contents: unchanged artifacts keep their id
+// across imports from either source. The main stat value is left out because GOOD files don't have it
+export function artifactId(artifact: Pick<Artifact, 'setId' | 'slot' | 'rarity' | 'level' | 'main' | 'substats'>): string {
+  const parts = [
+    artifact.setId,
+    artifact.slot,
+    artifact.rarity,
+    artifact.level,
+    artifact.main.stat,
+    ...artifact.substats.map((s) => `${s.stat}:${Math.round(s.value * 10) / 10}`),
+  ]
   let hash = 5381
   for (const char of parts.join('|')) hash = ((hash * 33) ^ char.charCodeAt(0)) >>> 0
   return `gi-${hash.toString(36)}`
@@ -157,22 +178,20 @@ function parseArtifact(item: Record<string, unknown>, characterId: string, store
     else warnings.push(`Character ${characterId}: an artifact substat couldn't be read, skipped`)
   }
 
-  const setId = String(flat.setId ?? '')
-  const setNameHash = store.sets[setId]?.Name
-  const setName = (setNameHash && store.locs[setNameHash]) || store.locs[String(flat.setNameTextMapHash)] || `Set ${setId}`
-  const level = Math.max(0, (asNumber(reliquary.level) ?? 1) - 1)
-  const rarity = asNumber(flat.rankLevel) ?? 5
-  return {
-    id: artifactId([setId, slot, rarity, level, main.stat, main.value, ...substats.map((s) => `${s.stat}:${s.value}`)]),
+  const enkaSetId = String(flat.setId ?? '')
+  const setNameHash = store.sets[enkaSetId]?.Name
+  const setName = (setNameHash && store.locs[setNameHash]) || store.locs[String(flat.setNameTextMapHash)] || `Set ${enkaSetId}`
+  const artifact = {
     slot,
-    setId,
+    setId: toGoodKey(setName),
     setName,
-    rarity,
-    level,
+    rarity: asNumber(flat.rankLevel) ?? 5,
+    level: Math.max(0, (asNumber(reliquary.level) ?? 1) - 1),
     main,
     substats,
     equippedBy: characterId,
   }
+  return { id: artifactId(artifact), ...artifact }
 }
 
 function parseWeapon(item: Record<string, unknown>, store: EnkaGenshinStore): GenshinWeapon {
@@ -183,9 +202,10 @@ function parseWeapon(item: Record<string, unknown>, store: EnkaGenshinStore): Ge
   const secondary = stats.map((s) => readStat(s, 'appendPropId')).find((s) => s !== undefined)
   // affixMap holds refinement - 1; 1 and 2 star weapons have none
   const affix = isRecord(weapon.affixMap) ? Object.values(weapon.affixMap).map(asNumber)[0] : undefined
+  const name = store.locs[String(flat.nameTextMapHash)] ?? `Weapon ${String(item.itemId)}`
   return {
-    id: String(item.itemId ?? ''),
-    name: store.locs[String(flat.nameTextMapHash)] ?? `Weapon ${String(item.itemId)}`,
+    id: toGoodKey(name),
+    name,
     rarity: asNumber(flat.rankLevel) ?? 1,
     level: asNumber(weapon.level) ?? 1,
     refinement: (affix ?? 0) + 1,
@@ -204,14 +224,19 @@ export function parseEnkaGenshin(input: unknown, store: EnkaGenshinStore, import
   const characters: GenshinCharacter[] = []
   const artifacts: Artifact[] = []
   for (const raw of list) {
-    const id = isRecord(raw) && raw.avatarId !== undefined ? String(raw.avatarId) : ''
-    if (!isRecord(raw) || !id) {
+    const avatarId = isRecord(raw) && raw.avatarId !== undefined ? String(raw.avatarId) : ''
+    if (!isRecord(raw) || !avatarId) {
       warnings.push('A showcased character couldn\'t be read, skipped')
       continue
     }
     // Traveler variants are keyed by avatar id and element (skill depot)
-    const info = store.avatars[`${id}-${String(raw.skillDepotId)}`] ?? store.avatars[id]
-    const name = (info?.NameTextMapHash !== undefined && store.locs[String(info.NameTextMapHash)]) || `Character ${id}`
+    const info = store.avatars[`${avatarId}-${String(raw.skillDepotId)}`] ?? store.avatars[avatarId]
+    const element = info?.Element ? ELEMENTS[info.Element] : undefined
+    const isTraveler = TRAVELER_AVATAR_IDS.has(avatarId)
+    const name = isTraveler
+      ? `Traveler${element ? ` (${element})` : ''}`
+      : (info?.NameTextMapHash !== undefined && store.locs[String(info.NameTextMapHash)]) || `Character ${avatarId}`
+    const id = isTraveler ? travelerKey(element) : toGoodKey(name)
 
     const props = isRecord(raw.propMap) ? raw.propMap : {}
     const levelProp = isRecord(props['4001']) ? props['4001'] : {}
@@ -240,7 +265,7 @@ export function parseEnkaGenshin(input: unknown, store: EnkaGenshinStore, import
     characters.push({
       id,
       name,
-      element: info?.Element ? ELEMENTS[info.Element] : undefined,
+      element,
       level: asNumber(levelProp.val) ?? 1,
       constellation: Array.isArray(raw.talentIdList) ? raw.talentIdList.length : 0,
       ...(weapon ? { weapon } : {}),

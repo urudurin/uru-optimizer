@@ -28,6 +28,8 @@ const store: EnkaGenshinStore = {
     '501241': { PropType: 28 },
     '501243': { PropType: 28 },
   },
+  relicLevels: {},
+  weapons: {},
 }
 
 const flower = {
@@ -87,13 +89,13 @@ describe('parseEnkaGenshin', () => {
     expect(result.warnings).toEqual([])
     expect(result.uid).toBe('602175084')
     const character = result.characters[0]
-    expect(character).toMatchObject({ id: '10000022', name: 'Venti', element: 'Anemo', level: 90, constellation: 2, statsDate: '2026-10-26' })
+    expect(character).toMatchObject({ id: 'Venti', name: 'Venti', element: 'Anemo', level: 90, constellation: 2, statsDate: '2026-10-26' })
     expect(character.stats.hp).toBeCloseTo(19711.97)
     expect(character.stats.critRate).toBeCloseTo(20.55)
     expect(character.stats.energyRecharge).toBeCloseTo(242.83)
     expect(character.stats.anemoDmg).toBeCloseTo(15)
     expect(character.weapon).toEqual({
-      id: '15411',
+      id: 'FadingTwilight',
       name: 'Fading Twilight',
       rarity: 4,
       level: 80,
@@ -109,12 +111,12 @@ describe('parseEnkaGenshin', () => {
 
     expect(artifact).toMatchObject({
       slot: 'flower',
-      setId: '15002',
+      setId: 'ViridescentVenerer',
       setName: 'Viridescent Venerer',
       rarity: 5,
       level: 20,
       main: { stat: 'hp', value: 4780 },
-      equippedBy: '10000022',
+      equippedBy: 'Venti',
     })
     // 9 roll ids: HP% three times, the rest twice
     expect(artifact.substats).toEqual([
@@ -125,13 +127,16 @@ describe('parseEnkaGenshin', () => {
     ])
   })
 
-  it('gives an unchanged artifact the same id on every import', () => {
+  it('gives an unchanged artifact the same id on every import, whatever its main stat value', () => {
     const first = parseEnkaGenshin(response([venti]), store, '2026-10-26').artifacts[0].id
     const again = parseEnkaGenshin(response([venti]), store, '2026-10-27').artifacts[0].id
-    const changed = { ...flower, flat: { ...flower.flat, reliquaryMainstat: { mainPropId: 'FIGHT_PROP_HP', statValue: 4000 } } }
-    const other = parseEnkaGenshin(response([{ ...venti, equipList: [changed] }]), store, '2026-10-26').artifacts[0].id
+    const mainChanged = { ...flower, flat: { ...flower.flat, reliquaryMainstat: { mainPropId: 'FIGHT_PROP_HP', statValue: 4000 } } }
+    const sameId = parseEnkaGenshin(response([{ ...venti, equipList: [mainChanged] }]), store, '2026-10-26').artifacts[0].id
+    const subChanged = { ...flower, flat: { ...flower.flat, reliquarySubstats: flower.flat.reliquarySubstats.slice(1) } }
+    const other = parseEnkaGenshin(response([{ ...venti, equipList: [subChanged] }]), store, '2026-10-26').artifacts[0].id
 
     expect(again).toBe(first)
+    expect(sameId).toBe(first)
     expect(other).not.toBe(first)
   })
 
@@ -139,9 +144,9 @@ describe('parseEnkaGenshin', () => {
     const traveler = { avatarId: 10000007, skillDepotId: 704, propMap: {}, equipList: [{ flat: { itemType: 'ITEM_RELIQUARY', equipType: 'EQUIP_HAT' } }] }
     const result = parseEnkaGenshin(response([traveler, 'junk']), store, '2026-10-26')
 
-    expect(result.characters[0]).toMatchObject({ name: 'Traveler', element: 'Electro', level: 1, constellation: 0 })
+    expect(result.characters[0]).toMatchObject({ id: 'TravelerElectro', name: 'Traveler (Electro)', element: 'Electro', level: 1, constellation: 0 })
     expect(result.warnings).toEqual([
-      'Character 10000007: an artifact couldn\'t be read, skipped',
+      'Character TravelerElectro: an artifact couldn\'t be read, skipped',
       'A showcased character couldn\'t be read, skipped',
     ])
   })

@@ -24,11 +24,15 @@ import {
   useState,
 } from 'react'
 
+// Cards drawn at a time: a full GOOD inventory has well over a thousand
+const PAGE_SIZE = 60
+
 export function GenshinArtifactsPage({ onImport }: { onImport: () => void }) {
   const artifacts = useGenshinStore((s) => s.artifacts)
   const characters = useGenshinStore((s) => s.characters)
   const [slot, setSlot] = useState('all')
   const [setId, setSetId] = useState<string | null>(null)
+  const [limit, setLimit] = useState(PAGE_SIZE)
 
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
   const setOptions = useMemo(() => {
@@ -39,7 +43,7 @@ export function GenshinArtifactsPage({ onImport }: { onImport: () => void }) {
     () =>
       artifacts
         .filter((a) => (slot === 'all' || a.slot === slot) && (!setId || a.setId === setId))
-        .sort((a, b) => ARTIFACT_SLOTS.indexOf(a.slot) - ARTIFACT_SLOTS.indexOf(b.slot) || a.setName.localeCompare(b.setName)),
+        .sort((a, b) => ARTIFACT_SLOTS.indexOf(a.slot) - ARTIFACT_SLOTS.indexOf(b.slot) || a.setName.localeCompare(b.setName) || b.level - a.level),
     [artifacts, slot, setId],
   )
 
@@ -48,8 +52,8 @@ export function GenshinArtifactsPage({ onImport }: { onImport: () => void }) {
       <Stack gap='lg'>
         <PageHeader title='Artifacts' />
         <Panel>
-          <EmptyState icon={<IconCards size={24} />} title='No artifacts yet' action={<Button onClick={onImport}>Import from Enka</Button>}>
-            Import your showcase to see the artifacts your characters wear, with their sets, main stats and substat rolls.
+          <EmptyState icon={<IconCards size={24} />} title='No artifacts yet' action={<Button onClick={onImport}>Import</Button>}>
+            Import a GOOD file for your whole inventory, or your Enka.Network showcase for the artifacts your characters wear.
           </EmptyState>
         </Panel>
       </Stack>
@@ -58,23 +62,44 @@ export function GenshinArtifactsPage({ onImport }: { onImport: () => void }) {
 
   return (
     <Stack gap='lg'>
-      <PageHeader title='Artifacts' description={`${artifacts.length} artifacts. Dots show how many times each substat rolled.`} />
+      <PageHeader
+        title='Artifacts'
+        description={`${artifacts.length} artifacts. Dots show how many times each substat rolled (the fewest rolls that reach its value, for GOOD imports).`}
+      />
 
       <Group gap='sm' align='flex-end'>
         <SegmentedControl
           value={slot}
-          onChange={setSlot}
+          onChange={(value) => {
+            setSlot(value)
+            setLimit(PAGE_SIZE)
+          }}
           data={[{ value: 'all', label: 'All slots' }, ...ARTIFACT_SLOTS.map((value) => ({ value, label: SLOT_LABELS[value] }))]}
         />
-        <Select w={240} placeholder='Any set' clearable value={setId} onChange={setSetId} data={setOptions} />
-        <Text size='xs' c='dimmed'>{`Showing ${shown.length}`}</Text>
+        <Select
+          w={240}
+          placeholder='Any set'
+          clearable
+          value={setId}
+          onChange={(value) => {
+            setSetId(value)
+            setLimit(PAGE_SIZE)
+          }}
+          data={setOptions}
+        />
+        <Text size='xs' c='dimmed'>{`Showing ${Math.min(limit, shown.length)} of ${shown.length}`}</Text>
       </Group>
 
       <div className={gear.grid}>
-        {shown.map((artifact) => (
+        {shown.slice(0, limit).map((artifact) => (
           <ArtifactCard key={artifact.id} artifact={artifact} owner={artifact.equippedBy ? ownerNames.get(artifact.equippedBy) : undefined} />
         ))}
       </div>
+      {shown.length > limit && (
+        <Group justify='center'>
+          <Button variant='light' onClick={() => setLimit(limit + PAGE_SIZE * 2)}>{`Show more (${shown.length - limit} left)`}</Button>
+        </Group>
+      )}
     </Stack>
   )
 }

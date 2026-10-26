@@ -46,6 +46,7 @@ function statTiles(character: GenshinCharacter): StatTileData[] {
     highlight: HIGHLIGHTED.has(stat),
   })
   const elementStat = character.element ? ELEMENT_DMG_STAT[character.element] : undefined
+  if (Object.keys(character.stats).length === 0) return []
   const bonuses = (Object.keys(character.stats) as GenshinStatKey[])
     .filter((stat) => !MAIN_STATS.includes(stat) && (stat === elementStat || (character.stats[stat] ?? 0) > 0))
   return [...MAIN_STATS, ...bonuses].map(tile)
@@ -64,8 +65,8 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
       <Stack gap='lg'>
         <PageHeader title='Characters' />
         <Panel>
-          <EmptyState icon={<IconUser size={24} />} title='Import your characters to get started' action={<Button onClick={onImport}>Import from Enka</Button>}>
-            Bring in the characters from your in-game showcase with their stats, weapon and artifacts.
+          <EmptyState icon={<IconUser size={24} />} title='Import your characters to get started' action={<Button onClick={onImport}>Import</Button>}>
+            Bring in your characters from your in-game showcase through Enka.Network, or your whole account from a GOOD file.
           </EmptyState>
         </Panel>
       </Stack>
@@ -78,12 +79,13 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
     return artifact ? [artifact] : []
   })
   const weapon = character.weapon
+  const tiles = statTiles(character)
 
   return (
     <Stack gap='lg'>
       <PageHeader
         title='Characters'
-        description='Stats exactly as your in-game character screen shows them, taken from the game through Enka.Network.'
+        description='Stats exactly as your in-game character screen shows them, taken from the game through Enka.Network. A GOOD file adds every character and artifact, but no stats.'
       />
 
       <SideLayout
@@ -109,9 +111,15 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
               {character.element && <Badge size='sm' variant='light' color={elementColor(character.element)}>{character.element}</Badge>}
             </Group>
           }
-          description={`Level ${character.level} · Constellation ${character.constellation} · Imported ${character.statsDate}`}
+          description={`Level ${character.level} · Constellation ${character.constellation}${tiles.length > 0 ? ` · Stats from ${character.statsDate}` : ''}`}
         >
-          <StatGrid stats={statTiles(character)} />
+          {tiles.length > 0
+            ? <StatGrid stats={tiles} />
+            : (
+              <Text size='sm' c='dimmed'>
+                No stats yet. Put this character in your in-game showcase and import from Enka.Network to see their stat screen numbers.
+              </Text>
+            )}
         </Panel>
 
         {weapon && (
@@ -124,7 +132,7 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
               <div style={{ flex: 1, minWidth: 260 }}>
                 <StatGrid
                   stats={[
-                    { key: 'base', label: 'Base ATK', value: formatStatValue('atk', weapon.baseAtk) },
+                    ...(weapon.baseAtk !== undefined ? [{ key: 'base', label: 'Base ATK', value: formatStatValue('atk', weapon.baseAtk) }] : []),
                     ...(weapon.secondary
                       ? [{ key: 'secondary', label: statLabel(weapon.secondary.stat), value: formatStatValue(weapon.secondary.stat, weapon.secondary.value) }]
                       : []),

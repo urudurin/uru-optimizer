@@ -124,12 +124,13 @@ export type GenshinWeapon = {
   rarity: number,
   level: number,
   refinement: number,
-  baseAtk: number,
+  // Enka imports only, GOOD files don't have weapon stats
+  baseAtk?: number,
   secondary?: { stat: GenshinStatKey, value: number },
 }
 
 export type GenshinCharacter = {
-  // The game's avatar id
+  // GOOD character key, e.g. 'RaidenShogun' or 'TravelerAnemo'
   id: string,
   name: string,
   element?: Element,
@@ -137,7 +138,7 @@ export type GenshinCharacter = {
   constellation: number,
   weapon?: GenshinWeapon,
   artifactIds: Partial<Record<ArtifactSlot, string>>,
-  // Final stats as the character screen shows them, from the game via Enka
+  // Final stats as the character screen shows them, from the game via Enka. Empty for characters only in a GOOD file
   stats: Partial<Record<GenshinStatKey, number>>,
   // YYYY-MM-DD the stats were imported
   statsDate: string,

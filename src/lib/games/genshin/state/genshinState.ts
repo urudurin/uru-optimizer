@@ -27,7 +27,26 @@ export type GenshinData = {
 
 export const EMPTY_GENSHIN_DATA: GenshinData = { artifacts: [], characters: [] }
 
-export function mergeGenshinData(existing: GenshinData, incoming: GenshinData, mode: ImportMode): GenshinData {
+// GOOD files have no final stats or weapon numbers: an incoming character without them keeps the ones an Enka import
+// saved (stats are dated, so the page can say how old they are)
+function keepEnkaDetails(existing: GenshinCharacter[], incoming: GenshinCharacter[]): GenshinCharacter[] {
+  const byId = new Map(existing.map((c) => [c.id, c]))
+  return incoming.map((character) => {
+    const old = byId.get(character.id)
+    if (!old) return character
+    const kept = Object.keys(character.stats).length === 0 && Object.keys(old.stats).length > 0
+      ? { ...character, stats: old.stats, statsDate: old.statsDate }
+      : character
+    const weapon = kept.weapon
+    if (weapon && weapon.baseAtk === undefined && old.weapon?.id === weapon.id && old.weapon.level === weapon.level) {
+      return { ...kept, weapon: { ...old.weapon, refinement: weapon.refinement } }
+    }
+    return kept
+  })
+}
+
+export function mergeGenshinData(existing: GenshinData, received: GenshinData, mode: ImportMode): GenshinData {
+  const incoming = { ...received, characters: keepEnkaDetails(existing.characters, received.characters) }
   if (mode === 'replace') return incoming
   // Artifacts a re-imported character no longer wears stay in the inventory, but not as theirs
   const reimported = new Set(incoming.characters.map((c) => c.id))

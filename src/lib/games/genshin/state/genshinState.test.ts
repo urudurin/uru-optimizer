@@ -62,4 +62,22 @@ describe('Genshin save', () => {
     expect(merged.characters.find((c) => c.id === 'c1')?.artifactIds.flower).toBe('a3')
     expect(mergeGenshinData(data, reimport, 'replace')).toEqual(reimport)
   })
+
+  it('keeps Enka stats and weapon numbers when a GOOD import has none', () => {
+    const weapon = { id: 'FadingTwilight', name: 'Fading Twilight', rarity: 4, level: 80, refinement: 3, baseAtk: 497 }
+    const enka: GenshinData = { artifacts: [], characters: [{ ...character('c1'), weapon }] }
+    const good: GenshinData = {
+      artifacts: [artifact('a9', 'c1')],
+      characters: [{ ...character('c1', 'a9'), stats: {}, statsDate: '2026-10-30', weapon: { ...weapon, refinement: 5, baseAtk: undefined } }, {
+        ...character('c2'),
+        stats: {},
+      }],
+    }
+    const merged = mergeGenshinData(enka, good, 'replace')
+
+    expect(merged.artifacts).toEqual(good.artifacts)
+    expect(merged.characters[0]).toMatchObject({ stats: { hp: 20000 }, statsDate: '2026-10-26', artifactIds: { flower: 'a9' } })
+    expect(merged.characters[0].weapon).toEqual({ ...weapon, refinement: 5 })
+    expect(merged.characters[1].stats).toEqual({})
+  })
 })

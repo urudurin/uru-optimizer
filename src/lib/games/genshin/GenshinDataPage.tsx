@@ -17,6 +17,8 @@ import {
 } from 'lib/games/genshin/importer/enkaClient'
 import { importEnkaGenshinProfile } from 'lib/games/genshin/importer/enkaImport'
 import { isEnkaGenshinResponse } from 'lib/games/genshin/importer/enkaParser'
+import { importGoodFile } from 'lib/games/genshin/importer/goodImport'
+import { isGoodFile } from 'lib/games/genshin/importer/goodParser'
 import {
   createGenshinBackup,
   readGenshinBackup,
@@ -66,17 +68,21 @@ export function GenshinDataPage() {
   async function handleFile(file: File | null) {
     if (!file) return
     const text = await file.text()
-    // A backup saved from this page restores as-is, a saved Enka profile merges in
+    // A backup saved from this page restores as-is, a GOOD file replaces the inventory, a saved Enka profile merges in
     const backup = readGenshinBackup(text)
     const parsed = parseJsonOrUndefined(text)
     if (backup) {
       importParsed({ ...backup, warnings: [] }, 'replace')
       setMessage({ ok: true, text: `Restored a backup with ${backup.characters.length} characters and ${backup.artifacts.length} artifacts` })
+    } else if (isGoodFile(parsed)) {
+      setMessage({ ok: true, text: 'Reading the GOOD file...' })
+      const outcome = await importGoodFile(parsed)
+      setMessage(outcome.ok ? { ok: true, text: outcome.data } : { ok: false, text: outcome.reason })
     } else if (isEnkaGenshinResponse(parsed)) {
       const outcome = await importEnkaGenshinProfile(parsed)
       setMessage(outcome.ok ? { ok: true, text: outcome.data } : { ok: false, text: outcome.reason })
     } else {
-      setMessage({ ok: false, text: 'That file isn\'t a saved Enka.Network Genshin profile or a backup from this page' })
+      setMessage({ ok: false, text: 'That file isn\'t a GOOD file, a saved Enka.Network Genshin profile or a backup from this page' })
     }
   }
 
@@ -101,7 +107,10 @@ export function GenshinDataPage() {
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing='lg'>
         <EnkaImportPanel config={ENKA_CONFIG} />
 
-        <Panel title='Import' description='A saved Enka.Network profile (.json), or a backup saved here. A backup replaces what is here.'>
+        <Panel
+          title='Import'
+          description='A GOOD file from an artifact scanner (Irminsul, Inventory Kamera), a saved Enka.Network profile, or a backup saved here. A GOOD file or backup replaces what is here; Enka stats are kept.'
+        >
           <Stack gap='sm'>
             <FileInput
               size='sm'

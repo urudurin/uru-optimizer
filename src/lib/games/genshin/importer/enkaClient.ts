@@ -21,12 +21,14 @@ export function isValidGenshinUid(uid: string): boolean {
 }
 
 export const loadEnkaGenshinStore = enkaStoreLoader(
-  ['gi/avatars.json', 'gi/locs.json', 'gi/relics.json', 'gi/affixes.json'],
-  ([avatars, locs, relics, affixes]): EnkaGenshinStore => ({
+  ['gi/avatars.json', 'gi/locs.json', 'gi/relics.json', 'gi/affixes.json', 'gi/relic_levels.json', 'gi/weapons.json'],
+  ([avatars, locs, relics, affixes, relicLevels, weapons]): EnkaGenshinStore => ({
     avatars: avatars as EnkaGenshinStore['avatars'],
     locs: (locs as Record<string, Record<string, string>>).en ?? {},
     sets: ((relics as { Sets?: EnkaGenshinStore['sets'] }).Sets) ?? {},
     affixes: affixes as EnkaGenshinStore['affixes'],
+    relicLevels: relicLevels as EnkaGenshinStore['relicLevels'],
+    weapons: weapons as EnkaGenshinStore['weapons'],
   }),
 )
 
