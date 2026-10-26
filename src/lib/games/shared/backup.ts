@@ -1,7 +1,7 @@
 // Backup files of a game's own browser save, shared by the non-HSR games. A backup is the game's save object plus a
 // "kind" marker and the date it was saved, so the Import box can recognize it and restore it directly.
 
-export type BackupKind = 'uru-zzz-backup' | 'uru-wuwa-backup'
+export type BackupKind = 'uru-zzz-backup' | 'uru-wuwa-backup' | 'uru-genshin-backup'
 
 // Adds the marker and date to a serialized save. Pretty-printed so the file is readable if opened
 export function wrapBackup(kind: BackupKind, savedAt: string, saveText: string): string {

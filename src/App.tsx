@@ -26,6 +26,7 @@ import {
 // Loaded on first use so HSR-only users never download ZZZ code
 const ZzzApp = lazy(() => import('lib/games/zzz/ZzzApp').then((m) => ({ default: m.ZzzApp })))
 const WuwaApp = lazy(() => import('lib/games/wuwa/WuwaApp').then((m) => ({ default: m.WuwaApp })))
+const GenshinApp = lazy(() => import('lib/games/genshin/GenshinApp').then((m) => ({ default: m.GenshinApp })))
 
 // Initial gradient setup before first render
 {
@@ -79,6 +80,11 @@ export function App() {
             {activeGame === 'wuwa' && (
               <Suspense fallback={null}>
                 <WuwaApp />
+              </Suspense>
+            )}
+            {activeGame === 'genshin' && (
+              <Suspense fallback={null}>
+                <GenshinApp />
               </Suspense>
             )}
           </div>

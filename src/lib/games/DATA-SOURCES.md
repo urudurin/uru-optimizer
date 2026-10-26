@@ -34,6 +34,13 @@ the sources below) or `unverified`.
 Left out on purpose: everything the WuwaEchoScorer project took from Prydwen (character build profiles, substat
 weights, stat targets, teams, weapon rankings, buff values, minor fortes, images).
 
+## Genshin Impact (`genshin/`)
+
+| Data                                                     | Where it came from                                                                                                                                                                                                | Where it lives                         |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Showcased characters: final stats, weapon, constellation | [Enka.Network](https://enka.network/) API for the user's own UID (`/api/uid/<uid>`), through the dev server's /enka-proxy. Stats are the game's own final values (fightPropMap)                                   | browser storage only (`genshin-state`) |
+| Their artifacts, with substat roll counts                | Same Enka response; set, character, weapon and stat names and roll ids from Enka's store files (store/gi: avatars, locs, relics, affixes), downloaded by the browser at import time and not copied into this repo | browser storage only                   |
+
 ## Imported presets (any game)
 
 Users can import a presets file of their own, for example notes taken from a guide site such as Prydwen or a community
