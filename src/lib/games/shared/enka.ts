@@ -9,6 +9,8 @@
 const HOSTED_PROXY = import.meta.env.VITE_ENKA_PROXY_URL
 export const ENKA_PROXY_PATH = HOSTED_PROXY ? HOSTED_PROXY.replace(/\/$/, '') : '/enka-proxy'
 export const ENKA_STORE_BASE = 'https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store'
+// Images named in the store files (e.g. /ui/zzz/IconRole01.png) are served from here
+export const ENKA_ORIGIN_URL = 'https://enka.network'
 
 export type FetchResult<T> = { ok: true, data: T } | { ok: false, reason: string }
 

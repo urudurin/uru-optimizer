@@ -1,0 +1,246 @@
+/* ZZZ Agents page, after HSR's Characters page: a roster with art banners on the left, one showcase card on the right
+   (art, stats column, discs). Images come from Enka (data/images.ts); everything still reads without them */
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Roster */
+
+.roster {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.rosterList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 78px;
+  padding: 0 12px;
+  overflow: hidden;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: var(--layer-2);
+  background-repeat: no-repeat;
+  background-size: 190px auto;
+  background-position: right -20px top -18px;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--layer-2) 52%, color-mix(in srgb, var(--layer-2) 40%, transparent) 75%, transparent 95%);
+  pointer-events: none;
+}
+
+.banner > * {
+  position: relative;
+}
+
+.banner:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.banner[data-active] {
+  border-color: var(--mantine-color-primary-filled);
+  box-shadow: 0 0 0 1px var(--mantine-color-primary-filled);
+}
+
+.banner[data-compact] {
+  height: 46px;
+  background-image: none !important;
+}
+
+.circle {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.initials {
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.bannerText {
+  min-width: 0;
+  max-width: 62%;
+}
+
+.bannerName {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bannerMeta {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Showcase card */
+
+.showcase {
+  display: grid;
+  grid-template-columns: 260px 250px minmax(0, 1fr);
+  gap: 14px;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent, #6b8cd8) 22%, var(--layer-2)) 0%, var(--layer-2) 55%);
+}
+
+@media (max-width: 1400px) {
+  .showcase {
+    grid-template-columns: 240px minmax(0, 1fr);
+  }
+
+  .discs {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 700px) {
+  .showcase {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.artColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.portrait {
+  position: relative;
+  height: 420px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--accent, #6b8cd8) 45%, transparent), rgba(0, 0, 0, 0.25) 70%);
+}
+
+.portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.portraitFallback {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 42px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.wEngine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.wEngine img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.statsColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.statList {
+  display: flex;
+  flex-direction: column;
+}
+
+.statRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.statRow svg {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.statRow[data-highlight] {
+  color: var(--primary-light);
+}
+
+.statRow[data-highlight] svg {
+  color: var(--primary-light);
+}
+
+.statValue {
+  margin-left: auto;
+  font-weight: 600;
+}
+
+.discs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+  align-content: start;
+}
+
+.setIcon {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  flex-shrink: 0;
+}

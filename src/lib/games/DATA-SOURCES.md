@@ -34,6 +34,10 @@ the sources below) or `unverified`.
 Left out on purpose: everything the WuwaEchoScorer project took from Prydwen (character build profiles, substat
 weights, stat targets, teams, weapon rankings, buff values, minor fortes, images).
 
+## Images (ZZZ)
+
+Agent art and icons, W-Engine art and disc set icons are loaded from Enka.Network when a page is viewed. Enka's ZZZ store files name them (Enka's API docs, "Icons and Images") and enka.network serves them to other sites. Nothing is copied into this repo (`zzz/data/images.ts`). The art belongs to HoYoverse; personal, non-commercial use. Not used: Fandom wikis (their Terms of Use forbid scraping and automated access).
+
 ## Genshin Impact (`genshin/`)
 
 | Data                                                                                              | Where it came from                                                                                                                                                                                                                                                                              | Where it lives                                                |

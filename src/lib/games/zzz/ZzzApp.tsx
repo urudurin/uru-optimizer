@@ -9,10 +9,10 @@ import {
   type GameNavGroup,
   useStoredPage,
 } from 'lib/games/shared/ui/GameLayout'
+import { ZzzAgentsPage } from 'lib/games/zzz/ZzzAgentsPage'
 import { ZzzDataPage } from 'lib/games/zzz/ZzzDataPage'
 import { ZzzDiscsPage } from 'lib/games/zzz/ZzzDiscsPage'
 import { ZzzOptimizerPanel } from 'lib/games/zzz/ZzzOptimizerPanel'
-import { ZzzStatsPanel } from 'lib/games/zzz/ZzzStatsPanel'
 
 const PAGES = ['optimizer', 'agents', 'discs', 'data'] as const
 type ZzzPage = (typeof PAGES)[number]
@@ -38,7 +38,7 @@ export function ZzzApp() {
 
   return (
     <GameLayout gameName='Zenless Zone Zero' tagline='Disc stats and optimizer' groups={GROUPS} active={page} onNavigate={setPage}>
-      {page === 'agents' && <ZzzStatsPanel onImport={goToImport} />}
+      {page === 'agents' && <ZzzAgentsPage onImport={goToImport} />}
       {page === 'optimizer' && <ZzzOptimizerPanel onImport={goToImport} />}
       {page === 'discs' && <ZzzDiscsPage onImport={goToImport} />}
       {page === 'data' && <ZzzDataPage />}

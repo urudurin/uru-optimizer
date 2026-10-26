@@ -30,14 +30,18 @@ function RollDots({ rolls }: { rolls: number }) {
   )
 }
 
-export function DiscCard({ disc, owner }: { disc: Disc, owner?: string }) {
+// icon: the set's art (data/images.ts), when it has loaded
+export function DiscCard({ disc, owner, icon }: { disc: Disc, owner?: string, icon?: string }) {
   return (
     <div className={gear.card}>
       <Group justify='space-between' gap={6} wrap='nowrap'>
         <Badge size='sm' variant='light' radius='sm'>{`Slot ${disc.slot}`}</Badge>
         <Text size='xs' c='dimmed'>{`${disc.rarity} · +${disc.level}`}</Text>
       </Group>
-      <div className={gear.title}>{disc.setName}</div>
+      <Group gap={8} wrap='nowrap'>
+        {icon && <img src={icon} alt='' width={30} height={30} style={{ objectFit: 'contain', flexShrink: 0 }} />}
+        <div className={gear.title}>{disc.setName}</div>
+      </Group>
       <div className={gear.main}>
         <span>{disc.main.stat}</span>
         <span>{disc.main.value}</span>
