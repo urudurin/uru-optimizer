@@ -1,9 +1,9 @@
 {
-  "short_name": "Fribbels HSR Optimizer",
-  "name": "Fribbels Honkai Star Rail Optimizer",
+  "short_name": "Uru's Gacha",
+  "name": "Uru's Gacha Optimizer",
   "icons": [
     {
-      "src": "favicon.ico",
+      "src": "uru-favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
     },

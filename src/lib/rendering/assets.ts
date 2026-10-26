@@ -112,7 +112,7 @@ export const Assets = {
     return getImageUrl('/misc/tooltip.webp')
   },
   getLogo: () => {
-    return getImageUrl('/misc/logo.webp')
+    return getImageUrl('/misc/uru-logo.png')
   },
   getDiscord: () => {
     return getImageUrl('/misc/badgediscord.webp')

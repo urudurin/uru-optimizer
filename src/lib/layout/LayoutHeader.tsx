@@ -60,7 +60,7 @@ export function LayoutHeader() {
             <Flex align='center'>
               <img src={Assets.getLogo()} className={classes.logo} />
               <div className={classes.title}>
-                Fribbels Star Rail Optimizer
+                Uru's Gacha Optimizer
               </div>
             </Flex>
           </a>
