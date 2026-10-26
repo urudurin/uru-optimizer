@@ -1,15 +1,20 @@
-// Enka.Network access shared by the ZZZ and Genshin imports. Player profiles go through the dev server's /enka-proxy
-// route (vite.config.ts), since Enka doesn't accept requests made directly from other sites' pages. Enka's store files
-// (ids to names) come from GitHub, which allows cross-site requests, and are downloaded at import time rather than
-// copied into this repo. Enka asks callers to cache each profile until its ttl runs out.
+// Enka.Network access shared by the ZZZ and Genshin imports. Enka doesn't accept requests made directly from other
+// sites' pages, so player profiles go through a proxy: the dev server's /enka-proxy route (vite.config.ts) under
+// npm start, or the hosted Cloudflare Worker in workers/enka-proxy when the site is built with VITE_ENKA_PROXY_URL set.
+// Enka's store files (ids to names) come from GitHub, which allows cross-site requests, and are downloaded at import
+// time rather than copied into this repo. Enka asks callers to cache each profile until its ttl runs out.
 
-export const ENKA_PROXY_PATH = '/enka-proxy'
+// The hosted proxy's address from the build, e.g. https://uru-enka-proxy.<account>.workers.dev, else the dev server's.
+// Written exactly as import.meta.env.VITE_..., the form Vite replaces at build time
+const HOSTED_PROXY = import.meta.env.VITE_ENKA_PROXY_URL
+export const ENKA_PROXY_PATH = HOSTED_PROXY ? HOSTED_PROXY.replace(/\/$/, '') : '/enka-proxy'
 export const ENKA_STORE_BASE = 'https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store'
 
 export type FetchResult<T> = { ok: true, data: T } | { ok: false, reason: string }
 
 const STATUS_MESSAGES: Record<number, string> = {
   400: 'That UID isn\'t valid',
+  403: 'The Enka proxy doesn\'t accept requests from this site, add it to the proxy\'s ALLOWED_ORIGINS',
   404: 'No player with that UID, or their showcase isn\'t public',
   424: 'The game is under maintenance, try again later',
   429: 'Enka is rate limiting requests, wait a minute and try again',
@@ -35,7 +40,8 @@ export async function fetchEnkaProfile(apiPath: string, now = Date.now()): Promi
   if (!(response.headers.get('content-type') ?? '').includes('json')) {
     return {
       ok: false,
-      reason: 'One-click import needs the site running locally (npm start). Use "Open my Enka data" instead and import the saved file',
+      reason:
+        'One-click import needs the site running locally (npm start) or a hosted Enka proxy (workers/enka-proxy). Use "Open my Enka data" instead and import the saved file',
     }
   }
   if (!response.ok) return { ok: false, reason: STATUS_MESSAGES[response.status] ?? `Enka answered with HTTP ${response.status}` }

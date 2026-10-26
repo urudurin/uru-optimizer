@@ -76,7 +76,7 @@ export function EnkaImportPanel({ config }: { config: EnkaImportConfig }) {
         </Group>
         {result && <Text size='xs' c={result.ok ? 'teal' : 'yellow'}>{result.text}</Text>}
         <Text size='xs' c='dimmed'>
-          The button works when the site runs locally (npm start). Elsewhere,{' '}
+          The button needs the site running locally (npm start) or a hosted Enka proxy. If it can't reach Enka,{' '}
           <Anchor size='xs' href={valid ? config.apiUrl(trimmed) : undefined} target='_blank' rel='noreferrer' c={valid ? undefined : 'dimmed'}>
             open my Enka data <IconExternalLink size={11} />
           </Anchor>

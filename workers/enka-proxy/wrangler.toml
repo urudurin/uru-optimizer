@@ -1,0 +1,8 @@
+# Cloudflare Worker settings for the Enka proxy, see README.md
+name = "uru-enka-proxy"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Sites allowed to use the proxy, comma-separated. Add the hosted site's address before deploying
+ALLOWED_ORIGINS = "http://localhost:3000,http://localhost:3002"
