@@ -1,212 +1,67 @@
 import {
-  Alert,
-  Button,
-  FileInput,
-  Group,
-  SegmentedControl,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from '@mantine/core'
+  IconCards,
+  IconTrendingUp,
+  IconUpload,
+  IconUsers,
+} from '@tabler/icons-react'
 import {
-  formatNumber,
-  roundHalfUp,
-} from 'lib/games/shared/format'
-import type { ImportMode } from 'lib/games/shared/storage'
-import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
-import {
-  characterName,
-  ECHO_DEFINITIONS,
-  SONATA_SETS,
-  WEAPONS,
-} from 'lib/games/wuwa/data/gameData'
-import { validateLoadout } from 'lib/games/wuwa/echoRules'
-import { mainStatValue } from 'lib/games/wuwa/echoStats'
-import { parseWuwaUserDataJson } from 'lib/games/wuwa/importer/userDataParser'
-import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
-import {
-  computeWuwaStats,
-  toDisplayStats,
-} from 'lib/games/wuwa/stats/computeStats'
-import {
-  type CharacterState,
-  type Echo,
-  statLabel,
-} from 'lib/games/wuwa/types'
-import {
-  useMemo,
-  useState,
-} from 'react'
+  EmptyState,
+  GameLayout,
+  type GameNavGroup,
+  PageHeader,
+  Panel,
+  useStoredPage,
+} from 'lib/games/shared/ui/GameLayout'
+import { WuwaCharactersPage } from 'lib/games/wuwa/WuwaCharactersPage'
+import { WuwaDataPage } from 'lib/games/wuwa/WuwaDataPage'
+import { WuwaEchoesPage } from 'lib/games/wuwa/WuwaEchoesPage'
 
-const MAX_WARNINGS_SHOWN = 8
+const PAGES = ['characters', 'optimizer', 'echoes', 'data'] as const
+type WuwaPage = (typeof PAGES)[number]
 
-function echoName(echo: Echo): string {
-  return ECHO_DEFINITIONS[echo.defId]?.name ?? echo.defId
-}
+const ICON_SIZE = 18
 
-function setName(setId: string): string {
-  return SONATA_SETS[setId]?.name ?? setId
-}
+const GROUPS: GameNavGroup<WuwaPage>[] = [
+  {
+    label: 'Tools',
+    items: [
+      { key: 'characters', label: 'Characters', icon: <IconUsers size={ICON_SIZE} /> },
+      { key: 'optimizer', label: 'Echo optimizer', icon: <IconTrendingUp size={ICON_SIZE} />, badge: 'Soon' },
+    ],
+  },
+  {
+    label: 'Your account',
+    items: [
+      { key: 'echoes', label: 'Echoes', icon: <IconCards size={ICON_SIZE} /> },
+      { key: 'data', label: 'Import & data', icon: <IconUpload size={ICON_SIZE} /> },
+    ],
+  },
+]
 
-function describeMainStat(echo: Echo): string {
-  return `${statLabel(echo.mainStat)} ${roundHalfUp(mainStatValue(echo.cost, echo.mainStat, echo.level), 1)}`
-}
+export function WuwaApp() {
+  const [page, setPage] = useStoredPage<WuwaPage>('wuwa-page', PAGES, 'characters')
+  const goToImport = () => setPage('data')
 
-// What the overview screen should show, plus the element DMG bonus from the details screen
-function CalculatedStats({ character, loadout }: { character: CharacterState, loadout: Echo[] }) {
-  const { stats, warnings } = computeWuwaStats(character, loadout)
-  const shown = toDisplayStats(stats)
-  const element = CHARACTER_INFO[character.charId]?.element
   return (
-    <Stack gap={0}>
-      <Text size='xs'>{`HP ${formatNumber(shown.hp)}, ATK ${formatNumber(shown.atk)}, DEF ${formatNumber(shown.def)}`}</Text>
-      <Text size='xs'>{`Crit ${shown.critRate}% / ${shown.critDmg}%, Energy Regen ${shown.energyRegen}%`}</Text>
-      {element && <Text size='xs'>{`${statLabel(element)} ${shown.elementDmg}%`}</Text>}
-      {warnings.map((warning, i) => <Text key={i} size='xs' c='yellow'>{warning}</Text>)}
-    </Stack>
+    <GameLayout gameName='Wuthering Waves' tagline='Echo stats and optimizer' groups={GROUPS} active={page} onNavigate={setPage}>
+      {page === 'characters' && <WuwaCharactersPage onImport={goToImport} />}
+      {page === 'optimizer' && <OptimizerComingSoon />}
+      {page === 'echoes' && <WuwaEchoesPage onImport={goToImport} />}
+      {page === 'data' && <WuwaDataPage />}
+    </GameLayout>
   )
 }
 
-export function WuwaApp() {
-  const echoes = useWuwaStore((s) => s.echoes)
-  const characters = useWuwaStore((s) => s.characters)
-  const warnings = useWuwaStore((s) => s.lastWarnings)
-  const importParsed = useWuwaStore((s) => s.importParsed)
-  const clear = useWuwaStore((s) => s.clear)
-  const [mode, setMode] = useState<ImportMode>('merge')
-
-  const echoById = useMemo(() => new Map(echoes.map((echo) => [echo.id, echo])), [echoes])
-  const wearer = useMemo(() => {
-    const byEcho = new Map<string, string>()
-    for (const character of characters) {
-      for (const id of character.echoIds) if (id) byEcho.set(id, characterName(character.charId))
-    }
-    return byEcho
-  }, [characters])
-  const sortedEchoes = useMemo(() => [...echoes].sort((a, b) => b.cost - a.cost || setName(a.setId).localeCompare(setName(b.setId))), [echoes])
-
-  async function handleFile(file: File | null) {
-    if (!file) return
-    importParsed(parseWuwaUserDataJson(await file.text()), mode)
-  }
-
-  function handleClear() {
-    if (window.confirm('Remove all stored WuWa echoes and characters?')) clear()
-  }
-
+function OptimizerComingSoon() {
   return (
-    <Stack p='md' gap='md' style={{ flex: 1, minWidth: 0 }}>
-      <Title order={3}>Wuthering Waves</Title>
-
-      <Group align='flex-end' gap='md'>
-        <FileInput
-          label='Import echoes and characters'
-          placeholder='Choose a WuwaEchoScorer user-data file (.json)'
-          accept='application/json,.json'
-          clearable
-          onChange={handleFile}
-        />
-        <SegmentedControl
-          size='xs'
-          value={mode}
-          onChange={(value) => setMode(value === 'replace' ? 'replace' : 'merge')}
-          data={[
-            { value: 'merge', label: 'Merge' },
-            { value: 'replace', label: 'Replace' },
-          ]}
-        />
-        <Button variant='default' size='xs' onClick={handleClear} disabled={echoes.length === 0 && characters.length === 0}>
-          Clear data
-        </Button>
-      </Group>
-
-      <Text size='sm'>{`${echoes.length} echoes, ${characters.length} characters. Kept in this browser only.`}</Text>
-
-      {warnings.length > 0 && (
-        <Alert color='yellow' title={`${warnings.length} warning${warnings.length === 1 ? '' : 's'} during the last import`}>
-          <Stack gap={2}>
-            {warnings.slice(0, MAX_WARNINGS_SHOWN).map((warning, i) => <Text key={i} size='xs'>{warning}</Text>)}
-            {warnings.length > MAX_WARNINGS_SHOWN && <Text size='xs'>{`...and ${warnings.length - MAX_WARNINGS_SHOWN} more`}</Text>}
-          </Stack>
-        </Alert>
-      )}
-
-      {characters.length > 0 && (
-        <Table.ScrollContainer minWidth={720}>
-          <Table striped>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Character</Table.Th>
-                <Table.Th>Level / sequence</Table.Th>
-                <Table.Th>Weapon</Table.Th>
-                <Table.Th>Echoes (main first)</Table.Th>
-                <Table.Th>Cost</Table.Th>
-                <Table.Th>Stat screen (calculated)</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {characters.map((character) => {
-                const loadout = character.echoIds.flatMap((id) => {
-                  const echo = id ? echoById.get(id) : undefined
-                  return echo ? [echo] : []
-                })
-                const problems = validateLoadout(loadout)
-                const weapon = character.weaponId ? WEAPONS[character.weaponId]?.name ?? character.weaponId : 'None'
-                return (
-                  <Table.Tr key={character.charId}>
-                    <Table.Td>{characterName(character.charId)}</Table.Td>
-                    <Table.Td>{`Lv ${character.level}, S${character.sequence}`}</Table.Td>
-                    <Table.Td>{`${weapon} R${character.refinement}`}</Table.Td>
-                    <Table.Td>
-                      {character.echoIds.map((id, i) => {
-                        const echo = id ? echoById.get(id) : undefined
-                        return <Text key={i} size='xs'>{echo ? `${echoName(echo)} (${echo.cost}): ${describeMainStat(echo)}` : 'Empty slot'}</Text>
-                      })}
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size='sm'>{`${loadout.reduce((sum, echo) => sum + echo.cost, 0)} / 12`}</Text>
-                      {problems.map((problem, i) => <Text key={i} size='xs' c='yellow'>{problem}</Text>)}
-                    </Table.Td>
-                    <Table.Td>
-                      <CalculatedStats character={character} loadout={loadout} />
-                    </Table.Td>
-                  </Table.Tr>
-                )
-              })}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      )}
-
-      {sortedEchoes.length > 0 && (
-        <Table.ScrollContainer minWidth={720}>
-          <Table striped>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Echo</Table.Th>
-                <Table.Th>Cost / level</Table.Th>
-                <Table.Th>Sonata set</Table.Th>
-                <Table.Th>Main stat</Table.Th>
-                <Table.Th>Substats</Table.Th>
-                <Table.Th>Worn by</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {sortedEchoes.map((echo) => (
-                <Table.Tr key={echo.id}>
-                  <Table.Td>{echoName(echo)}</Table.Td>
-                  <Table.Td>{`${echo.cost} / +${echo.level}`}</Table.Td>
-                  <Table.Td>{setName(echo.setId)}</Table.Td>
-                  <Table.Td>{describeMainStat(echo)}</Table.Td>
-                  <Table.Td>{echo.substats.map((sub) => `${statLabel(sub.stat)} ${sub.value}`).join(', ')}</Table.Td>
-                  <Table.Td>{wearer.get(echo.id) ?? ''}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      )}
-    </Stack>
+    <>
+      <PageHeader title='Echo optimizer' />
+      <Panel>
+        <EmptyState icon={<IconTrendingUp size={24} />} title='Coming next'>
+          The echo optimizer will search your echoes for the best 5-echo loadout under the 12-cost limit, ranked by the stat you pick, with set and main stat
+          filters like the ZZZ disc optimizer.
+        </EmptyState>
+      </Panel>
+    </>
   )
 }

@@ -1,0 +1,31 @@
+/* Optimizer page: settings on the left, results on the right; stacks on narrow screens */
+
+.optimizerLayout {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .optimizerLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.stickyActions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding: 10px 0 6px;
+  background: var(--layer-0);
+  box-shadow: 0 -10px 12px var(--layer-0);
+}
+
+.resultRow {
+  cursor: pointer;
+}
+
+.resultRow[data-active] {
+  background: var(--mantine-color-primary-light) !important;
+}

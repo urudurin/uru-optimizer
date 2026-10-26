@@ -1,0 +1,364 @@
+/* Page shell for the non-HSR games, styled after HSR's sidebar (layout.module.css, MenuDrawer.module.css) */
+
+.shell {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.aside {
+  width: 216px;
+  min-width: 216px;
+  background: var(--layer-1);
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+.asideInner {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - 48px);
+  padding: 14px 0 12px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.gameBlock {
+  padding: 4px 16px 14px;
+}
+
+.gameName {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  letter-spacing: -0.01em;
+}
+
+.gameTagline {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.group + .group {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.groupLabel {
+  padding: 8px 16px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.item.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 16px;
+  border-left: 3px solid transparent;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background 0.08s ease, color 0.08s ease;
+}
+
+.item:hover {
+  background: hsla(215, 82%, 62%, 0.08);
+  color: var(--primary-light);
+}
+
+.item[data-active] {
+  background: linear-gradient(90deg, hsla(215, 82%, 62%, 0.18), hsla(215, 82%, 62%, 0.06));
+  border-left-color: var(--primary-default);
+  color: var(--primary-light);
+  font-weight: 500;
+}
+
+.itemIcon {
+  display: flex;
+  color: var(--text-muted);
+}
+
+.item[data-active] .itemIcon,
+.item:hover .itemIcon {
+  color: var(--primary-light);
+}
+
+.itemBadge {
+  margin-left: auto;
+}
+
+.asideFooter {
+  margin-top: auto;
+  padding: 12px 16px 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 24px 40px;
+}
+
+.mainInner {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Phones and narrow windows: the sidebar becomes a scrolling row of tabs above the page */
+.mobileNav {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .aside {
+    display: none;
+  }
+
+  .mobileNav {
+    display: flex;
+    gap: 6px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    background: var(--layer-1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    scrollbar-width: none;
+  }
+
+  .main {
+    padding: 16px 16px 32px;
+  }
+}
+
+.mobileItem.mobileItem {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.mobileItem[data-active] {
+  background: var(--mantine-color-primary-light);
+  color: var(--primary-light);
+}
+
+/* Page header */
+
+.pageHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.pageTitle {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.pageDescription {
+  margin-top: 4px;
+  max-width: 720px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Panel card */
+
+.panel {
+  background: var(--layer-2);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.panelHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.panelTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.panelDescription {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Stat tiles */
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.statTile {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.statLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.statValue {
+  margin-top: 2px;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.statTile[data-highlight] .statValue {
+  color: var(--primary-light);
+}
+
+/* Picker list on the left, details on the right; stacks on narrow screens */
+
+.sideLayout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 860px) {
+  .sideLayout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.pickList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pickItem.pickItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: rgba(0, 0, 0, 0.14);
+  transition: background 0.08s ease, border-color 0.08s ease;
+}
+
+.pickItem:hover {
+  background: hsla(215, 82%, 62%, 0.08);
+}
+
+.pickItem[data-active] {
+  border-color: var(--primary-default);
+  background: var(--mantine-color-primary-light);
+}
+
+.pickTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.pickTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.pickMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Notice: things worth knowing, kept quiet */
+
+.notice {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 3px solid hsl(38, 90%, 58%);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.noticeIcon {
+  flex: none;
+  margin-top: 1px;
+  color: hsl(38, 90%, 62%);
+}
+
+/* Empty state */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 16px;
+  text-align: center;
+}
+
+.emptyIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: var(--mantine-color-primary-light);
+  color: var(--primary-light);
+}
+
+.emptyTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.emptyText {
+  max-width: 460px;
+  font-size: 13px;
+  color: var(--text-muted);
+}

@@ -1,8 +1,7 @@
 import {
-  Alert,
+  Accordion,
   Button,
   FileInput,
-  Group,
   MultiSelect,
   NumberInput,
   SegmentedControl,
@@ -12,9 +11,20 @@ import {
   Switch,
   Table,
   Text,
-  Title,
 } from '@mantine/core'
+import {
+  IconSearch,
+  IconTrendingUp,
+} from '@tabler/icons-react'
 import { formatNumber } from 'lib/games/shared/format'
+import {
+  EmptyState,
+  Notices,
+  PageHeader,
+  Panel,
+  StatGrid,
+} from 'lib/games/shared/ui/GameLayout'
+import gear from 'lib/games/shared/ui/GearCard.module.css'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type {
   ActiveConditions,
@@ -49,8 +59,8 @@ import {
   CONDITION_LABELS,
   CORE_SKILL_OPTIONS,
   formatStat,
-  formatSubstat,
   STAT_ROWS,
+  type StatRow,
 } from 'lib/games/zzz/statLabels'
 import {
   type FinalStats,
@@ -60,6 +70,8 @@ import type {
   Disc,
   ZzzStatsValues,
 } from 'lib/games/zzz/types'
+import { DiscCard } from 'lib/games/zzz/ui/DiscCard'
+import classes from 'lib/games/zzz/ui/zzzUi.module.css'
 import {
   useMemo,
   useState,
@@ -107,7 +119,7 @@ function describeSets(discs: Disc[]): string {
     .join(' + ') || 'No set bonus'
 }
 
-export function ZzzOptimizerPanel() {
+export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const discs = useZzzStore((s) => s.discs)
   const builds = useZzzStore((s) => s.builds)
 
@@ -229,295 +241,324 @@ export function ZzzOptimizerPanel() {
 
   if (discs.length === 0) {
     return (
-      <Stack gap='sm'>
-        <Title order={4}>Disc optimizer</Title>
-        <Text size='sm'>Import discs to search for the best combination.</Text>
+      <Stack gap='lg'>
+        <PageHeader title='Disc optimizer' />
+        <Panel>
+          <EmptyState icon={<IconTrendingUp size={24} />} title='Import your discs first' action={<Button onClick={onImport}>Import discs</Button>}>
+            The optimizer searches every combination of the discs you own for the best build.
+          </EmptyState>
+        </Panel>
       </Stack>
     )
   }
 
   const best: OptimizerBuild | undefined = outcome?.ok ? outcome.builds[selected] : undefined
+  const resultColumns = resultColumnsFor(agent, sortBy, thenBy)
+  const canSearch = combinations > 0 && combinations <= MAX_COMBINATIONS
+  const searchHint = emptySlots.length > 0
+    ? `None of your discs fit slot ${emptySlots.join(', ')} with these filters`
+    : combinations > MAX_COMBINATIONS
+    ? `${formatNumber(combinations)} combinations, narrow the filters first`
+    : `Up to ${formatNumber(combinations)} combinations`
 
   return (
-    <Stack gap='sm'>
-      <Title order={4}>Disc optimizer</Title>
-      <Text size='xs' c='dimmed'>
-        Ranks every combination of your discs by one stat. There is no damage calculation yet, so pick the stat that matters most and set minimums for the
-        others.
-      </Text>
+    <Stack gap='lg'>
+      <PageHeader
+        title='Disc optimizer'
+        description='Searches every combination of your discs and ranks them by the stat you pick. There is no damage calculation yet, so set minimums for the stats you also need.'
+      />
 
-      <Group align='flex-end' gap='md'>
-        <Select
-          label='Agent'
-          allowDeselect={false}
-          value={agentId}
-          onChange={changeAgent}
-          data={agents.map((a) => ({ value: a.id, label: a.name }))}
-        />
-        <Select
-          label='W-Engine'
-          allowDeselect={false}
-          value={loadout.wEngineId}
-          onChange={(value) => value && setLoadout((prev) => ({ ...prev, wEngineId: value }))}
-          data={Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name }))}
-        />
-        <Select
-          label='Refinement'
-          w={90}
-          allowDeselect={false}
-          value={loadout.refinement}
-          onChange={(value) => value && setLoadout((prev) => ({ ...prev, refinement: value }))}
-          data={REFINEMENT_OPTIONS}
-        />
-        <Select
-          label='Core Skill level'
-          w={140}
-          allowDeselect={false}
-          value={coreSkill}
-          onChange={(value) => setCoreSkill(value ?? '6')}
-          data={CORE_SKILL_OPTIONS}
-        />
-        <Select
-          label='Rank by'
-          allowDeselect={false}
-          value={sortBy}
-          onChange={(value) => value && setSortBy(value as keyof FinalStats)}
-          data={statRows.map((row) => ({ value: row.key, label: row.label }))}
-        />
-        <MultiSelect
-          label='Then by (breaks ties)'
-          placeholder={thenBy.length ? undefined : 'None'}
-          w={260}
-          value={thenBy}
-          onChange={(value) => setThenBy(value as (keyof FinalStats)[])}
-          data={statRows.filter((row) => row.key !== sortBy).map((row) => ({ value: row.key, label: row.label }))}
-        />
-      </Group>
-
-      <Stack gap={4} p='sm' style={{ border: '1px solid var(--mantine-color-default-border)', borderRadius: 8 }}>
-        <Group align='flex-end' gap='md'>
-          <Text size='sm' fw={500}>{`Recommended for ${agent.name}`}</Text>
-          {importedPreset && (
-            <SegmentedControl
-              size='xs'
-              value={presetSource}
-              onChange={(value) => {
-                setPresetSource(value === 'builtin' ? 'builtin' : 'imported')
-                setPresetChoice('0')
-              }}
-              data={[
-                { value: 'imported', label: `Imported: ${importedPreset.source}` },
-                { value: 'builtin', label: 'Built-in' },
-              ]}
-            />
-          )}
-          {preset.sets.length > 1 && (
-            <Select
-              size='xs'
-              allowDeselect={false}
-              value={presetChoice}
-              onChange={(value) => setPresetChoice(value ?? '0')}
-              data={preset.sets.map((choice, i) => ({ value: String(i), label: describeChoice(choice) }))}
-            />
-          )}
-          <Button size='xs' variant='light' onClick={applyPreset}>Apply preset</Button>
-        </Group>
-        {preset.sets.map((choice, i) => (
-          <Text key={i} size='xs'>
-            {`${i === 0 ? 'Sets' : 'Or'}: 4pc ${setName(choice.fourPiece)} (you have it in ${slotsWithSet(discs, choice.fourPiece)}/6 slots)${
-              choice.twoPiece ? ` + 2pc ${setName(choice.twoPiece)} (${slotsWithSet(discs, choice.twoPiece)}/6 slots)` : ''
-            }`}
-          </Text>
-        ))}
-        <Text size='xs'>
-          {`Main stats: slot 4 ${mainStatText(preset.mainStats[4])}, slot 5 ${mainStatText(preset.mainStats[5])}, slot 6 ${mainStatText(preset.mainStats[6])}`}
-        </Text>
-        {preset.substatPriority.length > 0 && <Text size='xs'>{`Substats to look for: ${preset.substatPriority.join(' > ')}`}</Text>}
-        {preset.notes && <Text size='xs'>{preset.notes}</Text>}
-        <Text size='xs' c='dimmed'>
-          {`Source: ${preset.source}. Confidence: ${preset.confidence}. Last reviewed ${preset.reviewed}${
-            reviewAge === undefined ? '' : ` (${reviewAge} day${reviewAge === 1 ? '' : 's'} ago)`
-          }`}
-        </Text>
-        {needsReview(preset, new Date()) && (
-          <Text size='xs' c='yellow'>
-            {preset === importedPreset
-              ? `Not updated in ${REVIEW_INTERVAL_DAYS} days or more: import a fresh copy of the file`
-              : `Not reviewed in ${REVIEW_INTERVAL_DAYS} days or more: check it against the game and update data/presets.ts`}
-          </Text>
-        )}
-
-        <Group align='flex-end' gap='sm' mt='xs'>
-          <FileInput
-            size='xs'
-            w={240}
-            label='Import presets file'
-            placeholder='Choose a presets file (.json)'
-            accept='application/json,.json'
-            clearable
-            onChange={handlePresetFile}
-          />
-          {storedImport && <Button size='xs' variant='default' onClick={removeImportedPresets}>Remove imported presets</Button>}
-        </Group>
-        <Text size='xs' c='dimmed'>
-          {imported
-            ? `${Object.keys(imported.presets).length} imported presets from ${
-              imported.source || 'an unreadable file'
-            }, imported ${storedImport?.importedAt}. Kept in this browser only.`
-            : 'Your own presets file stays in this browser only, nothing is uploaded or committed.'}
-        </Text>
-        <Text size='xs' c='dimmed'>
-          Imported presets are for personal, non-commercial use only. Follow the terms of wherever the data came from.
-        </Text>
-        {imported && imported.warnings.length > 0 && (
-          <Alert color='yellow' p='xs'>
-            <Stack gap={2}>
-              {imported.warnings.slice(0, MAX_IMPORT_WARNINGS).map((warning, i) => <Text key={i} size='xs'>{warning}</Text>)}
-              {imported.warnings.length > MAX_IMPORT_WARNINGS && <Text size='xs'>{`...and ${imported.warnings.length - MAX_IMPORT_WARNINGS} more`}</Text>}
+      <div className={classes.optimizerLayout}>
+        <Stack gap='md'>
+          <Panel title='Agent'>
+            <Stack gap='sm'>
+              <Select label='Agent' allowDeselect={false} value={agentId} onChange={changeAgent} data={agents.map((a) => ({ value: a.id, label: a.name }))} />
+              <Select
+                label='W-Engine'
+                allowDeselect={false}
+                value={loadout.wEngineId}
+                onChange={(value) => value && setLoadout((prev) => ({ ...prev, wEngineId: value }))}
+                data={Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name }))}
+              />
+              <SimpleGrid cols={2} spacing='sm'>
+                <Select
+                  label='Refinement'
+                  allowDeselect={false}
+                  value={loadout.refinement}
+                  onChange={(value) => value && setLoadout((prev) => ({ ...prev, refinement: value }))}
+                  data={REFINEMENT_OPTIONS}
+                />
+                <Select label='Core Skill' allowDeselect={false} value={coreSkill} onChange={(value) => setCoreSkill(value ?? '6')} data={CORE_SKILL_OPTIONS} />
+              </SimpleGrid>
             </Stack>
-          </Alert>
-        )}
-      </Stack>
+          </Panel>
 
-      <Group gap='lg'>
-        {(Object.keys(CONDITION_LABELS) as Condition[]).map((condition) => (
-          <Switch
-            key={condition}
-            label={CONDITION_LABELS[condition]}
-            checked={conditions[condition]}
-            onChange={(event) => {
-              const checked = event.currentTarget.checked
-              setConditions((prev) => ({ ...prev, [condition]: checked }))
-            }}
-          />
-        ))}
-        <Switch
-          label='Leave out discs other agents are wearing'
-          checked={excludeEquippedByOthers}
-          onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
-        />
-      </Group>
-
-      <Group align='flex-end' gap='md'>
-        <Select label='4-piece set' placeholder='Any' clearable value={fourPieceSet} onChange={setFourPieceSet} data={setOptions} />
-        <Select label='2-piece set' placeholder='Any' clearable value={twoPieceSet} onChange={setTwoPieceSet} data={setOptions} />
-        {MAIN_STAT_SLOTS.map((slot) => (
-          <MultiSelect
-            key={slot}
-            label={`Slot ${slot} main stat`}
-            placeholder={mainStats[slot]?.length ? undefined : 'Any'}
-            w={200}
-            value={mainStats[slot] ?? []}
-            onChange={(value) => setMainStats((prev) => ({ ...prev, [slot]: value as ZzzStatsValues[] }))}
-            data={mainStatOptions[slot]}
-          />
-        ))}
-      </Group>
-
-      <Text size='sm' fw={500}>Minimum stats</Text>
-      <SimpleGrid cols={{ base: 2, sm: 4, lg: 7 }} spacing='xs'>
-        {statRows.map((row) => (
-          <NumberInput
-            key={row.key}
-            size='xs'
-            label={row.label}
-            placeholder='None'
-            min={0}
-            value={minStats[row.key] ?? ''}
-            onChange={(value) => setMinStats((prev) => ({ ...prev, [row.key]: typeof value === 'number' ? value : undefined }))}
-          />
-        ))}
-      </SimpleGrid>
-
-      <Group gap='md'>
-        <Button onClick={run} loading={running} disabled={combinations === 0 || combinations > MAX_COMBINATIONS}>
-          Search
-        </Button>
-        <Text size='sm'>
-          {emptySlots.length > 0
-            ? `None of your discs fit slot ${emptySlots.join(', ')} with these filters, loosen its main stat`
-            : combinations > MAX_COMBINATIONS
-            ? `${formatNumber(combinations)} combinations, narrow the main stats or sets first`
-            : `Up to ${formatNumber(combinations)} combinations`}
-        </Text>
-      </Group>
-
-      {outcome && !outcome.ok && <Alert color='yellow'>{outcome.reason}</Alert>}
-
-      {outcome?.ok && (
-        <Text size='sm'>
-          {`${formatNumber(outcome.matched)} combinations meet the filters, showing the best ${outcome.builds.length}`}
-        </Text>
-      )}
-
-      {outcome?.ok && outcome.builds.length > 0 && (
-        <Table.ScrollContainer minWidth={900}>
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>#</Table.Th>
-                {statRows.map((row) => <Table.Th key={row.key} ta='right' fw={row.key === sortBy ? 700 : 400}>{row.label}</Table.Th>)}
-                <Table.Th>Sets</Table.Th>
-                <Table.Th>Slots 4 / 5 / 6</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {outcome.builds.map((build, i) => (
-                <Table.Tr
-                  key={build.discs.map((d) => d.id).join()}
-                  onClick={() => setSelected(i)}
-                  style={{ cursor: 'pointer' }}
-                  bg={i === selected ? 'var(--mantine-color-blue-light)' : undefined}
-                >
-                  <Table.Td>{i + 1}</Table.Td>
-                  {statRows.map((row) => (
-                    <Table.Td key={row.key} ta='right' fw={row.key === sortBy ? 700 : 400}>{formatStat(row, build.display[row.key])}</Table.Td>
-                  ))}
-                  <Table.Td>{describeSets(build.discs)}</Table.Td>
-                  <Table.Td>{build.discs.slice(3).map((d) => d.main.stat).join(' / ')}</Table.Td>
-                </Table.Tr>
+          <Panel
+            title='Recommended build'
+            description={`${preset.source} · ${preset.confidence}`}
+            actions={<Button size='xs' variant='light' onClick={applyPreset}>Apply</Button>}
+          >
+            <Stack gap='xs'>
+              {importedPreset && (
+                <SegmentedControl
+                  fullWidth
+                  value={presetSource}
+                  onChange={(value) => {
+                    setPresetSource(value === 'builtin' ? 'builtin' : 'imported')
+                    setPresetChoice('0')
+                  }}
+                  data={[
+                    { value: 'imported', label: `Imported: ${importedPreset.source}` },
+                    { value: 'builtin', label: 'Built-in' },
+                  ]}
+                />
+              )}
+              {preset.sets.length > 1 && (
+                <Select
+                  allowDeselect={false}
+                  value={presetChoice}
+                  onChange={(value) => setPresetChoice(value ?? '0')}
+                  data={preset.sets.map((choice, i) => ({ value: String(i), label: describeChoice(choice) }))}
+                />
+              )}
+              {preset.sets.map((choice, i) => (
+                <Text key={i} size='xs'>
+                  <Text span size='xs' c='dimmed'>{i === 0 ? 'Sets ' : 'Or '}</Text>
+                  {`4pc ${setName(choice.fourPiece)} (${slotsWithSet(discs, choice.fourPiece)}/6 slots)${
+                    choice.twoPiece ? ` + 2pc ${setName(choice.twoPiece)} (${slotsWithSet(discs, choice.twoPiece)}/6)` : ''
+                  }`}
+                </Text>
               ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      )}
+              {MAIN_STAT_SLOTS.map((slot) => (
+                <Text key={slot} size='xs'>
+                  <Text span size='xs' c='dimmed'>{`Slot ${slot} `}</Text>
+                  {mainStatText(preset.mainStats[slot])}
+                </Text>
+              ))}
+              {preset.substatPriority.length > 0 && (
+                <Text size='xs'>
+                  <Text span size='xs' c='dimmed'>Substats</Text>
+                  {preset.substatPriority.join(' > ')}
+                </Text>
+              )}
+              {preset.notes && <Text size='xs' c='dimmed'>{preset.notes}</Text>}
+              {needsReview(preset, new Date()) && (
+                <Text size='xs' c='yellow'>
+                  {preset === importedPreset
+                    ? `Not updated in ${REVIEW_INTERVAL_DAYS} days or more, import a fresh copy`
+                    : `Not reviewed in ${REVIEW_INTERVAL_DAYS} days or more`}
+                </Text>
+              )}
+              <Text size='xs' c='dimmed'>
+                {`Last reviewed ${preset.reviewed}${reviewAge === undefined ? '' : ` (${reviewAge} day${reviewAge === 1 ? '' : 's'} ago)`}`}
+              </Text>
 
-      {best && (
-        <Stack gap='xs'>
-          <Text size='sm' fw={500}>{`Build #${selected + 1}: ${describeSets(best.discs)}`}</Text>
-          {best.warnings.length > 0 && (
-            <Alert color='yellow' title='Heads up'>
-              <Stack gap={2}>
-                {best.warnings.map((message, i) => <Text key={i} size='xs'>{message}</Text>)}
-              </Stack>
-            </Alert>
-          )}
-          <Table.ScrollContainer minWidth={640}>
-            <Table striped>
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>Slot</Table.Th>
-                  <Table.Th>Set</Table.Th>
-                  <Table.Th>Main stat</Table.Th>
-                  <Table.Th>Substats</Table.Th>
-                  <Table.Th>Worn by</Table.Th>
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {best.discs.map((disc) => (
-                  <Table.Tr key={disc.id}>
-                    <Table.Td>{disc.slot}</Table.Td>
-                    <Table.Td>{disc.setName}</Table.Td>
-                    <Table.Td>{`${disc.main.stat} ${disc.main.value}`}</Table.Td>
-                    <Table.Td>{disc.substats.map((substat) => formatSubstat(disc, substat)).join(', ')}</Table.Td>
-                    <Table.Td>{disc.equippedBy ? (ownerNames.get(disc.equippedBy) ?? `Agent ${disc.equippedBy}`) : ''}</Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
+              <Accordion variant='contained' radius='sm' mt={4}>
+                <Accordion.Item value='own'>
+                  <Accordion.Control>
+                    <Text size='xs'>
+                      {imported ? `Your presets: ${Object.keys(imported.presets).length} from ${imported.source || 'a file'}` : 'Use your own presets file'}
+                    </Text>
+                  </Accordion.Control>
+                  <Accordion.Panel>
+                    <Stack gap='xs'>
+                      <FileInput placeholder='Choose a presets file (.json)' accept='application/json,.json' clearable onChange={handlePresetFile} />
+                      {storedImport && <Button size='xs' variant='subtle' color='red' onClick={removeImportedPresets}>Remove imported presets</Button>}
+                      <Text size='xs' c='dimmed'>
+                        Kept in this browser only. Imported presets are for personal, non-commercial use, follow the terms of wherever they came from.
+                      </Text>
+                      {imported && <Notices messages={imported.warnings} max={MAX_IMPORT_WARNINGS} />}
+                    </Stack>
+                  </Accordion.Panel>
+                </Accordion.Item>
+              </Accordion>
+            </Stack>
+          </Panel>
+
+          <Panel title='Ranking'>
+            <Stack gap='sm'>
+              <Select
+                label='Rank by'
+                allowDeselect={false}
+                value={sortBy}
+                onChange={(value) => value && setSortBy(value as keyof FinalStats)}
+                data={statRows.map((row) => ({ value: row.key, label: row.label }))}
+              />
+              <MultiSelect
+                label='Then by (breaks ties)'
+                placeholder={thenBy.length ? undefined : 'None'}
+                value={thenBy}
+                onChange={(value) => setThenBy(value as (keyof FinalStats)[])}
+                data={statRows.filter((row) => row.key !== sortBy).map((row) => ({ value: row.key, label: row.label }))}
+              />
+            </Stack>
+          </Panel>
+
+          <Panel title='Filters'>
+            <Stack gap='sm'>
+              <SimpleGrid cols={2} spacing='sm'>
+                <Select label='4-piece set' placeholder='Any' clearable value={fourPieceSet} onChange={setFourPieceSet} data={setOptions} />
+                <Select label='2-piece set' placeholder='Any' clearable value={twoPieceSet} onChange={setTwoPieceSet} data={setOptions} />
+              </SimpleGrid>
+              {MAIN_STAT_SLOTS.map((slot) => (
+                <MultiSelect
+                  key={slot}
+                  label={`Slot ${slot} main stat`}
+                  placeholder={mainStats[slot]?.length ? undefined : 'Any'}
+                  value={mainStats[slot] ?? []}
+                  onChange={(value) => setMainStats((prev) => ({ ...prev, [slot]: value as ZzzStatsValues[] }))}
+                  data={mainStatOptions[slot]}
+                />
+              ))}
+              <Switch
+                label='Leave out discs other agents are wearing'
+                checked={excludeEquippedByOthers}
+                onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
+              />
+            </Stack>
+          </Panel>
+
+          <Accordion variant='separated' radius='md'>
+            <Accordion.Item value='min'>
+              <Accordion.Control>
+                <Text size='sm' fw={600}>Minimum stats</Text>
+                <Text size='xs' c='dimmed'>{`${Object.values(minStats).filter((v) => v !== undefined).length} set`}</Text>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <SimpleGrid cols={2} spacing='sm'>
+                  {statRows.map((row) => (
+                    <NumberInput
+                      key={row.key}
+                      label={row.label}
+                      placeholder='None'
+                      min={0}
+                      value={minStats[row.key] ?? ''}
+                      onChange={(value) => setMinStats((prev) => ({ ...prev, [row.key]: typeof value === 'number' ? value : undefined }))}
+                    />
+                  ))}
+                </SimpleGrid>
+              </Accordion.Panel>
+            </Accordion.Item>
+            <Accordion.Item value='conditions'>
+              <Accordion.Control>
+                <Text size='sm' fw={600}>Combat conditions</Text>
+                <Text size='xs' c='dimmed'>{`${Object.values(conditions).filter(Boolean).length} on. All off matches the stat screen`}</Text>
+              </Accordion.Control>
+              <Accordion.Panel>
+                <Stack gap='xs'>
+                  {(Object.keys(CONDITION_LABELS) as Condition[]).map((condition) => (
+                    <Switch
+                      key={condition}
+                      label={CONDITION_LABELS[condition]}
+                      checked={conditions[condition]}
+                      onChange={(event) => {
+                        const checked = event.currentTarget.checked
+                        setConditions((prev) => ({ ...prev, [condition]: checked }))
+                      }}
+                    />
+                  ))}
+                </Stack>
+              </Accordion.Panel>
+            </Accordion.Item>
+          </Accordion>
+
+          <div className={classes.stickyActions}>
+            <Button fullWidth size='sm' leftSection={<IconSearch size={16} />} onClick={run} loading={running} disabled={!canSearch}>
+              Search
+            </Button>
+            <Text size='xs' c={canSearch ? 'dimmed' : 'yellow'} ta='center' mt={6}>{searchHint}</Text>
+          </div>
         </Stack>
-      )}
+
+        <Stack gap='md'>
+          {!outcome && (
+            <Panel>
+              <EmptyState icon={<IconTrendingUp size={24} />} title={`Find the best discs for ${agent.name}`}>
+                Apply the recommended build or pick your own filters, then search. The best 50 combinations show up here.
+              </EmptyState>
+            </Panel>
+          )}
+
+          {outcome && !outcome.ok && <Notices messages={[outcome.reason]} />}
+
+          {outcome?.ok && (
+            <Panel
+              title='Results'
+              description={`${formatNumber(outcome.matched)} of ${
+                formatNumber(outcome.combinations)
+              } combinations meet the filters, showing the best ${outcome.builds.length}`}
+            >
+              {outcome.builds.length === 0
+                ? <Text size='sm' c='dimmed'>Nothing matched. Loosen the minimum stats or filters and search again.</Text>
+                : (
+                  <Table.ScrollContainer minWidth={640} mah={420}>
+                    <Table highlightOnHover verticalSpacing={6} stickyHeader>
+                      <Table.Thead>
+                        <Table.Tr>
+                          <Table.Th>#</Table.Th>
+                          {resultColumns.map((row) => (
+                            <Table.Th key={row.key} ta='right' c={row.key === sortBy ? 'var(--primary-light)' : undefined}>{row.label}</Table.Th>
+                          ))}
+                          <Table.Th>Sets</Table.Th>
+                        </Table.Tr>
+                      </Table.Thead>
+                      <Table.Tbody>
+                        {outcome.builds.map((build, i) => (
+                          <Table.Tr
+                            key={build.discs.map((d) => d.id).join()}
+                            className={classes.resultRow}
+                            data-active={i === selected || undefined}
+                            onClick={() => setSelected(i)}
+                          >
+                            <Table.Td c='dimmed'>{i + 1}</Table.Td>
+                            {resultColumns.map((row) => (
+                              <Table.Td key={row.key} ta='right' fw={row.key === sortBy ? 600 : 400}>{formatStat(row, build.display[row.key])}</Table.Td>
+                            ))}
+                            <Table.Td>
+                              <Text size='xs' lineClamp={1}>{describeSets(build.discs)}</Text>
+                            </Table.Td>
+                          </Table.Tr>
+                        ))}
+                      </Table.Tbody>
+                    </Table>
+                  </Table.ScrollContainer>
+                )}
+            </Panel>
+          )}
+
+          {best && (
+            <Panel title={`Build #${selected + 1}`} description={describeSets(best.discs)}>
+              <Stack gap='md'>
+                <StatGrid
+                  stats={statRows.map((row) => ({
+                    key: row.key,
+                    label: row.label,
+                    value: formatStat(row, best.display[row.key]),
+                    highlight: row.key === sortBy,
+                  }))}
+                />
+                <Notices messages={best.warnings} />
+                <div className={gear.grid}>
+                  {best.discs.map((disc) => (
+                    <DiscCard key={disc.id} disc={disc} owner={disc.equippedBy ? (ownerNames.get(disc.equippedBy) ?? `Agent ${disc.equippedBy}`) : undefined} />
+                  ))}
+                </div>
+              </Stack>
+            </Panel>
+          )}
+        </Stack>
+      </div>
     </Stack>
   )
+}
+
+// The columns of the results table: the ranking stats first, then what matters for the agent's specialty
+function resultColumnsFor(agent: AgentData, sortBy: keyof FinalStats, thenBy: (keyof FinalStats)[]): StatRow[] {
+  const bySpecialty: Partial<Record<string, (keyof FinalStats)[]>> = {
+    Anomaly: ['anomalyProficiency', 'anomalyMastery'],
+    Stun: ['impact'],
+    Rupture: ['sheerForce'],
+  }
+  const keys = [sortBy, ...thenBy, 'atk', 'critRate', 'critDmg', ...(bySpecialty[agent.specialty] ?? []), 'hp', 'def'] as (keyof FinalStats)[]
+  return [...new Set(keys)].flatMap((key) => STAT_ROWS.filter((row) => row.key === key))
 }

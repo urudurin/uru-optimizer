@@ -1,118 +1,51 @@
 import {
-  Alert,
-  Button,
-  FileInput,
-  Group,
-  SegmentedControl,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from '@mantine/core'
-import type { ImportMode } from 'lib/games/shared/storage'
-import { parseZzzBuildsExportJson } from 'lib/games/zzz/importer/zzzBuildsExportParser'
-import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
-import { formatSubstat } from 'lib/games/zzz/statLabels'
+  IconCards,
+  IconChartBar,
+  IconTrendingUp,
+  IconUpload,
+} from '@tabler/icons-react'
+import {
+  GameLayout,
+  type GameNavGroup,
+  useStoredPage,
+} from 'lib/games/shared/ui/GameLayout'
+import { ZzzDataPage } from 'lib/games/zzz/ZzzDataPage'
+import { ZzzDiscsPage } from 'lib/games/zzz/ZzzDiscsPage'
 import { ZzzOptimizerPanel } from 'lib/games/zzz/ZzzOptimizerPanel'
 import { ZzzStatsPanel } from 'lib/games/zzz/ZzzStatsPanel'
-import {
-  useMemo,
-  useState,
-} from 'react'
 
-const MAX_WARNINGS_SHOWN = 8
+const PAGES = ['agents', 'optimizer', 'discs', 'data'] as const
+type ZzzPage = (typeof PAGES)[number]
+
+const ICON_SIZE = 18
+
+const GROUPS: GameNavGroup<ZzzPage>[] = [
+  {
+    label: 'Tools',
+    items: [
+      { key: 'agents', label: 'Agent stats', icon: <IconChartBar size={ICON_SIZE} /> },
+      { key: 'optimizer', label: 'Disc optimizer', icon: <IconTrendingUp size={ICON_SIZE} /> },
+    ],
+  },
+  {
+    label: 'Your account',
+    items: [
+      { key: 'discs', label: 'Discs', icon: <IconCards size={ICON_SIZE} /> },
+      { key: 'data', label: 'Import & data', icon: <IconUpload size={ICON_SIZE} /> },
+    ],
+  },
+]
 
 export function ZzzApp() {
-  const discs = useZzzStore((s) => s.discs)
-  const builds = useZzzStore((s) => s.builds)
-  const warnings = useZzzStore((s) => s.lastWarnings)
-  const importParsed = useZzzStore((s) => s.importParsed)
-  const clear = useZzzStore((s) => s.clear)
-  const [mode, setMode] = useState<ImportMode>('merge')
-
-  const sortedDiscs = useMemo(
-    () => [...discs].sort((a, b) => a.slot - b.slot || a.setName.localeCompare(b.setName)),
-    [discs],
-  )
-
-  async function handleFile(file: File | null) {
-    if (!file) return
-    importParsed(parseZzzBuildsExportJson(await file.text()), mode)
-  }
-
-  function handleClear() {
-    if (window.confirm('Remove all stored ZZZ discs and builds?')) clear()
-  }
+  const [page, setPage] = useStoredPage<ZzzPage>('zzz-page', PAGES, 'agents')
+  const goToImport = () => setPage('data')
 
   return (
-    <Stack p='md' gap='md' style={{ flex: 1, minWidth: 0 }}>
-      <Title order={3}>Zenless Zone Zero</Title>
-
-      <Group align='flex-end' gap='md'>
-        <FileInput
-          label='Import discs'
-          placeholder='Choose a builds export (.json)'
-          accept='application/json,.json'
-          clearable
-          onChange={handleFile}
-        />
-        <SegmentedControl
-          size='xs'
-          value={mode}
-          onChange={(value) => setMode(value === 'replace' ? 'replace' : 'merge')}
-          data={[
-            { value: 'merge', label: 'Merge' },
-            { value: 'replace', label: 'Replace' },
-          ]}
-        />
-        <Button variant='default' size='xs' onClick={handleClear} disabled={discs.length === 0 && builds.length === 0}>
-          Clear data
-        </Button>
-      </Group>
-
-      <Text size='sm'>{`${discs.length} discs, ${builds.length} saved builds`}</Text>
-
-      {warnings.length > 0 && (
-        <Alert color='yellow' title={`${warnings.length} warning${warnings.length === 1 ? '' : 's'} during the last import`}>
-          <Stack gap={2}>
-            {warnings.slice(0, MAX_WARNINGS_SHOWN).map((warning, i) => (
-              <Text key={i} size='xs'>{`${warning.code}: ${warning.message}${warning.discId ? ` (${warning.discId})` : ''}`}</Text>
-            ))}
-            {warnings.length > MAX_WARNINGS_SHOWN && <Text size='xs'>{`...and ${warnings.length - MAX_WARNINGS_SHOWN} more`}</Text>}
-          </Stack>
-        </Alert>
-      )}
-
-      <ZzzStatsPanel />
-
-      <ZzzOptimizerPanel />
-
-      {sortedDiscs.length > 0 && (
-        <Table.ScrollContainer minWidth={640}>
-          <Table striped>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Slot</Table.Th>
-                <Table.Th>Set</Table.Th>
-                <Table.Th>Rarity / level</Table.Th>
-                <Table.Th>Main stat</Table.Th>
-                <Table.Th>Substats</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {sortedDiscs.map((disc) => (
-                <Table.Tr key={disc.id}>
-                  <Table.Td>{disc.slot}</Table.Td>
-                  <Table.Td>{disc.setName}</Table.Td>
-                  <Table.Td>{`${disc.rarity} ${disc.level}`}</Table.Td>
-                  <Table.Td>{`${disc.main.stat} ${disc.main.value}`}</Table.Td>
-                  <Table.Td>{disc.substats.map((substat) => formatSubstat(disc, substat)).join(', ')}</Table.Td>
-                </Table.Tr>
-              ))}
-            </Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      )}
-    </Stack>
+    <GameLayout gameName='Zenless Zone Zero' tagline='Disc stats and optimizer' groups={GROUPS} active={page} onNavigate={setPage}>
+      {page === 'agents' && <ZzzStatsPanel onImport={goToImport} />}
+      {page === 'optimizer' && <ZzzOptimizerPanel onImport={goToImport} />}
+      {page === 'discs' && <ZzzDiscsPage onImport={goToImport} />}
+      {page === 'data' && <ZzzDataPage />}
+    </GameLayout>
   )
 }
