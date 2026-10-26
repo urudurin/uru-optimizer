@@ -25,6 +25,7 @@ import {
   StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
+import classes from 'lib/games/shared/ui/Optimizer.module.css'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type {
   ActiveConditions,
@@ -71,7 +72,6 @@ import type {
   ZzzStatsValues,
 } from 'lib/games/zzz/types'
 import { DiscCard } from 'lib/games/zzz/ui/DiscCard'
-import classes from 'lib/games/zzz/ui/zzzUi.module.css'
 import {
   useMemo,
   useState,

@@ -86,10 +86,21 @@ function weaponBase(weapon: GenshinWeapon, bonus: Partial<Record<GenshinStatKey,
   return atLevel(data.atk, weapon.level) + (data.ascensionAtk[ascension] ?? 0)
 }
 
-export function computeGenshinStats(character: GenshinCharacter, artifacts: Artifact[]): ComputedStats {
+// Everything that doesn't depend on artifacts, worked out once per character
+export type PreparedCharacter = {
+  character: GenshinCharacter,
+  baseHp: number,
+  baseAtk: number,
+  baseDef: number,
+  // Character and weapon bonuses, including the 5% CRIT Rate, 50% CRIT DMG and 100% Energy Recharge everyone has
+  bonus: Partial<Record<GenshinStatKey, number>>,
+  missing: string[],
+}
+
+export function prepareCharacter(character: GenshinCharacter): PreparedCharacter | undefined {
   const missing: string[] = []
   const data = characterData(character.id)
-  if (!data) return { stats: {}, missing: [`${character.name} isn't in the stat data yet`] }
+  if (!data) return undefined
 
   const ascension = character.ascension ?? inferAscension(character.level)
   const bonus: Partial<Record<GenshinStatKey, number>> = { critRate: 5, critDmg: 50, energyRecharge: 100 }
@@ -104,18 +115,12 @@ export function computeGenshinStats(character: GenshinCharacter, artifacts: Arti
   const baseDef = atLevel(data.def, character.level) + ascended('def')
   let baseAtk = atLevel(data.atk, character.level) + ascended('atk')
   if (character.weapon) baseAtk += weaponBase(character.weapon, bonus, missing)
+  return { character, baseHp, baseAtk, baseDef, bonus, missing }
+}
 
-  const setCounts = new Map<string, number>()
-  for (const artifact of artifacts) {
-    addTo(bonus, artifact.main.stat, artifact.main.value)
-    for (const sub of artifact.substats) addTo(bonus, sub.stat, sub.value)
-    setCounts.set(artifact.setId, (setCounts.get(artifact.setId) ?? 0) + 1)
-  }
-  for (const [setId, count] of setCounts) {
-    if (count < 2) continue
-    for (const [stat, value] of Object.entries(SET_2PC_BONUSES[setId] ?? {}) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
-  }
-
+// The character screen from the prepared character plus artifact and set bonuses (added into bonus by the caller)
+export function finalizeStats(prepared: PreparedCharacter, bonus: Partial<Record<GenshinStatKey, number>>): Partial<Record<GenshinStatKey, number>> {
+  const { character, baseHp, baseAtk, baseDef } = prepared
   const { hp = 0, hpPct = 0, atk = 0, atkPct = 0, def = 0, defPct = 0, ...rest } = bonus
   const screen: ScreenStats = {
     ...rest,
@@ -133,5 +138,29 @@ export function computeGenshinStats(character: GenshinCharacter, artifacts: Arti
   for (const passive of passives) {
     for (const [stat, value] of Object.entries(passive || {}) as [GenshinStatKey, number][]) addTo(result, stat, value)
   }
-  return { stats: result, missing }
+  return result
+}
+
+// Bonuses from the artifacts' stats and 2-piece sets
+export function artifactBonus(artifacts: Artifact[]): Partial<Record<GenshinStatKey, number>> {
+  const bonus: Partial<Record<GenshinStatKey, number>> = {}
+  const setCounts = new Map<string, number>()
+  for (const artifact of artifacts) {
+    addTo(bonus, artifact.main.stat, artifact.main.value)
+    for (const sub of artifact.substats) addTo(bonus, sub.stat, sub.value)
+    setCounts.set(artifact.setId, (setCounts.get(artifact.setId) ?? 0) + 1)
+  }
+  for (const [setId, count] of setCounts) {
+    if (count < 2) continue
+    for (const [stat, value] of Object.entries(SET_2PC_BONUSES[setId] ?? {}) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
+  }
+  return bonus
+}
+
+export function computeGenshinStats(character: GenshinCharacter, artifacts: Artifact[]): ComputedStats {
+  const prepared = prepareCharacter(character)
+  if (!prepared) return { stats: {}, missing: [`${character.name} isn't in the stat data yet`] }
+  const bonus = { ...prepared.bonus }
+  for (const [stat, value] of Object.entries(artifactBonus(artifacts)) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
+  return { stats: finalizeStats(prepared, bonus), missing: prepared.missing }
 }
