@@ -102,6 +102,30 @@ export type DamageSetup = {
   debuffs: EnemyDebuffs,
   // Reaction DMG bonuses from sets (damage/combatEffects.ts), in percent
   reactionBonus?: Partial<Record<ReactionBonusKey, number>>,
+  // Buffs to some hits only (Raiden's Resolve, Nahida's Tri-Karma bonus), from damage/combatEffects.ts
+  hitBuffs?: HitBuff[],
+}
+
+// A buff to some hits only, as data (it goes to the search's worker)
+export type HitBuff = {
+  // The hits it reaches: by label, by kind, or both (a hit matches either), minus excluded labels
+  labels?: string[],
+  categories?: TalentHit['category'][],
+  excludeLabels?: string[],
+  // Raises the hit's own multiplier by this fraction (Neuvillette's Judgment x160% is 0.6)
+  scale?: number,
+  // Adds percent of a stat to each hit (Raiden's Resolve, Redhorn's DEF)
+  addTerms?: Partial<Record<ScalingStat, number>>,
+  // DMG Bonus and CRIT Rate for these hits, in percent
+  dmgBonus?: number,
+  critRate?: number,
+  // DMG Bonus and CRIT Rate per point of Elemental Mastery above a floor, up to caps (Nahida's A4)
+  fromEm?: { over: number, dmgPer?: number, dmgCap?: number, critPer?: number, critCap?: number },
+}
+
+function buffReaches(buff: HitBuff, hit: TalentHit): boolean {
+  if (buff.excludeLabels?.includes(hit.label)) return false
+  return !!buff.labels?.includes(hit.label) || !!buff.categories?.includes(hit.category)
 }
 
 // The DMG Bonus stat for each kind of hit
@@ -302,6 +326,10 @@ type ElementTerms = {
   reactionBonus: number,
   catalyze: number,
   hits: number,
+  // From hit-specific buffs, in percent
+  dmgBonus: number,
+  critRate: number,
+  fromEm: NonNullable<HitBuff['fromEm']>[],
 }
 
 // transformative: summed reaction multiplier x level multiplier x RES over the rotation, before Elemental Mastery
@@ -354,25 +382,35 @@ function resMultiplier(res: number): number {
 // Everything that's the same for every build, worked out once
 export function prepareDamage(setup: DamageSetup): PreparedDamage {
   const { rotation, enemy, debuffs, element } = setup
-  // By element and hit kind ("Pyro|skillDmg")
+  // By element, hit kind and the hit-specific buffs that reach it ("Pyro|skillDmg|0,2")
   const byElement = new Map<string, Map<ScalingStat, number>>()
   // Hits per group, for Aggravate and Spread's flat damage on each
   const hitCounts = new Map<string, number>()
+  const hitBuffs = setup.hitBuffs ?? []
   for (const hit of characterHits(setup.characterId)) {
     const count = rotation.counts[hit.key] ?? 0
     if (count <= 0) continue
     const hitElement: DamageElement = hit.physical && !rotation.infusion ? 'Physical' : (element ?? 'Physical')
-    const key = `${hitElement}|${CATEGORY_DMG[hit.category]}`
+    const reaching = hitBuffs.flatMap((buff, i) => (buffReaches(buff, hit) ? [i] : []))
+    const key = `${hitElement}|${CATEGORY_DMG[hit.category]}|${reaching.join(',')}`
     const terms = byElement.get(key) ?? new Map<ScalingStat, number>()
+    const scale = 1 + reaching.reduce((sum, i) => sum + (hitBuffs[i].scale ?? 0), 0)
     for (const [stat, value] of Object.entries(hitMultiplier(hit, setup.talents)) as [ScalingStat, number][]) {
-      terms.set(stat, (terms.get(stat) ?? 0) + count * value)
+      terms.set(stat, (terms.get(stat) ?? 0) + count * value * scale)
+    }
+    // Added terms land on each hit of the line
+    for (const i of reaching) {
+      for (const [stat, value] of Object.entries(hitBuffs[i].addTerms ?? {}) as [ScalingStat, number][]) {
+        terms.set(stat, (terms.get(stat) ?? 0) + count * hit.times * value)
+      }
     }
     byElement.set(key, terms)
     hitCounts.set(key, (hitCounts.get(key) ?? 0) + count * hit.times)
   }
   const reactionBonus = (key: ReactionBonusKey) => (setup.reactionBonus?.[key] ?? 0) / 100
   const groups = [...byElement].map(([key, terms]): ElementTerms => {
-    const [hitElement, typeStat] = key.split('|') as [DamageElement, GenshinStatKey]
+    const [hitElement, typeStat, reachingText] = key.split('|') as [DamageElement, GenshinStatKey, string]
+    const reaching = reachingText ? reachingText.split(',').map((i) => hitBuffs[Number(i)]) : []
     const shred = (debuffs.resShred[hitElement] ?? 0) + (debuffs.resShred.all ?? 0)
     const reacts = hitElement !== 'Physical'
     const amplifies = reacts && (rotation.reaction === 'vaporize' || rotation.reaction === 'melt') ? AMPLIFYING[rotation.reaction][hitElement] ?? 0 : 0
@@ -389,6 +427,9 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
       reactionBonus: rotation.reaction === 'none' ? 0 : reactionBonus(rotation.reaction),
       catalyze: catalyzeMultiplier * reactionLevelMultiplier(setup.characterLevel),
       hits: hitCounts.get(key) ?? 0,
+      dmgBonus: reaching.reduce((sum, buff) => sum + (buff.dmgBonus ?? 0), 0),
+      critRate: reaching.reduce((sum, buff) => sum + (buff.critRate ?? 0), 0),
+      fromEm: reaching.flatMap((buff) => (buff.fromEm ? [buff.fromEm] : [])),
     }
   })
   const characterFactor = setup.characterLevel + 100
@@ -406,7 +447,8 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
 
 // The rotation's damage from final stats; get reads a stat (a record or the optimizer's vectors)
 export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStatKey) => number): number {
-  const crit = 1 + Math.min(Math.max(get('critRate'), 0), 100) / 100 * get('critDmg') / 100
+  const critRate = get('critRate')
+  const critDmg = get('critDmg')
   const allDmg = get('allDmg')
   let total = 0
   for (const group of prepared.groups) {
@@ -421,7 +463,15 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
       const em = get('elementalMastery')
       amplify = 1 + prepared.reactionShare * (group.amplifies * (1 + 2.78 * em / (em + 1400) + group.reactionBonus) - 1)
     }
-    total += base * (1 + ((group.dmgStat ? get(group.dmgStat) : 0) + get(group.typeStat) + allDmg) / 100) * group.res * amplify
+    let dmgBonus = group.dmgBonus
+    let groupCrit = critRate + group.critRate
+    for (const fromEm of group.fromEm) {
+      const over = Math.max(0, get('elementalMastery') - fromEm.over)
+      dmgBonus += Math.min(fromEm.dmgCap ?? Infinity, over * (fromEm.dmgPer ?? 0))
+      groupCrit += Math.min(fromEm.critCap ?? Infinity, over * (fromEm.critPer ?? 0))
+    }
+    const crit = 1 + Math.min(Math.max(groupCrit, 0), 100) / 100 * critDmg / 100
+    total += base * (1 + ((group.dmgStat ? get(group.dmgStat) : 0) + get(group.typeStat) + allDmg + dmgBonus) / 100) * group.res * amplify * crit
   }
   let transformative = 0
   if (prepared.transformative.length > 0) {
@@ -429,7 +479,7 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
     const fromEm = 16 * em / (em + 2000)
     for (const reaction of prepared.transformative) transformative += reaction.base * (1 + fromEm + reaction.bonus)
   }
-  return total * crit * prepared.def + transformative
+  return total * prepared.def + transformative
 }
 
 export function rotationDamage(stats: Partial<Record<GenshinStatKey, number>>, setup: DamageSetup): number {

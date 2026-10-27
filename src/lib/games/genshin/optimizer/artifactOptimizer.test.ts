@@ -198,6 +198,11 @@ describe('optimizeArtifacts', () => {
         enemy: { level: 100, res: 10 },
         debuffs: { defShred: 0, resShred: {} },
         reactionBonus: { aggravate: 20 },
+        // Hit-specific buffs: Resolve on the Burst, a Burst-only CRIT Rate, and a Skill bonus from Elemental Mastery
+        hitBuffs: [
+          { categories: ['burst'], addTerms: { atk: 400 }, critRate: 6 },
+          { categories: ['skill'], fromEm: { over: 50, dmgPer: 0.1, dmgCap: 30, critPer: 0.03, critCap: 10 } },
+        ],
       },
     }
     const combat: CombatSetup = { sets: ['EmblemOfSeveredFate'], settings: {} }

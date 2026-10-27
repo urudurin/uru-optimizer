@@ -297,6 +297,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     enemy,
     debuffs,
     reactionBonus: resolvedCombat.reactions,
+    hitBuffs: resolvedCombat.hitBuffs,
   }
   const byDamage = targetValue === DAMAGE_TARGET && hasTalentData(character.id)
   const target: OptimizerTarget = byDamage ? { kind: 'damage', setup: damageSetup } : genshinTarget(targetValue, character.element)

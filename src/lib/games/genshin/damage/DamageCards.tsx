@@ -222,7 +222,7 @@ export function EffectsCard({ name, fourPieceSet, applied, onSetting }: {
     <FormCard
       title='Own effects'
       size='wide'
-      description={`What ${name}'s kit and 4-piece set do in combat, counted only in rotation damage. ${
+      description={`What ${name}'s kit, weapon and 4-piece set do in combat, counted only in rotation damage. ${
         fourPieceSet ? `4-piece: ${fourPieceSet}.` : 'Pick a 4-piece set in the artifact filters to count its effect.'
       }`}
     >

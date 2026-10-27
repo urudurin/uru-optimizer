@@ -114,3 +114,69 @@ describe('combat effects', () => {
     expect(rotationDamage(stats, { ...vape, reactionBonus: { vaporize: 15 } }) / plain).toBeCloseTo(1.5 * (1 + em + 0.15), 6)
   })
 })
+
+describe('hit-specific and weapon combat effects', () => {
+  const stats = { atk: 2000, hp: 30000, critRate: 50, critDmg: 100, elementalMastery: 600, dendroDmg: 0, hydroDmg: 0, electroDmg: 0 }
+  // One line of a character's rotation through the damage formula, with their resolved combat effects
+  function lineDamage(who: GenshinCharacter, label: string, combat: CombatSetup = { sets: [], settings: {} }, talent?: string) {
+    const hit = characterHits(who.id).find((h) => h.label === label && (!talent || h.talent === talent))!
+    const resolved = resolveCombat(who, combat, new Map())
+    return rotationDamage(stats, {
+      characterId: who.id,
+      characterLevel: 90,
+      element: who.element,
+      rotation: { counts: { [hit.key]: 1 }, infusion: false, reaction: 'none', reactionShare: 100 },
+      talents: { auto: 9, skill: 9, burst: 9 },
+      enemy: DEFAULT_ENEMY,
+      debuffs: NO_DEBUFFS,
+      hitBuffs: resolved.hitBuffs,
+    })
+  }
+
+  it('gives Nahida\'s Tri-Karma Purification DMG and CRIT Rate from Elemental Mastery above 200, and nothing else', () => {
+    const nahida = character('Nahida', { element: 'Dendro' })
+    const off = { sets: [], settings: {} }
+    const young = character('Nahida', { element: 'Dendro', ascension: 3 })
+    // 400 EM over 200: +40% DMG, +12% CRIT Rate
+    expect(lineDamage(nahida, 'Tri-Karma Purification DMG', off) / lineDamage(young, 'Tri-Karma Purification DMG', off)).toBeCloseTo(1.4 * (1 + 0.62) / 1.5, 6)
+    expect(lineDamage(nahida, 'Press DMG', off)).toBeCloseTo(lineDamage(young, 'Press DMG', off), 6)
+  })
+
+  it('scales Neuvillette\'s Equitable Judgment by his Draconic Glories', () => {
+    const neuvillette = character('Neuvillette', { element: 'Hydro' })
+    const judgment = 'Charged Attack: Equitable Judgment'
+    const none = lineDamage(neuvillette, judgment, { sets: [], settings: { 'neuvillette-a1': 0 } })
+    expect(lineDamage(neuvillette, judgment) / none).toBeCloseTo(1.6, 6)
+    expect(lineDamage(neuvillette, judgment, { sets: [], settings: { 'neuvillette-a1': 2 } }) / none).toBeCloseTo(1.25, 6)
+  })
+
+  it('adds Raiden\'s Resolve as ATK to the initial slash and Musou Isshin hits', () => {
+    const raiden = character('RaidenShogun', { element: 'Electro' })
+    const slash = characterHits('RaidenShogun').find((h) => h.label === 'Musou no Hitotachi Base DMG')!
+    const base = slash.terms[0][1][8]
+    const none = lineDamage(raiden, slash.label, { sets: [], settings: { 'raiden-resolve': 0 } })
+    // Burst level 9 at C0: 6.6096% ATK per stack, 60 stacks
+    expect(lineDamage(raiden, slash.label) / none).toBeCloseTo((base + 60 * 6.6096) / base, 6)
+    const isshin = characterHits('RaidenShogun').find((h) => h.talent === 'burst' && h.label === '1-Hit DMG')!
+    const isshinNone = lineDamage(raiden, isshin.label, { sets: [], settings: { 'raiden-resolve': 0 } }, 'burst')
+    expect(lineDamage(raiden, isshin.label, undefined, 'burst') / isshinNone).toBeCloseTo((isshin.terms[0][1][8] + 60 * 1.2345) / isshin.terms[0][1][8], 6)
+  })
+
+  it('works out weapon effects by refinement, including Burst-only CRIT Rate', () => {
+    const weapon = (id: string, refinement: number) => ({ id, name: id, rarity: 5, level: 90, refinement })
+    const mist = resolveCombat(character('KamisatoAyaka', { element: 'Cryo', weapon: weapon('MistsplitterReforged', 1) }), {
+      sets: [],
+      settings: { 'ayaka-a4': false },
+    }, new Map())
+    expect(mist.premod.cryoDmg).toBe(28)
+    const mist5 = resolveCombat(character('KamisatoAyaka', { element: 'Cryo', weapon: weapon('MistsplitterReforged', 5) }), {
+      sets: [],
+      settings: { 'ayaka-a4': false },
+    }, new Map())
+    expect(mist5.premod.cryoDmg).toBe(56)
+    const raiden = character('RaidenShogun', { element: 'Electro', weapon: weapon('TheCatch', 5) })
+    const caught = resolveCombat(raiden, { sets: [], settings: { 'raiden-resolve': 0 } }, new Map())
+    expect(caught.premod.burstDmg).toBe(32)
+    expect(caught.hitBuffs).toContainEqual({ categories: ['burst'], critRate: 12 })
+  })
+})
