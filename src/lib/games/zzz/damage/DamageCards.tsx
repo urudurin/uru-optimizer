@@ -68,10 +68,12 @@ export function EnemyCard({ enemy, debuffs, onChange }: {
   )
 }
 
-export function RotationCard({ agentId, element, rotation, damage, onChange }: {
+export function RotationCard({ agentId, element, scaling = 'ATK', rotation, damage, onChange }: {
   agentId: string,
   // The agent's attribute, for the anomaly it triggers
   element: string,
+  // What skill hits scale on: ATK, or Sheer Force for Rupture agents
+  scaling?: string,
   rotation: Rotation,
   // The current build's rotation damage, when known
   damage?: number,
@@ -116,7 +118,7 @@ export function RotationCard({ agentId, element, rotation, damage, onChange }: {
         <Button size='xs' variant='light' onClick={() => onChange(defaultRotation(agentId))}>Default</Button>
         <Button size='xs' variant='subtle' onClick={() => onChange({ ...rotation, counts: {} })}>Clear</Button>
         <Text size='xs' ml='auto'>
-          {`${formatNumber(Math.round(total))}% of ATK${anomalyTotal ? ` + ${formatNumber(Math.round(anomalyTotal))}% anomaly` : ''} in total${
+          {`${formatNumber(Math.round(total))}% of ${scaling}${anomalyTotal ? ` + ${formatNumber(Math.round(anomalyTotal))}% anomaly` : ''} in total${
             damage !== undefined ? ` · ${formatNumber(Math.round(damage))} damage now` : ''
           }`}
         </Text>

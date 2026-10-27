@@ -287,6 +287,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const damageSetup: DamageSetup = {
     multiplier: rotationMultiplier(agent.id, rotation),
     bonusMultiplier: rotationBonusMultiplier(agent.id, rotation, kit.kindBonus, kit.skillBonus),
+    scaling: agent.specialty === 'Rupture' ? 'sheer' : 'atk',
     anomalyMultiplier: rotationAnomalyMultiplier(agent.id, agent.element, rotation),
     agentLevel: agent.level,
     enemy,
@@ -615,7 +616,14 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
               } · enemy DEF ${enemy.def}${enemy.stunned ? ', stunned' : ''}`}
             >
               <EnemyCard enemy={enemy} debuffs={teamResult.debuffs} onChange={(next) => setEnemy(next)} />
-              <RotationCard agentId={agent.id} element={agent.element} rotation={rotation} damage={currentDamage} onChange={(next) => setRotation(next)} />
+              <RotationCard
+                agentId={agent.id}
+                element={agent.element}
+                scaling={agent.specialty === 'Rupture' ? 'Sheer Force' : 'ATK'}
+                rotation={rotation}
+                damage={currentDamage}
+                onChange={(next) => setRotation(next)}
+              />
               <KitEffectsCard
                 name={agent.name}
                 applied={kit.applied}

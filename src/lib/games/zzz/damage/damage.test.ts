@@ -115,4 +115,17 @@ describe('ZZZ damage', () => {
     expect(resolveZzzCombat(MIYABI.id, 2, {}).kindBonus).toEqual({ dodgeCounter: 30 })
     expect(resolveZzzCombat(MIYABI.id, 0, { 'miyabi-ult-ice': false }).statEffects).toEqual([])
   })
+
+  it('works out Rupture agents\' Sheer damage from Sheer Force, without the DEF multiplier', () => {
+    const sheer = { ...stats, sheerForce: 2696 }
+    const setup = { multiplier: 100, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS, scaling: 'sheer' as const }
+    const crit = 1 + (Math.min(100, stats.critRate) / 100) * (stats.critDmg / 100)
+    expect(rotationDamage(sheer, setup)).toBeCloseTo(2696 * (1 + stats.elementDmg / 100) * crit, 6)
+    // HP raises it through Sheer Force; DEF shred and PEN don't change it
+    expect(rotationDamage({ ...sheer, atk: 99999 }, setup)).toBeCloseTo(rotationDamage(sheer, setup), 6)
+    expect(rotationDamage(sheer, { ...setup, debuffs: { ...NO_DEBUFFS, defShred: 50 } })).toBeCloseTo(rotationDamage(sheer, setup), 6)
+    // Their anomalies stay ATK-based with DEF
+    const anomaly = { ...setup, multiplier: 0, anomalyMultiplier: 500 }
+    expect(rotationDamage(sheer, anomaly)).toBeCloseTo(rotationDamage(sheer, { ...anomaly, scaling: 'atk' }), 6)
+  })
 })

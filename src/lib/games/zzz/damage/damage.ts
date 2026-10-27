@@ -20,7 +20,9 @@ import type { FinalStats } from 'lib/games/zzz/stats/computeStats'
 // Kit buffs to some hits only (Ultimate DMG +60%, damage/combatEffects.ts) go in as DamageSetup.bonusMultiplier: the
 // sum over the rotation of count x hit multiplier x its extra DMG Bonus, so a hit's DMG Bonus is (1 + Element DMG + its
 // own bonus) while the rest of the formula stays shared.
-// Not yet: Sheer damage, anomaly-specific bonuses (Burn DMG...), Aftershock hits and hits of another attribute than the
+// Rupture agents deal Sheer damage with their skills, as genshin-optimizer has it (prep.ts sheerDmg): Sheer Force x
+// multiplier x DMG Bonus x CRIT x RES x DMG taken x Stun, with no DEF multiplier. Their anomalies stay ATK-based.
+// Not yet: Sheer DMG Bonus stats, Armorer (Claret) DEF-based Sharp damage, anomaly-specific bonuses (Burn DMG...), Aftershock hits and hits of another attribute than the
 // agent's. Personal, non-commercial use.
 
 // genshin-optimizer's defLevelFactor, by agent level
@@ -116,6 +118,8 @@ export type DamageSetup = {
   anomalyMultiplier?: number,
   // Sum over the rotation of count x hit multiplier x the hit's own extra DMG Bonus (a fraction), in percent of ATK
   bonusMultiplier?: number,
+  // What skill hits scale on: ATK, or Sheer Force for Rupture agents (Sheer damage, which ignores DEF)
+  scaling?: 'atk' | 'sheer',
   agentLevel: number,
   enemy: EnemySettings,
   debuffs: EnemyDebuffs,
@@ -143,9 +147,13 @@ export function anomalyLevelMultiplier(level: number): number {
 // Average damage of the whole rotation (crits counted at their rate; anomalies don't crit)
 export function rotationDamage(stats: FinalStats, setup: DamageSetup): number {
   const f = damageFactors(stats, setup)
-  const shared = stats.atk * f.def * f.res * f.dmgTaken * f.stun
-  const standard = ((setup.multiplier * f.dmgBonus + (setup.bonusMultiplier ?? 0)) / 100) * f.crit
-  const anomaly = ((setup.anomalyMultiplier ?? 0) / 100) * f.dmgBonus * (stats.anomalyProficiency / 100) * anomalyLevelMultiplier(setup.agentLevel)
+  const shared = f.res * f.dmgTaken * f.stun
+  // Rupture agents' skill hits are Sheer damage: Sheer Force instead of ATK, and no DEF multiplier
+  const sheer = setup.scaling === 'sheer'
+  const standard = (sheer ? stats.sheerForce : stats.atk * f.def)
+    * ((setup.multiplier * f.dmgBonus + (setup.bonusMultiplier ?? 0)) / 100) * f.crit
+  const anomaly = stats.atk * f.def * ((setup.anomalyMultiplier ?? 0) / 100) * f.dmgBonus * (stats.anomalyProficiency / 100)
+    * anomalyLevelMultiplier(setup.agentLevel)
   return shared * (standard + anomaly)
 }
 
