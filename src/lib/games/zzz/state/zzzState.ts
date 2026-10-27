@@ -112,6 +112,36 @@ export function saveZzzBuild(data: ZzzData, build: ImportedBuild): ZzzData {
   return { ...data, builds: exists ? data.builds.map((b) => (b.id === build.id ? build : b)) : [...data.builds, build] }
 }
 
+// Adds a disc by hand or replaces an edited one (same id). A worn disc that moved to another slot comes off its agent
+export function saveZzzDisc(data: ZzzData, disc: Disc): ZzzData {
+  const old = data.discs.find((d) => d.id === disc.id)
+  if (!old) return { ...data, discs: [...data.discs, disc] }
+  const moved = old.slot !== disc.slot && disc.equippedBy !== undefined
+  const saved: Disc = moved ? withoutOwner(disc) : disc
+  return {
+    discs: data.discs.map((d) => (d.id === disc.id ? saved : d)),
+    builds: moved ? data.builds.map((b) => (b.discIds[old.slot] === disc.id ? { ...b, discIds: { ...b.discIds, [old.slot]: undefined } } : b)) : data.builds,
+  }
+}
+
+// Deletes discs from the save, taking them off whoever wore them
+export function deleteZzzDiscs(data: ZzzData, ids: string[]): ZzzData {
+  const gone = new Set(ids)
+  return {
+    discs: data.discs.filter((d) => !gone.has(d.id)),
+    builds: data.builds.map((b) =>
+      Object.values(b.discIds).some((id) => id && gone.has(id))
+        ? { ...b, discIds: Object.fromEntries(Object.entries(b.discIds).filter(([, id]) => !id || !gone.has(id))) }
+        : b
+    ),
+  }
+}
+
+function withoutOwner(disc: Disc): Disc {
+  const { equippedBy: _, ...rest } = disc
+  return rest
+}
+
 // Who would lose discs to this agent, by agent id
 export function zzzPiecesTaken(data: ZzzData, agentId: string, discs: Disc[]): string[] {
   const loadouts: Loadouts<DiscSlot> = new Map(data.builds.map((b) => [b.agentId, { ...b.discIds }]))

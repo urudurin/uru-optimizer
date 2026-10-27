@@ -28,6 +28,8 @@ export type ZzzImages = {
   wEngines: Record<string, string>,
   // By our set id (slugified English name)
   sets: Record<string, string>,
+  // Every disc set's English name, by our set id (for the disc editor)
+  setNames: Record<string, string>,
   // Every agent's name, element and specialty, by agent id (for the Agents page roster)
   agentInfo: Record<string, { name: string, element: string, specialty: string }>,
 }
@@ -52,15 +54,17 @@ export const loadZzzImages = enkaStoreLoader(
     const wEngines: Record<string, string> = {}
     for (const [id, entry] of Object.entries(weapons as Record<string, WeaponEntry>)) if (entry.ImagePath) wEngines[id] = url(entry.ImagePath)
     const sets: Record<string, string> = {}
+    const setNames: Record<string, string> = {}
     for (const suit of Object.values((equipments as { Suits?: Record<string, SuitEntry> }).Suits ?? {})) {
       const name = suit.Name ? names[suit.Name] : undefined
       if (name && suit.Icon) sets[slugifySetName(name)] = url(suit.Icon)
+      if (name) setNames[slugifySetName(name)] = name
     }
-    return { agents, wEngines, sets, agentInfo }
+    return { agents, wEngines, sets, agentInfo, setNames }
   },
 )
 
-const EMPTY: ZzzImages = { agents: {}, wEngines: {}, sets: {}, agentInfo: {} }
+const EMPTY: ZzzImages = { agents: {}, wEngines: {}, sets: {}, agentInfo: {}, setNames: {} }
 
 // The images once loaded; empty maps until then, or when Enka can't be reached (pages show initials instead)
 export function useZzzImages(): ZzzImages {

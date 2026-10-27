@@ -88,7 +88,7 @@ function characterInfo(key: string, tables: ReturnType<typeof nameTables>): { na
 }
 
 // The main stat at this rarity and level, as the game shows it
-function mainStatValue(store: EnkaGenshinStore, rarity: number, level: number, stat: keyof typeof NUMERIC_STAT_IDS): number | undefined {
+export function mainStatValue(store: EnkaGenshinStore, rarity: number, level: number, stat: keyof typeof NUMERIC_STAT_IDS): number | undefined {
   const id = NUMERIC_STAT_IDS[stat]
   const raw = id === undefined ? undefined : store.relicLevels[String(rarity)]?.[String(level + 1)]?.[String(id)]
   if (raw === undefined) return undefined

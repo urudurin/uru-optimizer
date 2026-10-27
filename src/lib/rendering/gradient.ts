@@ -80,6 +80,16 @@ export const Gradient = {
     relicGradientCache = Array.from({ length: GRADIENT_BUCKETS })
   },
 
+  // Uru: the relic grid's colour for a 0-1 fraction, for the multi-game gear grids (lib/games/shared/ui/gear)
+  getRelicGradientStyle(fraction: number) {
+    const key = Math.round(Math.min(Math.max(fraction, 0), 1) * 200)
+    const cached = relicGradientCache[key]
+    if (cached) return cached
+    const style = { '--cell-bg': Gradient.getColor(key / 200, relicGridGradient) }
+    relicGradientCache[key] = style
+    return style
+  },
+
   getRelicGradient(params: CellClassParams<ScoredRelic>) {
     const col = params.column.getColId()
     const value = params.value

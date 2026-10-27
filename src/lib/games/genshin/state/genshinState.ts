@@ -129,6 +129,42 @@ export function saveGenshinCharacter(data: GenshinData, details: GenshinCharacte
   return { ...data, characters: data.characters.map((c) => (c === existing ? updated : c)) }
 }
 
+// Adds an artifact by hand or replaces an edited one (same id). A worn artifact that moved to another slot comes off
+// its character; whoever wears a changed artifact loses their Enka stats, which no longer match
+export function saveGenshinArtifact(data: GenshinData, artifact: Artifact): GenshinData {
+  const old = data.artifacts.find((a) => a.id === artifact.id)
+  if (!old) return { ...data, artifacts: [...data.artifacts, artifact] }
+  const owner = artifact.equippedBy
+  const moved = owner !== undefined && old.slot !== artifact.slot
+  const saved: Artifact = moved ? withoutOwner(artifact) : artifact
+  return {
+    artifacts: data.artifacts.map((a) => (a.id === artifact.id ? saved : a)),
+    characters: data.characters.map((c) => {
+      if (c.id !== owner) return c
+      const artifactIds = moved ? Object.fromEntries(Object.entries(c.artifactIds).filter(([, id]) => id !== artifact.id)) : c.artifactIds
+      return { ...c, artifactIds, stats: {} }
+    }),
+  }
+}
+
+// Deletes artifacts from the save, taking them off whoever wore them (who lose their Enka stats)
+export function deleteGenshinArtifacts(data: GenshinData, ids: string[]): GenshinData {
+  const gone = new Set(ids)
+  return {
+    artifacts: data.artifacts.filter((a) => !gone.has(a.id)),
+    characters: data.characters.map((c) =>
+      Object.values(c.artifactIds).some((id) => id && gone.has(id))
+        ? { ...c, artifactIds: Object.fromEntries(Object.entries(c.artifactIds).filter(([, id]) => !id || !gone.has(id))), stats: {} }
+        : c
+    ),
+  }
+}
+
+function withoutOwner(artifact: Artifact): Artifact {
+  const { equippedBy: _, ...rest } = artifact
+  return rest
+}
+
 // Who would lose artifacts to this character, by character id
 export function genshinPiecesTaken(data: GenshinData, characterId: string, artifacts: Artifact[]): string[] {
   const loadouts: Loadouts<ArtifactSlot> = new Map(data.characters.map((c) => [c.id, c.artifactIds]))

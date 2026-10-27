@@ -104,6 +104,27 @@ export function saveWuwaCharacter(data: WuwaData, details: Omit<CharacterState, 
   return { ...data, characters: [...data.characters, added] }
 }
 
+// Adds an echo by hand or replaces an edited one (same id). A worn echo whose cost changed comes off its Resonator,
+// since their loadout's cost no longer adds up the same
+export function saveWuwaEcho(data: WuwaData, echo: Echo): WuwaData {
+  const old = data.echoes.find((e) => e.id === echo.id)
+  if (!old) return { ...data, echoes: [...data.echoes, echo] }
+  const echoes = data.echoes.map((e) => (e.id === echo.id ? echo : e))
+  if (old.cost === echo.cost) return { ...data, echoes }
+  return { ...data, echoes, characters: data.characters.map((c) => withoutEchoes(c, new Set([echo.id]))) }
+}
+
+// Deletes echoes from the save, taking them off whoever wore them
+export function deleteWuwaEchoes(data: WuwaData, ids: string[]): WuwaData {
+  const gone = new Set(ids)
+  return { ...data, echoes: data.echoes.filter((e) => !gone.has(e.id)), characters: data.characters.map((c) => withoutEchoes(c, gone)) }
+}
+
+function withoutEchoes(character: CharacterState, ids: Set<string>): CharacterState {
+  if (!character.echoIds.some((id) => id && ids.has(id))) return character
+  return { ...character, echoIds: character.echoIds.map((id) => (id && ids.has(id) ? null : id)) }
+}
+
 // Who would lose echoes to this Resonator, by charId
 export function wuwaPiecesTaken(data: WuwaData, charId: string, echoes: Echo[]): string[] {
   const ids = new Set(echoes.map((e) => e.id))

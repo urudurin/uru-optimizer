@@ -1,123 +1,50 @@
 import {
   Button,
-  Group,
-  SegmentedControl,
-  Select,
   Stack,
-  Text,
 } from '@mantine/core'
-import { IconCards } from '@tabler/icons-react'
+import { useGenshinImages } from 'lib/games/genshin/data/images'
+import { loadEnkaGenshinStore } from 'lib/games/genshin/importer/enkaClient'
+import type { EnkaGenshinStore } from 'lib/games/genshin/importer/enkaParser'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
+import { genshinArtifactKind } from 'lib/games/genshin/ui/artifactKind'
+import { PageHeader } from 'lib/games/shared/ui/GameLayout'
+import { GearInventory } from 'lib/games/shared/ui/gear/GearInventory'
 import {
-  genshinArtifactWeights,
-  scoreArtifact,
-} from 'lib/games/genshin/stats/artifactScore'
-import {
-  type Artifact,
-  ARTIFACT_SLOTS,
-  SLOT_LABELS,
-} from 'lib/games/genshin/types'
-import { ArtifactCard } from 'lib/games/genshin/ui/ArtifactCard'
-import {
-  EmptyState,
-  PageHeader,
-  Panel,
-} from 'lib/games/shared/ui/GameLayout'
-import gear from 'lib/games/shared/ui/GearCard.module.css'
-import {
+  useEffect,
   useMemo,
   useState,
 } from 'react'
 
-// Cards drawn at a time: a full GOOD inventory has well over a thousand
-const PAGE_SIZE = 60
-
+// Every artifact in the save, in the shared gear inventory (shared/ui/gear): filter, sort, add, edit and delete.
+// Enka's store files give the editor every set's name and the main stat values
 export function GenshinArtifactsPage({ onImport }: { onImport: () => void }) {
   const artifacts = useGenshinStore((s) => s.artifacts)
   const characters = useGenshinStore((s) => s.characters)
-  const [slot, setSlot] = useState('all')
-  const [setId, setSetId] = useState<string | null>(null)
-  const [limit, setLimit] = useState(PAGE_SIZE)
+  const saveArtifact = useGenshinStore((s) => s.saveArtifact)
+  const deleteArtifacts = useGenshinStore((s) => s.deleteArtifacts)
+  const images = useGenshinImages()
+  const [store, setStore] = useState<EnkaGenshinStore | undefined>()
 
-  const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
-  // Each artifact is scored for the character wearing it (stats/artifactScore.ts)
-  const scoreFor = useMemo(() => {
-    const weightsByCharacter = new Map(characters.map((c) => [c.id, genshinArtifactWeights(c)]))
-    return (artifact: Artifact) => {
-      const weights = artifact.equippedBy ? weightsByCharacter.get(artifact.equippedBy) : undefined
-      return weights ? scoreArtifact(artifact, weights) : undefined
+  useEffect(() => {
+    let live = true
+    void loadEnkaGenshinStore().then((result) => {
+      if (live && result.ok) setStore(result.data)
+    })
+    return () => {
+      live = false
     }
-  }, [characters])
-  const setOptions = useMemo(() => {
-    const names = new Map(artifacts.map((a) => [a.setId, a.setName]))
-    return [...names].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
-  }, [artifacts])
-  const shown = useMemo(
-    () =>
-      artifacts
-        .filter((a) => (slot === 'all' || a.slot === slot) && (!setId || a.setId === setId))
-        .sort((a, b) => ARTIFACT_SLOTS.indexOf(a.slot) - ARTIFACT_SLOTS.indexOf(b.slot) || a.setName.localeCompare(b.setName) || b.level - a.level),
-    [artifacts, slot, setId],
-  )
+  }, [])
 
-  if (artifacts.length === 0) {
-    return (
-      <Stack gap='lg'>
-        <PageHeader title='Artifacts' />
-        <Panel>
-          <EmptyState icon={<IconCards size={24} />} title='No artifacts yet' action={<Button onClick={onImport}>Import</Button>}>
-            Import a GOOD file for your whole inventory, or your Enka.Network showcase for the artifacts your characters wear.
-          </EmptyState>
-        </Panel>
-      </Stack>
-    )
-  }
+  const kind = useMemo(() => genshinArtifactKind({ characters, images, store, artifacts }), [characters, images, store, artifacts])
 
   return (
     <Stack gap='lg'>
       <PageHeader
         title='Artifacts'
-        description={`${artifacts.length} artifacts. Dots show how many times each substat rolled (the fewest rolls that reach its value, for GOOD imports).`}
+        description={`${artifacts.length} artifacts. Sort by any substat, filter like the game, and add or fix artifacts by hand. Scores are for the character wearing each artifact.`}
+        actions={artifacts.length === 0 ? <Button onClick={onImport}>Import</Button> : undefined}
       />
-
-      <Group gap='sm' align='flex-end'>
-        <SegmentedControl
-          value={slot}
-          onChange={(value) => {
-            setSlot(value)
-            setLimit(PAGE_SIZE)
-          }}
-          data={[{ value: 'all', label: 'All slots' }, ...ARTIFACT_SLOTS.map((value) => ({ value, label: SLOT_LABELS[value] }))]}
-        />
-        <Select
-          w={240}
-          placeholder='Any set'
-          clearable
-          value={setId}
-          onChange={(value) => {
-            setSetId(value)
-            setLimit(PAGE_SIZE)
-          }}
-          data={setOptions}
-        />
-        <Text size='xs' c='dimmed'>{`Showing ${Math.min(limit, shown.length)} of ${shown.length}`}</Text>
-      </Group>
-
-      <div className={gear.grid}>
-        {shown.slice(0, limit).map((artifact) => (
-          <ArtifactCard
-            key={artifact.id}
-            artifact={artifact}
-            owner={artifact.equippedBy ? ownerNames.get(artifact.equippedBy) : undefined}
-            score={scoreFor(artifact)}
-          />
-        ))}
-      </div>
-      {shown.length > limit && (
-        <Group justify='center'>
-          <Button variant='light' onClick={() => setLimit(limit + PAGE_SIZE * 2)}>{`Show more (${shown.length - limit} left)`}</Button>
-        </Group>
-      )}
+      <GearInventory kind={kind} items={artifacts} onSave={saveArtifact} onDelete={deleteArtifacts} />
     </Stack>
   )
 }

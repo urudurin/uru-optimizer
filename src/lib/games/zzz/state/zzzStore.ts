@@ -10,9 +10,11 @@ import type {
   ParseWarning,
 } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
+  deleteZzzDiscs,
   deserializeZzzData,
   equipZzzDiscs,
   saveZzzBuild,
+  saveZzzDisc,
   serializeZzzData,
   ZZZ_STATE_KEY,
 } from 'lib/games/zzz/state/zzzState'
@@ -35,6 +37,9 @@ type ZzzStore = {
   equip: (...args: Parameters<typeof equipZzzDiscs> extends [unknown, ...infer Rest] ? Rest : never) => void,
   // Adds an agent by hand or changes a saved build's Mindscape and W-Engine, see saveZzzBuild
   saveBuild: (build: ImportedBuild) => void,
+  // Adds or edits a disc by hand, or deletes discs, see saveZzzDisc / deleteZzzDiscs
+  saveDisc: (disc: Disc) => void,
+  deleteDiscs: (ids: string[]) => void,
   clear: () => void,
 }
 
@@ -69,6 +74,20 @@ export const useZzzStore = create<ZzzStore>()((set, get) => ({
   saveBuild: (build) => {
     const state = get()
     const data = saveZzzBuild({ discs: state.discs, builds: state.builds }, build)
+    save(data.discs, data.builds)
+    set(data)
+  },
+
+  saveDisc: (disc) => {
+    const state = get()
+    const data = saveZzzDisc({ discs: state.discs, builds: state.builds }, disc)
+    save(data.discs, data.builds)
+    set(data)
+  },
+
+  deleteDiscs: (ids) => {
+    const state = get()
+    const data = deleteZzzDiscs({ discs: state.discs, builds: state.builds }, ids)
     save(data.discs, data.builds)
     set(data)
   },

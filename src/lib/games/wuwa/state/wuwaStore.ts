@@ -5,11 +5,13 @@ import {
 } from 'lib/games/shared/storage'
 import type { ParsedWuwaData } from 'lib/games/wuwa/importer/userDataParser'
 import {
+  deleteWuwaEchoes,
   deserializeWuwaData,
   EMPTY_WUWA_DATA,
   equipWuwaEchoes,
   mergeWuwaData,
   saveWuwaCharacter,
+  saveWuwaEcho,
   serializeWuwaData,
   WUWA_STATE_KEY,
   type WuwaData,
@@ -34,6 +36,9 @@ type WuwaStore = WuwaData & {
   equip: (charId: string, echoes: Echo[]) => void,
   // Adds a Resonator by hand or changes their level, sequence and weapon, see saveWuwaCharacter
   saveCharacter: (details: Omit<CharacterState, 'echoIds'>) => void,
+  // Adds or edits an echo by hand, or deletes echoes, see saveWuwaEcho / deleteWuwaEchoes
+  saveEcho: (echo: Echo) => void,
+  deleteEchoes: (ids: string[]) => void,
   clear: () => void,
 }
 
@@ -63,6 +68,20 @@ export const useWuwaStore = create<WuwaStore>()((set, get) => ({
   saveCharacter: (details) => {
     const { echoes, characters, teams, priority } = get()
     const data = saveWuwaCharacter({ echoes, characters, teams, priority }, details)
+    save(data)
+    set(data)
+  },
+
+  saveEcho: (echo) => {
+    const { echoes, characters, teams, priority } = get()
+    const data = saveWuwaEcho({ echoes, characters, teams, priority }, echo)
+    save(data)
+    set(data)
+  },
+
+  deleteEchoes: (ids) => {
+    const { echoes, characters, teams, priority } = get()
+    const data = deleteWuwaEchoes({ echoes, characters, teams, priority }, ids)
     save(data)
     set(data)
   },
