@@ -151,6 +151,10 @@ describe('team buffs', () => {
     expect(result.lunarBonus).toBeCloseTo(Math.min(36, Math.max(furinaHp * 0.0006, bennettAtk * 0.009)), 6)
     // Not a stat
     expect(Object.keys({ ...result.premod, ...result.total })).not.toContain('lunarBonus')
+
+    // Not even offered without anyone who can trigger Lunar reactions
+    const plain = teamBuffsFor(xiangling, setup(['Furina', 'Bennett'], { settings: on }), { characters: [xiangling, furina, bennett], artifacts: [] })
+    expect(plain.applied.some((a) => a.buff.id === 'moonsign-ascendant-gleam')).toBe(false)
   })
 
   it('adds elemental resonance for a team of 4', () => {

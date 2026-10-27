@@ -18,6 +18,7 @@ import {
   type Reaction,
   reactionsFor,
   type Rotation,
+  type SpecialKind,
   type Talent,
   type TalentLevels,
   transformativeBase,
@@ -68,8 +69,10 @@ export function EnemyCard({ enemy, debuffs, onChange }: {
   )
 }
 
-export function RotationCard({ character, rotation, talents, damage, onChange }: {
+export function RotationCard({ character, rotation, talents, damage, team, onChange }: {
   character: GenshinCharacter,
+  // The Lunar and Stellar kinds the team can trigger: other ones aren't offered
+  team: SpecialKind[],
   rotation: Rotation,
   // The talent levels in use (the rotation's own, or the character's with constellation boosts)
   talents: TalentLevels,
@@ -87,7 +90,8 @@ export function RotationCard({ character, rotation, talents, damage, onChange }:
   }
   const element: Element | undefined = character.element
   const reactions = reactionsFor(element)
-  const triggers = transformativeLines(element)
+  const triggers = transformativeLines(element, team)
+  const polestar = team.includes('stellarconduct')
 
   if (hits.length === 0) {
     return (
@@ -151,6 +155,27 @@ export function RotationCard({ character, rotation, talents, damage, onChange }:
                 max={100}
                 value={rotation.reactionShare}
                 onChange={(value) => onChange({ ...rotation, reactionShare: Math.min(100, Math.max(0, Number(value) || 0)) })}
+              />
+            )}
+          </>
+        )}
+        {polestar && (
+          <>
+            <Switch
+              size='xs'
+              label='In a Polestar Field (Stellar-Conduct)'
+              checked={!!rotation.polestar?.active}
+              onChange={(event) => onChange({ ...rotation, polestar: { hits: rotation.polestar?.hits ?? 12, active: event.currentTarget.checked } })}
+            />
+            {rotation.polestar?.active && (
+              <NumberInput
+                size='xs'
+                w={130}
+                label='Field hits recorded'
+                min={0}
+                max={12}
+                value={rotation.polestar.hits}
+                onChange={(value) => onChange({ ...rotation, polestar: { active: true, hits: Math.min(12, Math.max(0, Number(value) || 0)) } })}
               />
             )}
           </>

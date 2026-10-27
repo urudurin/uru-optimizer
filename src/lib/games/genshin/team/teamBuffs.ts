@@ -1,5 +1,6 @@
 import {
   type EnemyDebuffs,
+  teamReactions,
 } from 'lib/games/genshin/damage/damage'
 import {
   computeGenshinStats,
@@ -120,11 +121,13 @@ export function teamBuffsFor(
   })
   const teamMaxElementalMastery = Math.max(0, ...givers.map((g) => g.stats.elementalMastery ?? 0))
 
+  // Moonsign buffs only matter when someone in the team can trigger Lunar reactions
+  const lunarTeam = teamReactions([receiver.id, ...teammates.map((c) => c.id)]).some((kind) => kind.startsWith('lunar'))
   const candidates: { buff: TeamBuff, sourceName: string, giver?: (typeof givers)[number] }[] = []
   for (const giver of givers) {
     const { character } = giver
     for (const buff of CHARACTER_BUFFS[character.id] ?? []) candidates.push({ buff, sourceName: character.name, giver })
-    for (const buff of ANY_MEMBER_BUFFS) candidates.push({ buff, sourceName: character.name, giver })
+    if (lunarTeam) { for (const buff of ANY_MEMBER_BUFFS) candidates.push({ buff, sourceName: character.name, giver }) }
     for (const buff of WEAPON_BUFFS[character.weapon?.id ?? ''] ?? []) {
       candidates.push({ buff, sourceName: `${character.name}'s ${character.weapon?.name}`, giver })
     }

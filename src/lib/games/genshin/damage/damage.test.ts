@@ -6,9 +6,12 @@ import {
   defaultRotation,
   hitMultiplier,
   NO_DEBUFFS,
+  polestarDmgBonus,
+  polestarMultiplier,
   reactionLevelMultiplier,
   reactionsFor,
   rotationDamage,
+  teamReactions,
   transformativeLines,
 } from 'lib/games/genshin/damage/damage'
 import type {
@@ -136,10 +139,15 @@ describe('Genshin damage', () => {
       'reaction:swirl:Hydro',
       'reaction:swirl:Electro',
       'reaction:swirl:Cryo',
-      'reaction:stellarswirl:Anemo',
-      'reaction:stellarswirl:Cryo',
+      'reaction:stellarswirl',
+      'reaction:stellarvortex1',
+      'reaction:stellarvortex2',
     ])
     expect(transformativeLines('Electro').map((line) => line.reaction)).toEqual(['overloaded', 'electrocharged', 'superconduct', 'hyperbloom', 'lunarcharged'])
+    // Lunar and Stellar lines only when the team can trigger them
+    expect(transformativeLines('Electro', []).map((line) => line.reaction)).not.toContain('lunarcharged')
+    expect(transformativeLines('Anemo', teamReactions(['KaedeharaKazuha'])).map((line) => line.reaction)).toEqual(['swirl', 'swirl', 'swirl', 'swirl'])
+    expect(transformativeLines('Anemo', teamReactions(['KaedeharaKazuha', 'Sandrone'])).map((line) => line.reaction)).toContain('stellarvortex2')
 
     const nahida = { ...stats, elementalMastery: 800 }
     const rotation = { counts: { 'reaction:bloom': 3 }, infusion: false, reaction: 'none' as const, reactionShare: 100 }
@@ -178,5 +186,41 @@ describe('Genshin damage', () => {
     // Stellar lines are found by name too
     const sandrone = hit('Sandrone', 'Prism Shot Stellar-Conduct DMG')
     expect(sandrone.special).toBe('stellarconduct')
+  })
+
+  it('knows who enables Lunar and Stellar reactions', () => {
+    expect(teamReactions(['Flins'])).toEqual(['lunarcharged'])
+    expect(teamReactions(['Ineffa', 'Lauma']).sort()).toEqual(['lunarbloom', 'lunarcharged'])
+    expect(teamReactions(['Sandrone']).sort()).toEqual(['stellarconduct', 'stellarswirl'])
+    expect(teamReactions(['Xiangling', 'Bennett'])).toEqual([])
+  })
+
+  it('scales Stellar-Conduct with the Polestar Field and gives Cryo and Electro DMG inside it', () => {
+    expect(polestarMultiplier(0)).toBe(1)
+    expect(polestarMultiplier(1)).toBeCloseTo(1.45, 6)
+    expect(polestarMultiplier(12)).toBeCloseTo(2, 6)
+    expect(polestarDmgBonus(0)).toBe(20)
+    expect(polestarDmgBonus(12)).toBe(40)
+
+    const conduct = hit('Sandrone', 'Prism Shot Stellar-Conduct DMG')
+    const base: DamageSetup = {
+      ...setup(),
+      characterId: 'Sandrone',
+      element: 'Electro',
+      rotation: { counts: { [conduct.key]: 1 }, infusion: false, reaction: 'none', reactionShare: 100 },
+      teamReactions: ['stellarconduct', 'stellarswirl'],
+    }
+    const outside = rotationDamage(stats, base)
+    const field = { ...base, rotation: { ...base.rotation, polestar: { active: true, hits: 6 } } }
+    expect(rotationDamage(stats, field) / outside).toBeCloseTo(1.7, 6)
+    // Without someone to make the field, it doesn't count
+    expect(rotationDamage(stats, { ...field, teamReactions: [] })).toBeCloseTo(outside, 6)
+
+    // A regular Electro hit gets the field's DMG Bonus: 34% at 6 hits
+    const normal = hit('Sandrone', '1-Hit DMG')
+    if (!normal) return
+    const plain: DamageSetup = { ...base, rotation: { ...base.rotation, counts: { [normal.key]: 1 }, infusion: true } }
+    const inField = { ...plain, rotation: { ...plain.rotation, polestar: { active: true, hits: 6 } } }
+    expect(rotationDamage(stats, inField) / rotationDamage(stats, plain)).toBeCloseTo(1.34, 6)
   })
 })

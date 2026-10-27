@@ -68,6 +68,37 @@ const SPECIAL: Record<SpecialKind, { pattern: RegExp, factor: number, resist?: D
   stellarswirl: { pattern: /Stellar Swirl/, factor: 1 },
 }
 
+// Who makes Lunar and Stellar reactions possible in a team. Lunar: anyone with Lunar-labelled talent hits in the data
+// (Flins, Columbina) and Ineffa, Lauma and Nefer, whose Lunar hits aren't labelled so. Stellar: Sandrone, Odette and the
+// Cryo Traveler (KQM's Stellar Glimmer guide, keqingmains.com/misc/stellar)
+const LUNAR_ENABLERS: Record<string, SpecialKind[]> = { Ineffa: ['lunarcharged'], Lauma: ['lunarbloom'], Nefer: ['lunarbloom'] }
+const STELLAR_ENABLERS = ['Sandrone', 'Odette', 'TravelerCryo']
+
+// The Lunar and Stellar kinds a team (character ids, the receiver included) can trigger
+export function teamReactions(ids: string[]): SpecialKind[] {
+  const kinds = new Set<SpecialKind>()
+  for (const id of ids) {
+    for (const kind of LUNAR_ENABLERS[id] ?? []) kinds.add(kind)
+    for (const hit of characterHits(id)) if (hit.special?.startsWith('lunar')) kinds.add(hit.special)
+    if (STELLAR_ENABLERS.includes(id)) {
+      kinds.add('stellarconduct')
+      kinds.add('stellarswirl')
+    }
+  }
+  return [...kinds]
+}
+
+// Stellar-Conduct's Polestar Field by its recorded hits (0-12, KQM): the multiplier on Stellar-Conduct damage and the
+// Cryo and Electro DMG Bonus it gives characters inside it
+export function polestarMultiplier(hits: number): number {
+  const n = Math.max(0, Math.min(12, Math.round(hits)))
+  return n === 0 ? 1 : 1.4 + 0.05 * n
+}
+export function polestarDmgBonus(hits: number): number {
+  const n = Math.max(0, Math.min(12, Math.round(hits)))
+  return n === 0 ? 20 : 28 + n
+}
+
 function specialKind(label: string): SpecialKind | undefined {
   return (Object.entries(SPECIAL) as [SpecialKind, (typeof SPECIAL)[SpecialKind]][]).find(([, info]) => info.pattern.test(label))?.[0]
 }
@@ -113,6 +144,8 @@ export type Rotation = {
   reaction: Reaction,
   // Percent of the character's elemental hits that trigger the reaction
   reactionShare: number,
+  // Inside a Stellar-Conduct Polestar Field, and the hits it has recorded (0-12)
+  polestar?: { active: boolean, hits: number },
 }
 
 export type DamageSetup = {
@@ -127,6 +160,8 @@ export type DamageSetup = {
   reactionBonus?: Partial<Record<ReactionBonusKey, number>>,
   // Buffs to some hits only (Raiden's Resolve, Nahida's Tri-Karma bonus), from damage/combatEffects.ts
   hitBuffs?: HitBuff[],
+  // The Lunar and Stellar kinds the team can trigger (teamReactions); missing means every kind
+  teamReactions?: SpecialKind[],
 }
 
 // A buff to some hits only, as data (it goes to the search's worker)
@@ -383,6 +418,8 @@ export type TransformativeReaction =
   | 'burgeon'
   | 'lunarcharged'
   | 'stellarswirl'
+  | 'stellarvortex1'
+  | 'stellarvortex2'
 const TRANSFORMATIVE: Record<
   TransformativeReaction,
   { label: string, multiplier: number, triggeredBy: Element[], variants: DamageElement[], special?: boolean }
@@ -397,16 +434,31 @@ const TRANSFORMATIVE: Record<
   hyperbloom: { label: 'Hyperbloom (per Sprawling Shot)', multiplier: 3, triggeredBy: ['Electro'], variants: ['Dendro'] },
   burgeon: { label: 'Burgeon (per Dendro Core)', multiplier: 3, triggeredBy: ['Pyro'], variants: ['Dendro'] },
   lunarcharged: { label: 'Lunar-Charged', multiplier: 1.8, triggeredBy: ['Electro'], variants: ['Electro'], special: true },
-  stellarswirl: { label: 'Stellar Swirl', multiplier: 0.75, triggeredBy: ['Anemo', 'Cryo'], variants: ['Anemo', 'Cryo'], special: true },
+  // Stellar Swirl's first Anemo hit, then its Vortex's Cryo explosion (x2 at level 1, x3 at level 2; KQM)
+  stellarswirl: { label: 'Stellar Swirl (Anemo hit)', multiplier: 0.75, triggeredBy: ['Anemo'], variants: ['Anemo'], special: true },
+  stellarvortex1: { label: 'Stellar Vortex explosion, level 1', multiplier: 2, triggeredBy: ['Anemo', 'Cryo'], variants: ['Cryo'], special: true },
+  stellarvortex2: { label: 'Stellar Vortex explosion, level 2', multiplier: 3, triggeredBy: ['Anemo', 'Cryo'], variants: ['Cryo'], special: true },
 }
 
 export type TransformativeLine = { key: string, label: string, reaction: TransformativeReaction, variant: DamageElement }
 
-// The transformative reactions a character of this element triggers, as rotation lines ('reaction:swirl:Pyro')
-export function transformativeLines(element: Element | undefined): TransformativeLine[] {
+// The Lunar or Stellar kind a reaction needs someone in the team to enable
+const NEEDS: Partial<Record<TransformativeReaction, SpecialKind>> = {
+  lunarcharged: 'lunarcharged',
+  stellarswirl: 'stellarswirl',
+  stellarvortex1: 'stellarswirl',
+  stellarvortex2: 'stellarswirl',
+}
+
+// The reaction DMG bonus each reaction takes
+const BONUS_KEY: Partial<Record<TransformativeReaction, ReactionBonusKey>> = { stellarvortex1: 'stellarswirl', stellarvortex2: 'stellarswirl' }
+
+// The transformative reactions a character of this element triggers, as rotation lines ('reaction:swirl:Pyro'). Lunar and
+// Stellar ones only when the team can trigger them (team: teamReactions; missing means every kind)
+export function transformativeLines(element: Element | undefined, team?: SpecialKind[]): TransformativeLine[] {
   if (!element) return []
   return (Object.entries(TRANSFORMATIVE) as [TransformativeReaction, (typeof TRANSFORMATIVE)[TransformativeReaction]][])
-    .filter(([, info]) => info.triggeredBy.includes(element))
+    .filter(([reaction, info]) => info.triggeredBy.includes(element) && (!team || !NEEDS[reaction] || team.includes(NEEDS[reaction])))
     .flatMap(([reaction, info]) =>
       info.variants.map((variant) => ({
         key: info.variants.length > 1 ? `reaction:${reaction}:${variant}` : `reaction:${reaction}`,
@@ -430,7 +482,13 @@ function resMultiplier(res: number): number {
 
 // Everything that's the same for every build, worked out once
 export function prepareDamage(setup: DamageSetup): PreparedDamage {
-  const { rotation, enemy, debuffs, element } = setup
+  const { rotation, enemy, element } = setup
+  // Inside a Polestar Field (when the team can make one): Cryo and Electro DMG Bonus, and Physical RES -40%
+  const polestar = rotation.polestar?.active && (!setup.teamReactions || setup.teamReactions.includes('stellarconduct')) ? rotation.polestar : undefined
+  const debuffs = polestar
+    ? { ...setup.debuffs, resShred: { ...setup.debuffs.resShred, Physical: (setup.debuffs.resShred.Physical ?? 0) + 40 } }
+    : setup.debuffs
+  const fieldDmg = polestar && (element === 'Cryo' || element === 'Electro') ? polestarDmgBonus(polestar.hits) : 0
   // By element, hit kind and the hit-specific buffs that reach it ("Pyro|skillDmg|0,2")
   const byElement = new Map<string, Map<ScalingStat, number>>()
   // Hits per group, for Aggravate and Spread's flat damage on each
@@ -486,7 +544,7 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
       reactionBonus: rotation.reaction === 'none' ? 0 : reactionBonus(rotation.reaction),
       catalyze: catalyzeMultiplier * reactionLevelMultiplier(setup.characterLevel),
       hits: hitCounts.get(key) ?? 0,
-      dmgBonus: reaching.reduce((sum, buff) => sum + (buff.dmgBonus ?? 0), 0),
+      dmgBonus: reaching.reduce((sum, buff) => sum + (buff.dmgBonus ?? 0), 0) + (hitElement === element ? fieldDmg : 0),
       critRate: reaching.reduce((sum, buff) => sum + (buff.critRate ?? 0), 0),
       fromEm: reaching.flatMap((buff) => (buff.fromEm ? [buff.fromEm] : [])),
     }
@@ -494,17 +552,20 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
   const characterFactor = setup.characterLevel + 100
   const def = characterFactor / (characterFactor + (enemy.level + 100) * Math.max(0, 1 - debuffs.defShred / 100))
   const transformative: PreparedDamage['transformative'] = []
-  for (const line of transformativeLines(element)) {
+  for (const line of transformativeLines(element, setup.teamReactions)) {
     const count = rotation.counts[line.key] ?? 0
     if (count <= 0) continue
     const shred = (debuffs.resShred[line.variant] ?? 0) + (debuffs.resShred.all ?? 0)
     const base = count * transformativeBase(line.reaction, setup.characterLevel) * resMultiplier((enemy.res - shred) / 100)
-    transformative.push({ base, bonus: reactionBonus(line.reaction), special: !!TRANSFORMATIVE[line.reaction].special })
+    const bonusKey = BONUS_KEY[line.reaction] ?? (line.reaction as ReactionBonusKey)
+    transformative.push({ base, bonus: reactionBonus(bonusKey), special: !!TRANSFORMATIVE[line.reaction].special })
   }
   const specialGroups = [...special].map(([kind, terms]) => {
     const resist = SPECIAL[kind].resist ?? element ?? 'Physical'
     const shred = (debuffs.resShred[resist] ?? 0) + (debuffs.resShred.all ?? 0)
-    const scale = SPECIAL[kind].factor * resMultiplier((enemy.res - shred) / 100)
+    // Stellar-Conduct damage grows with the Polestar Field's recorded hits
+    const field = kind === 'stellarconduct' && polestar ? polestarMultiplier(polestar.hits) : 1
+    const scale = SPECIAL[kind].factor * field * resMultiplier((enemy.res - shred) / 100)
     return { terms: [...terms].map(([stat, value]): [ScalingStat, number] => [stat, value * scale]), bonus: reactionBonus(kind) }
   })
   return {

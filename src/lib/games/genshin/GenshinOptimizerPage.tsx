@@ -22,6 +22,7 @@ import {
   type Rotation,
   rotationDamage,
   rotationTalents,
+  teamReactions,
 } from 'lib/games/genshin/damage/damage'
 import {
   EffectsCard,
@@ -278,6 +279,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const teamResult = teamBuffsFor(character, team, { characters, artifacts })
   const teamBuffs = { premod: teamResult.premod, total: teamResult.total }
   const talents = rotationTalents(character, rotation)
+  // The Lunar and Stellar kinds this team can trigger; the page only offers those
+  const reactionsInTeam = teamReactions([character.id, ...teammates])
   // The character's own combat effects: their kit, and the 4-piece filter's set (every build has it)
   const combat: CombatSetup = { sets: fourPieceSet ? [fourPieceSet] : [], settings: combatSettings }
   const resolvedCombat = resolveCombat(character, combat, setCountsOf(fourPieceSet ? Array(4).fill(fourPieceSet) : []))
@@ -305,6 +308,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
       ])),
     },
     hitBuffs: resolvedCombat.hitBuffs,
+    teamReactions: reactionsInTeam,
   }
   const byDamage = targetValue === DAMAGE_TARGET && hasTalentData(character.id)
   const target: OptimizerTarget = byDamage ? { kind: 'damage', setup: damageSetup } : genshinTarget(targetValue, character.element)
@@ -496,6 +500,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                 character={character}
                 rotation={rotation}
                 talents={talents}
+                team={reactionsInTeam}
                 damage={currentDamage}
                 onChange={(next) => {
                   setRotation(next)
