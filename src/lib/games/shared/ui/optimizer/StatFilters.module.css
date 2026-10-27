@@ -1,0 +1,19 @@
+/* Min / max stat filters (StatFilters.tsx), after HSR's optimizer stat filter rows */
+
+.filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px 76px;
+  gap: 4px 8px;
+  align-items: center;
+}
+
+.row {
+  display: contents;
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

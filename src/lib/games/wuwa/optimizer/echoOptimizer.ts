@@ -68,6 +68,8 @@ export type EchoRequest = {
   echoes: Echo[],
   filters: EchoFilters,
   minStats: Partial<Record<keyof WuwaStats, number>>,
+  // Loadouts above any of these are left out, e.g. Energy Regen at most 130
+  maxStats?: Partial<Record<keyof WuwaStats, number>>,
   target: EchoTarget,
   limit: number,
   // Called now and then while searching (added by the worker, never sent to it)
@@ -104,7 +106,8 @@ const COSTS: Cost[] = [4, 3, 1]
 
 // Cost patterns (how many 4, 3 and 1-cost echoes) within the limits that have no room for another of the available
 // echoes. available is the number of echoes of each cost, in COSTS order
-export function costPatterns(available: [number, number, number]): [number, number, number][] {
+// allSizes: every pattern, not only full ones; a maximum stat can make a loadout with room left the better one
+export function costPatterns(available: [number, number, number], allSizes = false): [number, number, number][] {
   const patterns: [number, number, number][] = []
   for (let k4 = 0; k4 <= available[0]; k4++) {
     for (let k3 = 0; k3 <= available[1]; k3++) {
@@ -114,7 +117,7 @@ export function costPatterns(available: [number, number, number]): [number, numb
         const cost = 4 * k4 + 3 * k3 + k1
         if (size === 0 || size > MAX_LOADOUT_ECHOES || cost > MAX_LOADOUT_COST) continue
         const roomLeft = COSTS.some((c, i) => taken[i] < available[i] && size < MAX_LOADOUT_ECHOES && cost + c <= MAX_LOADOUT_COST)
-        if (!roomLeft) patterns.push([k4, k3, k1])
+        if (allSizes || !roomLeft) patterns.push([k4, k3, k1])
       }
     }
   }
@@ -227,16 +230,23 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
     return { stats, score: scoreStats(stats, target) }
   }
   const meetsMins = (stats: WuwaStats) => minEntries.every(([stat, min]) => stats[stat] >= min)
+  const maxEntries = (Object.entries(request.maxStats ?? {}) as [keyof WuwaStats, number][]).filter(([, v]) => Number.isFinite(v))
+  const meetsMaxes = (stats: WuwaStats) => maxEntries.every(([stat, max]) => stats[stat] <= max)
   const base = toVector(prepared.bonus)
 
-  // Stats that change the target or a minimum stat
+  // Stats that change the target, a minimum or a maximum. More of a stat is better for the target and minimums, less for
+  // maximums: direction 1 means more is better, -1 less is better, 0 that it has to match (both)
   const baseline = evaluate(base)
   const relevant: number[] = []
+  const direction = new Int8Array(STAT_COUNT)
   for (let i = 0; i < STAT_COUNT; i++) {
     const bumped = new Float64Array(base)
     bumped[i] += 1000
     const after = evaluate(bumped)
-    if (after.score !== baseline.score || minEntries.some(([stat]) => after.stats[stat] !== baseline.stats[stat])) relevant.push(i)
+    const up = after.score !== baseline.score || minEntries.some(([stat]) => after.stats[stat] !== baseline.stats[stat])
+    const capped = maxEntries.some(([stat]) => after.stats[stat] !== baseline.stats[stat])
+    if (up || capped) relevant.push(i)
+    direction[i] = up && capped ? 0 : capped ? -1 : 1
   }
 
   // Sets that matter get an index, the rest share -1
@@ -258,7 +268,7 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
 
   // Only the patterns the pool can fill, and the most echoes of each cost any of them takes
   const byCost = new Map<Cost, Echo[]>(COSTS.map((cost) => [cost, pool.filter((echo) => echo.cost === cost)]))
-  const patterns = costPatterns([byCost.get(4)!.length, byCost.get(3)!.length, byCost.get(1)!.length])
+  const patterns = costPatterns([byCost.get(4)!.length, byCost.get(3)!.length, byCost.get(1)!.length], maxEntries.length > 0)
   const maxTaken = new Map<Cost, number>(COSTS.map((cost, c) => [cost, Math.max(...patterns.map((p) => p[c]))]))
 
   // Which set (and which echo, since only distinct echoes count) each echo is, for dominance and counting
@@ -282,8 +292,9 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
         let atLeast = true
         let better = false
         for (const i of relevant) {
-          const diff = vectors[b][i] - vectors[a][i]
-          if (diff < 0) {
+          // How much better b is than a in this stat, in the direction that helps
+          const diff = (vectors[b][i] - vectors[a][i]) * (direction[i] || 1)
+          if (diff < 0 || (direction[i] === 0 && diff !== 0)) {
             atLeast = false
             break
           }
@@ -365,9 +376,19 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
           for (let i = 0; i < STAT_COUNT; i++) leaf[i] += bonus[i]
         }
         const { stats, score } = evaluate(leaf)
-        if (!meetsMins(stats) || !wouldRank(top, [score], limit)) return
+        if (!meetsMins(stats) || !meetsMaxes(stats) || !wouldRank(top, [score], limit)) return
         insertRanked(top, { values: [score], item: chosen.map((c) => c.echo) }, limit)
         return
+      }
+
+      // Echoes only add stats, so a branch already over a maximum stays over it
+      if (maxEntries.length > 0 && depth > 0) {
+        for (let i = 0; i < STAT_COUNT; i++) bound[i] = sums[depth][i]
+        for (let s = 0; s < setIds.length; s++) {
+          const bonus = bonusAt[s][Math.min(distinct[s], MAX_LOADOUT_ECHOES)]
+          for (let i = 0; i < STAT_COUNT; i++) bound[i] += bonus[i]
+        }
+        if (!meetsMaxes(evaluate(bound).stats)) return
       }
 
       // The best this branch could do: the remaining echoes' best in every stat, plus set bonuses. At most two sets

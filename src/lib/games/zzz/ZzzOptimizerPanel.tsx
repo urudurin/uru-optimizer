@@ -5,10 +5,8 @@ import {
   FileInput,
   Group,
   MultiSelect,
-  NumberInput,
   SegmentedControl,
   Select,
-  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -39,6 +37,10 @@ import {
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
+import {
+  limitsSummary,
+  StatFilters,
+} from 'lib/games/shared/ui/optimizer/StatFilters'
 import {
   FormCard,
   FormRow,
@@ -132,6 +134,7 @@ type ZzzOptimizerSettings = {
   twoPieceSet: string | null,
   mainStats: Partial<Record<MainStatSlot, ZzzStatsValues[]>>,
   minStats: Partial<Record<keyof FinalStats, number>>,
+  maxStats: Partial<Record<keyof FinalStats, number>>,
   excludeEquippedByOthers: boolean,
 }
 
@@ -195,10 +198,12 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     twoPieceSet: null,
     mainStats: {},
     minStats: {},
+    maxStats: {},
     excludeEquippedByOthers: false,
   }), [agent, builds])
   const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, agentId, defaultSettings)
-  const { loadout, coreSkill, conditions, sortBy, thenBy, presetChoice, fourPieceSet, twoPieceSet, mainStats, minStats, excludeEquippedByOthers } = settings
+  const { loadout, coreSkill, conditions, sortBy, thenBy, presetChoice, fourPieceSet, twoPieceSet, mainStats, minStats, maxStats, excludeEquippedByOthers } =
+    settings
   const setLoadout = fieldSetter(updateSettings, 'loadout')
   const setCoreSkill = fieldSetter(updateSettings, 'coreSkill')
   const setConditions = fieldSetter(updateSettings, 'conditions')
@@ -209,6 +214,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const setTwoPieceSet = fieldSetter(updateSettings, 'twoPieceSet')
   const setMainStats = fieldSetter(updateSettings, 'mainStats')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
+  const setMaxStats = fieldSetter(updateSettings, 'maxStats')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
   const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
   const [selected, setSelected] = useState(0)
@@ -295,6 +301,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       discs,
       filters,
       minStats,
+      maxStats,
       sortBy,
       thenBy,
       limit: RESULT_LIMIT,
@@ -344,13 +351,12 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const rankLabel = rankRow.label
   const agentSummary = `${agent.name} · ${W_ENGINES[loadout.wEngineId]?.name ?? 'No W-Engine'} R${loadout.refinement} · ranked by ${rankLabel}`
   const mainFilters = MAIN_STAT_SLOTS.filter((slot) => mainStats[slot]?.length).length
-  const minCount = Object.values(minStats).filter((v) => v !== undefined).length
   const conditionCount = Object.values(conditions).filter(Boolean).length
   const filterSummary = [
     [fourPieceSet ? `4pc ${setName(fourPieceSet)}` : '', twoPieceSet ? `2pc ${setName(twoPieceSet)}` : ''].filter(Boolean).join(' + ') || 'Any sets',
     mainFilters ? `${mainFilters} main stat filter${mainFilters === 1 ? '' : 's'}` : 'any main stats',
     conditionCount ? `${conditionCount} combat condition${conditionCount === 1 ? '' : 's'} on` : 'stat screen',
-    minCount ? `${minCount} minimum${minCount === 1 ? '' : 's'}` : 'no minimums',
+    limitsSummary(minStats, maxStats),
   ].join(' · ')
   const isWorn = !!best && best.discs.every((disc) => agentBuild?.discIds[disc.slot] === disc.id)
 
@@ -561,19 +567,8 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                   />
                 ))}
               </FormCard>
-              <FormCard title='Minimum stats' size='wide' description='Builds below any of these are left out.'>
-                <SimpleGrid cols={3} spacing='sm'>
-                  {statRows.map((row) => (
-                    <NumberInput
-                      key={row.key}
-                      label={row.label}
-                      placeholder='None'
-                      min={0}
-                      value={minStats[row.key] ?? ''}
-                      onChange={(value) => setMinStats((prev) => ({ ...prev, [row.key]: typeof value === 'number' ? value : undefined }))}
-                    />
-                  ))}
-                </SimpleGrid>
+              <FormCard title='Stat filters' description='Builds outside any of these are left out.'>
+                <StatFilters rows={statRows} min={minStats} max={maxStats} onMin={(next) => setMinStats(next)} onMax={(next) => setMaxStats(next)} />
               </FormCard>
             </FormRow>
           </FormRows>

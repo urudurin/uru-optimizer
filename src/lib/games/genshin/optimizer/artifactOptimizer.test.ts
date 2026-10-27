@@ -84,6 +84,7 @@ function bruteForce(
   minStats: Partial<Record<GenshinStatKey, number>>,
   filters: OptimizerFilters,
   teamBuffs?: TeamBuffTotals,
+  maxStats: Partial<Record<GenshinStatKey, number>> = {},
 ) {
   const pools = ARTIFACT_SLOTS.map((slot) => artifacts.filter((a) => a.slot === slot))
   const scores: number[] = []
@@ -94,6 +95,7 @@ function bruteForce(
       if (filters.twoPieceSets.some((id) => count(id) < 2)) return
       const { stats } = computeGenshinStats(raiden, chosen, {}, teamBuffs)
       if (Object.entries(minStats).some(([stat, min]) => (stats[stat as GenshinStatKey] ?? 0) < min)) return
+      if (Object.entries(maxStats).some(([stat, max]) => (stats[stat as GenshinStatKey] ?? 0) > max)) return
       scores.push(scoreStats(stats, target))
       return
     }
@@ -123,6 +125,29 @@ describe('optimizeArtifacts', () => {
       expect(outcome.truncated).toBe(false)
       expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
       expect(outcome.visited).toBeLessThan(7 ** 5)
+    })
+  }
+
+  // A maximum just under what the best build has, so it has to change the results. The capped stat is part of the
+  // target (CRIT Rate in Crit Value), only capped (Energy Recharge for ATK), or capped and a minimum (EM)
+  const capCases: [string, OptimizerTarget, GenshinStatKey, Partial<Record<GenshinStatKey, number>>][] = [
+    ['Crit Value with a CRIT Rate maximum', { kind: 'critValue' }, 'critRate', {}],
+    ['ATK with an Energy Recharge maximum', { kind: 'stat', stat: 'atk' }, 'energyRecharge', {}],
+    ['average ATK hit with a minimum and maximum Elemental Mastery', { kind: 'averageHit', stat: 'atk' }, 'elementalMastery', { elementalMastery: 20 }],
+  ]
+  for (const [name, target, capped, minStats] of capCases) {
+    it(`finds the same top 5 as trying every combination: ${name}`, () => {
+      const free = optimizeArtifacts({ character: raiden, artifacts, filters: noFilters, minStats, target, limit: 1 })
+      if (!free.ok) throw new Error(free.reason)
+      const maxStats = { [capped]: (free.builds[0].stats[capped] ?? 0) - 0.1 }
+      const outcome = optimizeArtifacts({ character: raiden, artifacts, filters: noFilters, minStats, maxStats, target, limit: 5 })
+      if (!outcome.ok) throw new Error(outcome.reason)
+      const expected = bruteForce(artifacts, target, minStats, noFilters, undefined, maxStats).slice(0, 5)
+
+      expect(expected.length).toBeGreaterThan(0)
+      expect(outcome.truncated).toBe(false)
+      expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
+      expect(outcome.builds.every((b) => (b.stats[capped] ?? 0) <= maxStats[capped])).toBe(true)
     })
   }
 

@@ -3,9 +3,7 @@ import {
   Button,
   Group,
   MultiSelect,
-  NumberInput,
   Select,
-  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -35,6 +33,10 @@ import {
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
+import {
+  limitsSummary,
+  StatFilters,
+} from 'lib/games/shared/ui/optimizer/StatFilters'
 import {
   FormCard,
   FormRow,
@@ -130,11 +132,12 @@ type WuwaOptimizerSettings = {
   twoPieceSets: string[],
   excludeEquippedByOthers: boolean,
   minStats: Partial<Record<keyof WuwaStats, number>>,
+  maxStats: Partial<Record<keyof WuwaStats, number>>,
 }
 
 // What a Resonator starts with before their settings are changed (and saved)
 function defaultSettings(): WuwaOptimizerSettings {
-  return { targetValue: 'avg:atk', mainStats: {}, fullSet: null, twoPieceSets: [], excludeEquippedByOthers: true, minStats: {} }
+  return { targetValue: 'avg:atk', mainStats: {}, fullSet: null, twoPieceSets: [], excludeEquippedByOthers: true, minStats: {}, maxStats: {} }
 }
 
 export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
@@ -150,13 +153,14 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
 
   // Saved per Resonator, see shared/optimizerSettings.ts
   const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.charId ?? '', defaultSettings)
-  const { targetValue, mainStats, fullSet, twoPieceSets, excludeEquippedByOthers, minStats } = settings
+  const { targetValue, mainStats, fullSet, twoPieceSets, excludeEquippedByOthers, minStats, maxStats } = settings
   const setTargetValue = fieldSetter(updateSettings, 'targetValue')
   const setMainStats = fieldSetter(updateSettings, 'mainStats')
   const setFullSet = fieldSetter(updateSettings, 'fullSet')
   const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
+  const setMaxStats = fieldSetter(updateSettings, 'maxStats')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: EchoOutcome, ms: number, target: EchoTarget } | undefined>()
@@ -205,7 +209,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   async function run() {
     setRunning(true)
     setProgress(undefined)
-    const response = await runEchoOptimizer({ character, characters, echoes, filters, minStats, target, limit: RESULT_LIMIT }, setProgress)
+    const response = await runEchoOptimizer({ character, characters, echoes, filters, minStats, maxStats, target, limit: RESULT_LIMIT }, setProgress)
     // undefined: cancelled, or replaced by a newer search that is still running
     if (response) {
       setResult({ ...response, target })
@@ -223,12 +227,11 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
   const mainFilters = COSTS.filter((cost) => mainStats[cost]?.length).length
-  const minCount = Object.values(minStats).filter((v) => v !== undefined).length
   const filterSummary = [
     [fullSet ? `Full ${setName(fullSet)}` : '', ...twoPieceSets.slice(0, maxTwoPiece).map((id) => `2pc ${setName(id)}`)].filter(Boolean).join(' + ')
     || 'Any sets',
     mainFilters ? `${mainFilters} main stat filter${mainFilters === 1 ? '' : 's'}` : 'any main stats',
-    minCount ? `${minCount} minimum${minCount === 1 ? '' : 's'}` : 'no minimums',
+    limitsSummary(minStats, maxStats),
   ].join(' · ')
   const wornIds = new Set(character.echoIds.filter((id) => id !== null))
   const isWorn = !!build && build.echoes.length === wornIds.size && build.echoes.every((e) => wornIds.has(e.id))
@@ -365,19 +368,14 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                   />
                 ))}
               </FormCard>
-              <FormCard title='Minimum stats' size='wide' description='Loadouts below any of these are left out, e.g. Energy Regen 120.'>
-                <SimpleGrid cols={2} spacing='sm'>
-                  {MIN_STATS.map((stat) => (
-                    <NumberInput
-                      key={stat}
-                      label={wuwaStatLabel(stat)}
-                      placeholder='None'
-                      min={0}
-                      value={minStats[stat] ?? ''}
-                      onChange={(value) => setMinStats((prev) => ({ ...prev, [stat]: typeof value === 'number' ? value : undefined }))}
-                    />
-                  ))}
-                </SimpleGrid>
+              <FormCard title='Stat filters' description='Loadouts outside any of these are left out, e.g. Energy Regen 120 to 140.'>
+                <StatFilters
+                  rows={MIN_STATS.map((stat) => ({ key: stat, label: wuwaStatLabel(stat) }))}
+                  min={minStats}
+                  max={maxStats}
+                  onMin={(next) => setMinStats(next)}
+                  onMax={(next) => setMaxStats(next)}
+                />
               </FormCard>
             </FormRow>
           </FormRows>

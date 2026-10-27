@@ -69,6 +69,8 @@ export type OptimizerRequest = {
   artifacts: Artifact[],
   filters: OptimizerFilters,
   minStats: Partial<Record<GenshinStatKey, number>>,
+  // Builds above any of these are left out, e.g. Energy Recharge at most 160
+  maxStats?: Partial<Record<GenshinStatKey, number>>,
   target: OptimizerTarget,
   limit: number,
   // Buffs from teammates (team/teamBuffs.ts), the same for every build
@@ -248,16 +250,26 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
     for (const [index, min] of mins) if (stats[index] < min) return false
     return true
   }
+  const maxEntries = (Object.entries(request.maxStats ?? {}) as [GenshinStatKey, number][]).filter(([, v]) => Number.isFinite(v))
+  const maxes = maxEntries.map(([stat, max]) => [STAT_INDEX.get(stat)!, max] as const)
+  const meetsMaxes = (stats: Float64Array) => {
+    for (const [index, max] of maxes) if (stats[index] > max) return false
+    return true
+  }
 
-  // 1. Stats that change the target or a minimum stat
+  // 1. Stats that change the target, a minimum or a maximum. More of a stat is better for the target and minimums,
+  // less for maximums: direction 1 means more is better, -1 less is better, 0 that it has to match (both)
   const baseline = evaluate(base)
   const relevant: number[] = []
+  const direction = new Int8Array(STAT_COUNT)
   for (let i = 0; i < STAT_COUNT; i++) {
     const bumped = new Float64Array(base)
     bumped[i] += 1000
     const after = evaluate(bumped)
-    const changes = after.score !== baseline.score || minEntries.some(([stat]) => after.stats[stat] !== baseline.stats[stat])
-    if (changes) relevant.push(i)
+    const up = after.score !== baseline.score || minEntries.some(([stat]) => after.stats[stat] !== baseline.stats[stat])
+    const capped = maxEntries.some(([stat]) => after.stats[stat] !== baseline.stats[stat])
+    if (up || capped) relevant.push(i)
+    direction[i] = up && capped ? 0 : capped ? -1 : 1
   }
 
   // Sets that matter: required ones, and ones whose 2-piece touches a relevant stat. The rest share index -1
@@ -283,8 +295,9 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
         let atLeast = true
         let better = false
         for (const i of relevant) {
-          const diff = vectors[slot][b][i] - vectors[slot][a][i]
-          if (diff < 0) {
+          // How much better b is than a in this stat, in the direction that helps
+          const diff = (vectors[slot][b][i] - vectors[slot][a][i]) * (direction[i] || 1)
+          if (diff < 0 || (direction[i] === 0 && diff !== 0)) {
             atLeast = false
             break
           }
@@ -407,7 +420,7 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
           for (let i = 0; i < STAT_COUNT; i++) leaf[i] += twoPiece[s][i]
         }
         finalize(leaf, final)
-        if (!meetsMins(final)) return
+        if (!meetsMins(final) || !meetsMaxes(final)) return
         const value = score(final)
         if (!wouldRank(top, [value], limit)) return
         const item: number[] = []
@@ -416,6 +429,17 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
         if (top.some((entry) => entry.item.every((a, slot) => a === item[slot]))) return
         insertRanked(top, { values: [value], item }, limit)
         return
+      }
+
+      // Gear only adds stats, so a branch already over a maximum stays over it
+      if (maxes.length > 0) {
+        for (let i = 0; i < STAT_COUNT; i++) bound[i] = sums[depth][i]
+        for (let s = 0; s < setIds.length; s++) {
+          if (counts[s] < 2) continue
+          for (let i = 0; i < STAT_COUNT; i++) bound[i] += twoPiece[s][i]
+        }
+        finalize(bound, final)
+        if (!meetsMaxes(final)) return
       }
 
       // The best this branch could possibly do: every remaining slot's best in every stat, plus the 2-piece bonuses
@@ -483,6 +507,15 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
       // Every mix of main stats in the other slots
       const others = comboBounds(candidates, d)[0]
       return list.filter((a) => {
+        // An artifact that alone takes a stat over its maximum can't be in any build
+        if (maxes.length > 0) {
+          for (let i = 0; i < STAT_COUNT; i++) bound[i] = base[i] + orderedVectors[d][a][i]
+          finalize(bound, final)
+          if (!meetsMaxes(final)) {
+            changed = true
+            return false
+          }
+        }
         for (let i = 0; i < STAT_COUNT; i++) bound[i] = base[i] + orderedVectors[d][a][i] + setUpper[i]
         const keep = others.some((combo) => {
           for (let i = 0; i < STAT_COUNT; i++) withRest[i] = bound[i] + combo[i]

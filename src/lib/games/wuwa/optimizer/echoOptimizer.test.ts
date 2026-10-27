@@ -64,17 +64,26 @@ function inventory(counts: Record<Cost, number>): Echo[] {
 }
 
 // Every loadout with no room for another echo, scored the slow way
-function bruteForce(echoes: Echo[], target: EchoTarget, minStats: Partial<Record<keyof WuwaStats, number>>, filters: EchoFilters): number[] {
+function bruteForce(
+  echoes: Echo[],
+  target: EchoTarget,
+  minStats: Partial<Record<keyof WuwaStats, number>>,
+  filters: EchoFilters,
+  maxStats: Partial<Record<keyof WuwaStats, number>> = {},
+): number[] {
+  // With a maximum, a loadout with room left can be the better one
+  const anySize = Object.keys(maxStats).length > 0
   const scores: number[] = []
   const walk = (start: number, chosen: Echo[], cost: number) => {
     const roomLeft = chosen.length < 5 && echoes.some((e) => !chosen.includes(e) && cost + e.cost <= 12)
-    if (!roomLeft && chosen.length > 0) {
+    if ((anySize || !roomLeft) && chosen.length > 0) {
       const distinct = (setId: string) => new Set(chosen.filter((e) => e.setId === setId).map((e) => e.defId)).size
       if (filters.fullSet && distinct(filters.fullSet) < 5) return
       if (filters.twoPieceSets.some((id) => distinct(id) < 2)) return
       const { stats } = computeWuwaStats(hsin, chosen)
-      if (Object.entries(minStats).some(([stat, min]) => stats[stat as keyof WuwaStats] < min)) return
-      scores.push(scoreStats(stats, target))
+      const fails = Object.entries(minStats).some(([stat, min]) => stats[stat as keyof WuwaStats] < min)
+        || Object.entries(maxStats).some(([stat, max]) => stats[stat as keyof WuwaStats] > max)
+      if (!fails) scores.push(scoreStats(stats, target))
     }
     for (let i = start; i < echoes.length; i++) {
       if (chosen.length < 5 && cost + echoes[i].cost <= 12) walk(i + 1, [...chosen, echoes[i]], cost + echoes[i].cost)
@@ -104,6 +113,28 @@ describe('optimizeEchoes', () => {
       expect(outcome.truncated).toBe(false)
       expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
       expect(outcome.builds.every((b) => b.echoes.reduce((sum, e) => sum + e.cost, 0) <= 12 && b.echoes.length <= 5)).toBe(true)
+    })
+  }
+
+  // A maximum just under what the best loadout has, so it has to change the results
+  const capCases: [string, EchoTarget, keyof WuwaStats][] = [
+    ['Crit Value with a Crit Rate maximum', { kind: 'critValue' }, 'critRate'],
+    ['ATK with an Energy Regen maximum', { kind: 'stat', stat: 'atk' }, 'energyRegen'],
+  ]
+  for (const [name, target, capped] of capCases) {
+    it(`finds the same top 5 as trying every loadout: ${name}`, () => {
+      const request = { character: hsin, characters: [hsin], echoes, filters: noFilters, minStats: {}, target }
+      const free = optimizeEchoes({ ...request, limit: 1 })
+      if (!free.ok) throw new Error(free.reason)
+      const maxStats = { [capped]: free.builds[0].stats[capped] - 0.1 }
+      const outcome = optimizeEchoes({ ...request, maxStats, limit: 5 })
+      if (!outcome.ok) throw new Error(outcome.reason)
+      const expected = bruteForce(echoes, target, {}, noFilters, maxStats).slice(0, 5)
+
+      expect(expected.length).toBeGreaterThan(0)
+      expect(outcome.truncated).toBe(false)
+      expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
+      expect(outcome.builds.every((b) => b.stats[capped] <= maxStats[capped])).toBe(true)
     })
   }
 

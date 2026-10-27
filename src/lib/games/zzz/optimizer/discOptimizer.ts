@@ -62,6 +62,8 @@ export type OptimizerRequest = {
   filters: OptimizerFilters,
   // Compared against the unrounded stat
   minStats: Partial<Record<keyof FinalStats, number>>,
+  // Builds above any of these are left out, compared against the unrounded stat too
+  maxStats?: Partial<Record<keyof FinalStats, number>>,
   sortBy: keyof FinalStats,
   // Breaks ties in sortBy, compared in order
   thenBy?: (keyof FinalStats)[],
@@ -178,6 +180,7 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   if (requiredFour === -2 || requiredTwo === -2) return { ok: true, builds: [], combinations, matched: 0 }
 
   const minEntries = Object.entries(request.minStats).filter(([, v]) => v !== undefined) as [keyof FinalStats, number][]
+  const maxEntries = Object.entries(request.maxStats ?? {}).filter(([, v]) => v !== undefined) as [keyof FinalStats, number][]
   const rankKeys = [sortBy, ...(request.thenBy ?? []).filter((key) => key !== sortBy)]
 
   // sums[d] holds base + the first d discs
@@ -216,6 +219,7 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
       if (reached.length > 0) stats = finalizeStats(agent, wEngine, leaf)
     }
     for (const [key, min] of minEntries) if (stats[key] < min) return
+    for (const [key, max] of maxEntries) if (stats[key] > max) return
     matched++
 
     // Cheap check on the main stat first, most combinations stop here

@@ -112,6 +112,19 @@ describe('optimizeDiscs', () => {
     expect(outcome.builds.map((b) => keys.map((key) => b.display[key]))).toEqual(expected)
   })
 
+  it('leaves out builds over a maximum stat', () => {
+    const free = optimizeDiscs(makeRequest({ sortBy: 'critDmg' }))
+    if (!free.ok) throw new Error(free.reason)
+    const cap = free.builds[0].display.critRate - 0.1
+    const request = makeRequest({ sortBy: 'critDmg', maxStats: { critRate: cap } })
+    const outcome = optimizeDiscs(request)
+    if (!outcome.ok) throw new Error(outcome.reason)
+
+    const expected = bruteForce(request).filter((r) => r.stats.critRate <= cap).slice(0, 10).map((r) => r.display.critDmg)
+    expect(outcome.builds.map((b) => b.display.critDmg)).toEqual(expected)
+    expect(outcome.builds.every((b) => b.display.critRate <= cap)).toBe(true)
+  })
+
   it('returns builds in slot order with stats identical to the calculator', () => {
     const request = makeRequest({ conditions: { onField: true, inEtherVeil: false, veilTriggered: false, freezeOrShatter: false } })
     const outcome = optimizeDiscs(request)

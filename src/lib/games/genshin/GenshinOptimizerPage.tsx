@@ -3,9 +3,7 @@ import {
   Button,
   Group,
   MultiSelect,
-  NumberInput,
   Select,
-  SimpleGrid,
   Stack,
   Switch,
   Text,
@@ -87,6 +85,10 @@ import {
 import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
+  limitsSummary,
+  StatFilters,
+} from 'lib/games/shared/ui/optimizer/StatFilters'
+import {
   FormCard,
   FormRow,
   FormRows,
@@ -137,6 +139,7 @@ type GenshinOptimizerSettings = {
   twoPieceSets: string[],
   excludeEquippedByOthers: boolean,
   minStats: Partial<Record<GenshinStatKey, number>>,
+  maxStats: Partial<Record<GenshinStatKey, number>>,
   // The team (team/teamBuffs.ts): teammate ids, whether this character is on the field, buff toggles
   teammates: string[],
   onField: boolean,
@@ -152,6 +155,7 @@ function defaultSettings(): GenshinOptimizerSettings {
     twoPieceSets: [],
     excludeEquippedByOthers: true,
     minStats: {},
+    maxStats: {},
     teammates: [],
     onField: true,
     teamSettings: {},
@@ -169,13 +173,14 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
 
   // Saved per character, see shared/optimizerSettings.ts
   const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.id ?? '', defaultSettings)
-  const { targetValue, mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, minStats, teammates, onField, teamSettings } = settings
+  const { targetValue, mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, minStats, maxStats, teammates, onField, teamSettings } = settings
   const setTargetValue = fieldSetter(updateSettings, 'targetValue')
   const setMainStats = fieldSetter(updateSettings, 'mainStats')
   const setFourPieceSet = fieldSetter(updateSettings, 'fourPieceSet')
   const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
+  const setMaxStats = fieldSetter(updateSettings, 'maxStats')
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setOnField = fieldSetter(updateSettings, 'onField')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
@@ -222,7 +227,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   async function run() {
     setRunning(true)
     setProgress(undefined)
-    const response = await runOptimizer({ character, artifacts, filters, minStats, target, limit: RESULT_LIMIT, teamBuffs }, setProgress)
+    const response = await runOptimizer({ character, artifacts, filters, minStats, maxStats, target, limit: RESULT_LIMIT, teamBuffs }, setProgress)
     // undefined: cancelled, or replaced by a newer search that is still running
     if (response) {
       setResult({ ...response, target })
@@ -246,11 +251,10 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   })
   const setName = (id: string) => setOptions.find((o) => o.value === id)?.label ?? id
   const mainFilters = MAIN_STAT_SLOTS.filter((slot) => mainStats[slot]?.length).length
-  const minCount = Object.values(minStats).filter((v) => v !== undefined).length
   const filterSummary = [
     fourPieceSet ? `4pc ${setName(fourPieceSet)}` : twoPieceSets.length ? twoPieceSets.map((id) => `2pc ${setName(id)}`).join(' + ') : 'Any sets',
     mainFilters ? `${mainFilters} main stat filter${mainFilters === 1 ? '' : 's'}` : 'any main stats',
-    minCount ? `${minCount} minimum${minCount === 1 ? '' : 's'}` : 'no minimums',
+    limitsSummary(minStats, maxStats),
   ].join(' · ')
   const isWorn = build?.artifacts.every((a) => character.artifactIds[a.slot] === a.id) ?? false
 
@@ -404,19 +408,14 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                   />
                 ))}
               </FormCard>
-              <FormCard title='Minimum stats' size='wide' description='Builds below any of these are left out, e.g. Energy Recharge 200.'>
-                <SimpleGrid cols={2} spacing='sm'>
-                  {MIN_STATS.map((stat) => (
-                    <NumberInput
-                      key={stat}
-                      label={statLabel(stat)}
-                      placeholder='None'
-                      min={0}
-                      value={minStats[stat] ?? ''}
-                      onChange={(value) => setMinStats((prev) => ({ ...prev, [stat]: typeof value === 'number' ? value : undefined }))}
-                    />
-                  ))}
-                </SimpleGrid>
+              <FormCard title='Stat filters' description='Builds outside any of these are left out, e.g. Energy Recharge 200 to 250.'>
+                <StatFilters
+                  rows={MIN_STATS.map((stat) => ({ key: stat, label: statLabel(stat) }))}
+                  min={minStats}
+                  max={maxStats}
+                  onMin={(next) => setMinStats(next)}
+                  onMax={(next) => setMaxStats(next)}
+                />
               </FormCard>
             </FormRow>
           </FormRows>
