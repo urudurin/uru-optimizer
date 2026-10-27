@@ -1,3 +1,4 @@
+import type { CombatSetup } from 'lib/games/genshin/damage/combatEffects'
 import {
   optimizeArtifacts,
   type OptimizerFilters,
@@ -85,6 +86,7 @@ function bruteForce(
   filters: OptimizerFilters,
   teamBuffs?: TeamBuffTotals,
   maxStats: Partial<Record<GenshinStatKey, number>> = {},
+  combat?: CombatSetup,
 ) {
   const pools = ARTIFACT_SLOTS.map((slot) => artifacts.filter((a) => a.slot === slot))
   const scores: number[] = []
@@ -93,7 +95,7 @@ function bruteForce(
       const count = (id: string) => chosen.filter((a) => a.setId === id).length
       if (filters.fourPieceSet && count(filters.fourPieceSet) < 4) return
       if (filters.twoPieceSets.some((id) => count(id) < 2)) return
-      const { stats } = computeGenshinStats(raiden, chosen, {}, teamBuffs)
+      const { stats } = computeGenshinStats(raiden, chosen, {}, teamBuffs, combat)
       if (Object.entries(minStats).some(([stat, min]) => (stats[stat as GenshinStatKey] ?? 0) < min)) return
       if (Object.entries(maxStats).some(([stat, max]) => (stats[stat as GenshinStatKey] ?? 0) > max)) return
       scores.push(scoreStats(stats, target))
@@ -182,6 +184,31 @@ describe('optimizeArtifacts', () => {
 
     expect(outcome.truncated).toBe(false)
     expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
+  })
+
+  it('finds the same top 5 by rotation damage with combat effects: Emblem 4-piece, Noblesse 2-piece Burst DMG', () => {
+    const target: OptimizerTarget = {
+      kind: 'damage',
+      setup: {
+        characterId: 'RaidenShogun',
+        characterLevel: 90,
+        element: 'Electro',
+        rotation: { counts: { 'skill:10': 1, 'burst:12': 2 }, infusion: false, reaction: 'aggravate', reactionShare: 50 },
+        talents: { auto: 9, skill: 9, burst: 9 },
+        enemy: { level: 100, res: 10 },
+        debuffs: { defShred: 0, resShred: {} },
+        reactionBonus: { aggravate: 20 },
+      },
+    }
+    const combat: CombatSetup = { sets: ['EmblemOfSeveredFate'], settings: {} }
+    const filters = { ...noFilters, fourPieceSet: 'EmblemOfSeveredFate' }
+    const outcome = optimizeArtifacts({ character: raiden, artifacts, filters, minStats: {}, target, limit: 5, combat })
+    if (!outcome.ok) throw new Error(outcome.reason)
+    const expected = bruteForce(artifacts, target, {}, filters, undefined, {}, combat).slice(0, 5)
+
+    expect(outcome.truncated).toBe(false)
+    expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
+    expect(outcome.builds[0].stats.burstDmg).toBeGreaterThan(0)
   })
 
   it('respects main stat filters and leaves out artifacts others wear', () => {

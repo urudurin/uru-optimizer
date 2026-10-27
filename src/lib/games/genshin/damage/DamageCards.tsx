@@ -7,6 +7,7 @@ import {
   Switch,
   Text,
 } from '@mantine/core'
+import type { AppliedEffect } from 'lib/games/genshin/damage/combatEffects'
 import {
   characterHits,
   defaultRotation,
@@ -19,7 +20,10 @@ import {
   type Rotation,
   type Talent,
   type TalentLevels,
+  transformativeBase,
+  transformativeLines,
 } from 'lib/games/genshin/damage/damage'
+import type { BuffSetting } from 'lib/games/genshin/team/buffs'
 import type {
   Element,
   GenshinCharacter,
@@ -83,6 +87,7 @@ export function RotationCard({ character, rotation, talents, damage, onChange }:
   }
   const element: Element | undefined = character.element
   const reactions = reactionsFor(element)
+  const triggers = transformativeLines(element)
 
   if (hits.length === 0) {
     return (
@@ -176,7 +181,86 @@ export function RotationCard({ character, rotation, talents, damage, onChange }:
             ))}
           </Stack>
         ))}
+        {triggers.length > 0 && (
+          <Stack gap={4}>
+            <Text size='xs' fw={600}>Transformative reactions</Text>
+            {triggers.map((line) => (
+              <div key={line.key} className={`${classes.hitRow} ${classes.hitRowWide}`}>
+                <Text size='xs' className={classes.hitLabel} title={line.label}>{line.label}</Text>
+                <Text size='xs' c='dimmed' ta='right' title='Before Elemental Mastery and RES'>
+                  {`${formatNumber(Math.round(transformativeBase(line.reaction, character.level)))} base`}
+                </Text>
+                <NumberInput
+                  size='xs'
+                  min={0}
+                  max={99}
+                  hideControls
+                  aria-label={`${line.label} count`}
+                  placeholder='0'
+                  value={rotation.counts[line.key] ?? ''}
+                  onChange={(value) => setCount(line.key, Number(value) || 0)}
+                />
+              </div>
+            ))}
+            <Text size='xs' c='dimmed'>Triggered by {character.name}: scale with their Elemental Mastery and level, no DEF or CRIT.</Text>
+          </Stack>
+        )}
       </div>
+    </FormCard>
+  )
+}
+
+// The character's own combat effects (damage/combatEffects.ts): their kit and the 4-piece filter's set, with toggles
+export function EffectsCard({ name, fourPieceSet, applied, onSetting }: {
+  name: string,
+  // The 4-piece filter's set name, when one is picked
+  fourPieceSet?: string,
+  applied: AppliedEffect[],
+  onSetting: (id: string, value: BuffSetting) => void,
+}) {
+  return (
+    <FormCard
+      title='Own effects'
+      size='wide'
+      description={`What ${name}'s kit and 4-piece set do in combat, counted only in rotation damage. ${
+        fourPieceSet ? `4-piece: ${fourPieceSet}.` : 'Pick a 4-piece set in the artifact filters to count its effect.'
+      }`}
+    >
+      {applied.length === 0
+        ? <Text size='xs' c='dimmed'>Nothing for this character and set yet.</Text>
+        : (
+          <Stack gap='sm'>
+            {applied.map(({ effect, sourceName, setting, counted }) => (
+              <Group key={effect.id} justify='space-between' align='flex-end' wrap='nowrap' gap='sm'>
+                <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+                  <Text size='xs' c='dimmed'>{sourceName}</Text>
+                  <Text size='xs' c={counted ? undefined : 'dimmed'}>{effect.label}</Text>
+                </Stack>
+                {effect.toggle?.kind === 'switch' && (
+                  <Switch
+                    size='xs'
+                    label={effect.toggle.label}
+                    checked={setting !== false}
+                    onChange={(event) => onSetting(effect.id, event.currentTarget.checked)}
+                  />
+                )}
+                {effect.toggle?.kind === 'stacks' && (
+                  <NumberInput
+                    size='xs'
+                    w={150}
+                    label={effect.toggle.label}
+                    min={0}
+                    max={effect.toggle.max}
+                    value={typeof setting === 'number' ? setting : effect.toggle.max}
+                    onChange={(value) =>
+                      onSetting(effect.id, Math.min(effect.toggle?.kind === 'stacks' ? effect.toggle.max : 0, Math.max(0, Number(value) || 0)))}
+                  />
+                )}
+                {!effect.toggle && <Text size='xs' c='dimmed'>Always on</Text>}
+              </Group>
+            ))}
+          </Stack>
+        )}
     </FormCard>
   )
 }

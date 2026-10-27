@@ -1,3 +1,10 @@
+import {
+  COMBAT_2PC_BONUSES,
+  type CombatSetup,
+  resolveCombat,
+  type ResolvedCombat,
+  setCountsOf,
+} from 'lib/games/genshin/damage/combatEffects'
 import stats from 'lib/games/genshin/data/generated/stats.json'
 import {
   CHARACTER_SCREEN_PASSIVES,
@@ -102,10 +109,13 @@ export type PreparedCharacter = {
   bonus: Partial<Record<GenshinStatKey, number>>,
   // Team buffs added to final stats
   totalBonus: Partial<Record<GenshinStatKey, number>>,
+  // Combat effects worked out from the final stats (damage/combatEffects.ts), added last
+  finals: ResolvedCombat['finals'],
   missing: string[],
 }
 
-export function prepareCharacter(character: GenshinCharacter, team?: TeamBuffTotals): PreparedCharacter | undefined {
+// combat: the character's own combat effects (kit, 4-piece set), for the optimizer's damage; the stat screen has none
+export function prepareCharacter(character: GenshinCharacter, team?: TeamBuffTotals, combat?: ResolvedCombat): PreparedCharacter | undefined {
   const missing: string[] = []
   const data = characterData(character.id)
   if (!data) return undefined
@@ -124,7 +134,8 @@ export function prepareCharacter(character: GenshinCharacter, team?: TeamBuffTot
   let baseAtk = atLevel(data.atk, character.level) + ascended('atk')
   if (character.weapon) baseAtk += weaponBase(character.weapon, bonus, missing)
   for (const [stat, value] of Object.entries(team?.premod ?? {}) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
-  return { character, baseHp, baseAtk, baseDef, bonus, totalBonus: { ...team?.total }, missing }
+  for (const [stat, value] of Object.entries(combat?.premod ?? {}) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
+  return { character, baseHp, baseAtk, baseDef, bonus, totalBonus: { ...team?.total }, finals: combat?.finals ?? [], missing }
 }
 
 // The character screen from the prepared character plus artifact and set bonuses (added into bonus by the caller)
@@ -148,11 +159,20 @@ export function finalizeStats(prepared: PreparedCharacter, bonus: Partial<Record
     for (const [stat, value] of Object.entries(passive || {}) as [GenshinStatKey, number][]) addTo(result, stat, value)
   }
   for (const [stat, value] of Object.entries(prepared.totalBonus) as [GenshinStatKey, number][]) addTo(result, stat, value)
+  // Each sees the stats so far, the ones before it included
+  for (const final of prepared.finals) {
+    for (const [stat, value] of Object.entries(final({ ...result, baseAtk })) as [GenshinStatKey, number][]) addTo(result, stat, value)
+  }
   return result
 }
 
+// The 2-piece bonus of a set; in combat with the ones the screen doesn't list (damage/combatEffects.ts)
+export function twoPieceBonus(setId: string, combat = false): Partial<Record<GenshinStatKey, number>> {
+  return combat ? { ...SET_2PC_BONUSES[setId], ...COMBAT_2PC_BONUSES[setId] } : (SET_2PC_BONUSES[setId] ?? {})
+}
+
 // Bonuses from the artifacts' stats and 2-piece sets
-export function artifactBonus(artifacts: Artifact[]): Partial<Record<GenshinStatKey, number>> {
+export function artifactBonus(artifacts: Artifact[], combat = false): Partial<Record<GenshinStatKey, number>> {
   const bonus: Partial<Record<GenshinStatKey, number>> = {}
   const setCounts = new Map<string, number>()
   for (const artifact of artifacts) {
@@ -162,23 +182,26 @@ export function artifactBonus(artifacts: Artifact[]): Partial<Record<GenshinStat
   }
   for (const [setId, count] of setCounts) {
     if (count < 2) continue
-    for (const [stat, value] of Object.entries(SET_2PC_BONUSES[setId] ?? {}) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
+    for (const [stat, value] of Object.entries(twoPieceBonus(setId, combat)) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
   }
   return bonus
 }
 
 // extra: stat points to add on top, e.g. one more substat roll for the build analysis
 // team: buffs from teammates, see team/teamBuffs.ts
+// combat: the character's own combat effects, for the optimizer's damage (damage/combatEffects.ts)
 export function computeGenshinStats(
   character: GenshinCharacter,
   artifacts: Artifact[],
   extra: Partial<Record<GenshinStatKey, number>> = {},
   team?: TeamBuffTotals,
+  combat?: CombatSetup,
 ): ComputedStats {
-  const prepared = prepareCharacter(character, team)
+  const resolved = combat ? resolveCombat(character, combat, setCountsOf(artifacts.map((a) => a.setId))) : undefined
+  const prepared = prepareCharacter(character, team, resolved)
   if (!prepared) return { stats: {}, missing: [`${character.name} isn't in the stat data yet`] }
   const bonus = { ...prepared.bonus }
-  for (const [stat, value] of Object.entries(artifactBonus(artifacts)) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
+  for (const [stat, value] of Object.entries(artifactBonus(artifacts, !!combat)) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
   for (const [stat, value] of Object.entries(extra) as [GenshinStatKey, number][]) addTo(bonus, stat, value)
   return { stats: finalizeStats(prepared, bonus), missing: prepared.missing }
 }

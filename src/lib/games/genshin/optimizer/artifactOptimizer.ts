@@ -1,4 +1,9 @@
 import {
+  type CombatSetup,
+  resolveCombat,
+  setCountsOf,
+} from 'lib/games/genshin/damage/combatEffects'
+import {
   type DamageSetup,
   prepareDamage,
   preparedDamage,
@@ -8,13 +13,13 @@ import {
   CHARACTER_SCREEN_PASSIVES,
   WEAPON_SCREEN_PASSIVES,
 } from 'lib/games/genshin/data/screenPassives'
-import { SET_2PC_BONUSES } from 'lib/games/genshin/data/setBonuses'
 import {
   computeGenshinStats,
   finalizeStats,
   prepareCharacter,
   type PreparedCharacter,
   type TeamBuffTotals,
+  twoPieceBonus,
 } from 'lib/games/genshin/stats/computeStats'
 import {
   type Artifact,
@@ -83,6 +88,9 @@ export type OptimizerRequest = {
   limit: number,
   // Buffs from teammates (team/teamBuffs.ts), the same for every build
   teamBuffs?: TeamBuffTotals,
+  // The character's own combat effects (damage/combatEffects.ts): kit, combat-only 2-pieces, and the 4-piece effects of
+  // sets in combat.sets, which only the 4-piece filter's set can have here
+  combat?: CombatSetup,
   // Called now and then while searching (added by the worker, never sent to it)
   onProgress?: ProgressCallback,
 }
@@ -184,6 +192,9 @@ function vectorFinalizer(prepared: PreparedCharacter) {
       }
     }
     for (const [index, value] of totalBonus) out[index] += value
+    for (const final of prepared.finals) {
+      for (const [stat, value] of Object.entries(final({ ...toRecord(out), baseAtk })) as [GenshinStatKey, number][]) out[STAT_INDEX.get(stat)!] += value
+    }
     return out
   }
 }
@@ -228,17 +239,28 @@ export function filterPools(request: Pick<OptimizerRequest, 'character' | 'artif
   )
 }
 
-function currentBuild(character: GenshinCharacter, artifacts: Artifact[], target: OptimizerTarget, teamBuffs?: TeamBuffTotals): OptimizerBuild | undefined {
+function currentBuild(
+  character: GenshinCharacter,
+  artifacts: Artifact[],
+  target: OptimizerTarget,
+  teamBuffs?: TeamBuffTotals,
+  combat?: CombatSetup,
+): OptimizerBuild | undefined {
   const byId = new Map(artifacts.map((a) => [a.id, a]))
   const worn = ARTIFACT_SLOTS.map((slot: ArtifactSlot) => byId.get(character.artifactIds[slot] ?? ''))
   if (worn.some((a) => !a)) return undefined
-  const { stats } = computeGenshinStats(character, worn as Artifact[], {}, teamBuffs)
+  const { stats } = computeGenshinStats(character, worn as Artifact[], {}, teamBuffs, combat)
   return { artifacts: worn as Artifact[], stats, score: scoreStats(stats, target) }
 }
 
 export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
   const { character, filters, target, limit } = request
-  const prepared = prepareCharacter(character, request.teamBuffs)
+  const { combat } = request
+  // Every build has the 4-piece filter's set, so its effects are known up front
+  const resolved = combat
+    ? resolveCombat(character, combat, setCountsOf(filters.fourPieceSet ? Array(4).fill(filters.fourPieceSet) : []))
+    : undefined
+  const prepared = prepareCharacter(character, request.teamBuffs, resolved)
   if (!prepared) return { ok: false, reason: `${character.name} isn't in the stat data yet` }
   // Five artifacts fit one 4-piece set or two 2-piece sets
   if (filters.twoPieceSets.length > (filters.fourPieceSet ? 0 : 2)) {
@@ -291,12 +313,12 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
   const required = new Set([...(filters.fourPieceSet ? [filters.fourPieceSet] : []), ...filters.twoPieceSets])
   const setIds = [...new Set(pools.flat().map((a) => a.setId))].filter((id) => {
     if (required.has(id)) return true
-    const bonus = toVector(SET_2PC_BONUSES[id] ?? {})
+    const bonus = toVector(twoPieceBonus(id, !!combat))
     return relevant.some((i) => bonus[i] !== 0)
   })
   for (const id of required) if (!setIds.includes(id)) return { ok: false, reason: `No artifacts of the required set ${id} pass the filters` }
   const setIndex = new Map(setIds.map((id, i) => [id, i]))
-  const twoPiece = setIds.map((id) => toVector(SET_2PC_BONUSES[id] ?? {}))
+  const twoPiece = setIds.map((id) => toVector(twoPieceBonus(id, !!combat)))
 
   // 2. Drop artifacts that `limit` others of the same slot and set match or beat on every relevant stat
   const vectors = pools.map((pool) => pool.map(artifactVector))
@@ -548,14 +570,14 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
 
   const builds = top.map((candidate): OptimizerBuild => {
     const chosen = candidate.item.map((a, slot) => pools[slot][a])
-    const { stats } = computeGenshinStats(character, chosen, {}, request.teamBuffs)
+    const { stats } = computeGenshinStats(character, chosen, {}, request.teamBuffs, combat)
     return { artifacts: chosen, stats, score: scoreStats(stats, target) }
   })
 
   return {
     ok: true,
     builds,
-    current: currentBuild(character, request.artifacts, target, request.teamBuffs),
+    current: currentBuild(character, request.artifacts, target, request.teamBuffs, combat),
     poolSizes: pools.map((pool) => pool.length),
     prunedSizes: ARTIFACT_SLOTS.map((_, slot) => candidates[order.indexOf(slot)].length),
     visited,

@@ -1,3 +1,4 @@
+import type { CombatSetup } from 'lib/games/genshin/damage/combatEffects'
 import {
   averageRoll,
   SUBSTAT_STATS,
@@ -26,8 +27,9 @@ export function genshinSubstatUpgrades(
   artifacts: Artifact[],
   target: OptimizerTarget,
   teamBuffs?: TeamBuffTotals,
+  combat?: CombatSetup,
 ): SubstatUpgrade[] {
-  const score = (extra = {}) => scoreStats(computeGenshinStats(character, artifacts, extra, teamBuffs).stats, target)
+  const score = (extra = {}) => scoreStats(computeGenshinStats(character, artifacts, extra, teamBuffs, combat).stats, target)
   return rankUpgrades(
     score(),
     SUBSTAT_STATS.map((stat) => {

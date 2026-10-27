@@ -10,6 +10,11 @@ import {
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
 import {
+  type CombatSetup,
+  resolveCombat,
+  setCountsOf,
+} from 'lib/games/genshin/damage/combatEffects'
+import {
   DEFAULT_ENEMY,
   defaultRotation,
   type EnemySettings,
@@ -19,6 +24,7 @@ import {
   rotationTalents,
 } from 'lib/games/genshin/damage/damage'
 import {
+  EffectsCard,
   EnemyCard,
   RotationCard,
 } from 'lib/games/genshin/damage/DamageCards'
@@ -168,6 +174,8 @@ type GenshinOptimizerSettings = {
   // The rotation damage target (damage/damage.ts): the enemy and the rotation
   enemy: EnemySettings,
   rotation: Rotation,
+  // Toggles of the character's own combat effects (damage/combatEffects.ts)
+  combatSettings: Record<string, BuffSetting>,
 }
 
 // Rank by values: 'damage' plus the stat targets in optimizer/targets.ts
@@ -188,6 +196,7 @@ function defaultSettings(characterId: string): GenshinOptimizerSettings {
     teamSettings: {},
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(characterId),
+    combatSettings: {},
   }
 }
 
@@ -202,8 +211,21 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
 
   // Saved per character, see shared/optimizerSettings.ts
   const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.id ?? '', () => defaultSettings(character?.id ?? ''))
-  const { targetValue, mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, minStats, maxStats, teammates, onField, teamSettings, enemy, rotation } =
-    settings
+  const {
+    targetValue,
+    mainStats,
+    fourPieceSet,
+    twoPieceSets,
+    excludeEquippedByOthers,
+    minStats,
+    maxStats,
+    teammates,
+    onField,
+    teamSettings,
+    enemy,
+    rotation,
+    combatSettings,
+  } = settings
   const setTargetValue = fieldSetter(updateSettings, 'targetValue')
   const setMainStats = fieldSetter(updateSettings, 'mainStats')
   const setFourPieceSet = fieldSetter(updateSettings, 'fourPieceSet')
@@ -216,6 +238,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
+  const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget } | undefined>()
@@ -255,6 +278,16 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const teamResult = teamBuffsFor(character, team, { characters, artifacts })
   const teamBuffs = { premod: teamResult.premod, total: teamResult.total }
   const talents = rotationTalents(character, rotation)
+  // The character's own combat effects: their kit, and the 4-piece filter's set (every build has it)
+  const combat: CombatSetup = { sets: fourPieceSet ? [fourPieceSet] : [], settings: combatSettings }
+  const resolvedCombat = resolveCombat(character, combat, setCountsOf(fourPieceSet ? Array(4).fill(fourPieceSet) : []))
+  const debuffs = {
+    defShred: teamResult.debuffs.defShred + resolvedCombat.debuffs.defShred,
+    resShred: { ...teamResult.debuffs.resShred },
+  }
+  for (const [element, value] of Object.entries(resolvedCombat.debuffs.resShred) as [keyof typeof debuffs.resShred, number][]) {
+    debuffs.resShred[element] = (debuffs.resShred[element] ?? 0) + value
+  }
   const damageSetup = {
     characterId: character.id,
     characterLevel: character.level,
@@ -262,20 +295,32 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     rotation,
     talents,
     enemy,
-    debuffs: teamResult.debuffs,
+    debuffs,
+    reactionBonus: resolvedCombat.reactions,
   }
   const byDamage = targetValue === DAMAGE_TARGET && hasTalentData(character.id)
   const target: OptimizerTarget = byDamage ? { kind: 'damage', setup: damageSetup } : genshinTarget(targetValue, character.element)
   // The current artifacts' rotation damage, for the Rotation card
   const worn = ARTIFACT_SLOTS.flatMap((slot) => artifacts.find((a) => a.id === character.artifactIds[slot]) ?? [])
   const currentDamage = hasTalentData(character.id)
-    ? rotationDamage(computeGenshinStats(character, worn, {}, teamBuffs).stats, damageSetup)
+    ? rotationDamage(computeGenshinStats(character, worn, {}, teamBuffs, combat).stats, damageSetup)
     : undefined
 
   async function run() {
     setRunning(true)
     setProgress(undefined)
-    const response = await runOptimizer({ character, artifacts, filters, minStats, maxStats, target, limit: RESULT_LIMIT, teamBuffs }, setProgress)
+    const response = await runOptimizer({
+      character,
+      artifacts,
+      filters,
+      minStats,
+      maxStats,
+      target,
+      limit: RESULT_LIMIT,
+      teamBuffs,
+      // Combat effects only count for rotation damage; the stat targets stay on the stat screen
+      combat: byDamage ? combat : undefined,
+    }, setProgress)
     // undefined: cancelled, or replaced by a newer search that is still running
     if (response) {
       setResult({ ...response, target })
@@ -433,7 +478,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
             >
               <EnemyCard
                 enemy={enemy}
-                debuffs={teamResult.debuffs}
+                debuffs={debuffs}
                 onChange={(next) => {
                   setEnemy(next)
                   setResult(undefined)
@@ -446,6 +491,15 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                 damage={currentDamage}
                 onChange={(next) => {
                   setRotation(next)
+                  setResult(undefined)
+                }}
+              />
+              <EffectsCard
+                name={character.name}
+                fourPieceSet={fourPieceSet ? setOptions.find((o) => o.value === fourPieceSet)?.label ?? fourPieceSet : undefined}
+                applied={resolvedCombat.applied}
+                onSetting={(id, value) => {
+                  setCombatSettings((current) => ({ ...current, [id]: value }))
                   setResult(undefined)
                 }}
               />
@@ -634,7 +688,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                   format: (value: number) => formatStatValue(stat, value),
                 })),
               ]}
-              upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs)}
+              upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs, result.target.kind === 'damage' ? combat : undefined)}
               scoreLabel={targetLabel(result.target)}
               formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
             />

@@ -23,6 +23,12 @@ export type GenshinStatKey =
   | 'geoDmg'
   // DMG Bonus for every element, from team buffs (Furina, Geo resonance). Not on artifacts or the stat screen
   | 'allDmg'
+  // DMG Bonus for one kind of hit, from set and kit effects in combat (damage/combatEffects.ts). Not on the stat screen
+  | 'normalDmg'
+  | 'chargedDmg'
+  | 'plungingDmg'
+  | 'skillDmg'
+  | 'burstDmg'
 
 export const STAT_LABELS: Record<GenshinStatKey, string> = {
   hp: 'HP',
@@ -45,6 +51,11 @@ export const STAT_LABELS: Record<GenshinStatKey, string> = {
   cryoDmg: 'Cryo DMG Bonus',
   geoDmg: 'Geo DMG Bonus',
   allDmg: 'DMG Bonus',
+  normalDmg: 'Normal Attack DMG Bonus',
+  chargedDmg: 'Charged Attack DMG Bonus',
+  plungingDmg: 'Plunging Attack DMG Bonus',
+  skillDmg: 'Elemental Skill DMG Bonus',
+  burstDmg: 'Elemental Burst DMG Bonus',
 }
 
 // Stats shown with a percent sign
@@ -65,6 +76,11 @@ export const PERCENT_STATS = new Set<GenshinStatKey>([
   'cryoDmg',
   'geoDmg',
   'allDmg',
+  'normalDmg',
+  'chargedDmg',
+  'plungingDmg',
+  'skillDmg',
+  'burstDmg',
 ])
 
 export function statLabel(stat: string): string {

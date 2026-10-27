@@ -1,3 +1,4 @@
+import type { ReactionBonusKey } from 'lib/games/genshin/damage/combatEffects'
 import talentData from 'lib/games/genshin/data/generated/talents.json'
 import {
   type Element,
@@ -17,12 +18,17 @@ import {
 //   1.15 (Aggravate) or 1.25 (Spread) x level multiplier x (1 + 5 EM / (EM + 1200))
 // as genshin-optimizer's formula/src/data/common/reaction.ts has it (its transLvlMultis table, 1446.85 at level 90),
 // checked against the KQM library's Additive and Amplifying Reactions pages (library.keqingmains.com).
-// The DMG Bonus is the hit's element's (Physical or the character's) plus all-element DMG Bonus. Talent multipliers
+// The DMG Bonus is the hit's element's (Physical or the character's) plus all-element DMG Bonus plus its kind's
+// (Normal, Charged, Plunging Attack, Elemental Skill or Burst DMG Bonus). Reaction DMG bonuses (Crimson Witch...) add
+// inside each reaction's Elemental Mastery bracket. Talent multipliers
 // come from data/generated/talents.json (src/scripts/genshin/extractTalents.mjs).
 //
 // A rotation is a count of each talent hit. Every hit of one element shares the multipliers after the first bracket, so
 // the rotation's damage is, per element and scaling stat, the sum of count x multiplier, times that stat, times the rest.
-// Not yet: transformative reactions (Bloom, Hyperbloom, Burgeon...), self-buffs from the character's own
+// Transformative reactions (Bloom, Hyperbloom, Swirl, Overloaded...) are counted as triggers, each
+//   reaction multiplier x level multiplier x (1 + 16 EM / (EM + 2000)) x RES of the reaction's element
+// with no DEF and no CRIT, after genshin-optimizer's reaction.ts (transInfo multipliers, transBase).
+// Not yet: Lunar and Stellar reactions, reaction DMG bonuses (Crimson Witch, Gilded Dreams...), self-buffs from the character's own
 // kit (Hu Tao's ATK from HP, Raiden's Resolve), skill-type DMG Bonuses and hits that only some of a talent's levels have.
 // Personal, non-commercial use.
 
@@ -39,6 +45,8 @@ export type TalentHit = {
   terms: [ScalingStat, number[]][],
   // A plain normal, charged or plunging attack: Physical unless the character is a catalyst user or infused
   physical: boolean,
+  // Times the line lands ("4-Hit DMG ×4"), for reactions that apply per hit
+  times: number,
 }
 
 type TalentFile = {
@@ -92,6 +100,17 @@ export type DamageSetup = {
   talents: TalentLevels,
   enemy: EnemySettings,
   debuffs: EnemyDebuffs,
+  // Reaction DMG bonuses from sets (damage/combatEffects.ts), in percent
+  reactionBonus?: Partial<Record<ReactionBonusKey, number>>,
+}
+
+// The DMG Bonus stat for each kind of hit
+const CATEGORY_DMG: Record<TalentHit['category'], GenshinStatKey> = {
+  normal: 'normalDmg',
+  charged: 'chargedDmg',
+  plunging: 'plungingDmg',
+  skill: 'skillDmg',
+  burst: 'burstDmg',
 }
 
 function characterData(characterId: string) {
@@ -112,6 +131,7 @@ export function characterHits(characterId: string): TalentHit[] {
     category: hit.category as TalentHit['category'],
     terms: hit.terms as [ScalingStat, number[]][],
     physical: !!hit.physical && !data.catalyst,
+    times: Number(/×(\d+)$/.exec(hit.label)?.[1] ?? 1),
   }))
 }
 
@@ -272,15 +292,58 @@ export function reactionLevelMultiplier(level: number): number {
 // catalyze: Aggravate or Spread's flat damage per reacting hit before Elemental Mastery; hits: how many hits the group has
 type ElementTerms = {
   element: DamageElement,
+  // The hit kind's DMG Bonus (Normal Attack DMG...)
+  typeStat: GenshinStatKey,
   terms: [ScalingStat, number][],
   dmgStat?: GenshinStatKey,
   res: number,
   amplifies: number,
+  // The reaction's DMG bonus from sets, as a fraction
+  reactionBonus: number,
   catalyze: number,
   hits: number,
 }
 
-export type PreparedDamage = { groups: ElementTerms[], def: number, reactionShare: number }
+// transformative: summed reaction multiplier x level multiplier x RES over the rotation, before Elemental Mastery
+// transformative: per reaction, the summed multiplier x level multiplier x RES and the reaction's DMG bonus (a fraction)
+export type PreparedDamage = { groups: ElementTerms[], def: number, reactionShare: number, transformative: { base: number, bonus: number }[] }
+
+// Transformative reactions: genshin-optimizer's transInfo multipliers, which elements trigger them, and the element
+// the damage is (Swirl takes the swirled element's)
+export type TransformativeReaction = 'overloaded' | 'electrocharged' | 'superconduct' | 'shattered' | 'swirl' | 'burning' | 'bloom' | 'hyperbloom' | 'burgeon'
+const TRANSFORMATIVE: Record<TransformativeReaction, { label: string, multiplier: number, triggeredBy: Element[], variants: DamageElement[] }> = {
+  overloaded: { label: 'Overloaded', multiplier: 2, triggeredBy: ['Pyro', 'Electro'], variants: ['Pyro'] },
+  electrocharged: { label: 'Electro-Charged', multiplier: 1.2, triggeredBy: ['Electro', 'Hydro'], variants: ['Electro'] },
+  superconduct: { label: 'Superconduct', multiplier: 0.5, triggeredBy: ['Cryo', 'Electro'], variants: ['Cryo'] },
+  shattered: { label: 'Shattered', multiplier: 1.5, triggeredBy: ['Geo'], variants: ['Physical'] },
+  swirl: { label: 'Swirl', multiplier: 0.6, triggeredBy: ['Anemo'], variants: ['Pyro', 'Hydro', 'Electro', 'Cryo'] },
+  burning: { label: 'Burning (per tick)', multiplier: 0.25, triggeredBy: ['Pyro', 'Dendro'], variants: ['Pyro'] },
+  bloom: { label: 'Bloom (per Dendro Core)', multiplier: 2, triggeredBy: ['Dendro', 'Hydro'], variants: ['Dendro'] },
+  hyperbloom: { label: 'Hyperbloom (per Sprawling Shot)', multiplier: 3, triggeredBy: ['Electro'], variants: ['Dendro'] },
+  burgeon: { label: 'Burgeon (per Dendro Core)', multiplier: 3, triggeredBy: ['Pyro'], variants: ['Dendro'] },
+}
+
+export type TransformativeLine = { key: string, label: string, reaction: TransformativeReaction, variant: DamageElement }
+
+// The transformative reactions a character of this element triggers, as rotation lines ('reaction:swirl:Pyro')
+export function transformativeLines(element: Element | undefined): TransformativeLine[] {
+  if (!element) return []
+  return (Object.entries(TRANSFORMATIVE) as [TransformativeReaction, (typeof TRANSFORMATIVE)[TransformativeReaction]][])
+    .filter(([, info]) => info.triggeredBy.includes(element))
+    .flatMap(([reaction, info]) =>
+      info.variants.map((variant) => ({
+        key: info.variants.length > 1 ? `reaction:${reaction}:${variant}` : `reaction:${reaction}`,
+        label: info.variants.length > 1 ? `${info.label} (${variant})` : info.label,
+        reaction,
+        variant,
+      }))
+    )
+}
+
+// One trigger's damage before Elemental Mastery and RES, for showing on the Rotation card
+export function transformativeBase(reaction: TransformativeReaction, characterLevel: number): number {
+  return TRANSFORMATIVE[reaction].multiplier * reactionLevelMultiplier(characterLevel)
+}
 
 function resMultiplier(res: number): number {
   if (res < 0) return 1 - res / 2
@@ -291,21 +354,25 @@ function resMultiplier(res: number): number {
 // Everything that's the same for every build, worked out once
 export function prepareDamage(setup: DamageSetup): PreparedDamage {
   const { rotation, enemy, debuffs, element } = setup
-  const byElement = new Map<DamageElement, Map<ScalingStat, number>>()
-  // Hits per element, for Aggravate and Spread's flat damage on each (a line landing several times counts once)
-  const hitCounts = new Map<DamageElement, number>()
+  // By element and hit kind ("Pyro|skillDmg")
+  const byElement = new Map<string, Map<ScalingStat, number>>()
+  // Hits per group, for Aggravate and Spread's flat damage on each
+  const hitCounts = new Map<string, number>()
   for (const hit of characterHits(setup.characterId)) {
     const count = rotation.counts[hit.key] ?? 0
     if (count <= 0) continue
     const hitElement: DamageElement = hit.physical && !rotation.infusion ? 'Physical' : (element ?? 'Physical')
-    const terms = byElement.get(hitElement) ?? new Map<ScalingStat, number>()
+    const key = `${hitElement}|${CATEGORY_DMG[hit.category]}`
+    const terms = byElement.get(key) ?? new Map<ScalingStat, number>()
     for (const [stat, value] of Object.entries(hitMultiplier(hit, setup.talents)) as [ScalingStat, number][]) {
       terms.set(stat, (terms.get(stat) ?? 0) + count * value)
     }
-    byElement.set(hitElement, terms)
-    hitCounts.set(hitElement, (hitCounts.get(hitElement) ?? 0) + count)
+    byElement.set(key, terms)
+    hitCounts.set(key, (hitCounts.get(key) ?? 0) + count * hit.times)
   }
-  const groups = [...byElement].map(([hitElement, terms]): ElementTerms => {
+  const reactionBonus = (key: ReactionBonusKey) => (setup.reactionBonus?.[key] ?? 0) / 100
+  const groups = [...byElement].map(([key, terms]): ElementTerms => {
+    const [hitElement, typeStat] = key.split('|') as [DamageElement, GenshinStatKey]
     const shred = (debuffs.resShred[hitElement] ?? 0) + (debuffs.resShred.all ?? 0)
     const reacts = hitElement !== 'Physical'
     const amplifies = reacts && (rotation.reaction === 'vaporize' || rotation.reaction === 'melt') ? AMPLIFYING[rotation.reaction][hitElement] ?? 0 : 0
@@ -314,17 +381,27 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
       : 0
     return {
       element: hitElement,
+      typeStat,
       terms: [...terms],
       dmgStat: hitElement === 'Physical' ? 'physicalDmg' : ELEMENT_DMG_STAT[hitElement],
       res: resMultiplier((enemy.res - shred) / 100),
       amplifies,
+      reactionBonus: rotation.reaction === 'none' ? 0 : reactionBonus(rotation.reaction),
       catalyze: catalyzeMultiplier * reactionLevelMultiplier(setup.characterLevel),
-      hits: hitCounts.get(hitElement) ?? 0,
+      hits: hitCounts.get(key) ?? 0,
     }
   })
   const characterFactor = setup.characterLevel + 100
   const def = characterFactor / (characterFactor + (enemy.level + 100) * Math.max(0, 1 - debuffs.defShred / 100))
-  return { groups, def, reactionShare: Math.max(0, Math.min(100, rotation.reactionShare)) / 100 }
+  const transformative: PreparedDamage['transformative'] = []
+  for (const line of transformativeLines(element)) {
+    const count = rotation.counts[line.key] ?? 0
+    if (count <= 0) continue
+    const shred = (debuffs.resShred[line.variant] ?? 0) + (debuffs.resShred.all ?? 0)
+    const base = count * transformativeBase(line.reaction, setup.characterLevel) * resMultiplier((enemy.res - shred) / 100)
+    transformative.push({ base, bonus: reactionBonus(line.reaction) })
+  }
+  return { groups, def, reactionShare: Math.max(0, Math.min(100, rotation.reactionShare)) / 100, transformative }
 }
 
 // The rotation's damage from final stats; get reads a stat (a record or the optimizer's vectors)
@@ -337,16 +414,22 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
     for (const [stat, multiplier] of group.terms) base += multiplier / 100 * get(stat)
     if (group.catalyze > 0) {
       const em = get('elementalMastery')
-      base += prepared.reactionShare * group.hits * group.catalyze * (1 + 5 * em / (em + 1200))
+      base += prepared.reactionShare * group.hits * group.catalyze * (1 + 5 * em / (em + 1200) + group.reactionBonus)
     }
     let amplify = 1
     if (group.amplifies > 0) {
       const em = get('elementalMastery')
-      amplify = 1 + prepared.reactionShare * (group.amplifies * (1 + 2.78 * em / (em + 1400)) - 1)
+      amplify = 1 + prepared.reactionShare * (group.amplifies * (1 + 2.78 * em / (em + 1400) + group.reactionBonus) - 1)
     }
-    total += base * (1 + ((group.dmgStat ? get(group.dmgStat) : 0) + allDmg) / 100) * group.res * amplify
+    total += base * (1 + ((group.dmgStat ? get(group.dmgStat) : 0) + get(group.typeStat) + allDmg) / 100) * group.res * amplify
   }
-  return total * crit * prepared.def
+  let transformative = 0
+  if (prepared.transformative.length > 0) {
+    const em = get('elementalMastery')
+    const fromEm = 16 * em / (em + 2000)
+    for (const reaction of prepared.transformative) transformative += reaction.base * (1 + fromEm + reaction.bonus)
+  }
+  return total * crit * prepared.def + transformative
 }
 
 export function rotationDamage(stats: Partial<Record<GenshinStatKey, number>>, setup: DamageSetup): number {

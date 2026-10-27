@@ -9,6 +9,7 @@ import {
   reactionLevelMultiplier,
   reactionsFor,
   rotationDamage,
+  transformativeLines,
 } from 'lib/games/genshin/damage/damage'
 import type {
   GenshinCharacter,
@@ -122,5 +123,31 @@ describe('Genshin damage', () => {
     const flat = 1.25 * 1446.8535 * (1 + 5 * 200 / 1400)
     const perPoint = plain / (2 * (2000 * 1.7544 + 200 * 3.5088))
     expect(spread - plain).toBeCloseTo(perPoint * 0.5 * 2 * flat, 0)
+  })
+
+  it('counts a line that lands several times once per hit for Aggravate and Spread', () => {
+    expect(hit('Xiangling', '4-Hit DMG ×4').times).toBe(4)
+    expect(hit('Xiangling', '1-Hit DMG').times).toBe(1)
+  })
+
+  it('works out transformative reactions from Elemental Mastery, level and RES, without DEF or CRIT', () => {
+    expect(transformativeLines('Anemo').map((line) => line.key)).toEqual([
+      'reaction:swirl:Pyro',
+      'reaction:swirl:Hydro',
+      'reaction:swirl:Electro',
+      'reaction:swirl:Cryo',
+    ])
+    expect(transformativeLines('Electro').map((line) => line.reaction)).toEqual(['overloaded', 'electrocharged', 'superconduct', 'hyperbloom'])
+
+    const nahida = { ...stats, elementalMastery: 800 }
+    const rotation = { counts: { 'reaction:bloom': 3 }, infusion: false, reaction: 'none' as const, reactionShare: 100 }
+    const bloom: DamageSetup = { ...setup(), characterId: 'Nahida', element: 'Dendro', rotation }
+    const expected = 3 * 2 * 1446.8535 * (1 + 16 * 800 / 2800) * 0.9
+    expect(rotationDamage(nahida, bloom)).toBeCloseTo(expected, 3)
+    // CRIT and ATK don't change it; VV-style shred on the swirled element does
+    expect(rotationDamage({ ...nahida, critDmg: 300, atk: 9999 }, bloom)).toBeCloseTo(expected, 3)
+    const swirl: DamageSetup = { ...setup(), characterId: 'KaedeharaKazuha', element: 'Anemo', rotation: { ...rotation, counts: { 'reaction:swirl:Pyro': 1 } } }
+    const shredded = rotationDamage(stats, { ...swirl, debuffs: { defShred: 0, resShred: { Pyro: 40 } } })
+    expect(shredded / rotationDamage(stats, swirl)).toBeCloseTo(1.15 / 0.9, 6)
   })
 })
