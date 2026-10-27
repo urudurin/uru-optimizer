@@ -12,8 +12,9 @@ import {
 //
 // Covered: ATK, CRIT, PEN Ratio, Anomaly Proficiency and DMG Bonus on the agent, and DEF shred, RES shred and DMG taken
 // on the enemy (they count in rotation damage, damage/damage.ts). All-type DMG Bonus is counted as Element DMG, the same
-// multiplier in ZZZ. Not yet: Daze, Anomaly buildup,
-// buffs a character gives only themselves, W-Engines, and agents whose genshin-optimizer sheets are still templates
+// multiplier in ZZZ. Teammates' W-Engines (W_ENGINE_TEAM_BUFFS) count at the refinement in their saved build, and
+// Aftershock DMG goes to rotation damage only. Not yet: Daze, Anomaly buildup,
+// buffs a character gives only themselves, and agents whose genshin-optimizer sheets are still templates
 // (Nangong Yu, Norma, Velina, Sunna). Saved builds don't record skill or Core Skill levels, so every giver is taken at
 // skill level 12 and Core Skill F; Mindscape comes from their saved build.
 
@@ -39,6 +40,8 @@ export type ZzzBuffContext = {
   receiver: SquadMember,
   // The giver, the receiver and the other teammate
   squad: SquadMember[],
+  // The giver's W-Engine refinement (1-5), for W_ENGINE_TEAM_BUFFS
+  refinement: number,
   setting: ZzzBuffSetting,
 }
 
@@ -47,10 +50,13 @@ export type EnemyDebuffKey = 'defShred' | 'resShred' | 'dmgTaken'
 
 export const DEBUFF_LABELS: Record<EnemyDebuffKey, string> = { defShred: 'enemy DEF shred', resShred: 'enemy RES shred', dmgTaken: 'enemy DMG taken' }
 
+// DMG Bonus for some hits only, counted in rotation damage (damage/damage.ts KindBonus)
+export type HitBonusKey = 'aftershockDmg'
+
 export type ZzzTeamBuff = {
   id: string,
   label: string,
-  stat: ZzzStatsValues | EnemyDebuffKey,
+  stat: ZzzStatsValues | EnemyDebuffKey | HitBonusKey,
   // Only for agents of this element (Ice DMG), all of them when left out
   element?: string,
   // In display units (25 = 25%); 0 when it doesn't apply
@@ -258,6 +264,17 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
       confidence: 'sourced',
     },
   ],
+  // Pulchra: her Additional Ability (genshin-optimizer's Pulchra sheet; at Mindscape 6 it becomes all-type DMG)
+  '1351': [
+    {
+      id: 'ability-aftershock-dmg',
+      label: 'Additional Ability: Aftershock DMG while the enemy is in her Binding Trap',
+      stat: 'aftershockDmg',
+      toggle: { kind: 'switch', label: 'Binding Trap' },
+      value: (c) => (switchOn(c) ? 30 : 0),
+      confidence: 'sourced',
+    },
+  ],
   // Seth
   '1271': [
     {
@@ -301,4 +318,197 @@ export const SET_4PC_BUFFS: Record<string, ZzzTeamBuff[]> = {
     nonStacking: 'moonlight-lullaby',
     confidence: 'sourced',
   }],
+  'king-of-the-summit': [{
+    id: 'king-of-the-summit',
+    label: 'King of the Summit 4-piece: CRIT DMG after a Stun agent\'s EX Special or Chain Attack (doubled at 50%+ CRIT Rate)',
+    stat: ZzzStats.CRIT_DMG,
+    toggle: { kind: 'switch', label: 'After their EX Special or Chain Attack' },
+    value: (c) => (switchOn(c) && c.giver.specialty === 'Stun' ? (c.giverStats.critRate >= 50 ? 30 : 15) : 0),
+    blockedBy: (c) => (c.giver.specialty !== 'Stun' ? 'Only when a Stun agent wears it' : undefined),
+    nonStacking: 'king-of-the-summit',
+    confidence: 'sourced',
+  }],
+  'bunny-in-wonderland': [{
+    id: 'bunny-in-wonderland',
+    label: 'Bunny in Wonderland 4-piece: DMG Bonus per Defense agent\'s EX Special or Assist (3 stacks)',
+    stat: ZzzStats.ELEMENT_DMG,
+    toggle: { kind: 'stacks', label: 'Stacks (max 3)', max: () => 3 },
+    value: (c) => (c.giver.specialty === 'Defense' && typeof c.setting === 'number' ? 6 * c.setting : 0),
+    blockedBy: (c) => (c.giver.specialty !== 'Defense' ? 'Only when a Defense agent wears it' : undefined),
+    nonStacking: 'bunny-in-wonderland',
+    confidence: 'sourced',
+  }],
+}
+
+// What a teammate's W-Engine gives the squad, by W-Engine id, from genshin-optimizer's W-Engine sheets with the R1-R5
+// values from its generated stats (libs/zzz/formula/src/data/wengine/sheets, libs/zzz/stats/src/allStat_gen.json).
+// Only when the wearer is of the engine's specialty, like the game (GO's cmpSpecialtyAndEquipped); the refinement comes
+// from their saved build. Two of the same engine don't stack
+type EngineBuff = Omit<ZzzTeamBuff, 'value' | 'nonStacking' | 'confidence'> & {
+  // R1-R5, times the stack count for stacks
+  values: number[],
+  // The wearer must be of this attribute (Chief Sidekick, Joyau Dore)
+  giverElement?: string,
+}
+
+function engineBuffs(name: string, specialty: string, buffs: EngineBuff[]): ZzzTeamBuff[] {
+  return buffs.map(({ values, giverElement, ...buff }) => ({
+    ...buff,
+    label: `${name}: ${buff.label}`,
+    value: (c) => {
+      if (c.giver.specialty !== specialty || (giverElement && c.giver.element !== giverElement) || c.setting === false) return 0
+      const value = values[Math.min(5, Math.max(1, c.refinement)) - 1] ?? 0
+      return buff.toggle?.kind === 'stacks' ? value * Number(c.setting) : value
+    },
+    blockedBy: (c) =>
+      c.giver.specialty !== specialty
+        ? `Only when a ${specialty} agent wears it`
+        : giverElement && c.giver.element !== giverElement
+        ? `Only when a ${giverElement} agent wears it`
+        : undefined,
+    nonStacking: `${name}:${buff.id}`,
+    confidence: 'sourced',
+  }))
+}
+
+const stacks = (label: string, max: number): ZzzBuffToggle => ({ kind: 'stacks', label: `${label} (max ${max})`, max: () => max })
+const after = (label: string): ZzzBuffToggle => ({ kind: 'switch', label })
+
+export const W_ENGINE_TEAM_BUFFS: Record<string, ZzzTeamBuff[]> = {
+  '12005': engineBuffs('Reverb Mark II', 'Support', [
+    {
+      id: 'ap',
+      label: 'Anomaly Proficiency after an EX Special or Chain Attack',
+      stat: ZzzStats.ANOMALY_PROFICIENCY,
+      toggle: after('After EX Special or Chain'),
+      values: [10, 12, 13, 15, 16],
+    },
+  ]),
+  '12006': engineBuffs('Reverb Mark III', 'Support', [
+    { id: 'atk', label: 'ATK after a Chain Attack or Ultimate', stat: ZzzStats.ATK_P, toggle: after('After Chain or Ultimate'), values: [8, 9, 10, 11, 12] },
+  ]),
+  '13103': engineBuffs('The Vault', 'Support', [
+    { id: 'dmg', label: 'DMG Bonus after an Ether hit', stat: ZzzStats.ELEMENT_DMG, toggle: after('After an Ether hit'), values: [15, 17.5, 20, 22, 24] },
+  ]),
+  '13113': engineBuffs('Bashful Demon', 'Support', [
+    { id: 'atk', label: 'ATK per EX Special', stat: ZzzStats.ATK_P, toggle: stacks('EX Specials', 4), values: [2, 2.3, 2.6, 2.9, 3.2] },
+  ]),
+  '13115': engineBuffs('Kaboom the Cannon', 'Support', [
+    { id: 'atk', label: 'ATK per squad hit', stat: ZzzStats.ATK_P, toggle: stacks('Stacks', 4), values: [2.5, 2.8, 3.2, 3.6, 4] },
+  ]),
+  '14107': engineBuffs('Tusks of Fury', 'Defense', [
+    {
+      id: 'dmg',
+      label: 'DMG Bonus after an Interrupt or Perfect Dodge',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: after('After Interrupt or Perfect Dodge'),
+      values: [18, 22.5, 27, 31.5, 36],
+    },
+  ]),
+  '14116': engineBuffs('Blazing Laurel', 'Stun', [
+    {
+      id: 'crit-dmg-ice',
+      label: 'Ice CRIT DMG per Wilt stack',
+      stat: ZzzStats.CRIT_DMG,
+      element: 'Ice',
+      toggle: stacks('Wilt', 20),
+      values: [1.5, 1.72, 1.95, 2.17, 2.4],
+    },
+    {
+      id: 'crit-dmg-fire',
+      label: 'Fire CRIT DMG per Wilt stack',
+      stat: ZzzStats.CRIT_DMG,
+      element: 'Fire',
+      toggle: stacks('Wilt', 20),
+      values: [1.5, 1.72, 1.95, 2.17, 2.4],
+    },
+  ]),
+  '14125': engineBuffs('Ice-Jade Teapot', 'Stun', [
+    { id: 'dmg', label: 'DMG Bonus at 15+ Tea-riffic stacks', stat: ZzzStats.ELEMENT_DMG, toggle: after('15+ stacks'), values: [20, 23, 26, 29, 32] },
+  ]),
+  '14131': engineBuffs('Elegant Vanity', 'Support', [
+    { id: 'dmg', label: 'DMG Bonus per 25 Energy spent', stat: ZzzStats.ELEMENT_DMG, toggle: stacks('Stacks', 2), values: [10, 11.5, 13, 14.5, 16] },
+  ]),
+  '14134': engineBuffs('Half-Sugar Bunny', 'Defense', [
+    { id: 'atk', label: 'ATK', stat: ZzzStats.ATK_P, values: [10, 11.5, 13, 14.5, 16] },
+    { id: 'hp', label: 'HP', stat: ZzzStats.HP_P, values: [10, 11.5, 13, 14.5, 16] },
+    {
+      id: 'crit-dmg',
+      label: 'CRIT DMG after activating or extending the Ether Veil',
+      stat: ZzzStats.CRIT_DMG,
+      toggle: after('Ether Veil'),
+      values: [30, 34.5, 39, 43.5, 48],
+    },
+  ]),
+  '14139': engineBuffs('Roaring Furnace', 'Stun', [
+    {
+      id: 'fire-dmg',
+      label: 'Fire DMG per Chain Attack or Ultimate',
+      stat: ZzzStats.ELEMENT_DMG,
+      element: 'Fire',
+      toggle: stacks('Stacks', 2),
+      values: [10, 11.5, 13, 14.5, 16],
+    },
+  ]),
+  '14141': engineBuffs('Metanukimorphosis', 'Support', [
+    {
+      id: 'ap',
+      label: 'Anomaly Proficiency after an Aftershock',
+      stat: ZzzStats.ANOMALY_PROFICIENCY,
+      toggle: after('After an Aftershock'),
+      values: [60, 69, 78, 87, 96],
+    },
+  ]),
+  '14145': engineBuffs('Dreamlit Hearth', 'Support', [
+    { id: 'dmg', label: 'DMG Bonus in the Ether Veil', stat: ZzzStats.ELEMENT_DMG, toggle: after('Ether Veil'), values: [25, 28.8, 32.5, 36.3, 40] },
+    { id: 'hp', label: 'HP in the Ether Veil', stat: ZzzStats.HP_P, toggle: after('Ether Veil'), values: [15, 17.3, 19.5, 21.8, 24] },
+  ]),
+  '14148': engineBuffs('Yesterday Calls', 'Stun', [
+    { id: 'crit-dmg', label: 'CRIT DMG at 3 Physical EX Special stacks', stat: ZzzStats.CRIT_DMG, toggle: after('3 stacks'), values: [30, 34.5, 39, 43.5, 48] },
+  ]),
+  '14149': engineBuffs('Thoughtbop', 'Support', [
+    { id: 'dmg', label: 'DMG Bonus per Physical EX Special', stat: ZzzStats.ELEMENT_DMG, toggle: stacks('Stacks', 2), values: [12.5, 14.3, 16.1, 17.9, 20] },
+    { id: 'atk', label: 'ATK at 2 stacks', stat: ZzzStats.ATK_P, toggle: after('2 stacks'), values: [10, 11.5, 13, 14.5, 16] },
+  ]),
+  '14151': engineBuffs('Neon Fantasies', 'Stun', [
+    {
+      id: 'dmg',
+      label: 'DMG Bonus per Ether EX Special or Basic Attack',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: stacks('Stacks', 2),
+      values: [15, 17, 19.5, 21, 24],
+    },
+  ]),
+  '14156': engineBuffs('Joyau Dore', 'Anomaly', [
+    {
+      id: 'ap',
+      label: 'Anomaly Proficiency at 2 Wind EX Special stacks',
+      stat: ZzzStats.ANOMALY_PROFICIENCY,
+      toggle: after('2 stacks'),
+      values: [60, 69, 78, 87, 96],
+      giverElement: 'Wind',
+    },
+  ]),
+  '14157': engineBuffs('Chief Sidekick', 'Stun', [
+    {
+      id: 'dmg',
+      label: 'DMG Bonus per Fire EX Special',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: stacks('Stacks', 2),
+      values: [12.5, 14.4, 16.3, 18.1, 20],
+      giverElement: 'Fire',
+    },
+  ]),
+  '14158': engineBuffs('Ode of Resurrected Wings', 'Anomaly', [
+    { id: 'dmg', label: 'DMG Bonus after Refringe', stat: ZzzStats.ELEMENT_DMG, toggle: after('After Refringe'), values: [30, 34.5, 39, 43.5, 48] },
+  ]),
+  '14162': engineBuffs('Crimson Moon Casket', 'Stun', [
+    {
+      id: 'dmg',
+      label: 'DMG Bonus after a Wind EX Special',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: after('After a Wind EX Special'),
+      values: [20, 23, 26, 29, 32],
+    },
+  ]),
 }

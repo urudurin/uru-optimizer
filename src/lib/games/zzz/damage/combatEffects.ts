@@ -3,6 +3,10 @@ import {
   type AnomalyBonuses,
   type KindBonus,
 } from 'lib/games/zzz/damage/damage'
+import {
+  SET_EFFECTS,
+  W_ENGINE_EFFECTS,
+} from 'lib/games/zzz/damage/gearEffects'
 import type { StatEffect } from 'lib/games/zzz/data/dataTypes'
 import {
   ZzzStats,
@@ -47,6 +51,9 @@ export type ZzzCombatEffect = {
   aftershockDefIgnore?: number,
   // Bonuses to some anomalies only (damage.ts AnomalyBonuses)
   anomalies?: (context: ZzzCombatContext) => AnomalyBonuses,
+  // Gear effects for agents of one specialty or attribute only
+  specialty?: string,
+  element?: string,
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
 
@@ -292,7 +299,37 @@ export function defaultEffectSetting(effect: ZzzCombatEffect): boolean | number 
   return effect.toggle?.kind === 'stacks' ? effect.toggle.max : true
 }
 
-export function resolveZzzCombat(agentId: string, mindscape: number, settings: Record<string, boolean | number>): ZzzResolvedCombat {
+// The gear the rotation is worked out with: the W-Engine picked for the search and the sets the set filter picks
+// (damage/gearEffects.ts)
+export type ZzzCombatGear = {
+  wEngineId?: string,
+  refinement: number,
+  // Set ids with the pieces counted (4 for the 4-piece filter, 2 for the 2-piece one)
+  sets: { setId: string, pieces: 2 | 4 }[],
+  // The agent's, for effects that need a specialty or attribute
+  specialty: string,
+  element: string,
+}
+
+// Each source's effects, with the prefix that keeps their settings apart
+function effectSources(agentId: string, gear: ZzzCombatGear | undefined): { effect: ZzzCombatEffect, source: string }[] {
+  const kit = (KIT_EFFECTS[agentId] ?? []).map((effect) => ({ effect, source: 'Kit' }))
+  if (!gear) return kit
+  const engine = gear.wEngineId ? (W_ENGINE_EFFECTS[gear.wEngineId]?.(gear.refinement) ?? []) : []
+  const sets = gear.sets.flatMap(({ setId, pieces }) => (SET_EFFECTS[setId] ?? []).filter((entry) => entry.pieces <= pieces).flatMap((entry) => entry.effects))
+  return [
+    ...kit,
+    ...engine.map((effect) => ({ effect, source: 'W-Engine' })),
+    ...sets.map((effect) => ({ effect, source: 'Disc set' })),
+  ]
+}
+
+export function resolveZzzCombat(
+  agentId: string,
+  mindscape: number,
+  settings: Record<string, boolean | number>,
+  gear?: ZzzCombatGear,
+): ZzzResolvedCombat {
   const resolved: ZzzResolvedCombat = {
     applied: [],
     statEffects: [],
@@ -304,10 +341,18 @@ export function resolveZzzCombat(agentId: string, mindscape: number, settings: R
     aftershockDefIgnore: 0,
     anomalyBonus: {},
   }
-  for (const effect of KIT_EFFECTS[agentId] ?? []) {
+  for (const { effect, source } of effectSources(agentId, gear)) {
     const setting = settings[effect.id] ?? defaultEffectSetting(effect)
     if ((effect.minMindscape ?? 0) > mindscape) {
       resolved.applied.push({ effect, setting, counted: false, reason: `Needs Mindscape ${effect.minMindscape}` })
+      continue
+    }
+    if (effect.specialty && gear && effect.specialty !== gear.specialty) {
+      resolved.applied.push({ effect, setting, counted: false, reason: `Only for ${effect.specialty} agents` })
+      continue
+    }
+    if (effect.element && gear && effect.element !== gear.element) {
+      resolved.applied.push({ effect, setting, counted: false, reason: `Only for ${effect.element} agents` })
       continue
     }
     const counted = setting !== false && setting !== 0
@@ -315,7 +360,7 @@ export function resolveZzzCombat(agentId: string, mindscape: number, settings: R
     if (!counted) continue
     const context = { mindscape, setting }
     for (const { stat, value } of effect.stats?.(context) ?? []) {
-      resolved.statEffects.push({ stat, value, source: `Kit: ${effect.label}`, confidence: effect.confidence })
+      resolved.statEffects.push({ stat, value, source: `${source}: ${effect.label}`, confidence: effect.confidence })
     }
     for (const [kind, value] of Object.entries(effect.kinds?.(context) ?? {}) as [keyof KindBonus, number][]) {
       resolved.kindBonus[kind] = (resolved.kindBonus[kind] ?? 0) + value

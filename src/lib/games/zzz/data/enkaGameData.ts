@@ -6,6 +6,7 @@ import type {
   Specialty,
   WEngineData,
 } from 'lib/games/zzz/data/dataTypes'
+import { W_ENGINE_PASSIVES } from 'lib/games/zzz/data/wEnginePassives'
 import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
 import { elementOf } from 'lib/games/zzz/importer/enkaParser'
 import {
@@ -24,7 +25,7 @@ import {
 //
 // Checked against those: Miyabi's HP, ATK and DEF match exactly; Yixuan's and Soldier 0 - Anby's come out up to ~1.4
 // high (the store's growth values are rounded), like Gachabase's. So Enka-only agents are 'sourced' and may be a point
-// off on HP, ATK or DEF. Not in the store: W-Engine passives (Enka-only W-Engines have main and secondary stats only; the
+// off on HP, ATK or DEF. Not in the store: W-Engine passives (data/wEnginePassives.ts has some; the
 // stat screen never shows passives anyway), Core Skill effects that aren't base stats, and Rupture agents' Sheer Force
 // from HP (0 here, which leaves their Sheer Force low).
 
@@ -118,8 +119,8 @@ export function wEngineFromEnka(id: string, entry: WeaponEntry, name: string): W
     specialty: (entry.ProfessionType ?? 'Attack') as Specialty,
     baseAtk: Math.floor(main.PropertyValue * WEAPON_MAIN_SCALE),
     subStat: { stat: secondary.stat, value: Math.floor((entry.SecondaryStat.PropertyValue * WEAPON_SECONDARY_SCALE) / secondary.scale * 10) / 10 },
-    // Not in the store: Enka-only W-Engines have no passive
-    passive: () => [],
+    // Not in the store: passives come from data/wEnginePassives.ts where written, none otherwise
+    passive: W_ENGINE_PASSIVES[id] ?? (() => []),
   }
 }
 

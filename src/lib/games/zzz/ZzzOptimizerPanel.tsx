@@ -297,13 +297,29 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const teamResult = zzzTeamBuffsFor(agent.id, team, { builds, discs })
   // The agent's own kit effects, counted only when ranking by rotation damage
   const byDamage = sortBy === 'damage'
-  const kit = resolveZzzCombat(agent.id, builds.find((b) => b.agentId === agent.id)?.mindscapeLevel ?? 0, combatSettings)
+  // Gear effects on some hits only: the W-Engine picked for the search and the sets the set filters pick
+  const combatGear = {
+    wEngineId: loadout.wEngineId,
+    refinement: Number(loadout.refinement),
+    sets: [
+      ...(fourPieceSet ? [{ setId: fourPieceSet, pieces: 4 as const }] : []),
+      ...(twoPieceSet && twoPieceSet !== fourPieceSet ? [{ setId: twoPieceSet, pieces: 2 as const }] : []),
+    ],
+    specialty: agent.specialty,
+    element: agent.element,
+  }
+  const kit = resolveZzzCombat(agent.id, builds.find((b) => b.agentId === agent.id)?.mindscapeLevel ?? 0, combatSettings, combatGear)
+  // The agent's kit and gear plus what teammates give some hits only (Pulchra's Aftershock DMG)
+  const kindBonus = { ...kit.kindBonus }
+  for (const [kind, value] of Object.entries(teamResult.kindBonus) as [keyof typeof kindBonus, number][]) {
+    kindBonus[kind] = (kindBonus[kind] ?? 0) + value
+  }
   const combatEffects = byDamage ? [...teamResult.effects, ...kit.statEffects] : teamResult.effects
   // The squad's attributes: Vortex lines, Windswept and Frostbite need a Wind or Ice agent
   const teamElements = [agent.element, ...teammates.map((id) => AGENTS[id]?.element ?? '')]
   // The rotation and enemy, for ranking by damage; the team's shred counts here
   const damageSetup: DamageSetup = {
-    ...rotationSkills(agent.id, rotation, kit.kindBonus, kit.skillBonus, {
+    ...rotationSkills(agent.id, rotation, kindBonus, kit.skillBonus, {
       critDmgFromCritDmg: kit.aftershockCritDmg,
       defIgnore: kit.aftershockDefIgnore,
     }),
@@ -671,8 +687,8 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                 entries={zzzTeamEntries(teamResult.applied)}
                 notice={teamResult.missing.length > 0 ? `No stat screen for ${teamResult.missing.join(', ')}: save a build for them first` : undefined}
                 description='Their kits and 4-piece sets buff this agent. Teammates use the discs and W-Engine in their saved build.'
-                emptyText='Pick teammates to see what they give. Phase 1 covers Astra Yao, Lucy, Soukaku, Caesar, Rina, Nicole, Trigger, Seth and the Swing Jazz, Astral Voice and Moonlight Lullaby 4-pieces.'
-                footnote="Givers are taken at skill level 12 and Core Skill F (saved builds don't record those). DEF and RES shred, Daze and W-Engine buffs need a damage calculation and aren't counted yet."
+                emptyText='Pick teammates to see what they give. Covers Astra Yao, Lucy, Soukaku, Caesar, Rina, Nicole, Trigger, Seth and Pulchra, squad 4-pieces (Swing Jazz, Astral Voice, Moonlight Lullaby, King of the Summit, Bunny in Wonderland) and 20 squad-buffing W-Engines.'
+                footnote="Givers are taken at skill level 12 and Core Skill F (saved builds don't record those). W-Engines count at the refinement in their build. Enemy shred and Aftershock DMG count only in rotation damage; Daze isn't counted."
                 onTeammates={(ids) => setTeammates(ids)}
                 onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
               />

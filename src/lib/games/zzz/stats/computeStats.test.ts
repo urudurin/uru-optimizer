@@ -133,10 +133,12 @@ describe('computeStats for Ye Shunguang', () => {
   })
 
   it('gives the Physical DMG bonus of the 2-piece to a Physical agent only', () => {
-    expect(toDisplayStats(computeStats(makeInput()).stats).elementDmg).toBe(10)
+    // On the stat screen, so Cloudcleave Radiance's DMG after activating the Veil stays out
+    const screen = statScreenConditions()
+    expect(toDisplayStats(computeStats(makeInput({ conditions: screen })).stats).elementDmg).toBe(10)
 
     const fireAgent = { ...YE_SHUNGUANG, element: 'Fire' }
-    expect(toDisplayStats(computeStats(makeInput({ agent: fireAgent })).stats).elementDmg).toBe(0)
+    expect(toDisplayStats(computeStats(makeInput({ agent: fireAgent, conditions: screen })).stats).elementDmg).toBe(0)
   })
 
   it('drops conditional effects when their condition is off', () => {

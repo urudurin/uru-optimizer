@@ -18,11 +18,14 @@ import {
   rotationSkills,
 } from 'lib/games/zzz/damage/damage'
 import { MIYABI } from 'lib/games/zzz/data/agents'
+import { SETS } from 'lib/games/zzz/data/sets'
+import { W_ENGINE_PASSIVES } from 'lib/games/zzz/data/wEnginePassives'
 import { HAILSTORM_SHRINE } from 'lib/games/zzz/data/wEngines'
 import {
   computeStats,
   defaultConditions,
 } from 'lib/games/zzz/stats/computeStats'
+import { ZzzStats } from 'lib/games/zzz/types'
 import {
   describe,
   expect,
@@ -203,6 +206,62 @@ describe('ZZZ damage', () => {
     const critRate = Math.min(100, stats.critRate) / 100
     expect(rotationDamage(stats, { ...setup, enemy: { ...DEFAULT_ENEMY, frostbite: true } }))
       .toBeCloseTo(base / (1 + critRate * stats.critDmg / 100) * (1 + critRate * (stats.critDmg + 10) / 100), 6)
+  })
+
+  it('counts gear effects on some hits for the set filter\'s sets and an engine of the agent\'s specialty', () => {
+    const gear = { refinement: 1, sets: [], specialty: 'Attack', element: 'Ice' }
+    // Puffer Electro's Ultimate DMG only with it as the 4-piece; Shadow Harmony's 2-piece with either filter
+    expect(resolveZzzCombat(MIYABI.id, 0, {}, { ...gear, sets: [{ setId: 'puffer-electro', pieces: 2 }] }).kindBonus.ult).toBeUndefined()
+    expect(resolveZzzCombat(MIYABI.id, 0, {}, { ...gear, sets: [{ setId: 'puffer-electro', pieces: 4 }] }).kindBonus.ult).toBe(20)
+    expect(resolveZzzCombat(MIYABI.id, 0, {}, { ...gear, sets: [{ setId: 'shadow-harmony', pieces: 4 }] }).kindBonus).toMatchObject({
+      dash: 15,
+      aftershock: 15,
+    })
+    // Gilded Blossom's EX Special DMG by refinement, for Attack agents only
+    expect(resolveZzzCombat(MIYABI.id, 0, {}, { ...gear, wEngineId: '13013', refinement: 5 }).kindBonus.exSpecial).toBe(24)
+    const stun = resolveZzzCombat(MIYABI.id, 0, {}, { ...gear, wEngineId: '13013', specialty: 'Stun' })
+    expect(stun.kindBonus.exSpecial).toBeUndefined()
+    expect(stun.applied.find((a) => a.effect.id === 'gilded-blossom-ex')?.reason).toBe('Only for Attack agents')
+  })
+
+  it('has data for every disc set and the W-Engines from Enka only', () => {
+    const slugs = [
+      'astral-voice',
+      'branch-blade-song',
+      'bunny-in-wonderland',
+      'chaos-jazz',
+      'chaotic-metal',
+      'dawns-bloom',
+      'fanged-metal',
+      'feathered-fate',
+      'freedom-blues',
+      'hormone-punk',
+      'inferno-metal',
+      'king-of-the-summit',
+      'moonlight-lullaby',
+      'notes-from-the-chained',
+      'phaethons-melody',
+      'polar-metal',
+      'proto-punk',
+      'puffer-electro',
+      'shadow-harmony',
+      'shining-aria',
+      'shockstar-disco',
+      'soul-rock',
+      'swing-jazz',
+      'the-sky-ablaze',
+      'thorned-rose',
+      'thunder-metal',
+      'white-water-ballad',
+      'woodpecker-electro',
+      'wuthering-salon',
+      'yunkui-tales',
+    ]
+    expect(slugs.filter((slug) => !SETS[slug])).toEqual([])
+    expect(SETS['chaos-jazz'].twoPiece).toMatchObject([{ stat: ZzzStats.ANOMALY_PROFICIENCY, value: 30 }])
+    // Passives count in combat, for the engine's specialty
+    expect(W_ENGINE_PASSIVES['13013'](1)).toMatchObject([{ stat: ZzzStats.ATK_P, value: 6, when: 'onField', specialty: 'Attack' }])
+    expect(W_ENGINE_PASSIVES['14151'](5).find((e) => e.stat === ZzzStats.ELEMENT_DMG)?.value).toBe(48)
   })
 
   it('counts anomaly-only DMG Bonus, multipliers of their own, extra Disorder and Assault CRIT', () => {

@@ -211,9 +211,13 @@ export function KitEffectsCard({ name, applied, onSetting }: {
   onSetting: (id: string, value: boolean | number) => void,
 }) {
   return (
-    <FormCard title='Own effects' size='wide' description={`What ${name}'s kit does in combat, counted only when ranking by rotation damage.`}>
+    <FormCard
+      title='Own effects'
+      size='wide'
+      description={`What ${name}'s kit, W-Engine and the set filter's sets do in combat, counted only when ranking by rotation damage.`}
+    >
       {applied.length === 0
-        ? <Text size='xs' c='dimmed'>No kit effects for this agent yet.</Text>
+        ? <Text size='xs' c='dimmed'>No kit or gear effects for this agent yet.</Text>
         : (
           <Stack gap='sm'>
             {applied.map(({ effect, setting, counted, reason }) => (

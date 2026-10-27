@@ -2,7 +2,10 @@ import {
   AGENTS,
   MIYABI,
 } from 'lib/games/zzz/data/agents'
-import { HAILSTORM_SHRINE } from 'lib/games/zzz/data/wEngines'
+import {
+  HAILSTORM_SHRINE,
+  W_ENGINES,
+} from 'lib/games/zzz/data/wEngines'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
   computeStats,
@@ -100,5 +103,31 @@ describe('zzzTeamBuffsFor', () => {
     const alone = computeStats(input).stats
     const buffed = computeStats({ ...input, teamEffects: [{ stat: ZzzStats.CRIT_DMG, value: 25, source: 'test', confidence: 'sourced' }] }).stats
     expect(buffed.critDmg - alone.critDmg).toBe(25)
+  })
+
+  it('counts a teammate\'s W-Engine at their refinement and specialty, and Aftershock DMG for rotation damage only', () => {
+    // Dreamlit Hearth (Support) and Pulchra stand-ins
+    const DREAMLIT = '14145'
+    const PULCHRA = '1351'
+    W_ENGINES[DREAMLIT] = { ...HAILSTORM_SHRINE, id: DREAMLIT, name: 'Dreamlit Hearth', specialty: 'Support' }
+    AGENTS[PULCHRA] = { ...MIYABI, id: PULCHRA, name: 'Pulchra', element: 'Physical', specialty: 'Stun' }
+    try {
+      const withEngine = [...builds.filter((b) => b.agentId !== ASTRA), { ...build(ASTRA, 'Astra Yao'), wEngineId: DREAMLIT, wEngineRefinement: 5 }]
+      const result = zzzTeamBuffsFor(MIYABI.id, { teammates: [ASTRA], settings: {} }, { builds: withEngine, discs })
+      expect(result.applied.find((a) => a.buff.id === 'dmg' && a.sourceName === 'Astra Yao\'s W-Engine')).toMatchObject({ value: 40, counted: true })
+
+      // A Stun agent wearing it gives nothing
+      AGENTS[ASTRA] = { ...AGENTS[ASTRA], specialty: 'Stun' }
+      const stun = zzzTeamBuffsFor(MIYABI.id, { teammates: [ASTRA], settings: {} }, { builds: withEngine, discs })
+      expect(stun.applied.find((a) => a.buff.id === 'dmg')?.reason).toBe('Only when a Support agent wears it')
+      AGENTS[ASTRA] = { ...AGENTS[ASTRA], specialty: 'Support' }
+
+      const pulchra = zzzTeamBuffsFor(MIYABI.id, { teammates: [PULCHRA], settings: {} }, { builds: [...builds, build(PULCHRA, 'Pulchra')], discs })
+      expect(pulchra.kindBonus).toEqual({ aftershock: 30 })
+      expect(pulchra.effects).toEqual([])
+    } finally {
+      delete W_ENGINES[DREAMLIT]
+      delete AGENTS[PULCHRA]
+    }
   })
 })

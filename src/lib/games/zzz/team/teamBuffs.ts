@@ -1,5 +1,6 @@
 import {
   type EnemyDebuffs,
+  type KindBonus,
   NO_DEBUFFS,
 } from 'lib/games/zzz/damage/damage'
 import { AGENTS } from 'lib/games/zzz/data/agents'
@@ -15,8 +16,10 @@ import { resolveBuild } from 'lib/games/zzz/stats/resolveBuild'
 import {
   AGENT_BUFFS,
   type EnemyDebuffKey,
+  type HitBonusKey,
   SET_4PC_BUFFS,
   type SquadMember,
+  W_ENGINE_TEAM_BUFFS,
   type ZzzBuffContext,
   type ZzzBuffSetting,
   type ZzzTeamBuff,
@@ -49,12 +52,14 @@ export type ZzzTeamResult = {
   effects: StatEffect[],
   // DEF shred, RES shred and DMG taken on the enemy, for rotation damage
   debuffs: EnemyDebuffs,
+  // DMG Bonus for some hits only (Pulchra's Aftershock DMG), for rotation damage
+  kindBonus: KindBonus,
   applied: ZzzAppliedBuff[],
   // Teammates whose stat screen couldn't be worked out (no saved build, or no data for them)
   missing: string[],
 }
 
-export const NO_TEAM: ZzzTeamResult = { effects: [], debuffs: NO_DEBUFFS, applied: [], missing: [] }
+export const NO_TEAM: ZzzTeamResult = { effects: [], debuffs: NO_DEBUFFS, kindBonus: {}, applied: [], missing: [] }
 
 export function settingKey(buff: ZzzTeamBuff, giverId: string): string {
   return `${giverId}:${buff.id}`
@@ -76,6 +81,10 @@ export function isDebuff(stat: string): stat is EnemyDebuffKey {
   return stat === 'defShred' || stat === 'resShred' || stat === 'dmgTaken'
 }
 
+function isHitBonus(stat: string): stat is HitBonusKey {
+  return stat === 'aftershockDmg'
+}
+
 function fourPieceSets(discs: Disc[]): string[] {
   const counts = new Map<string, number>()
   for (const disc of discs) counts.set(disc.setId, (counts.get(disc.setId) ?? 0) + 1)
@@ -92,7 +101,7 @@ export function zzzTeamBuffsFor(
   if (!receiver) return NO_TEAM
 
   const missing: string[] = []
-  const givers: { member: SquadMember, stats: FinalStats, discs: Disc[] }[] = []
+  const givers: { member: SquadMember, stats: FinalStats, discs: Disc[], wEngineId?: string, refinement: number }[] = []
   for (const id of setup.teammates.filter((t) => t !== receiverId).slice(0, 2)) {
     const build = data.builds.find((b) => b.agentId === id)
     const member = squadMember(id, build?.mindscapeLevel ?? 0)
@@ -102,7 +111,7 @@ export function zzzTeamBuffsFor(
       continue
     }
     const stats = computeStats({ ...resolved.build, coreSkillLevel: 6, conditions: statScreenConditions() }).stats
-    givers.push({ member, stats, discs: resolved.build.discs })
+    givers.push({ member, stats, discs: resolved.build.discs, wEngineId: build?.wEngineId, refinement: build?.wEngineRefinement ?? 1 })
   }
   const squad = [receiver, ...givers.map((g) => g.member)]
 
@@ -113,6 +122,7 @@ export function zzzTeamBuffsFor(
       ...fourPieceSets(giver.discs).flatMap((setId) =>
         (SET_4PC_BUFFS[setId] ?? []).map((buff) => ({ buff, sourceName: `${giver.member.name}'s 4-piece set` }))
       ),
+      ...(giver.wEngineId ? W_ENGINE_TEAM_BUFFS[giver.wEngineId] ?? [] : []).map((buff) => ({ buff, sourceName: `${giver.member.name}'s W-Engine` })),
     ]
     for (const { buff, sourceName } of sources) {
       const key = settingKey(buff, giver.member.agentId)
@@ -122,7 +132,7 @@ export function zzzTeamBuffsFor(
         applied.push({ ...base, value: 0, counted: false, reason: 'Turned off' })
         continue
       }
-      const context: ZzzBuffContext = { giver: giver.member, giverStats: giver.stats, receiver, squad, setting }
+      const context: ZzzBuffContext = { giver: giver.member, giverStats: giver.stats, receiver, squad, setting, refinement: giver.refinement }
       const value = buff.value(context)
       if (buff.element && buff.element !== receiver.element) {
         applied.push({ ...base, value: 0, counted: false, reason: `Only for ${buff.element} agents` })
@@ -152,11 +162,13 @@ export function zzzTeamBuffsFor(
 
   const debuffs: EnemyDebuffs = { ...NO_DEBUFFS }
   for (const a of applied) if (a.counted && isDebuff(a.buff.stat)) debuffs[a.buff.stat] += a.value
-  const effects: StatEffect[] = applied.filter((a) => a.counted).flatMap((a) => (isDebuff(a.buff.stat) ? [] : [{
+  const kindBonus: KindBonus = {}
+  for (const a of applied) if (a.counted && a.buff.stat === 'aftershockDmg') kindBonus.aftershock = (kindBonus.aftershock ?? 0) + a.value
+  const effects: StatEffect[] = applied.filter((a) => a.counted).flatMap((a) => (isDebuff(a.buff.stat) || isHitBonus(a.buff.stat) ? [] : [{
     stat: a.buff.stat,
     value: a.value,
     source: `${a.sourceName}: ${a.buff.label}`,
     confidence: a.buff.confidence,
   }]))
-  return { effects, debuffs, applied, missing }
+  return { effects, debuffs, kindBonus, applied, missing }
 }

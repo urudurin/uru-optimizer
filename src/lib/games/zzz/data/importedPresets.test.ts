@@ -72,7 +72,6 @@ describe('parseImportedZzzPresets', () => {
       'Preset 1: no agent data for "Someone Unknown" yet, skipped',
       'Preset 2: not an object, skipped',
       'Yixuan: a set choice has no "fourPiece", skipped',
-      'Yixuan: no set data for "phaethons-melody" yet, its bonuses won\'t be counted',
       'Yixuan: "Impact" can\'t be a slot 4 main stat, skipped',
       'Yixuan: unknown substat "Luck", skipped',
       'Yixuan: can\'t rank by "damage", using sheerForce',
