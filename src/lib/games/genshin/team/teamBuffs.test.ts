@@ -134,27 +134,28 @@ describe('team buffs', () => {
     expect(result.lunarBonus).toBe(20)
   })
 
-  it('gives Moonsign: Ascendant Gleam Lunar Reaction DMG from a teammate\'s stat by element, off until turned on, at most 36%, once', () => {
+  it('works out Moonsign from the Lunar characters in the party, and gives Ascendant Gleam from non-Moonsign teammates, at most 36%, once', () => {
     const flins = character('Flins', { element: 'Electro' })
-    const team = [flins, furina, bennett]
-    const off = teamBuffsFor(flins, setup(['Furina', 'Bennett']), { characters: team, artifacts: [] })
-    expect(off.lunarBonus).toBe(0)
+    const ineffa = character('Ineffa', { element: 'Electro' })
+    // One Lunar character: Nascent Gleam, no Ascendant Gleam buff
+    const nascent = teamBuffsFor(flins, setup(['Furina', 'Bennett']), { characters: [flins, furina, bennett], artifacts: [] })
+    expect(nascent.moonsign).toBe(1)
+    expect(nascent.applied.some((a) => a.buff.id === 'moonsign-ascendant-gleam')).toBe(false)
 
-    const on = {
-      'Furina:moonsign-ascendant-gleam': true,
-      'Bennett:moonsign-ascendant-gleam': true,
-    }
-    const result = teamBuffsFor(flins, setup(['Furina', 'Bennett'], { settings: on }), { characters: team, artifacts: [] })
+    // Two: Ascendant Gleam from Furina and Bennett (not Ineffa, who is Moonsign), on by default
+    const team = [flins, ineffa, furina, bennett]
+    const result = teamBuffsFor(flins, setup(['Ineffa', 'Furina', 'Bennett']), { characters: team, artifacts: [] })
+    expect(result.moonsign).toBe(2)
+    expect(result.applied.filter((a) => a.buff.id === 'moonsign-ascendant-gleam').map((a) => a.giver?.id)).toEqual(['Furina', 'Bennett'])
     const furinaHp = computeGenshinStats(furina, []).stats.hp!
     const bennettAtk = computeGenshinStats(bennett, []).stats.atk!
     // Hydro: 0.6% per 1,000 HP; Pyro: 0.9% per 100 ATK. Only the bigger one counts
     expect(result.lunarBonus).toBeCloseTo(Math.min(36, Math.max(furinaHp * 0.0006, bennettAtk * 0.009)), 6)
     // Not a stat
     expect(Object.keys({ ...result.premod, ...result.total })).not.toContain('lunarBonus')
-
-    // Not even offered without anyone who can trigger Lunar reactions
-    const plain = teamBuffsFor(xiangling, setup(['Furina', 'Bennett'], { settings: on }), { characters: [xiangling, furina, bennett], artifacts: [] })
-    expect(plain.applied.some((a) => a.buff.id === 'moonsign-ascendant-gleam')).toBe(false)
+    // Ineffa's Moonsign Benediction: Lunar-Charged Base DMG +0.7% per 100 of her ATK, up to 14%
+    const ineffaAtk = computeGenshinStats(ineffa, []).stats.atk!
+    expect(result.baseBonus.lunarcharged).toBeCloseTo(Math.min(14, ineffaAtk * 0.007), 6)
   })
 
   it('adds elemental resonance for a team of 4', () => {

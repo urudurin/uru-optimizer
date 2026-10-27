@@ -171,7 +171,8 @@ describe('Genshin damage', () => {
       element: 'Electro',
       rotation: { counts: { 'reaction:lunarcharged': 2 }, infusion: false, reaction: 'none', reactionShare: 100 },
     }
-    expect(rotationDamage(stats, lunar)).toBeCloseTo(2 * 1.8 * 1446.8535 * (1 + em) * crit * 0.9, 3)
+    // Flins's own passive: Lunar-Charged Base DMG +0.7% per 100 ATK, capped at 14% (2,000 ATK)
+    expect(rotationDamage(stats, lunar)).toBeCloseTo(2 * 1.8 * 1446.8535 * 1.14 * (1 + em) * crit * 0.9, 3)
     expect(rotationDamage({ ...stats, electroDmg: 99 }, lunar)).toBeCloseTo(rotationDamage(stats, lunar), 6)
 
     // Flins's Burst line deals Lunar-Charged directly: ATK x multiplier x 3
@@ -179,7 +180,9 @@ describe('Genshin damage', () => {
     expect(final.special).toBe('lunarcharged')
     const direct: DamageSetup = { ...lunar, rotation: { ...lunar.rotation, counts: { [final.key]: 1 } } }
     const multiplier = final.terms[0][1][8] / 100
-    expect(rotationDamage(stats, direct)).toBeCloseTo(2000 * multiplier * 3 * (1 + em) * crit * 0.9, 3)
+    expect(rotationDamage(stats, direct)).toBeCloseTo(2000 * multiplier * 3 * 1.14 * (1 + em) * crit * 0.9, 3)
+    // A teammate's bigger base increase wins over the character's own
+    expect(rotationDamage(stats, { ...direct, baseBonus: { lunarcharged: 20 } }) / rotationDamage(stats, direct)).toBeCloseTo(1.2 / 1.14, 6)
     // Set bonuses for the kind add inside the EM bracket
     expect(rotationDamage(stats, { ...direct, reactionBonus: { lunarcharged: 20 } }) / rotationDamage(stats, direct)).toBeCloseTo((1.2 + em) / (1 + em), 6)
 

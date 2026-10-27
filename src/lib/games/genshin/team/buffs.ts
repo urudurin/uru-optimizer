@@ -414,7 +414,7 @@ export const ANY_MEMBER_BUFFS: TeamBuff[] = [
       const scaling = giver.element ? ASCENDANT_GLEAM[giver.element] : undefined
       return scaling ? Math.min(36, (giverStats[scaling.stat] ?? 0) * scaling.perPoint) : 0
     },
-    toggle: { kind: 'switch', label: 'Ascendant Gleam (2+ Moonsign), giver not Moonsign', offByDefault: true },
+    toggle: { kind: 'switch', label: 'Cast a Skill or Burst in the last 20s' },
     nonStacking: 'moonsign-ascendant-gleam',
     confidence: 'sourced',
   },

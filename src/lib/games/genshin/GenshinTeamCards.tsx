@@ -29,6 +29,14 @@ import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 // The Team row of the Genshin optimizer, after HSR's teammates row and Genshin Optimizer's team setup: who the
 // teammates are, whether this character is on the field, and every buff the team gives them with its toggle.
 
+const REACTION_NAMES: Record<string, string> = {
+  lunarcharged: 'Lunar-Charged',
+  lunarbloom: 'Lunar-Bloom',
+  lunarcrystallize: 'Lunar-Crystallize',
+  stellarconduct: 'Stellar-Conduct',
+  stellarswirl: 'Stellar Swirl',
+}
+
 function describeStat(stat: BuffStat, value: number): string {
   if (isDebuff(stat)) return `${value}% ${debuffLabel(stat)}`
   if (stat === 'lunarBonus') return `+${value.toFixed(1)}% Lunar Reaction DMG`
@@ -139,6 +147,14 @@ export function GenshinTeamCards({ character, characters, team, result, onTeamma
                   <BuffControl entry={entry} onChange={(value) => onSetting(entry.key, value)} />
                 </Group>
               ))}
+              {(result.moonsign > 0 || Object.keys(result.baseBonus).length > 0) && (
+                <Text size='xs' c='dimmed'>
+                  {[
+                    result.moonsign > 0 ? `Moonsign: ${result.moonsign >= 2 ? 'Ascendant Gleam' : 'Nascent Gleam'} (${result.moonsign})` : '',
+                    ...Object.entries(result.baseBonus).map(([kind, value]) => `${REACTION_NAMES[kind] ?? kind} Base DMG +${value.toFixed(1)}%`),
+                  ].filter(Boolean).join(' · ')}
+                </Text>
+              )}
               <Text size='xs' fw={600}>
                 {totals.length > 0
                   ? `In total: ${totals.map(([stat, value]) => describeStat(stat, value)).join(', ')}`

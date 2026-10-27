@@ -68,24 +68,38 @@ const SPECIAL: Record<SpecialKind, { pattern: RegExp, factor: number, resist?: D
   stellarswirl: { pattern: /Stellar Swirl/, factor: 1 },
 }
 
-// Who makes Lunar and Stellar reactions possible in a team. Lunar: anyone with Lunar-labelled talent hits in the data
-// (Flins, Columbina) and Ineffa, Lauma and Nefer, whose Lunar hits aren't labelled so. Stellar: Sandrone, Odette and the
-// Cryo Traveler (KQM's Stellar Glimmer guide, keqingmains.com/misc/stellar)
-const LUNAR_ENABLERS: Record<string, SpecialKind[]> = { Ineffa: ['lunarcharged'], Lauma: ['lunarbloom'], Nefer: ['lunarbloom'] }
-const STELLAR_ENABLERS = ['Sandrone', 'Odette', 'TravelerCryo']
+// The characters whose passive (Moonsign Benediction, Stellar Jubilee) turns reactions into Lunar or Stellar ones, and
+// the Base DMG increase they give those reactions from their own stat, in percent per point, up to a cap. From the
+// in-game passive descriptions the user pasted. The Lunar seven also raise the party's Moonsign level by one each
+export type Benediction = { kinds: SpecialKind[], stat: GenshinStatKey, perPoint: number, cap: number }
+const LUNAR_ALL: SpecialKind[] = ['lunarcharged', 'lunarbloom', 'lunarcrystallize']
+const STELLAR_BOTH: SpecialKind[] = ['stellarconduct', 'stellarswirl']
+export const BENEDICTIONS: Record<string, Benediction> = {
+  Ineffa: { kinds: ['lunarcharged'], stat: 'atk', perPoint: 0.007, cap: 14 },
+  Flins: { kinds: ['lunarcharged'], stat: 'atk', perPoint: 0.007, cap: 14 },
+  Nefer: { kinds: ['lunarbloom'], stat: 'elementalMastery', perPoint: 0.0175, cap: 14 },
+  Lauma: { kinds: ['lunarbloom'], stat: 'elementalMastery', perPoint: 0.0175, cap: 14 },
+  Linnea: { kinds: ['lunarcrystallize'], stat: 'def', perPoint: 0.007, cap: 14 },
+  Zibai: { kinds: ['lunarcrystallize'], stat: 'def', perPoint: 0.007, cap: 14 },
+  Columbina: { kinds: LUNAR_ALL, stat: 'hp', perPoint: 0.0002, cap: 7 },
+  Sandrone: { kinds: STELLAR_BOTH, stat: 'atk', perPoint: 0.007, cap: 14 },
+  Odette: { kinds: STELLAR_BOTH, stat: 'atk', perPoint: 0.007, cap: 14 },
+  TravelerCryo: { kinds: STELLAR_BOTH, stat: 'atk', perPoint: 0.0035, cap: 7 },
+  Vesna: { kinds: ['stellarswirl'], stat: 'atk', perPoint: 0.007, cap: 14 },
+}
+
+export function benedictionValue(benediction: Benediction, stats: Partial<Record<GenshinStatKey, number>>): number {
+  return Math.min(benediction.cap, (stats[benediction.stat] ?? 0) * benediction.perPoint)
+}
 
 // The Lunar and Stellar kinds a team (character ids, the receiver included) can trigger
 export function teamReactions(ids: string[]): SpecialKind[] {
-  const kinds = new Set<SpecialKind>()
-  for (const id of ids) {
-    for (const kind of LUNAR_ENABLERS[id] ?? []) kinds.add(kind)
-    for (const hit of characterHits(id)) if (hit.special?.startsWith('lunar')) kinds.add(hit.special)
-    if (STELLAR_ENABLERS.includes(id)) {
-      kinds.add('stellarconduct')
-      kinds.add('stellarswirl')
-    }
-  }
-  return [...kinds]
+  return [...new Set(ids.flatMap((id) => BENEDICTIONS[id]?.kinds ?? []))]
+}
+
+// The party's Moonsign level: one per Lunar character (1 Nascent Gleam, 2+ Ascendant Gleam)
+export function moonsignLevel(ids: string[]): number {
+  return ids.filter((id) => BENEDICTIONS[id]?.kinds.some((kind) => kind.startsWith('lunar'))).length
 }
 
 // Stellar-Conduct's Polestar Field by its recorded hits (0-12, KQM): the multiplier on Stellar-Conduct damage and the
@@ -162,6 +176,9 @@ export type DamageSetup = {
   hitBuffs?: HitBuff[],
   // The Lunar and Stellar kinds the team can trigger (teamReactions); missing means every kind
   teamReactions?: SpecialKind[],
+  // Base DMG increase per Lunar or Stellar kind from teammates' passives (team/teamBuffs.ts), in percent. The character's
+  // own passive is worked out from their stats; the bigger one counts
+  baseBonus?: Partial<Record<SpecialKind, number>>,
 }
 
 // A buff to some hits only, as data (it goes to the search's worker)
@@ -399,8 +416,11 @@ export type PreparedDamage = {
   groups: ElementTerms[],
   def: number,
   reactionShare: number,
-  transformative: { base: number, bonus: number, special: boolean }[],
-  special: { terms: [ScalingStat, number][], bonus: number }[],
+  transformative: { base: number, bonus: number, special: boolean, kind?: SpecialKind }[],
+  special: { terms: [ScalingStat, number][], bonus: number, kind: SpecialKind }[],
+  // The Base DMG increase per Lunar or Stellar kind: from teammates, and the character's own passive
+  baseBonus: Partial<Record<SpecialKind, number>>,
+  ownBenediction?: Benediction,
 }
 
 // Transformative reactions: genshin-optimizer's transInfo multipliers, which elements trigger them, and the element
@@ -558,7 +578,7 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     const shred = (debuffs.resShred[line.variant] ?? 0) + (debuffs.resShred.all ?? 0)
     const base = count * transformativeBase(line.reaction, setup.characterLevel) * resMultiplier((enemy.res - shred) / 100)
     const bonusKey = BONUS_KEY[line.reaction] ?? (line.reaction as ReactionBonusKey)
-    transformative.push({ base, bonus: reactionBonus(bonusKey), special: !!TRANSFORMATIVE[line.reaction].special })
+    transformative.push({ base, bonus: reactionBonus(bonusKey), special: !!TRANSFORMATIVE[line.reaction].special, kind: NEEDS[line.reaction] })
   }
   const specialGroups = [...special].map(([kind, terms]) => {
     const resist = SPECIAL[kind].resist ?? element ?? 'Physical'
@@ -566,7 +586,7 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     // Stellar-Conduct damage grows with the Polestar Field's recorded hits
     const field = kind === 'stellarconduct' && polestar ? polestarMultiplier(polestar.hits) : 1
     const scale = SPECIAL[kind].factor * field * resMultiplier((enemy.res - shred) / 100)
-    return { terms: [...terms].map(([stat, value]): [ScalingStat, number] => [stat, value * scale]), bonus: reactionBonus(kind) }
+    return { terms: [...terms].map(([stat, value]): [ScalingStat, number] => [stat, value * scale]), bonus: reactionBonus(kind), kind }
   })
   return {
     groups,
@@ -574,6 +594,8 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     reactionShare: Math.max(0, Math.min(100, rotation.reactionShare)) / 100,
     transformative,
     special: specialGroups,
+    baseBonus: setup.baseBonus ?? {},
+    ownBenediction: BENEDICTIONS[setup.characterId],
   }
 }
 
@@ -611,15 +633,22 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
     const fromEm = 16 * em / (em + 2000)
     const specialFromEm = 6 * em / (em + 2000)
     const crit = 1 + Math.min(Math.max(critRate, 0), 100) / 100 * critDmg / 100
+    // Lunar and Stellar Base DMG increase: the bigger of the teammates' and the character's own passive
+    const own = prepared.ownBenediction
+    const ownValue = own ? Math.min(own.cap, get(own.stat) * own.perPoint) : 0
+    const baseFactor = (kind: SpecialKind | undefined) => {
+      if (!kind) return 1
+      return 1 + Math.max(prepared.baseBonus[kind] ?? 0, own?.kinds.includes(kind) ? ownValue : 0) / 100
+    }
     for (const reaction of prepared.transformative) {
       transformative += reaction.special
-        ? reaction.base * (1 + specialFromEm + reaction.bonus) * crit
+        ? reaction.base * baseFactor(reaction.kind) * (1 + specialFromEm + reaction.bonus) * crit
         : reaction.base * (1 + fromEm + reaction.bonus)
     }
     for (const group of prepared.special) {
       let base = 0
       for (const [stat, multiplier] of group.terms) base += multiplier / 100 * get(stat)
-      transformative += base * (1 + specialFromEm + group.bonus) * crit
+      transformative += base * baseFactor(group.kind) * (1 + specialFromEm + group.bonus) * crit
     }
   }
   return total * prepared.def + transformative

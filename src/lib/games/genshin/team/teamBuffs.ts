@@ -1,6 +1,9 @@
 import {
+  BENEDICTIONS,
+  benedictionValue,
   type EnemyDebuffs,
-  teamReactions,
+  moonsignLevel,
+  type SpecialKind,
 } from 'lib/games/genshin/damage/damage'
 import {
   computeGenshinStats,
@@ -62,6 +65,9 @@ export type TeamBuffResult = TeamBuffTotals & {
   debuffs: EnemyDebuffs,
   // Lunar Reaction DMG Bonus from Moonsign: Ascendant Gleam, in percent
   lunarBonus: number,
+  // The party's Moonsign level, and the Lunar and Stellar Base DMG increase teammates' passives give, by kind
+  moonsign: number,
+  baseBonus: Partial<Record<SpecialKind, number>>,
   applied: AppliedBuff[],
   resonance: Element[],
 }
@@ -121,13 +127,14 @@ export function teamBuffsFor(
   })
   const teamMaxElementalMastery = Math.max(0, ...givers.map((g) => g.stats.elementalMastery ?? 0))
 
-  // Moonsign buffs only matter when someone in the team can trigger Lunar reactions
-  const lunarTeam = teamReactions([receiver.id, ...teammates.map((c) => c.id)]).some((kind) => kind.startsWith('lunar'))
+  // Moonsign: one level per Lunar character in the party; Ascendant Gleam (2+) lets non-Moonsign teammates buff Lunar DMG
+  const moonsign = moonsignLevel([receiver.id, ...teammates.map((c) => c.id)])
+  const isMoonsign = (id: string) => BENEDICTIONS[id]?.kinds.some((kind) => kind.startsWith('lunar')) ?? false
   const candidates: { buff: TeamBuff, sourceName: string, giver?: (typeof givers)[number] }[] = []
   for (const giver of givers) {
     const { character } = giver
     for (const buff of CHARACTER_BUFFS[character.id] ?? []) candidates.push({ buff, sourceName: character.name, giver })
-    if (lunarTeam) { for (const buff of ANY_MEMBER_BUFFS) candidates.push({ buff, sourceName: character.name, giver }) }
+    if (moonsign >= 2 && !isMoonsign(character.id)) { for (const buff of ANY_MEMBER_BUFFS) candidates.push({ buff, sourceName: character.name, giver }) }
     for (const buff of WEAPON_BUFFS[character.weapon?.id ?? ''] ?? []) {
       candidates.push({ buff, sourceName: `${character.name}'s ${character.weapon?.name}`, giver })
     }
@@ -201,5 +208,13 @@ export function teamBuffsFor(
     const bucket = totals[entry.buff.stage]
     bucket[entry.stat] = (bucket[entry.stat] ?? 0) + entry.value
   }
-  return { ...totals, debuffs, lunarBonus, applied, resonance }
+  // Teammates' Moonsign Benediction and Stellar Jubilee passives, from their own stats; the biggest per kind
+  const baseBonus: Partial<Record<SpecialKind, number>> = {}
+  for (const giver of givers) {
+    const benediction = BENEDICTIONS[giver.character.id]
+    if (!benediction) continue
+    const value = benedictionValue(benediction, giver.stats)
+    for (const kind of benediction.kinds) baseBonus[kind] = Math.max(baseBonus[kind] ?? 0, value)
+  }
+  return { ...totals, debuffs, lunarBonus, moonsign, baseBonus, applied, resonance }
 }
