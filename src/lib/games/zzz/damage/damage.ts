@@ -25,8 +25,18 @@ import type { FinalStats } from 'lib/games/zzz/stats/computeStats'
 // Armorer agents (Claret) deal Sharp damage (prep.ts sharpDmg): DEF x multiplier x DMG Bonus x DEF multiplier x RES x
 // DMG taken x Stun x the Laceration multiplier, which takes CRIT's place: (1 + min(CRIT Rate, 100%) x Laceration DMG) x
 // (1 + max(CRIT Rate - 100%, 0) x Laceration DMG), with 150% Laceration DMG to start (genshin-optimizer util.ts).
-// Not yet: Sheer and Sharp DMG Bonus stats, anomaly-specific bonuses (Burn DMG...), Aftershock hits and hits of another attribute than the
-// agent's. Personal, non-commercial use.
+// Aftershock hits (genshin-optimizer's damageType2 'aftershock', listed below by agent) are skill hits like any other, but
+// some kits buff only them: an Aftershock DMG Bonus goes in bonusMultiplier, and CRIT DMG or DEF ignore that only
+// Aftershock gets puts those hits in their own group (DamageSetup.aftershock), with their own CRIT and DEF multipliers.
+// Anomaly-specific bonuses follow GO's dmg.ts: a DMG Bonus of the anomaly's own (Shock DMG +18%) adds to DMG Bonus, a
+// "buff" (Vivian's Corruption DMG +12%) is a multiplier of its own, extra Disorder multiplier (Yanagi's +250%) adds to
+// Disorder's and Vortex's, and Jane's Assault can CRIT (anomaly CRIT Rate and CRIT DMG of its own).
+// Wind (GO's util.ts): the anomaly is 1250% of ATK and its Disorder 100%. Vortex, which a Wind anomaly sets off on an
+// enemy with another anomaly, is GO's vortex(): a base by attribute plus the anomaly's time multiplier x seconds left of
+// a 30-second window. Windswept (an enemy hit by a Wind anomaly) gives direct DMG +10% and Frostbite CRIT DMG +10% when
+// the squad has a Wind or Ice agent (GO's common/anomaly.ts); direct DMG here means skill hits, not anomalies.
+// Not yet: Sheer and Sharp DMG Bonus stats, Alice's time-based Disorder bonus, Abloom, Polarity Disorder and hits of
+// another attribute than the agent's. Personal, non-commercial use.
 
 // genshin-optimizer's defLevelFactor, by agent level
 const LEVEL_FACTOR = [
@@ -104,6 +114,9 @@ export type EnemySettings = {
   stunned: boolean,
   // The Stun DMG multiplier while stunned, in percent (150 for most enemies)
   stunMultiplier: number,
+  // Enemy states that need a Wind or Ice agent in the squad: Windswept (direct DMG +10%), Frostbite (CRIT DMG +10%)
+  windswept?: boolean,
+  frostbite?: boolean,
 }
 
 // genshin-optimizer's test enemy: DEF 635, no RES, 150% when stunned. Set your own enemy's numbers
@@ -127,19 +140,41 @@ export type DamageSetup = {
   // Sharp damage: Laceration DMG in percent (150 to start), and CRIT Rate per point of CRIT DMG (Claret's Core Skill)
   lacerationDmg?: number,
   critRateFromCritDmg?: number,
+  // Aftershock hits, when kits give them CRIT DMG (a fraction of the agent's CRIT DMG) or DEF ignore (percent) of their
+  // own; these hits are left out of multiplier and bonusMultiplier then
+  aftershock?: { multiplier: number, bonusMultiplier: number, critDmgFromCritDmg: number, defIgnore: number },
+  // Anomaly-specific bonuses: count x multiplier x the anomaly's own extra DMG Bonus (a fraction), and the anomalies
+  // that can CRIT, as extra damage on top of anomalyMultiplier (CRIT Rate in percent, plus per point of Anomaly
+  // Proficiency; CRIT DMG in percent)
+  anomalyBonusMultiplier?: number,
+  anomalyCrits?: AnomalyCrit[],
   agentLevel: number,
   enemy: EnemySettings,
   debuffs: EnemyDebuffs,
 }
 
+export type AnomalyCrit = { multiplier: number, bonusMultiplier: number, critRate: number, critRatePerAp: number, critDmg: number }
+
+// DEF multiplier, with DEF ignore of some hits added to the team's shred (GO: DEF x (1 - DEF shred - DEF ignore))
+function defMultiplier(stats: FinalStats, setup: Omit<DamageSetup, 'multiplier'>, defIgnore = 0): number {
+  const factor = levelFactor(setup.agentLevel)
+  const shred = Math.min(100, setup.debuffs.defShred + defIgnore) / 100
+  const effectiveDef = Math.max(0, setup.enemy.def * (1 - shred) * (1 - stats.penRatio / 100) - stats.pen)
+  return factor / (factor + effectiveDef)
+}
+
 // Each multiplier, for showing where the damage comes from
 export function damageFactors(stats: FinalStats, setup: Omit<DamageSetup, 'multiplier'>) {
-  const factor = levelFactor(setup.agentLevel)
-  const effectiveDef = Math.max(0, setup.enemy.def * (1 - setup.debuffs.defShred / 100) * (1 - stats.penRatio / 100) - stats.pen)
+  const critRate = Math.min(100, Math.max(0, stats.critRate)) / 100
+  const critDmg = (stats.critDmg + (setup.enemy.frostbite ? 10 : 0)) / 100
   return {
     dmgBonus: 1 + stats.elementDmg / 100,
-    crit: 1 + (Math.min(100, Math.max(0, stats.critRate)) / 100) * (stats.critDmg / 100),
-    def: factor / (factor + effectiveDef),
+    critRate,
+    critDmg,
+    crit: 1 + critRate * critDmg,
+    def: defMultiplier(stats, setup),
+    // Windswept: direct DMG (skill hits) +10%
+    direct: setup.enemy.windswept ? 1.1 : 1,
     res: 1 - setup.enemy.res / 100 + setup.debuffs.resShred / 100,
     dmgTaken: 1 + setup.debuffs.dmgTaken / 100,
     stun: setup.enemy.stunned ? setup.enemy.stunMultiplier / 100 : 1,
@@ -151,49 +186,82 @@ export function anomalyLevelMultiplier(level: number): number {
   return Math.floor((1 + (level - 1) / 59) * 10000) / 10000
 }
 
-// Average damage of the whole rotation (crits counted at their rate; anomalies don't crit)
+type Factors = ReturnType<typeof damageFactors>
+
+// Skill hits of a summed multiplier: ATK, Sheer Force or DEF (Sharp) x DMG Bonus x CRIT (or Laceration) x DEF, with
+// CRIT DMG and DEF ignore that only these hits get
+function skillDamage(
+  stats: FinalStats,
+  setup: DamageSetup,
+  f: Factors,
+  multiplier: number,
+  bonusMultiplier: number,
+  critDmgFromCritDmg = 0,
+  defIgnore = 0,
+): number {
+  if (multiplier === 0 && bonusMultiplier === 0) return 0
+  const hits = (multiplier * f.dmgBonus + bonusMultiplier) / 100
+  const crit = 1 + f.critRate * (f.critDmg + critDmgFromCritDmg * stats.critDmg / 100)
+  const def = defIgnore ? defMultiplier(stats, setup, defIgnore) : f.def
+  // Rupture agents' skill hits are Sheer damage: Sheer Force instead of ATK, and no DEF multiplier
+  if (setup.scaling === 'sheer') return stats.sheerForce * hits * crit
+  if (setup.scaling === 'sharp') {
+    const critRate = Math.max(0, stats.critRate + (setup.critRateFromCritDmg ?? 0) * stats.critDmg) / 100
+    const laceration = (setup.lacerationDmg ?? 150) / 100
+    return stats.def * def * hits * (1 + Math.min(critRate, 1) * laceration) * (1 + Math.max(critRate - 1, 0) * laceration)
+  }
+  return stats.atk * def * hits * crit
+}
+
+// Average damage of the whole rotation (crits counted at their rate; anomalies crit only with a kit that says so)
 export function rotationDamage(stats: FinalStats, setup: DamageSetup): number {
   const f = damageFactors(stats, setup)
   const shared = f.res * f.dmgTaken * f.stun
-  // Rupture agents' skill hits are Sheer damage: Sheer Force instead of ATK, and no DEF multiplier
-  const hits = (setup.multiplier * f.dmgBonus + (setup.bonusMultiplier ?? 0)) / 100
-  let standard: number
-  if (setup.scaling === 'sheer') standard = stats.sheerForce * hits * f.crit
-  else if (setup.scaling === 'sharp') {
-    const critRate = Math.max(0, stats.critRate + (setup.critRateFromCritDmg ?? 0) * stats.critDmg) / 100
-    const laceration = (setup.lacerationDmg ?? 150) / 100
-    standard = stats.def * f.def * hits * (1 + Math.min(critRate, 1) * laceration) * (1 + Math.max(critRate - 1, 0) * laceration)
-  } else standard = stats.atk * f.def * hits * f.crit
-  const anomaly = stats.atk * f.def * ((setup.anomalyMultiplier ?? 0) / 100) * f.dmgBonus * (stats.anomalyProficiency / 100)
-    * anomalyLevelMultiplier(setup.agentLevel)
-  return shared * (standard + anomaly)
+  const aftershock = setup.aftershock
+  const standard = skillDamage(stats, setup, f, setup.multiplier, setup.bonusMultiplier ?? 0)
+    + (aftershock
+      ? skillDamage(stats, setup, f, aftershock.multiplier, aftershock.bonusMultiplier, aftershock.critDmgFromCritDmg, aftershock.defIgnore)
+      : 0)
+  let anomalyHits = (setup.anomalyMultiplier ?? 0) * f.dmgBonus + (setup.anomalyBonusMultiplier ?? 0)
+  for (const crit of setup.anomalyCrits ?? []) {
+    const rate = Math.min(1, Math.max(0, crit.critRate + crit.critRatePerAp * stats.anomalyProficiency) / 100)
+    anomalyHits += (crit.multiplier * f.dmgBonus + crit.bonusMultiplier) * rate * crit.critDmg / 100
+  }
+  const anomaly = anomalyHits === 0
+    ? 0
+    : stats.atk * f.def * (anomalyHits / 100) * (stats.anomalyProficiency / 100) * anomalyLevelMultiplier(setup.agentLevel)
+  return shared * (standard * f.direct + anomaly)
 }
 
 // Attribute Anomaly
 
-export type AnomalyKind = 'assault' | 'burn' | 'shatter' | 'shock' | 'corruption' | 'disorder'
+export type AnomalyKind = 'assault' | 'burn' | 'shatter' | 'shock' | 'corruption' | 'wind' | 'disorder' | 'vortex'
+type AttributeAnomaly = Exclude<AnomalyKind, 'disorder' | 'vortex'>
 
-// What the agent's attribute triggers. Wind (Windswept) isn't modelled
-const ATTRIBUTE_ANOMALY: Record<string, Exclude<AnomalyKind, 'disorder'>> = {
+// What the agent's attribute triggers
+const ATTRIBUTE_ANOMALY: Record<string, AttributeAnomaly> = {
   Physical: 'assault',
   Fire: 'burn',
   Ice: 'shatter',
   Electric: 'shock',
   Ether: 'corruption',
+  Wind: 'wind',
 }
 
 // genshin-optimizer's anomalyMultipliers (per tick for the ones that tick), and the ticks in 10 seconds
-const ANOMALY_HIT: Record<Exclude<AnomalyKind, 'disorder'>, { label: string, perHit: number, ticks: number }> = {
+const ANOMALY_HIT: Record<AttributeAnomaly, { label: string, perHit: number, ticks: number }> = {
   assault: { label: 'Assault', perHit: 713, ticks: 1 },
   burn: { label: 'Burn (10s, 20 ticks of 50%)', perHit: 50, ticks: 20 },
   shatter: { label: 'Shatter', perHit: 500, ticks: 1 },
   shock: { label: 'Shock (10s, 10 ticks of 125%)', perHit: 125, ticks: 10 },
   corruption: { label: 'Corruption (10s, 20 ticks of 62.5%)', perHit: 62.5, ticks: 20 },
+  wind: { label: 'Wind anomaly', perHit: 1250, ticks: 1 },
 }
 
 // Disorder: base + per tick x whole ticks left of the anomaly it ends, floor((duration - time passed) x ticks per
 // second). Burn and Corruption tick twice a second, the rest once. Miyabi's Frost (20 seconds, 600% + floor(t) x 75%)
-// is genshin-optimizer's, and matches zerozoneshop.com's damage formula guide (read once by hand, user's link)
+// is genshin-optimizer's, and matches zerozoneshop.com's damage formula guide (read once by hand, user's link). Wind's
+// Disorder is 100% with no time part (GO)
 const DISORDER: Record<string, { base: number, perTick: number, ticksPerSecond: number, duration: number }> = {
   Physical: { base: 450, perTick: 7.5, ticksPerSecond: 1, duration: 10 },
   Fire: { base: 450, perTick: 50, ticksPerSecond: 2, duration: 10 },
@@ -201,35 +269,116 @@ const DISORDER: Record<string, { base: number, perTick: number, ticksPerSecond: 
   Electric: { base: 450, perTick: 125, ticksPerSecond: 1, duration: 10 },
   Ether: { base: 450, perTick: 62.5, ticksPerSecond: 2, duration: 10 },
   Frost: { base: 600, perTick: 75, ticksPerSecond: 1, duration: 20 },
+  Wind: { base: 100, perTick: 0, ticksPerSecond: 1, duration: 10 },
 }
+
+// Vortex (GO's vortexMultipliers and disorderTimeMultipliers): base + per second x seconds left of 30, not floored
+const VORTEX: Record<string, { base: number, perSecond: number }> = {
+  Physical: { base: 800, perSecond: 7.5 },
+  Fire: { base: 900, perSecond: 100 },
+  Ice: { base: 1300, perSecond: 7.5 },
+  Electric: { base: 650, perSecond: 125 },
+  Ether: { base: 650, perSecond: 125 },
+  Frost: { base: 0, perSecond: 75 },
+}
+const VORTEX_SECONDS = 30
 
 const MIYABI_ID = '1091'
 
-export type AnomalyHit = { key: string, kind: AnomalyKind, label: string }
+// attribute: the anomaly a Vortex comes from
+export type AnomalyHit = { key: string, kind: AnomalyKind, label: string, attribute?: string }
 
-// The anomalies an agent of this attribute triggers, as rotation lines
-export function anomalyHits(agentId: string, element: string): AnomalyHit[] {
+// The anomalies an agent of this attribute triggers, as rotation lines. A Wind agent can set off Vortex from every other
+// anomaly; others only their own, and only with a Wind agent in the squad
+export function anomalyHits(agentId: string, element: string, teamElements: string[] = []): AnomalyHit[] {
   const kind = ATTRIBUTE_ANOMALY[element]
   if (!kind) return []
+  const own = agentId === MIYABI_ID ? 'Frost' : element
+  const vortex = element === 'Wind'
+    ? ['Physical', 'Fire', 'Ice', 'Electric', 'Ether', 'Frost']
+    : teamElements.includes('Wind')
+    ? [own]
+    : []
   return [
     { key: `anomaly:${kind}`, kind, label: ANOMALY_HIT[kind].label },
     { key: 'anomaly:disorder', kind: 'disorder', label: agentId === MIYABI_ID ? 'Disorder (Frostbite)' : 'Disorder' },
+    ...vortex.map((attribute): AnomalyHit => ({ key: `anomaly:vortex:${attribute}`, kind: 'vortex', label: `Vortex (${attribute})`, attribute })),
   ]
 }
 
-// One anomaly's multiplier in percent of ATK; Disorder with the seconds that had passed of the anomaly it ends
-export function anomalyMultiplier(agentId: string, element: string, kind: AnomalyKind, disorderAfter = 0): number {
+// One anomaly's multiplier in percent of ATK; Disorder and Vortex with the seconds that had passed of the anomaly they end
+export function anomalyMultiplier(agentId: string, element: string, kind: AnomalyKind, disorderAfter = 0, attribute?: string): number {
+  if (kind === 'vortex') {
+    const vortex = VORTEX[attribute ?? element]
+    return vortex ? vortex.base + vortex.perSecond * Math.max(0, VORTEX_SECONDS - disorderAfter) : 0
+  }
   if (kind !== 'disorder') return ANOMALY_HIT[kind].perHit * ANOMALY_HIT[kind].ticks
   const disorder = DISORDER[agentId === MIYABI_ID ? 'Frost' : element]
   if (!disorder) return 0
   return disorder.base + disorder.perTick * Math.floor(Math.max(0, disorder.duration - disorderAfter) * disorder.ticksPerSecond)
 }
 
-export function rotationAnomalyMultiplier(agentId: string, element: string, rotation: Rotation): number {
-  return anomalyHits(agentId, element).reduce(
-    (sum, hit) => sum + (rotation.counts[hit.key] ?? 0) * anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter),
-    0,
-  )
+// Bonuses to some anomalies only, in percent: dmg adds to DMG Bonus, buff is a multiplier of its own (1 + buff), add
+// goes on the multiplier (Disorder's, which Vortex gets too), and an anomaly that can CRIT has a CRIT Rate (plus per
+// point of Anomaly Proficiency) and CRIT DMG. 'anomaly' is every attribute anomaly (not Disorder or Vortex)
+export type AnomalyBonus = { dmg?: number, buff?: number, add?: number, critRate?: number, critRatePerAp?: number, critDmg?: number }
+export type AnomalyBonuses = Partial<Record<AnomalyKind | 'anomaly', AnomalyBonus>>
+
+export function addAnomalyBonuses(into: AnomalyBonuses, from: AnomalyBonuses): AnomalyBonuses {
+  for (const [key, bonus] of Object.entries(from) as [keyof AnomalyBonuses, AnomalyBonus][]) {
+    const current: Record<string, number> = { ...into[key] }
+    for (const [field, value] of Object.entries(bonus)) current[field] = (current[field] ?? 0) + value
+    into[key] = current
+  }
+  return into
+}
+
+function bonusFor(kind: AnomalyKind, bonuses: AnomalyBonuses): AnomalyBonus {
+  const parts = [bonuses[kind], kind === 'disorder' || kind === 'vortex' ? undefined : bonuses.anomaly]
+  const total: AnomalyBonus = {}
+  for (const part of parts) {
+    for (const [field, value] of Object.entries(part ?? {}) as [keyof AnomalyBonus, number][]) total[field] = (total[field] ?? 0) + value
+  }
+  // Extra Disorder multiplier counts for Vortex too
+  if (kind === 'vortex') total.add = (total.add ?? 0) + (bonuses.disorder?.add ?? 0)
+  return total
+}
+
+// The rotation's anomalies for DamageSetup: summed multipliers, the part from anomaly-only DMG Bonus, and the anomalies
+// that can CRIT
+export function rotationAnomaly(
+  agentId: string,
+  element: string,
+  rotation: Rotation,
+  teamElements: string[] = [],
+  bonuses: AnomalyBonuses = {},
+): Pick<DamageSetup, 'anomalyMultiplier' | 'anomalyBonusMultiplier' | 'anomalyCrits'> {
+  let multiplier = 0
+  let bonusMultiplier = 0
+  const crits: AnomalyCrit[] = []
+  for (const hit of anomalyHits(agentId, element, teamElements)) {
+    const count = rotation.counts[hit.key] ?? 0
+    if (!count) continue
+    const bonus = bonusFor(hit.kind, bonuses)
+    const total = count * (anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute) + (bonus.add ?? 0))
+      * (1 + (bonus.buff ?? 0) / 100)
+    multiplier += total
+    bonusMultiplier += total * (bonus.dmg ?? 0) / 100
+    if (bonus.critDmg) {
+      crits.push({
+        multiplier: total,
+        bonusMultiplier: total * (bonus.dmg ?? 0) / 100,
+        critRate: bonus.critRate ?? 0,
+        critRatePerAp: bonus.critRatePerAp ?? 0,
+        critDmg: bonus.critDmg,
+      })
+    }
+  }
+  return { anomalyMultiplier: multiplier, anomalyBonusMultiplier: bonusMultiplier, anomalyCrits: crits }
+}
+
+export function rotationAnomalyMultiplier(agentId: string, element: string, rotation: Rotation, teamElements: string[] = []): number {
+  return rotationAnomaly(agentId, element, rotation, teamElements).anomalyMultiplier ?? 0
 }
 
 // Skills
@@ -256,7 +405,45 @@ export function hitKind(skill: string, category: string): HitKind {
   return KIND_PREFIXES.find(([prefix]) => skill.startsWith(prefix))?.[1] ?? CATEGORY_KINDS[category] ?? 'basic'
 }
 
-export type SkillHit = { skill: string, category: string, kind: HitKind, index: number, label: string, base: number, growth: number }
+export type SkillHit = {
+  skill: string,
+  category: string,
+  kind: HitKind,
+  // An Aftershock hit, for Aftershock DMG Bonuses
+  aftershock: boolean,
+  index: number,
+  label: string,
+  base: number,
+  growth: number,
+}
+
+// Aftershock hits by agent id, as hit keys: genshin-optimizer's sheets mark them damageType2 'aftershock'. Soldier 0 -
+// Anby's Chain Attack and Ultimate are Aftershock with a Stun or Support agent in the squad (her Additional Ability)
+const AFTERSHOCK_HITS: Record<string, string[]> = {
+  // Orphie & Magus
+  '1301': [
+    'BasicAttackHighPressureFlamethrower:5',
+    'SpecialAttackCorrosiveFlash:0',
+    'EXSpecialAttackWatchYourStep:0',
+    'EXSpecialAttackCrimsonVortex:0',
+    'EXSpecialAttackHeatCharge:0',
+    'EXSpecialAttackFieryEruption:0',
+    'ChainAttackOverheatedBarrel:0',
+    'UltimateDanceWithFire:0',
+  ],
+  // Pulchra
+  '1351': ['SpecialAttackRendingClawNightmareShadow:0'],
+  // Trigger
+  '1361': ['BasicAttackHarmonizingShot:0', 'BasicAttackHarmonizingShotTartarus:1'],
+  // Soldier 0 - Anby
+  '1381': ['ChainAttackLeapingThunderstrike:0', 'UltimateVoidstrike:0'],
+  // Ju Fufu
+  '1391': ['ChainAttackSuppressingTigerCauldron:0'],
+  // Yuzuha
+  '1411': ['BasicAttackHardCandyShot:0'],
+  // Lucia
+  '1451': ['SpecialAttackSymphonyOfTheReaperStorm:2'],
+}
 
 type SkillEntry = { key: string, category: string, hits: number[][] }
 // hits: [multiplier at level 1, growth per level]
@@ -274,6 +461,7 @@ export function agentHits(agentId: string): SkillHit[] {
       skill: skill.key,
       category: skill.category,
       kind: hitKind(skill.key, skill.category),
+      aftershock: AFTERSHOCK_HITS[agentId]?.includes(`${skill.key}:${index}`) ?? false,
       index,
       label: skill.hits.length > 1 ? `${readable(skill.key)} ${index + 1}` : readable(skill.key),
       base,
@@ -310,19 +498,50 @@ export function defaultRotation(agentId: string): Rotation {
   return { counts, skillLevel: DEFAULT_SKILL_LEVEL }
 }
 
+// DMG Bonus by kind of hit; 'aftershock' goes on top of the hit's own kind
+export type KindBonus = Partial<Record<HitKind | 'aftershock', number>>
+
+type HitFilter = (hit: SkillHit) => boolean
+
 // Sum of count x hit multiplier x the hit's extra DMG Bonus (kind and skill bonuses, in percent), for DamageSetup
 export function rotationBonusMultiplier(
   agentId: string,
   rotation: Rotation,
-  kindBonus: Partial<Record<HitKind, number>>,
+  kindBonus: KindBonus,
   skillBonus: Record<string, number>,
+  only: HitFilter = () => true,
 ): number {
-  return agentHits(agentId).reduce((sum, hit) => {
-    const bonus = (kindBonus[hit.kind] ?? 0) + (skillBonus[hit.skill] ?? 0)
+  return agentHits(agentId).filter(only).reduce((sum, hit) => {
+    const bonus = (kindBonus[hit.kind] ?? 0) + (hit.aftershock ? kindBonus.aftershock ?? 0 : 0) + (skillBonus[hit.skill] ?? 0)
     return sum + (rotation.counts[hitKey(hit)] ?? 0) * hitMultiplier(hit, rotation.skillLevel) * bonus / 100
   }, 0)
 }
 
-export function rotationMultiplier(agentId: string, rotation: Rotation): number {
-  return agentHits(agentId).reduce((sum, hit) => sum + (rotation.counts[hitKey(hit)] ?? 0) * hitMultiplier(hit, rotation.skillLevel), 0)
+export function rotationMultiplier(agentId: string, rotation: Rotation, only: HitFilter = () => true): number {
+  return agentHits(agentId).filter(only).reduce((sum, hit) => sum + (rotation.counts[hitKey(hit)] ?? 0) * hitMultiplier(hit, rotation.skillLevel), 0)
+}
+
+// The rotation's skill hits for DamageSetup; Aftershock hits get their own group when a kit gives them CRIT DMG or DEF
+// ignore of their own
+export function rotationSkills(
+  agentId: string,
+  rotation: Rotation,
+  kindBonus: KindBonus,
+  skillBonus: Record<string, number>,
+  aftershock: { critDmgFromCritDmg: number, defIgnore: number } = { critDmgFromCritDmg: 0, defIgnore: 0 },
+): Pick<DamageSetup, 'multiplier' | 'bonusMultiplier' | 'aftershock'> {
+  if (!aftershock.critDmgFromCritDmg && !aftershock.defIgnore) {
+    return { multiplier: rotationMultiplier(agentId, rotation), bonusMultiplier: rotationBonusMultiplier(agentId, rotation, kindBonus, skillBonus) }
+  }
+  const isAftershock: HitFilter = (hit) => hit.aftershock
+  const notAftershock: HitFilter = (hit) => !hit.aftershock
+  return {
+    multiplier: rotationMultiplier(agentId, rotation, notAftershock),
+    bonusMultiplier: rotationBonusMultiplier(agentId, rotation, kindBonus, skillBonus, notAftershock),
+    aftershock: {
+      multiplier: rotationMultiplier(agentId, rotation, isAftershock),
+      bonusMultiplier: rotationBonusMultiplier(agentId, rotation, kindBonus, skillBonus, isAftershock),
+      ...aftershock,
+    },
+  }
 }

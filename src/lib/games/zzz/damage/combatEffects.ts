@@ -1,4 +1,8 @@
-import type { HitKind } from 'lib/games/zzz/damage/damage'
+import {
+  addAnomalyBonuses,
+  type AnomalyBonuses,
+  type KindBonus,
+} from 'lib/games/zzz/damage/damage'
 import type { StatEffect } from 'lib/games/zzz/data/dataTypes'
 import {
   ZzzStats,
@@ -12,6 +16,8 @@ import {
 //   - stats: stat bonuses for the stat calculator (ATK, CRIT Rate, Element DMG...)
 //   - kinds: DMG Bonus for one kind of hit (Ultimate DMG, EX Special Attack DMG...)
 //   - skills: DMG Bonus for one skill's hits only, by skill key (Miyabi's Shimotsuki)
+//   - aftershockCritDmg / aftershockDefIgnore: CRIT DMG and DEF ignore for Aftershock hits only
+//   - anomalies: bonuses to some anomalies only (Shock DMG, Disorder multiplier, Assault CRIT)
 // Only the optimizer counts them, and only when ranking by rotation damage. Agents whose sheet in genshin-optimizer is
 // still a placeholder (Aria, Velina, Nangong Yu, Norma, Pyrois, Remielle) have nothing here yet.
 // Personal, non-commercial use.
@@ -31,11 +37,16 @@ export type ZzzCombatEffect = {
   // Mindscape it needs
   minMindscape?: number,
   stats?: (context: ZzzCombatContext) => { stat: ZzzStatsValues, value: number }[],
-  kinds?: (context: ZzzCombatContext) => Partial<Record<HitKind, number>>,
+  kinds?: (context: ZzzCombatContext) => KindBonus,
   skills?: (context: ZzzCombatContext) => Record<string, number>,
   // Sharp damage (Armorer agents): Laceration DMG in percent, and CRIT Rate per point of CRIT DMG
   laceration?: (context: ZzzCombatContext) => number,
   critRateFromCritDmg?: number,
+  // Aftershock hits only: CRIT DMG as a fraction of the agent's CRIT DMG, and DEF ignore in percent
+  aftershockCritDmg?: number,
+  aftershockDefIgnore?: number,
+  // Bonuses to some anomalies only (damage.ts AnomalyBonuses)
+  anomalies?: (context: ZzzCombatContext) => AnomalyBonuses,
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
 
@@ -106,6 +117,20 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 12 }],
       confidence: 'sourced',
     },
+    {
+      id: 'anby0-core-aftershock-crit',
+      label: 'Core Skill: Aftershock CRIT DMG +35% of her CRIT DMG against marked enemies',
+      toggle: { kind: 'switch', label: 'Marked with Silver Star' },
+      aftershockCritDmg: 0.35,
+      confidence: 'sourced',
+    },
+    {
+      id: 'anby0-ability-aftershock',
+      label: 'Additional Ability: Aftershock DMG +25% against marked enemies, with a Stun or Support agent in the squad',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      kinds: () => ({ aftershock: 25 }),
+      confidence: 'sourced',
+    },
   ],
   // Orphie & Magus
   '1301': [
@@ -120,6 +145,88 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       label: 'Core Skill: Zeroed In: ATK +280 for the squad (more from Energy Regen above 1.6, not counted, at most 700)',
       toggle: { kind: 'switch', label: 'Zeroed In' },
       stats: () => [{ stat: ZzzStats.ATK, value: 280 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'orphie-core-aftershock',
+      label: 'Core Skill: Aftershock DMG +85%',
+      kinds: () => ({ aftershock: 85 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'orphie-ability-def-ignore',
+      label: 'Additional Ability: Aftershock ignores 25% of the enemy\'s DEF while Zeroed In',
+      toggle: { kind: 'switch', label: 'Zeroed In' },
+      aftershockDefIgnore: 25,
+      confidence: 'sourced',
+    },
+  ],
+  // Pulchra
+  '1351': [{
+    id: 'pulchra-ability-aftershock',
+    label: 'Additional Ability: Aftershock DMG +30% while the enemy is in her Binding Trap',
+    toggle: { kind: 'switch', label: 'Binding Trap' },
+    kinds: () => ({ aftershock: 30 }),
+    confidence: 'sourced',
+  }],
+  // Jane: Gnawed's Assault CRIT (Core Skill), Mindscape 2's Assault CRIT DMG
+  '1261': [
+    {
+      id: 'jane-core-assault-crit',
+      label: 'Core Skill: Assault can CRIT against Gnawed enemies: CRIT Rate 40% + 0.16% per Anomaly Proficiency, CRIT DMG 50%',
+      toggle: { kind: 'switch', label: 'Gnawed' },
+      anomalies: () => ({ assault: { critRate: 40, critRatePerAp: 0.16, critDmg: 50 } }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'jane-m2-assault-crit-dmg',
+      label: 'Mindscape 2: Assault CRIT DMG +50%',
+      minMindscape: 2,
+      toggle: { kind: 'switch', label: 'Gnawed' },
+      anomalies: () => ({ assault: { critDmg: 50 } }),
+      confidence: 'sourced',
+    },
+  ],
+  // Grace
+  '1181': [{
+    id: 'grace-ability-shock',
+    label: 'Additional Ability: Shock DMG +18% per EX Special Attack hit (2 stacks), with Electric, Belobog or Anomaly agents in the squad',
+    toggle: { kind: 'stacks', label: 'EX Special hits', max: 2 },
+    anomalies: ({ setting }) => ({ shock: { dmg: 18 * Number(setting) } }),
+    confidence: 'sourced',
+  }],
+  // Vivian
+  '1331': [
+    {
+      id: 'vivian-ability-corruption',
+      label: 'Additional Ability: Corruption and Ether Disorder DMG +12% (a multiplier of its own)',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      anomalies: () => ({ corruption: { buff: 12 }, disorder: { buff: 12 } }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'vivian-m1-anomaly',
+      label: 'Mindscape 1: Anomaly and Disorder DMG +16% with Prophecy',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'Prophecy' },
+      anomalies: () => ({ anomaly: { buff: 16 }, disorder: { buff: 16 } }),
+      confidence: 'sourced',
+    },
+  ],
+  // Yanagi
+  '1221': [
+    {
+      id: 'yanagi-core-disorder',
+      label: 'Core Skill: Disorder multiplier +250% after an EX Special Attack',
+      toggle: { kind: 'switch', label: 'After an EX Special' },
+      anomalies: () => ({ disorder: { add: 250 } }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'yanagi-core-electric',
+      label: 'Core Skill: Electric DMG +20% after an EX Special Attack',
+      toggle: { kind: 'switch', label: 'After an EX Special' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 20 }],
       confidence: 'sourced',
     },
   ],
@@ -170,11 +277,15 @@ export type ZzzResolvedCombat = {
   applied: ZzzAppliedEffect[],
   // Stat bonuses as effects for computeStats (ComputeInput.teamEffects)
   statEffects: StatEffect[],
-  kindBonus: Partial<Record<HitKind, number>>,
+  kindBonus: KindBonus,
   skillBonus: Record<string, number>,
   // Sharp damage: extra Laceration DMG and CRIT Rate per point of CRIT DMG
   lacerationBonus: number,
   critRateFromCritDmg: number,
+  // Aftershock hits only: CRIT DMG as a fraction of CRIT DMG, DEF ignore in percent
+  aftershockCritDmg: number,
+  aftershockDefIgnore: number,
+  anomalyBonus: AnomalyBonuses,
 }
 
 export function defaultEffectSetting(effect: ZzzCombatEffect): boolean | number {
@@ -182,7 +293,17 @@ export function defaultEffectSetting(effect: ZzzCombatEffect): boolean | number 
 }
 
 export function resolveZzzCombat(agentId: string, mindscape: number, settings: Record<string, boolean | number>): ZzzResolvedCombat {
-  const resolved: ZzzResolvedCombat = { applied: [], statEffects: [], kindBonus: {}, skillBonus: {}, lacerationBonus: 0, critRateFromCritDmg: 0 }
+  const resolved: ZzzResolvedCombat = {
+    applied: [],
+    statEffects: [],
+    kindBonus: {},
+    skillBonus: {},
+    lacerationBonus: 0,
+    critRateFromCritDmg: 0,
+    aftershockCritDmg: 0,
+    aftershockDefIgnore: 0,
+    anomalyBonus: {},
+  }
   for (const effect of KIT_EFFECTS[agentId] ?? []) {
     const setting = settings[effect.id] ?? defaultEffectSetting(effect)
     if ((effect.minMindscape ?? 0) > mindscape) {
@@ -196,11 +317,14 @@ export function resolveZzzCombat(agentId: string, mindscape: number, settings: R
     for (const { stat, value } of effect.stats?.(context) ?? []) {
       resolved.statEffects.push({ stat, value, source: `Kit: ${effect.label}`, confidence: effect.confidence })
     }
-    for (const [kind, value] of Object.entries(effect.kinds?.(context) ?? {}) as [HitKind, number][]) {
+    for (const [kind, value] of Object.entries(effect.kinds?.(context) ?? {}) as [keyof KindBonus, number][]) {
       resolved.kindBonus[kind] = (resolved.kindBonus[kind] ?? 0) + value
     }
     resolved.lacerationBonus += effect.laceration?.(context) ?? 0
     resolved.critRateFromCritDmg += effect.critRateFromCritDmg ?? 0
+    resolved.aftershockCritDmg += effect.aftershockCritDmg ?? 0
+    resolved.aftershockDefIgnore += effect.aftershockDefIgnore ?? 0
+    addAnomalyBonuses(resolved.anomalyBonus, effect.anomalies?.(context) ?? {})
     for (const [skill, value] of Object.entries(effect.skills?.(context) ?? {})) {
       resolved.skillBonus[skill] = (resolved.skillBonus[skill] ?? 0) + value
     }

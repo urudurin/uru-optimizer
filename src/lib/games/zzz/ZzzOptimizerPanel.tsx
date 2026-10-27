@@ -57,10 +57,9 @@ import {
   defaultRotation,
   type EnemySettings,
   type Rotation,
-  rotationAnomalyMultiplier,
-  rotationBonusMultiplier,
+  rotationAnomaly,
   rotationDamage,
-  rotationMultiplier,
+  rotationSkills,
 } from 'lib/games/zzz/damage/damage'
 import {
   EnemyCard,
@@ -300,16 +299,24 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const byDamage = sortBy === 'damage'
   const kit = resolveZzzCombat(agent.id, builds.find((b) => b.agentId === agent.id)?.mindscapeLevel ?? 0, combatSettings)
   const combatEffects = byDamage ? [...teamResult.effects, ...kit.statEffects] : teamResult.effects
+  // The squad's attributes: Vortex lines, Windswept and Frostbite need a Wind or Ice agent
+  const teamElements = [agent.element, ...teammates.map((id) => AGENTS[id]?.element ?? '')]
   // The rotation and enemy, for ranking by damage; the team's shred counts here
   const damageSetup: DamageSetup = {
-    multiplier: rotationMultiplier(agent.id, rotation),
-    bonusMultiplier: rotationBonusMultiplier(agent.id, rotation, kit.kindBonus, kit.skillBonus),
+    ...rotationSkills(agent.id, rotation, kit.kindBonus, kit.skillBonus, {
+      critDmgFromCritDmg: kit.aftershockCritDmg,
+      defIgnore: kit.aftershockDefIgnore,
+    }),
     scaling: agent.specialty === 'Rupture' ? 'sheer' : agent.specialty === 'Armorer' ? 'sharp' : 'atk',
     lacerationDmg: 150 + kit.lacerationBonus,
     critRateFromCritDmg: kit.critRateFromCritDmg,
-    anomalyMultiplier: rotationAnomalyMultiplier(agent.id, agent.element, rotation),
+    ...rotationAnomaly(agent.id, agent.element, rotation, teamElements, kit.anomalyBonus),
     agentLevel: agent.level,
-    enemy,
+    enemy: {
+      ...enemy,
+      windswept: !!enemy.windswept && teamElements.includes('Wind'),
+      frostbite: !!enemy.frostbite && teamElements.includes('Ice'),
+    },
     debuffs: teamResult.debuffs,
   }
   const teammateOptions = [...new Map(builds.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
@@ -630,14 +637,15 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
             <FormRow
               id='zzz-damage'
               title='Damage'
-              summary={`${formatNumber(Math.round(damageSetup.multiplier))}% of ATK per rotation${
+              summary={`${formatNumber(Math.round(damageSetup.multiplier + (damageSetup.aftershock?.multiplier ?? 0)))}% of ATK per rotation${
                 damageSetup.anomalyMultiplier ? ` + ${formatNumber(Math.round(damageSetup.anomalyMultiplier))}% anomaly` : ''
               } · enemy DEF ${enemy.def}${enemy.stunned ? ', stunned' : ''}`}
             >
-              <EnemyCard enemy={enemy} debuffs={teamResult.debuffs} onChange={(next) => setEnemy(next)} />
+              <EnemyCard enemy={enemy} debuffs={teamResult.debuffs} teamElements={teamElements} onChange={(next) => setEnemy(next)} />
               <RotationCard
                 agentId={agent.id}
                 element={agent.element}
+                teamElements={teamElements}
                 scaling={agent.specialty === 'Rupture' ? 'Sheer Force' : agent.specialty === 'Armorer' ? 'DEF' : 'ATK'}
                 rotation={rotation}
                 damage={currentDamage}

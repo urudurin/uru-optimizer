@@ -36,9 +36,11 @@ const CATEGORY_LABELS: Record<string, string> = {
   assist: 'Assist',
 }
 
-export function EnemyCard({ enemy, debuffs, onChange }: {
+export function EnemyCard({ enemy, debuffs, teamElements = [], onChange }: {
   enemy: EnemySettings,
   debuffs: EnemyDebuffs,
+  // The squad's attributes: Windswept needs a Wind agent, Frostbite an Ice agent
+  teamElements?: string[],
   onChange: (enemy: EnemySettings) => void,
 }) {
   const set = (changes: Partial<EnemySettings>) => onChange({ ...enemy, ...changes })
@@ -63,15 +65,33 @@ export function EnemyCard({ enemy, debuffs, onChange }: {
           onChange={(value) => set({ stunMultiplier: Number(value) || 100 })}
         />
       )}
+      {teamElements.includes('Wind') && (
+        <Switch
+          size='xs'
+          label='Windswept (direct DMG +10%)'
+          checked={!!enemy.windswept}
+          onChange={(event) => set({ windswept: event.currentTarget.checked })}
+        />
+      )}
+      {teamElements.includes('Ice') && (
+        <Switch
+          size='xs'
+          label='Frostbite (CRIT DMG +10%)'
+          checked={!!enemy.frostbite}
+          onChange={(event) => set({ frostbite: event.currentTarget.checked })}
+        />
+      )}
       <Text size='xs' c='dimmed'>{fromTeam.length ? `From the team: ${fromTeam.join(', ')}` : 'No shred from the team'}</Text>
     </FormCard>
   )
 }
 
-export function RotationCard({ agentId, element, scaling = 'ATK', rotation, damage, onChange }: {
+export function RotationCard({ agentId, element, teamElements = [], scaling = 'ATK', rotation, damage, onChange }: {
   agentId: string,
   // The agent's attribute, for the anomaly it triggers
   element: string,
+  // The squad's attributes: a Wind agent lets the others set off Vortex
+  teamElements?: string[],
   // What skill hits scale on: ATK, or Sheer Force for Rupture agents
   scaling?: string,
   rotation: Rotation,
@@ -88,8 +108,9 @@ export function RotationCard({ agentId, element, scaling = 'ATK', rotation, dama
     onChange({ ...rotation, counts })
   }
   const total = rotationMultiplier(agentId, rotation)
-  const anomalies = anomalyHits(agentId, element)
-  const anomalyTotal = rotationAnomalyMultiplier(agentId, element, rotation)
+  const anomalies = anomalyHits(agentId, element, teamElements)
+  const anomalyTotal = rotationAnomalyMultiplier(agentId, element, rotation, teamElements)
+  const hasVortex = anomalies.some((hit) => hit.kind === 'vortex')
 
   if (hits.length === 0) {
     return (
@@ -129,7 +150,7 @@ export function RotationCard({ agentId, element, scaling = 'ATK', rotation, dama
             <Text size='xs' fw={600}>{CATEGORY_LABELS[category] ?? category}</Text>
             {hits.filter((hit) => hit.category === category).map((hit) => (
               <div key={hitKey(hit)} className={classes.hitRow}>
-                <Text size='xs' className={classes.hitLabel} title={hit.label}>{hit.label}</Text>
+                <Text size='xs' className={classes.hitLabel} title={hit.label}>{hit.aftershock ? `${hit.label} (Aftershock)` : hit.label}</Text>
                 <Text size='xs' c='dimmed' ta='right'>{`${hitMultiplier(hit, rotation.skillLevel).toFixed(1)}%`}</Text>
                 <NumberInput
                   size='xs'
@@ -152,7 +173,7 @@ export function RotationCard({ agentId, element, scaling = 'ATK', rotation, dama
               <div key={hit.key} className={classes.hitRow}>
                 <Text size='xs' className={classes.hitLabel} title={hit.label}>{hit.label}</Text>
                 <Text size='xs' c='dimmed' ta='right'>
-                  {`${anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter).toFixed(1)}%`}
+                  {`${anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute).toFixed(1)}%`}
                 </Text>
                 <NumberInput
                   size='xs'
@@ -168,14 +189,14 @@ export function RotationCard({ agentId, element, scaling = 'ATK', rotation, dama
             ))}
             <NumberInput
               size='xs'
-              label='Disorder after (seconds of the anomaly)'
+              label={hasVortex ? 'Disorder / Vortex after (seconds of the anomaly)' : 'Disorder after (seconds of the anomaly)'}
               min={0}
-              max={20}
+              max={hasVortex ? 30 : 20}
               step={0.5}
               value={rotation.disorderAfter ?? 0}
               onChange={(value) => onChange({ ...rotation, disorderAfter: Math.max(0, Number(value) || 0) })}
             />
-            <Text size='xs' c='dimmed'>No CRIT; scales with Anomaly Proficiency and agent level.</Text>
+            <Text size='xs' c='dimmed'>No CRIT unless a kit says so; scales with Anomaly Proficiency and agent level.</Text>
           </Stack>
         )}
       </div>
