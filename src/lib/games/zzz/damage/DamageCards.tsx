@@ -168,6 +168,7 @@ export function RotationCard({ agentId, element, rotation, damage, onChange }: {
               label='Disorder after (seconds of the anomaly)'
               min={0}
               max={20}
+              step={0.5}
               value={rotation.disorderAfter ?? 0}
               onChange={(value) => onChange({ ...rotation, disorderAfter: Math.max(0, Number(value) || 0) })}
             />

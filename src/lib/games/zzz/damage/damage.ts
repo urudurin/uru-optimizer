@@ -13,7 +13,9 @@ import type { FinalStats } from 'lib/games/zzz/stats/computeStats'
 //   ATK x anomaly multiplier x DMG Bonus x DEF x RES x DMG taken x Stun x Anomaly Proficiency / 100
 //   x (1 + (agent level - 1) / 59)
 // with no CRIT, and the anomaly multipliers from GO's data/char/util.ts (anomalyMultipliers, Disorder's base and time
-// multipliers). Burn, Shock and Corruption count their ticks over the standard 10 seconds.
+// multipliers). Burn, Shock and Corruption count their ticks over the standard 10 seconds. Checked against the
+// community wiki's damage page (pasted by the user): the multipliers match, and like the wiki the level multiplier is
+// truncated to 4 decimals and Disorder's time bonus counts whole ticks left (floored).
 //
 // Not yet: Sheer damage, skill-type DMG Bonuses (e.g. Basic Attack DMG), anomaly-specific bonuses (Burn DMG...) and hits
 // of another attribute than the agent's. Personal, non-commercial use.
@@ -128,9 +130,9 @@ export function damageFactors(stats: FinalStats, setup: Omit<DamageSetup, 'multi
   }
 }
 
-// genshin-optimizer's Anomaly Level Multiplier: 1 + (level - 1) / 59, so 2 at level 60
+// Anomaly Level Multiplier: 1 + (level - 1) / 59, truncated to 4 decimals; 2 at level 60
 export function anomalyLevelMultiplier(level: number): number {
-  return 1 + (level - 1) / 59
+  return Math.floor((1 + (level - 1) / 59) * 10000) / 10000
 }
 
 // Average damage of the whole rotation (crits counted at their rate; anomalies don't crit)
@@ -164,15 +166,16 @@ const ANOMALY_HIT: Record<Exclude<AnomalyKind, 'disorder'>, { label: string, per
   corruption: { label: 'Corruption (10s, 20 ticks of 62.5%)', perHit: 62.5, ticks: 20 },
 }
 
-// Disorder: base + time multiplier x seconds left of the anomaly it ends (genshin-optimizer's disorderTimeMultipliers;
-// Miyabi's Frostbite lasts 20 seconds and has its own numbers)
-const DISORDER: Record<string, { base: number, perSecond: number, duration: number }> = {
-  Physical: { base: 450, perSecond: 7.5, duration: 10 },
-  Fire: { base: 450, perSecond: 100, duration: 10 },
-  Ice: { base: 450, perSecond: 7.5, duration: 10 },
-  Electric: { base: 450, perSecond: 125, duration: 10 },
-  Ether: { base: 450, perSecond: 125, duration: 10 },
-  Frost: { base: 600, perSecond: 75, duration: 20 },
+// Disorder: base + per tick x whole ticks left of the anomaly it ends, floor((duration - time passed) x ticks per
+// second). Burn and Corruption tick twice a second, the rest once. Miyabi's Frostbite (20 seconds, 600% + 75% a
+// second) is genshin-optimizer's and isn't on the wiki's table
+const DISORDER: Record<string, { base: number, perTick: number, ticksPerSecond: number, duration: number }> = {
+  Physical: { base: 450, perTick: 7.5, ticksPerSecond: 1, duration: 10 },
+  Fire: { base: 450, perTick: 50, ticksPerSecond: 2, duration: 10 },
+  Ice: { base: 450, perTick: 7.5, ticksPerSecond: 1, duration: 10 },
+  Electric: { base: 450, perTick: 125, ticksPerSecond: 1, duration: 10 },
+  Ether: { base: 450, perTick: 62.5, ticksPerSecond: 2, duration: 10 },
+  Frost: { base: 600, perTick: 75, ticksPerSecond: 1, duration: 20 },
 }
 
 const MIYABI_ID = '1091'
@@ -194,7 +197,7 @@ export function anomalyMultiplier(agentId: string, element: string, kind: Anomal
   if (kind !== 'disorder') return ANOMALY_HIT[kind].perHit * ANOMALY_HIT[kind].ticks
   const disorder = DISORDER[agentId === MIYABI_ID ? 'Frost' : element]
   if (!disorder) return 0
-  return disorder.base + disorder.perSecond * Math.max(0, disorder.duration - disorderAfter)
+  return disorder.base + disorder.perTick * Math.floor(Math.max(0, disorder.duration - disorderAfter) * disorder.ticksPerSecond)
 }
 
 export function rotationAnomalyMultiplier(agentId: string, element: string, rotation: Rotation): number {

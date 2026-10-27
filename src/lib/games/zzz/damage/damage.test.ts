@@ -63,6 +63,13 @@ describe('ZZZ damage', () => {
     // Disorder: 450% plus the time left of the anomaly it ends; Miyabi's Frostbite has its own numbers
     expect(anomalyMultiplier('x', 'Fire', 'disorder', 0)).toBe(450 + 100 * 10)
     expect(anomalyMultiplier('x', 'Fire', 'disorder', 4)).toBe(450 + 100 * 6)
+    // Whole ticks left only, like the wiki: Burn ticks every half second, Shock every second
+    expect(anomalyMultiplier('x', 'Fire', 'disorder', 3.7)).toBe(450 + Math.floor(6.3 * 2) * 50)
+    expect(anomalyMultiplier('x', 'Electric', 'disorder', 3.7)).toBe(450 + 6 * 125)
+    expect(anomalyMultiplier('x', 'Ether', 'disorder', 0)).toBe(450 + 20 * 62.5)
+    expect(anomalyMultiplier('x', 'Physical', 'disorder', 2)).toBe(450 + 8 * 7.5)
+    // Level multiplier truncated to 4 decimals
+    expect(anomalyLevelMultiplier(50)).toBe(1.8305)
     expect(anomalyMultiplier(MIYABI.id, 'Ice', 'disorder', 0)).toBe(600 + 75 * 20)
     expect(rotationAnomalyMultiplier(MIYABI.id, 'Ice', { counts: { 'anomaly:shatter': 2, 'anomaly:disorder': 1 }, skillLevel: 12 })).toBe(2 * 500 + 2100)
 
