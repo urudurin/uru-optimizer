@@ -43,6 +43,41 @@ const damage = new Map(read('BinData/damage/damage.json').map((entry) => [entry.
 const data = JSON.parse(readFileSync(DATAMINE, 'utf8'))
 const idByName = new Map(Object.values(data.echoes).map((echo) => [normalise(echo.name), echo.id]))
 
+// What the main slot gives, from sentences like "The Resonator with this Echo equipped in the main slot gains {1} Fusion
+// DMG Bonus and {2} Resonance Skill DMG Bonus." Only the plain part counts: text after ", and additionally" (conditional
+// extras) is cut, and sentences that only apply to named Resonators ("When equipped in the main slot by Aemeath...") are
+// skipped. Keys are the stat calculator's, plus echoDmg (Echo Skill DMG Bonus, which only damage uses)
+const MAIN_SLOT_STATS = [
+  [/Glacio DMG Bonus/, 'glacioDmg'],
+  [/Fusion DMG Bonus/, 'fusionDmg'],
+  [/Electro DMG Bonus/, 'electroDmg'],
+  [/Aero DMG Bonus/, 'aeroDmg'],
+  [/Spectro DMG Bonus/, 'spectroDmg'],
+  [/Havoc DMG Bonus/, 'havocDmg'],
+  [/Basic Attack DMG Bonus/, 'basicDmg'],
+  [/Heavy Attack DMG Bonus/, 'heavyDmg'],
+  [/Resonance Skill DMG Bonus/, 'skillDmg'],
+  [/Resonance Liberation DMG Bonus/, 'libDmg'],
+  [/Echo Skill DMG Bonus/, 'echoDmg'],
+  [/Energy Regen/, 'energyRegen'],
+  [/Healing Bonus/, 'healingBonus'],
+]
+
+function mainSlotBonus(description, values) {
+  const bonus = {}
+  for (const sentence of description.split(/\n|(?<=\.)\s+/)) {
+    if (!/equipped in (the|their) main slot gains?/i.test(sentence) || sentence.trim().startsWith('When ')) continue
+    const plain = sentence.split(', and additionally')[0]
+    // "{1} Fusion DMG Bonus": each placeholder and the words after it, up to the next placeholder
+    for (const match of plain.matchAll(/\{(\d+)\}([^{]*)/g)) {
+      const value = /^([\d.]+)%$/.exec(String(values[Number(match[1])] ?? ''))
+      const stat = MAIN_SLOT_STATS.find(([pattern]) => pattern.test(match[2]))?.[1]
+      if (value && stat) bonus[stat] = (bonus[stat] ?? 0) + Number(value[1])
+    }
+  }
+  return bonus
+}
+
 const echoes = {}
 const unmatched = new Set()
 for (const item of read('BinData/phantom/phantomitem.json')) {
@@ -72,8 +107,10 @@ for (const item of read('BinData/phantom/phantomitem.json')) {
       element: ELEMENTS[entry.Element] ?? null,
     })
   })
-  if (hits.length === 0) continue
-  echoes[id] = { name, description: text.get(skill.DescriptionEx) ?? '', values, hits }
+  const description = text.get(skill.DescriptionEx) ?? ''
+  const mainSlot = mainSlotBonus(description, values)
+  if (hits.length === 0 && Object.keys(mainSlot).length === 0) continue
+  echoes[id] = { name, description, values, hits, ...(Object.keys(mainSlot).length > 0 ? { mainSlot } : {}) }
 }
 
 const output = {

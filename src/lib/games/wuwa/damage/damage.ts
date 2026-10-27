@@ -75,12 +75,34 @@ export type DamageSetup = {
   element?: string,
   // DMG Amplified from the kit (damage/combatEffects.ts), for every hit ('all') or one kind, in percent
   amplify?: Partial<Record<HitType | 'all', number>>,
+  // DMG Bonus for one kind of hit that has no stat (Echo Skill DMG from the main echo), in percent
+  typeBonus?: Partial<Record<HitType, number>>,
+  // Raises the multiplier of some lines (Jinhsi's Intro +50%), by section or label start, as a fraction
+  lineScale?: LineScale[],
+}
+
+export type LineScale = { section?: Section, labelStart?: string, scale: number }
+
+function lineScaleFor(hit: SkillHit, scales: LineScale[] | undefined): number {
+  let scale = 1
+  for (const entry of scales ?? []) {
+    if (entry.section && entry.section !== hit.section) continue
+    if (entry.labelStart && !hit.label.startsWith(entry.labelStart)) continue
+    scale += entry.scale
+  }
+  return scale
 }
 
 type EchoSkillFile = {
   echoes: Record<
     string,
-    { name: string, description: string, values: string[], hits: { index: number, multiplier: number, stat: string, element: string | null }[] }
+    {
+      name: string,
+      description: string,
+      values: string[],
+      mainSlot?: Record<string, number>,
+      hits: { index: number, multiplier: number, stat: string, element: string | null }[],
+    }
   >,
 }
 const ECHO_SKILLS = (echoSkillData as unknown as EchoSkillFile).echoes
@@ -97,6 +119,13 @@ export function echoSkillText(echoId: string): string {
   const echo = ECHO_SKILLS[echoId]
   if (!echo) return ''
   return echo.description.replace(/\{(\d+)\}/g, (token, i: string) => echo.values[Number(i)] ?? token)
+}
+
+// What an echo gives in the main slot (stats for the calculator, and Echo Skill DMG Bonus for the damage), from the
+// "equipped in the main slot gains..." sentence of its skill text
+export function mainEchoBonus(echoId: string | undefined): { stats: Partial<Record<string, number>>, echoDmg: number } {
+  const { echoDmg = 0, ...stats } = (echoId ? ECHO_SKILLS[echoId]?.mainSlot : undefined) ?? {}
+  return { stats, echoDmg }
 }
 
 export function hasEchoSkill(echoId: string): boolean {
@@ -177,8 +206,8 @@ const TYPE_LABELS: Record<HitType, string> = {
   none: 'Other',
 }
 
-// elemental: takes the element DMG Bonus; amplify: DMG Amplified for these hits, in percent
-type Group = { bonus?: keyof WuwaStats, stat: ScalingStat, multiplier: number, elemental: boolean, amplify: number }
+// elemental: takes the element DMG Bonus; extra: DMG Bonus with no stat behind it; amplify: DMG Amplified, in percent
+type Group = { bonus?: keyof WuwaStats, stat: ScalingStat, multiplier: number, elemental: boolean, extra: number, amplify: number }
 type Prepared = { groups: Group[], factor: number }
 
 function resMultiplier(res: number): number {
@@ -201,8 +230,9 @@ function prepare(setup: DamageSetup): Prepared {
     if (count <= 0) continue
     for (const [type, stat, values] of hit.terms) {
       const key = `${type}:${stat}`
-      const group = groups.get(key) ?? { bonus: TYPE_BONUS[type], stat, multiplier: 0, elemental: true, amplify: amplifyFor(type) }
-      group.multiplier += count * (values[levelIndex(rotation.skillLevel)] ?? 0)
+      const group = groups.get(key)
+        ?? { bonus: TYPE_BONUS[type], stat, multiplier: 0, elemental: true, extra: setup.typeBonus?.[type] ?? 0, amplify: amplifyFor(type) }
+      group.multiplier += count * (values[levelIndex(rotation.skillLevel)] ?? 0) * lineScaleFor(hit, setup.lineScale)
       groups.set(key, group)
     }
   }
@@ -212,7 +242,7 @@ function prepare(setup: DamageSetup): Prepared {
       if (count <= 0) continue
       const elemental = !hit.element || !setup.element || `${hit.element}Dmg` === setup.element
       const key = `echo:${hit.stat}:${elemental}`
-      const group = groups.get(key) ?? { stat: hit.stat, multiplier: 0, elemental, amplify: amplifyFor('echo') }
+      const group = groups.get(key) ?? { stat: hit.stat, multiplier: 0, elemental, extra: setup.typeBonus?.echo ?? 0, amplify: amplifyFor('echo') }
       group.multiplier += count * hit.multiplier
       groups.set(key, group)
     }
@@ -230,7 +260,7 @@ export function rotationDamage(stats: WuwaStats, setup: DamageSetup): number {
   const crit = 1 + Math.min(Math.max(stats.critRate, 0), 100) / 100 * (stats.critDmg - 100) / 100
   let total = 0
   for (const group of groups) {
-    const dmgBonus = (group.elemental ? stats.elementDmg : 0) + (group.bonus ? stats[group.bonus] : 0)
+    const dmgBonus = (group.elemental ? stats.elementDmg : 0) + (group.bonus ? stats[group.bonus] : 0) + group.extra
     total += group.multiplier / 100 * stats[group.stat] * (1 + dmgBonus / 100) * (1 + group.amplify / 100)
   }
   return total * crit * factor

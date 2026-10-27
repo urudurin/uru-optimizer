@@ -8,6 +8,7 @@ import {
   echoSkillText,
   hasSkillData,
   hitMultiplier,
+  mainEchoBonus,
   migrateRotationCounts,
   rotationDamage,
 } from 'lib/games/wuwa/damage/damage'
@@ -112,5 +113,46 @@ describe('WuWa damage', () => {
   it('keys lines by section and name, and turns old position keys into them', () => {
     expect(characterHits('hsin')[0].key).toBe('normal:Basic Attack - Answering Form Stage 1 DMG')
     expect(migrateRotationCounts('hsin', { 'normal:0': 3, 'skill:0': 1 })).toEqual({ 'normal:Basic Attack - Answering Form Stage 1 DMG': 3, 'skill:0': 1 })
+  })
+
+  it('reads what an echo gives in the main slot, leaving out conditional and character-only parts', () => {
+    expect(mainEchoBonus('nightmare-inferno-rider')).toEqual({ stats: { fusionDmg: 12, skillDmg: 12 }, echoDmg: 0 })
+    expect(mainEchoBonus('corrosaurus')).toEqual({ stats: { fusionDmg: 12 }, echoDmg: 20 })
+    // "additionally gains 10% ... when inflicting Tune Strain" is conditional
+    expect(mainEchoBonus('calamity-effigy').stats).toEqual({ aeroDmg: 10 })
+    // Only for Aemeath
+    expect(mainEchoBonus('phantom-sigillum').stats).toEqual({})
+    expect(mainEchoBonus(undefined)).toEqual({ stats: {}, echoDmg: 0 })
+  })
+
+  it('adds Echo Skill DMG Bonus to Echo Skill hits only, and raises some lines\' multipliers', () => {
+    const echo = { id: 'nightmare-inferno-rider', counts: { '0': 1 } }
+    const echoOnly: DamageSetup = {
+      charId: 'changli',
+      characterLevel: 90,
+      rotation: { counts: {}, skillLevel: 10, echo },
+      enemy: DEFAULT_ENEMY,
+      element: 'fusionDmg',
+    }
+    expect(rotationDamage(stats, { ...echoOnly, typeBonus: { echo: 20 } }) / rotationDamage(stats, echoOnly)).toBeCloseTo(1.6 / 1.4, 6)
+
+    // Jinhsi's Intro +50%
+    const intro = characterHits('jinhsi').find((hit) => hit.section === 'intro')!
+    const jinhsi: DamageSetup = { charId: 'jinhsi', characterLevel: 90, rotation: { counts: { [intro.key]: 1 }, skillLevel: 10 }, enemy: DEFAULT_ENEMY }
+    const kit = resolveWuwaCombat('jinhsi', 0, {})
+    expect(rotationDamage(stats, { ...jinhsi, lineScale: kit.lineScale }) / rotationDamage(stats, jinhsi)).toBeCloseTo(1.5, 6)
+
+    // Suoming's Seal Master doubles Basic Attack - Unfurled Canopy lines, not her Dodge Counter
+    const seal = resolveWuwaCombat('suoming', 0, { 'suoming-seal-master': true }).lineScale
+    const stage1 = characterHits('suoming').find((hit) => hit.label === 'Basic Attack - Unfurled Canopy Stage 1 DMG')!
+    const dodge = characterHits('suoming').find((hit) => hit.label === 'Dodge Counter - Unfurled Canopy DMG')!
+    const one = (key: string): DamageSetup => ({
+      charId: 'suoming',
+      characterLevel: 90,
+      rotation: { counts: { [key]: 1 }, skillLevel: 10 },
+      enemy: DEFAULT_ENEMY,
+    })
+    expect(rotationDamage(stats, { ...one(stage1.key), lineScale: seal }) / rotationDamage(stats, one(stage1.key))).toBeCloseTo(2, 6)
+    expect(rotationDamage(stats, { ...one(dodge.key), lineScale: seal })).toBeCloseTo(rotationDamage(stats, one(dodge.key)), 6)
   })
 })

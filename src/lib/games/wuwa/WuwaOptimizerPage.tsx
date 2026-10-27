@@ -51,6 +51,7 @@ import {
   defaultRotation,
   type EnemySettings,
   hasSkillData,
+  mainEchoBonus,
   migrateRotationCounts,
   type Rotation,
   rotationDamage,
@@ -279,9 +280,12 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const byDamage = targetValue === DAMAGE_TARGET && hasSkillData(character.charId)
   // The Resonator's own kit effects, counted only when ranking by rotation damage
   const kit = resolveWuwaCombat(character.charId, character.sequence, combatSettings)
+  // The main echo: the one the rotation picked, or the one worn now. Its main-slot buff counts like the kit's
+  const wornEchoes = character.echoIds.flatMap((id) => echoes.find((e) => e.id === id) ?? [])
+  const mainEcho = mainEchoBonus(rotation.echo?.id ?? wornEchoes[0]?.defId)
   const combatBonus = { ...teamResult.bonus }
   if (byDamage) {
-    for (const [stat, value] of Object.entries(kit.bonus) as [keyof typeof combatBonus, number][]) {
+    for (const [stat, value] of [...Object.entries(kit.bonus), ...Object.entries(mainEcho.stats)] as [keyof typeof combatBonus, number][]) {
       combatBonus[stat] = (combatBonus[stat] ?? 0) + value
     }
   }
@@ -292,10 +296,11 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     enemy: { ...enemy, defIgnore: enemy.defIgnore + kit.defIgnore },
     element: CHARACTER_INFO[character.charId]?.element ?? undefined,
     amplify: kit.amplify,
+    typeBonus: { echo: mainEcho.echoDmg },
+    lineScale: kit.lineScale,
   }
   const target: EchoTarget = byDamage ? { kind: 'damage', setup: damageSetup } : wuwaTarget(targetValue)
   // The current loadout's rotation damage, for the Rotation card
-  const wornEchoes = character.echoIds.flatMap((id) => echoes.find((e) => e.id === id) ?? [])
   const currentDamage = hasSkillData(character.charId) && wornEchoes.length > 0
     ? rotationDamage(computeWuwaStats(character, wornEchoes, combatBonus).stats, damageSetup)
     : undefined

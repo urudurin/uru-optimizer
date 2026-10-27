@@ -20,10 +20,12 @@ import {
   type EnemySettings,
   hasEchoSkill,
   hitMultiplier,
+  mainEchoBonus,
   MAX_SKILL_LEVEL,
   type Rotation,
 } from 'lib/games/wuwa/damage/damage'
 import { ECHO_DEFINITIONS } from 'lib/games/wuwa/data/gameData'
+import { statLabel } from 'lib/games/wuwa/types'
 
 // The Damage row of the WuWa optimizer, like ZZZ's and Genshin's: the enemy, and how many times each skill's damage
 // lines land in a rotation.
@@ -149,6 +151,12 @@ function EchoSkillLines({ rotation, mainEcho, onChange }: { rotation: Rotation, 
   const counts = rotation.echo?.counts ?? {}
   const hits = echoId ? echoSkillHits(echoId) : []
   const text = echoId ? echoSkillText(echoId) : ''
+  // What this echo gives in the main slot, counted when ranking by rotation damage
+  const main = mainEchoBonus(echoId)
+  const mainSlot = [
+    ...Object.entries(main.stats).map(([stat, value]) => `+${value}% ${statLabel(stat)}`),
+    ...(main.echoDmg ? [`+${main.echoDmg}% Echo Skill DMG`] : []),
+  ].join(', ')
   const setCount = (key: string, count: number) => {
     if (!echoId) return
     const next = { ...counts }
@@ -184,6 +192,7 @@ function EchoSkillLines({ rotation, mainEcho, onChange }: { rotation: Rotation, 
         </div>
       ))}
       {echoId && <Text size='xs' c='dimmed' title={text}>Highest rank. Assumes this echo is in the main slot; hover a hit for the skill text.</Text>}
+      {mainSlot && <Text size='xs' c='dimmed'>{`Main slot: ${mainSlot}`}</Text>}
     </Stack>
   )
 }

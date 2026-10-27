@@ -1,4 +1,7 @@
-import type { HitType } from 'lib/games/wuwa/damage/damage'
+import type {
+  HitType,
+  LineScale,
+} from 'lib/games/wuwa/damage/damage'
 import type { Bonus } from 'lib/games/wuwa/stats/computeStats'
 
 // What a Resonator's own kit does in combat (Inherent Skills, Forte states), on top of the stat screen: the buffs that
@@ -25,6 +28,8 @@ export type WuwaCombatEffect = {
   bonus?: (context: WuwaCombatContext) => Bonus,
   amplify?: (context: WuwaCombatContext) => Partial<Record<HitType | 'all', number>>,
   defIgnore?: number,
+  // Raises some lines' multipliers (Jinhsi's Intro, Suoming's Unfurled Canopy)
+  lineScale?: (context: WuwaCombatContext) => LineScale[],
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
 
@@ -59,10 +64,11 @@ export const KIT_EFFECTS: Record<string, WuwaCombatEffect[]> = {
     },
     {
       id: 'suoming-seal-master',
-      label: 'Sunken Seal, Forged Lock: Seal Master: Crit DMG +100% for 12s (its Unfurled Canopy multiplier boost isn\'t counted)',
+      label: 'Sunken Seal, Forged Lock: Seal Master: Crit DMG +100% and Basic Attack - Unfurled Canopy (and Whirling Thunder) DMG Multipliers +100% for 12s',
       toggle: { kind: 'switch', label: 'Seal Master' },
       offByDefault: true,
       bonus: () => ({ critDmg: 100 }),
+      lineScale: () => [{ labelStart: 'Basic Attack - Unfurled Canopy', scale: 1 }],
       confidence: 'sourced',
     },
   ],
@@ -73,12 +79,20 @@ export const KIT_EFFECTS: Record<string, WuwaCombatEffect[]> = {
     bonus: () => ({ energyRegen: 10 }),
     confidence: 'sourced',
   }],
-  'jinhsi': [{
-    id: 'jinhsi-radiant-surge',
-    label: 'Radiant Surge: Spectro DMG +20%',
-    bonus: () => ({ spectroDmg: 20 }),
-    confidence: 'sourced',
-  }],
+  'jinhsi': [
+    {
+      id: 'jinhsi-radiant-surge',
+      label: 'Radiant Surge: Spectro DMG +20%',
+      bonus: () => ({ spectroDmg: 20 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'jinhsi-converged-flash',
+      label: 'Converged Flash: Intro Skill Loong\'s Halo DMG Multiplier +50%',
+      lineScale: () => [{ section: 'intro', scale: 0.5 }],
+      confidence: 'sourced',
+    },
+  ],
   'changli': [
     {
       id: 'changli-strategist',
@@ -151,6 +165,7 @@ export type WuwaResolvedCombat = {
   bonus: Bonus,
   amplify: Partial<Record<HitType | 'all', number>>,
   defIgnore: number,
+  lineScale: LineScale[],
 }
 
 export function defaultEffectSetting(effect: WuwaCombatEffect): boolean | number {
@@ -159,7 +174,7 @@ export function defaultEffectSetting(effect: WuwaCombatEffect): boolean | number
 }
 
 export function resolveWuwaCombat(charId: string, sequence: number, settings: Record<string, boolean | number>): WuwaResolvedCombat {
-  const resolved: WuwaResolvedCombat = { applied: [], bonus: {}, amplify: {}, defIgnore: 0 }
+  const resolved: WuwaResolvedCombat = { applied: [], bonus: {}, amplify: {}, defIgnore: 0, lineScale: [] }
   for (const effect of KIT_EFFECTS[charId] ?? []) {
     const setting = settings[effect.id] ?? defaultEffectSetting(effect)
     if ((effect.minSequence ?? 0) > sequence) {
@@ -177,6 +192,7 @@ export function resolveWuwaCombat(charId: string, sequence: number, settings: Re
       resolved.amplify[kind] = (resolved.amplify[kind] ?? 0) + value
     }
     resolved.defIgnore += effect.defIgnore ?? 0
+    resolved.lineScale.push(...(effect.lineScale?.(context) ?? []))
   }
   return resolved
 }
