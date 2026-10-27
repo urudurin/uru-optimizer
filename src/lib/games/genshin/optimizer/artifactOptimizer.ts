@@ -1,4 +1,10 @@
 import {
+  type DamageSetup,
+  prepareDamage,
+  preparedDamage,
+  rotationDamage,
+} from 'lib/games/genshin/damage/damage'
+import {
   CHARACTER_SCREEN_PASSIVES,
   WEAPON_SCREEN_PASSIVES,
 } from 'lib/games/genshin/data/screenPassives'
@@ -50,6 +56,8 @@ export type OptimizerTarget =
   // The stat a character scales on x (1 + CRIT Rate x CRIT DMG) x (1 + DMG Bonus), CRIT Rate capped at 100%. The DMG
   // Bonus is the element's (when given) plus all-element DMG Bonus from team buffs
   | { kind: 'averageHit', stat: 'atk' | 'hp' | 'def' | 'elementalMastery', element?: Element }
+  // A rotation's damage against an enemy (damage/damage.ts)
+  | { kind: 'damage', setup: DamageSetup }
 
 export type MainStatSlot = 'sands' | 'goblet' | 'circlet'
 
@@ -116,6 +124,7 @@ type Stats = Partial<Record<GenshinStatKey, number>>
 
 export function scoreStats(stats: Stats, target: OptimizerTarget): number {
   if (target.kind === 'stat') return stats[target.stat] ?? 0
+  if (target.kind === 'damage') return rotationDamage(stats, target.setup)
   const critRate = stats.critRate ?? 0
   const critDmg = stats.critDmg ?? 0
   if (target.kind === 'critValue') return 2 * critRate + critDmg
@@ -127,6 +136,7 @@ export function scoreStats(stats: Stats, target: OptimizerTarget): number {
 export function targetLabel(target: OptimizerTarget): string {
   if (target.kind === 'stat') return STAT_LABELS[target.stat]
   if (target.kind === 'critValue') return 'Crit Value'
+  if (target.kind === 'damage') return 'Rotation damage'
   return `Average ${STAT_LABELS[target.stat]} hit`
 }
 
@@ -186,6 +196,11 @@ function vectorScorer(target: OptimizerTarget): (stats: Float64Array) => number 
     return (s) => s[index]
   }
   if (target.kind === 'critValue') return (s) => 2 * s[critRate] + s[critDmg]
+  if (target.kind === 'damage') {
+    const prepared = prepareDamage(target.setup)
+    const indexOf = Object.fromEntries(STAT_INDEX) as Record<GenshinStatKey, number>
+    return (s) => preparedDamage(prepared, (stat) => s[indexOf[stat]])
+  }
   const index = STAT_INDEX.get(target.stat)!
   const allDmg = STAT_INDEX.get('allDmg')!
   const elementDmg = target.element ? STAT_INDEX.get(ELEMENT_DMG_STAT[target.element])! : -1

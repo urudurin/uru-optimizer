@@ -162,6 +162,28 @@ describe('optimizeArtifacts', () => {
     expect(outcome.builds[0].stats.allDmg).toBe(15)
   })
 
+  it('finds the same top 5 by rotation damage, with physical hits, a reaction and enemy shred', () => {
+    const target: OptimizerTarget = {
+      kind: 'damage',
+      setup: {
+        characterId: 'RaidenShogun',
+        characterLevel: 90,
+        element: 'Electro',
+        rotation: { counts: { 'auto:0': 3, 'skill:10': 1, 'burst:12': 2 }, infusion: false, reaction: 'none', reactionShare: 100 },
+        talents: { auto: 9, skill: 9, burst: 9 },
+        enemy: { level: 100, res: 10 },
+        debuffs: { defShred: 15, resShred: { Electro: 40, all: 20 } },
+      },
+    }
+    const teamBuffs: TeamBuffTotals = { premod: { atkPct: 20, physicalDmg: 25 }, total: {} }
+    const outcome = optimizeArtifacts({ character: raiden, artifacts, filters: noFilters, minStats: {}, target, limit: 5, teamBuffs })
+    if (!outcome.ok) throw new Error(outcome.reason)
+    const expected = bruteForce(artifacts, target, {}, noFilters, teamBuffs).slice(0, 5)
+
+    expect(outcome.truncated).toBe(false)
+    expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
+  })
+
   it('respects main stat filters and leaves out artifacts others wear', () => {
     const worn = artifacts.map((a) => (a.slot === 'circlet' ? { ...a, equippedBy: 'Bennett' } : a))
     const filters: OptimizerFilters = { mainStats: { sands: ['energyRecharge'] }, twoPieceSets: [], excludeEquippedByOthers: true }

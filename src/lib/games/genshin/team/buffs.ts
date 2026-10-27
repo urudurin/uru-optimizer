@@ -1,3 +1,4 @@
+import type { DamageElement } from 'lib/games/genshin/damage/damage'
 import { inferAscension } from 'lib/games/genshin/stats/computeStats'
 import {
   type Element,
@@ -11,8 +12,7 @@ import {
 // count. Values come from the in-game descriptions; talent scalings and passive numbers were checked against
 // genshin-optimizer's generated stat data and character sheets (https://github.com/frzyc/genshin-optimizer, MIT).
 // Personal, non-commercial use.
-// Phase 1 covers stats the calculator has. Enemy RES shred (Viridescent Venerer, Zhongli) needs a damage calculation
-// and isn't here yet.
+// Phase 1 covers stats the calculator has, plus enemy DEF and RES shred for the rotation damage (damage/damage.ts).
 
 export type BuffTarget =
   // every member, the giver included
@@ -33,6 +33,20 @@ export type BuffToggle =
 
 export type BuffSetting = boolean | number | string
 
+// What a buff changes on the enemy instead of the receiver: DEF shred, or RES shred of one element or all of them
+export type EnemyDebuffKey = 'defShred' | `resShred:${DamageElement | 'all'}`
+export type BuffStat = GenshinStatKey | EnemyDebuffKey
+
+export function isDebuff(stat: BuffStat): stat is EnemyDebuffKey {
+  return stat === 'defShred' || stat.startsWith('resShred:')
+}
+
+export function debuffLabel(stat: EnemyDebuffKey): string {
+  if (stat === 'defShred') return 'enemy DEF shred'
+  const element = stat.slice('resShred:'.length)
+  return element === 'all' ? 'enemy RES shred (all)' : `enemy ${element} RES shred`
+}
+
 export type BuffContext = {
   giver: GenshinCharacter,
   // The giver's own stats (stat screen, no other buffs) and base ATK (character + weapon)
@@ -51,7 +65,7 @@ export type TeamBuff = {
   target: BuffTarget,
   // 'premod': added with the other bonuses (HP/ATK/DEF% scale the base); 'total': added to the final stat
   stage: 'premod' | 'total',
-  stat: GenshinStatKey | ((context: BuffContext) => GenshinStatKey | undefined),
+  stat: BuffStat | ((context: BuffContext) => BuffStat | undefined),
   // 0 when it doesn't apply (constellation too low, wrong element...), in display units (20 = 20%)
   value: (context: BuffContext) => number,
   // Why it doesn't apply, when value is 0 for a reason other than the toggle
@@ -160,6 +174,31 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
       confidence: 'sourced',
     },
   ],
+  Zhongli: [
+    {
+      id: 'zhongli-shield-shred',
+      label: 'Jade Shield: Elemental and Physical RES -20% for enemies near the shielded character',
+      target: 'team',
+      stage: 'premod',
+      stat: 'resShred:all',
+      value: () => 20,
+      toggle: { kind: 'switch', label: 'Protected by the Jade Shield' },
+      confidence: 'sourced',
+    },
+  ],
+  Lisa: [
+    {
+      id: 'lisa-a4',
+      label: 'Static Electricity Field: enemies hit by Lightning Rose have DEF -15%',
+      target: 'team',
+      stage: 'premod',
+      stat: 'defShred',
+      value: ({ giver }) => (ascensionOf(giver) >= 4 ? 15 : 0),
+      blockedBy: needsAscension(4),
+      toggle: { kind: 'switch', label: 'Enemy hit by Lightning Rose' },
+      confidence: 'sourced',
+    },
+  ],
   Nahida: [
     {
       id: 'nahida-a1',
@@ -246,6 +285,19 @@ export const WEAPON_BUFFS: Record<string, TeamBuff[]> = {
 
 // By GOOD set key, for a wearer with 4 pieces
 export const SET_4PC_BUFFS: Record<string, TeamBuff[]> = {
+  ViridescentVenerer: [
+    {
+      id: 'vv-4pc-shred',
+      label: 'Viridescent Venerer 4-piece: RES -40% to the swirled element',
+      target: 'team',
+      stage: 'premod',
+      stat: ({ setting }) => (typeof setting === 'string' && SWIRL_ELEMENTS.includes(setting as Element) ? `resShred:${setting as Element}` : undefined),
+      value: () => 40,
+      toggle: { kind: 'element', label: 'Swirled element', options: SWIRL_ELEMENTS },
+      nonStacking: 'vv-4pc',
+      confidence: 'sourced',
+    },
+  ],
   NoblesseOblige: [
     {
       id: 'noblesse-4pc',

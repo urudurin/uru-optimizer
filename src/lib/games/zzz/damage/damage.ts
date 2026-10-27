@@ -174,7 +174,7 @@ export const DEFAULT_SKILL_LEVEL = 12
 export function defaultRotation(agentId: string): Rotation {
   const counts: Record<string, number> = {}
   for (const hit of agentHits(agentId)) {
-    if (hit.category === 'chain' || /^EXSpecial/.test(hit.skill)) counts[hitKey(hit)] = 1
+    if (hit.category === 'chain' || hit.skill.startsWith('EXSpecial')) counts[hitKey(hit)] = 1
   }
   return { counts, skillLevel: DEFAULT_SKILL_LEVEL }
 }

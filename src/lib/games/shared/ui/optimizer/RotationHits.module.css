@@ -1,4 +1,4 @@
-/* The rotation editor (DamageCards.tsx): skill hits grouped by category, each with its multiplier and a count */
+/* The rotation editors (zzz/damage/DamageCards.tsx, genshin/damage/DamageCards.tsx): hits grouped by category, each with its multiplier and a count */
 
 .hitList {
   display: grid;
@@ -19,4 +19,9 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* Genshin multipliers name their scaling stat ("175.4% ATK + 350.9% EM"), so the middle column sizes to them */
+.hitRowWide {
+  grid-template-columns: minmax(0, 1fr) auto 52px;
 }

@@ -108,6 +108,18 @@ describe('team buffs', () => {
     expect(sucroseForCryo.applied.find((a) => a.buff.id === 'sucrose-a1')?.reason).toBe('Only for Cryo members')
   })
 
+  it('counts enemy shred apart from stats: Viridescent Venerer, Zhongli and Lisa', () => {
+    const vvWorn = noblesse('Sucrose').map((a) => ({ ...a, id: `vv-${a.slot}`, setId: 'ViridescentVenerer' }))
+    const vvSucrose = { ...sucrose, artifactIds: Object.fromEntries(vvWorn.map((a) => [a.slot, a.id])) }
+    const zhongli = character('Zhongli', { element: 'Geo' })
+    const lisa = character('Lisa', { element: 'Electro' })
+    const result = teamBuffsFor(xiangling, setup(['Sucrose', 'Zhongli', 'Lisa']), { characters: [xiangling, vvSucrose, zhongli, lisa], artifacts: vvWorn })
+
+    expect(result.debuffs).toEqual({ defShred: 15, resShred: { Pyro: 40, all: 20 } })
+    // Shred never shows up as a stat
+    expect(Object.keys({ ...result.premod, ...result.total }).some((stat) => stat.includes('Shred'))).toBe(false)
+  })
+
   it('adds elemental resonance for a team of 4', () => {
     const team = [bennett, kazuha, furina]
     const result = teamBuffsFor(xiangling, setup(['Bennett', 'KaedeharaKazuha', 'Furina']), { characters: [xiangling, ...team], artifacts: [] })

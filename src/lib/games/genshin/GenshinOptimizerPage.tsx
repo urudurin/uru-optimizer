@@ -9,6 +9,19 @@ import {
   Text,
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
+import {
+  DEFAULT_ENEMY,
+  defaultRotation,
+  type EnemySettings,
+  hasTalentData,
+  type Rotation,
+  rotationDamage,
+  rotationTalents,
+} from 'lib/games/genshin/damage/damage'
+import {
+  EnemyCard,
+  RotationCard,
+} from 'lib/games/genshin/damage/DamageCards'
 import { useGenshinImages } from 'lib/games/genshin/data/images'
 import {
   GenshinTeamCards,
@@ -39,7 +52,10 @@ import {
   genshinBuildScore,
   scoreArtifact,
 } from 'lib/games/genshin/stats/artifactScore'
-import { hasStatData } from 'lib/games/genshin/stats/computeStats'
+import {
+  computeGenshinStats,
+  hasStatData,
+} from 'lib/games/genshin/stats/computeStats'
 import type { BuffSetting } from 'lib/games/genshin/team/buffs'
 import { teamBuffsFor } from 'lib/games/genshin/team/teamBuffs'
 import {
@@ -149,12 +165,18 @@ type GenshinOptimizerSettings = {
   teammates: string[],
   onField: boolean,
   teamSettings: Record<string, BuffSetting>,
+  // The rotation damage target (damage/damage.ts): the enemy and the rotation
+  enemy: EnemySettings,
+  rotation: Rotation,
 }
 
+// Rank by values: 'damage' plus the stat targets in optimizer/targets.ts
+const DAMAGE_TARGET = 'damage'
+
 // What a character starts with before their settings are changed (and saved)
-function defaultSettings(): GenshinOptimizerSettings {
+function defaultSettings(characterId: string): GenshinOptimizerSettings {
   return {
-    targetValue: 'avg:atk',
+    targetValue: hasTalentData(characterId) ? DAMAGE_TARGET : 'avg:atk',
     mainStats: {},
     fourPieceSet: null,
     twoPieceSets: [],
@@ -164,6 +186,8 @@ function defaultSettings(): GenshinOptimizerSettings {
     teammates: [],
     onField: true,
     teamSettings: {},
+    enemy: DEFAULT_ENEMY,
+    rotation: defaultRotation(characterId),
   }
 }
 
@@ -177,8 +201,9 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const character = usable.find((c) => c.id === characterId) ?? usable[0]
 
   // Saved per character, see shared/optimizerSettings.ts
-  const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.id ?? '', defaultSettings)
-  const { targetValue, mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, minStats, maxStats, teammates, onField, teamSettings } = settings
+  const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.id ?? '', () => defaultSettings(character?.id ?? ''))
+  const { targetValue, mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, minStats, maxStats, teammates, onField, teamSettings, enemy, rotation } =
+    settings
   const setTargetValue = fieldSetter(updateSettings, 'targetValue')
   const setMainStats = fieldSetter(updateSettings, 'mainStats')
   const setFourPieceSet = fieldSetter(updateSettings, 'fourPieceSet')
@@ -189,6 +214,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setOnField = fieldSetter(updateSettings, 'onField')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
+  const setEnemy = fieldSetter(updateSettings, 'enemy')
+  const setRotation = fieldSetter(updateSettings, 'rotation')
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget } | undefined>()
@@ -223,11 +250,27 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     )
   }
 
-  const target = genshinTarget(targetValue, character.element)
   // What the team gives this character, the same for every build
   const team = { teammates, onField, settings: teamSettings }
   const teamResult = teamBuffsFor(character, team, { characters, artifacts })
   const teamBuffs = { premod: teamResult.premod, total: teamResult.total }
+  const talents = rotationTalents(character, rotation)
+  const damageSetup = {
+    characterId: character.id,
+    characterLevel: character.level,
+    element: character.element,
+    rotation,
+    talents,
+    enemy,
+    debuffs: teamResult.debuffs,
+  }
+  const byDamage = targetValue === DAMAGE_TARGET && hasTalentData(character.id)
+  const target: OptimizerTarget = byDamage ? { kind: 'damage', setup: damageSetup } : genshinTarget(targetValue, character.element)
+  // The current artifacts' rotation damage, for the Rotation card
+  const worn = ARTIFACT_SLOTS.flatMap((slot) => artifacts.find((a) => a.id === character.artifactIds[slot]) ?? [])
+  const currentDamage = hasTalentData(character.id)
+    ? rotationDamage(computeGenshinStats(character, worn, {}, teamBuffs).stats, damageSetup)
+    : undefined
 
   async function run() {
     setRunning(true)
@@ -281,7 +324,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
     <Stack gap='lg'>
       <PageHeader
         title='Optimizer'
-        description='Searches your artifacts for the 5-piece builds that score highest, with stats worked out like the Characters page. There is no full damage calculation: the average hit is the scaling stat times the crit multiplier, so set minimums (such as Energy Recharge) for anything else the character needs.'
+        description='Searches your artifacts for the 5-piece builds that score highest, with stats worked out like the Characters page. Rotation damage counts talent multipliers, the enemy, team shred and Vaporize or Melt; set minimums (such as Energy Recharge) for anything else the character needs.'
       />
 
       <div className={classes.optimizerLayout}>
@@ -357,13 +400,19 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                   />
                 )}
               </FormCard>
-              <FormCard title='Rank by' description='The average hit is the scaling stat times the crit multiplier, there is no full damage calculation.'>
+              <FormCard
+                title='Rank by'
+                description='Rotation damage uses the Damage row. The average hit is the scaling stat times the crit multiplier and DMG Bonus.'
+              >
                 <Select
                   aria-label='Rank by'
                   allowDeselect={false}
-                  value={targetValue}
+                  value={byDamage ? DAMAGE_TARGET : targetValue === DAMAGE_TARGET ? TARGETS[0].value : targetValue}
                   onChange={(value) => value && setTargetValue(value)}
-                  data={TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) }))}
+                  data={[
+                    ...(hasTalentData(character.id) ? [{ value: DAMAGE_TARGET, label: 'Rotation damage' }] : []),
+                    ...TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) })),
+                  ]}
                 />
               </FormCard>
               <FormCard title='Options' size='narrow'>
@@ -373,6 +422,33 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                   onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
                 />
               </FormCard>
+            </FormRow>
+
+            <FormRow
+              id='genshin-damage'
+              title='Damage'
+              summary={`Enemy level ${enemy.level}, ${enemy.res}% RES · ${Object.values(rotation.counts).reduce((sum, count) => sum + count, 0)} hits${
+                rotation.reaction !== 'none' ? ` · ${rotation.reaction}` : ''
+              }${byDamage ? '' : ' · not ranked by damage'}`}
+            >
+              <EnemyCard
+                enemy={enemy}
+                debuffs={teamResult.debuffs}
+                onChange={(next) => {
+                  setEnemy(next)
+                  setResult(undefined)
+                }}
+              />
+              <RotationCard
+                character={character}
+                rotation={rotation}
+                talents={talents}
+                damage={currentDamage}
+                onChange={(next) => {
+                  setRotation(next)
+                  setResult(undefined)
+                }}
+              />
             </FormRow>
 
             <FormRow id='genshin-team' title='Team' summary={teamSummary(team, teamResult, characters)}>

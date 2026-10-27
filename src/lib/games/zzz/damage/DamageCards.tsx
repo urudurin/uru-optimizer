@@ -8,6 +8,7 @@ import {
   Text,
 } from '@mantine/core'
 import { formatNumber } from 'lib/games/shared/format'
+import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 import {
   agentHits,
@@ -19,7 +20,6 @@ import {
   type Rotation,
   rotationMultiplier,
 } from 'lib/games/zzz/damage/damage'
-import classes from 'lib/games/zzz/damage/DamageCards.module.css'
 
 // The Damage row of the ZZZ optimizer, after HSR's enemy settings and combo drawer: who the enemy is, and how many times
 // each skill hit lands in a rotation. The optimizer can then rank builds by the rotation's damage (damage/damage.ts).

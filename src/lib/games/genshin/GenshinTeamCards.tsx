@@ -7,7 +7,12 @@ import {
   Switch,
   Text,
 } from '@mantine/core'
-import type { BuffSetting } from 'lib/games/genshin/team/buffs'
+import {
+  type BuffSetting,
+  type BuffStat,
+  debuffLabel,
+  isDebuff,
+} from 'lib/games/genshin/team/buffs'
 import type {
   AppliedBuff,
   TeamBuffResult,
@@ -24,8 +29,13 @@ import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 // The Team row of the Genshin optimizer, after HSR's teammates row and Genshin Optimizer's team setup: who the
 // teammates are, whether this character is on the field, and every buff the team gives them with its toggle.
 
+function describeStat(stat: BuffStat, value: number): string {
+  if (isDebuff(stat)) return `${value}% ${debuffLabel(stat)}`
+  return `+${formatStatValue(stat, value)} ${statLabel(stat)}`
+}
+
 function describeValue(entry: AppliedBuff): string {
-  return entry.stat ? `+${formatStatValue(entry.stat, entry.value)} ${statLabel(entry.stat)}` : ''
+  return entry.stat ? describeStat(entry.stat, entry.value) : ''
 }
 
 function BuffControl({ entry, onChange }: { entry: AppliedBuff, onChange: (value: BuffSetting) => void }) {
@@ -77,7 +87,12 @@ export function GenshinTeamCards({ character, characters, team, result, onTeamma
   onField: (onField: boolean) => void,
   onSetting: (key: string, value: BuffSetting) => void,
 }) {
-  const totals = [...Object.entries(result.premod), ...Object.entries(result.total)]
+  const totals: [BuffStat, number][] = [
+    ...Object.entries(result.premod) as [GenshinStatKey, number][],
+    ...Object.entries(result.total) as [GenshinStatKey, number][],
+    ...(result.debuffs.defShred ? [['defShred', result.debuffs.defShred] as [BuffStat, number]] : []),
+    ...Object.entries(result.debuffs.resShred).map(([element, value]) => [`resShred:${element}`, value] as [BuffStat, number]),
+  ]
   return (
     <>
       <FormCard
@@ -106,8 +121,8 @@ export function GenshinTeamCards({ character, characters, team, result, onTeamma
         {result.applied.length === 0
           ? (
             <Text size='xs' c='dimmed'>
-              Pick teammates to see what they give. Phase 1 covers Bennett, Kazuha, Sucrose, Furina, Nahida, team 4-pieces, Millennial Movement weapons,
-              Thrilling Tales and resonance.
+              Pick teammates to see what they give. Phase 1 covers Bennett, Kazuha, Sucrose, Furina, Nahida, Zhongli, Lisa, team 4-pieces (Viridescent Venerer
+              shred too), Millennial Movement weapons, Thrilling Tales and resonance.
             </Text>
           )
           : (
@@ -124,10 +139,10 @@ export function GenshinTeamCards({ character, characters, team, result, onTeamma
               ))}
               <Text size='xs' fw={600}>
                 {totals.length > 0
-                  ? `In total: ${totals.map(([stat, value]) => `+${formatStatValue(stat as GenshinStatKey, value)} ${statLabel(stat)}`).join(', ')}`
+                  ? `In total: ${totals.map(([stat, value]) => describeStat(stat, value)).join(', ')}`
                   : 'Nothing counted right now'}
               </Text>
-              <Text size='xs' c='dimmed'>Buffs a character gives themselves aren't counted yet, and enemy RES shred waits for a damage calculation.</Text>
+              <Text size='xs' c='dimmed'>Buffs a character gives themselves aren't counted yet. Enemy shred only counts when ranking by rotation damage.</Text>
             </Stack>
           )}
       </FormCard>

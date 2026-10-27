@@ -1,4 +1,7 @@
 import {
+  type EnemyDebuffs,
+} from 'lib/games/genshin/damage/damage'
+import {
   computeGenshinStats,
   prepareCharacter,
   type TeamBuffTotals,
@@ -6,7 +9,9 @@ import {
 import {
   type BuffContext,
   type BuffSetting,
+  type BuffStat,
   CHARACTER_BUFFS,
+  isDebuff,
   RESONANCE_BUFFS,
   SET_4PC_BUFFS,
   type TeamBuff,
@@ -42,7 +47,7 @@ export type AppliedBuff = {
   sourceName: string,
   giver?: GenshinCharacter,
   setting: BuffSetting,
-  stat?: GenshinStatKey,
+  stat?: BuffStat,
   value: number,
   // Counted in the totals
   counted: boolean,
@@ -51,6 +56,8 @@ export type AppliedBuff = {
 }
 
 export type TeamBuffResult = TeamBuffTotals & {
+  // DEF and RES shred on the enemy, for the rotation damage
+  debuffs: EnemyDebuffs,
   applied: AppliedBuff[],
   resonance: Element[],
 }
@@ -168,10 +175,19 @@ export function teamBuffsFor(
   }
 
   const totals: TeamBuffTotals = { premod: {}, total: {} }
+  const debuffs: EnemyDebuffs = { defShred: 0, resShred: {} }
   for (const entry of applied) {
     if (!entry.counted || !entry.stat) continue
+    if (isDebuff(entry.stat)) {
+      if (entry.stat === 'defShred') debuffs.defShred += entry.value
+      else {
+        const element = entry.stat.slice('resShred:'.length) as keyof EnemyDebuffs['resShred']
+        debuffs.resShred[element] = (debuffs.resShred[element] ?? 0) + entry.value
+      }
+      continue
+    }
     const bucket = totals[entry.buff.stage]
     bucket[entry.stat] = (bucket[entry.stat] ?? 0) + entry.value
   }
-  return { ...totals, applied, resonance }
+  return { ...totals, debuffs, applied, resonance }
 }
