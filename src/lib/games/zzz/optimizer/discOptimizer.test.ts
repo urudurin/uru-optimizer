@@ -21,7 +21,10 @@ import {
   toDisplayStats,
 } from 'lib/games/zzz/stats/computeStats'
 import exportFixture from 'lib/games/zzz/stats/fixtures/batch1Builds.json'
-import type { Disc } from 'lib/games/zzz/types'
+import {
+  type Disc,
+  ZzzStats,
+} from 'lib/games/zzz/types'
 import {
   describe,
   expect,
@@ -110,6 +113,15 @@ describe('optimizeDiscs', () => {
       .slice(0, 10)
       .map((r) => keys.map((key) => r.display[key]))
     expect(outcome.builds.map((b) => keys.map((key) => b.display[key]))).toEqual(expected)
+  })
+
+  it('counts team buffs in the ranking and in the results shown', () => {
+    const alone = optimizeDiscs(makeRequest({ sortBy: 'critDmg' }))
+    const buffed = optimizeDiscs(
+      makeRequest({ sortBy: 'critDmg', teamEffects: [{ stat: ZzzStats.CRIT_DMG, value: 25, source: 'Astra Yao', confidence: 'sourced' }] }),
+    )
+    if (!alone.ok || !buffed.ok) throw new Error('search failed')
+    expect(buffed.builds.map((b) => b.display.critDmg)).toEqual(alone.builds.map((b) => b.display.critDmg + 25))
   })
 
   it('leaves out builds over a maximum stat', () => {

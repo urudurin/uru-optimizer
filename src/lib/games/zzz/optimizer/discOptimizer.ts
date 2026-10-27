@@ -62,6 +62,8 @@ export type OptimizerRequest = {
   filters: OptimizerFilters,
   // Compared against the unrounded stat
   minStats: Partial<Record<keyof FinalStats, number>>,
+  // What teammates give the agent (team/teamBuffs.ts): plain stat effects, so they can go to the worker
+  teamEffects?: StatEffect[],
   // Builds above any of these are left out, compared against the unrounded stat too
   maxStats?: Partial<Record<keyof FinalStats, number>>,
   sortBy: keyof FinalStats,
@@ -158,8 +160,9 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   const core = agent.coreEffects[request.coreSkillLevel] ?? []
   const passiveVector = effectsVector(passive, agent, conditions)
   const coreVector = effectsVector(core, agent, conditions)
+  const teamVector = effectsVector(request.teamEffects ?? [], agent, conditions)
   const baseThresholds = [...thresholdEffects(passive, agent, conditions), ...thresholdEffects(core, agent, conditions)]
-  for (let i = 0; i < STAT_COUNT; i++) base[i] += passiveVector[i] + coreVector[i]
+  for (let i = 0; i < STAT_COUNT; i++) base[i] += passiveVector[i] + coreVector[i] + teamVector[i]
 
   // Sets are numbered so counting pieces is an array lookup
   const setIds = [...new Set(pools.flat().map((disc) => disc.setId))]
@@ -268,6 +271,7 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
       coreSkillLevel: request.coreSkillLevel,
       discs,
       conditions,
+      teamEffects: request.teamEffects,
     })
     return { discs, display: toDisplayStats(result.stats), warnings: result.warnings }
   })

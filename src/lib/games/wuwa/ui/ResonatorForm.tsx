@@ -14,7 +14,7 @@ import { useState } from 'react'
 export const WEAPON_TYPES: Record<number, string> = { 1: 'Broadblade', 2: 'Sword', 3: 'Pistols', 4: 'Gauntlets', 5: 'Rectifier' }
 
 // Every weapon, grouped by type. The datamine doesn't say which type a Resonator uses, so all of them are offered
-const WEAPON_OPTIONS = Object.entries(WEAPON_TYPES).map(([type, group]) => ({
+export const WEAPON_OPTIONS = Object.entries(WEAPON_TYPES).map(([type, group]) => ({
   group,
   items: Object.values(WEAPONS)
     .filter((weapon) => weapon.weaponType === Number(type))

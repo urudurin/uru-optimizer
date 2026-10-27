@@ -41,6 +41,7 @@ import {
   limitsSummary,
   StatFilters,
 } from 'lib/games/shared/ui/optimizer/StatFilters'
+import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
 import {
   FormCard,
   FormRow,
@@ -99,6 +100,12 @@ import {
   scoreDisc,
   zzzDiscWeights,
 } from 'lib/games/zzz/stats/discScore'
+import type { ZzzBuffSetting } from 'lib/games/zzz/team/buffs'
+import { zzzTeamBuffsFor } from 'lib/games/zzz/team/teamBuffs'
+import {
+  zzzTeamEntries,
+  zzzTeamSummary,
+} from 'lib/games/zzz/team/teamEntries'
 import type {
   Disc,
   ZzzStatsValues,
@@ -136,6 +143,9 @@ type ZzzOptimizerSettings = {
   minStats: Partial<Record<keyof FinalStats, number>>,
   maxStats: Partial<Record<keyof FinalStats, number>>,
   excludeEquippedByOthers: boolean,
+  // Agent ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
+  teammates: string[],
+  teamSettings: Record<string, ZzzBuffSetting>,
 }
 
 // The user's own W-Engine for this agent when it's supported, otherwise the first one of the agent's specialty
@@ -200,10 +210,26 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     minStats: {},
     maxStats: {},
     excludeEquippedByOthers: false,
+    teammates: [],
+    teamSettings: {},
   }), [agent, builds])
   const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, agentId, defaultSettings)
-  const { loadout, coreSkill, conditions, sortBy, thenBy, presetChoice, fourPieceSet, twoPieceSet, mainStats, minStats, maxStats, excludeEquippedByOthers } =
-    settings
+  const {
+    loadout,
+    coreSkill,
+    conditions,
+    sortBy,
+    thenBy,
+    presetChoice,
+    fourPieceSet,
+    twoPieceSet,
+    mainStats,
+    minStats,
+    maxStats,
+    excludeEquippedByOthers,
+    teammates,
+    teamSettings,
+  } = settings
   const setLoadout = fieldSetter(updateSettings, 'loadout')
   const setCoreSkill = fieldSetter(updateSettings, 'coreSkill')
   const setConditions = fieldSetter(updateSettings, 'conditions')
@@ -216,6 +242,13 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const setMinStats = fieldSetter(updateSettings, 'minStats')
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
+  const setTeammates = fieldSetter(updateSettings, 'teammates')
+  const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
+  // What the squad gives this agent, the same for every build
+  const team = { teammates, settings: teamSettings }
+  const teamResult = zzzTeamBuffsFor(agent.id, team, { builds, discs })
+  const teammateOptions = [...new Map(builds.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
+    .map(([value, label]) => ({ value, label }))
   const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
   const [selected, setSelected] = useState(0)
   const [running, setRunning] = useState(false)
@@ -302,6 +335,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       filters,
       minStats,
       maxStats,
+      teamEffects: teamResult.effects,
       sortBy,
       thenBy,
       limit: RESULT_LIMIT,
@@ -344,7 +378,9 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const agentBuild = builds.find((b) => b.agentId === agent.id)
   // The settings on the page now, for the build analysis: the agent's current discs, and the picked build again
   const wEngine = W_ENGINES[loadout.wEngineId]
-  const computeInput = wEngine ? { agent, wEngine, wEngineRefinement: Number(loadout.refinement), coreSkillLevel: Number(coreSkill), conditions } : undefined
+  const computeInput = wEngine
+    ? { agent, wEngine, wEngineRefinement: Number(loadout.refinement), coreSkillLevel: Number(coreSkill), conditions, teamEffects: teamResult.effects }
+    : undefined
   const currentDiscs = agentBuild ? Object.values(agentBuild.discIds).flatMap((id) => discs.find((d) => d.id === id) ?? []) : []
   const currentDisplay = computeInput && currentDiscs.length > 0 ? toDisplayStats(computeStats({ ...computeInput, discs: currentDiscs }).stats) : undefined
   const rankRow = statRows.find((row) => row.key === sortBy) ?? statRows[0]
@@ -518,6 +554,26 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                   data={statRows.filter((row) => row.key !== sortBy).map((row) => ({ value: row.key, label: row.label }))}
                 />
               </FormCard>
+            </FormRow>
+
+            <FormRow
+              id='zzz-team'
+              title='Team'
+              summary={zzzTeamSummary(teammates.map((id) => teammateOptions.find((o) => o.value === id)?.label ?? id), teamResult.applied)}
+            >
+              <TeamCards
+                name={agent.name}
+                options={teammateOptions}
+                teammates={teammates}
+                maxTeammates={2}
+                entries={zzzTeamEntries(teamResult.applied)}
+                notice={teamResult.missing.length > 0 ? `No stat screen for ${teamResult.missing.join(', ')}: save a build for them first` : undefined}
+                description='Their kits and 4-piece sets buff this agent. Teammates use the discs and W-Engine in their saved build.'
+                emptyText='Pick teammates to see what they give. Phase 1 covers Astra Yao, Lucy, Soukaku, Caesar, Rina, Nicole, Trigger, Seth and the Swing Jazz, Astral Voice and Moonlight Lullaby 4-pieces.'
+                footnote="Givers are taken at skill level 12 and Core Skill F (saved builds don't record those). DEF and RES shred, Daze and W-Engine buffs need a damage calculation and aren't counted yet."
+                onTeammates={(ids) => setTeammates(ids)}
+                onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
+              />
             </FormRow>
 
             <FormRow id='zzz-filters' title='Disc filters' summary={filterSummary}>

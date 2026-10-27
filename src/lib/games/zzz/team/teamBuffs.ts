@@ -1,0 +1,149 @@
+import { AGENTS } from 'lib/games/zzz/data/agents'
+import type { StatEffect } from 'lib/games/zzz/data/dataTypes'
+import { FACTIONS } from 'lib/games/zzz/data/factions'
+import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
+import {
+  computeStats,
+  type FinalStats,
+  statScreenConditions,
+} from 'lib/games/zzz/stats/computeStats'
+import { resolveBuild } from 'lib/games/zzz/stats/resolveBuild'
+import {
+  AGENT_BUFFS,
+  SET_4PC_BUFFS,
+  type SquadMember,
+  type ZzzBuffContext,
+  type ZzzBuffSetting,
+  type ZzzTeamBuff,
+} from 'lib/games/zzz/team/buffs'
+import type { Disc } from 'lib/games/zzz/types'
+
+// What two teammates give one agent, like genshin/team/teamBuffs.ts: each teammate's kit (team/buffs.ts AGENT_BUFFS)
+// and the 4-piece set of the discs in their saved build, worked out from their own stat screen. The result is a list of
+// stat effects for the stat calculator and the optimizer (ComputeInput.teamEffects / OptimizerRequest.teamEffects).
+
+export type ZzzTeamSetup = {
+  // Agent ids, at most two
+  teammates: string[],
+  // Toggles and stack counts by settingKey
+  settings: Record<string, ZzzBuffSetting>,
+}
+
+export type ZzzAppliedBuff = {
+  buff: ZzzTeamBuff,
+  key: string,
+  sourceName: string,
+  giver: SquadMember,
+  setting: ZzzBuffSetting,
+  value: number,
+  counted: boolean,
+  reason?: string,
+}
+
+export type ZzzTeamResult = {
+  effects: StatEffect[],
+  applied: ZzzAppliedBuff[],
+  // Teammates whose stat screen couldn't be worked out (no saved build, or no data for them)
+  missing: string[],
+}
+
+export const NO_TEAM: ZzzTeamResult = { effects: [], applied: [], missing: [] }
+
+export function settingKey(buff: ZzzTeamBuff, giverId: string): string {
+  return `${giverId}:${buff.id}`
+}
+
+export function defaultSetting(buff: ZzzTeamBuff, giver: SquadMember): ZzzBuffSetting {
+  const toggle = buff.toggle
+  if (toggle?.kind === 'stacks') return toggle.max(giver)
+  return true
+}
+
+export function squadMember(agentId: string, mindscape: number): SquadMember | undefined {
+  const agent = AGENTS[agentId]
+  if (!agent) return undefined
+  return { agentId, name: agent.name, element: agent.element, specialty: agent.specialty, faction: FACTIONS[agentId], mindscape }
+}
+
+function fourPieceSets(discs: Disc[]): string[] {
+  const counts = new Map<string, number>()
+  for (const disc of discs) counts.set(disc.setId, (counts.get(disc.setId) ?? 0) + 1)
+  return [...counts].filter(([, count]) => count >= 4).map(([setId]) => setId)
+}
+
+export function zzzTeamBuffsFor(
+  receiverId: string,
+  setup: ZzzTeamSetup,
+  data: { builds: ImportedBuild[], discs: Disc[] },
+): ZzzTeamResult {
+  const receiverBuild = data.builds.find((b) => b.agentId === receiverId)
+  const receiver = squadMember(receiverId, receiverBuild?.mindscapeLevel ?? 0)
+  if (!receiver) return NO_TEAM
+
+  const missing: string[] = []
+  const givers: { member: SquadMember, stats: FinalStats, discs: Disc[] }[] = []
+  for (const id of setup.teammates.filter((t) => t !== receiverId).slice(0, 2)) {
+    const build = data.builds.find((b) => b.agentId === id)
+    const member = squadMember(id, build?.mindscapeLevel ?? 0)
+    const resolved = build ? resolveBuild(build, data.discs) : undefined
+    if (!member || !resolved?.ok) {
+      missing.push(member?.name ?? AGENTS[id]?.name ?? id)
+      continue
+    }
+    const stats = computeStats({ ...resolved.build, coreSkillLevel: 6, conditions: statScreenConditions() }).stats
+    givers.push({ member, stats, discs: resolved.build.discs })
+  }
+  const squad = [receiver, ...givers.map((g) => g.member)]
+
+  const applied: ZzzAppliedBuff[] = []
+  for (const giver of givers) {
+    const sources: { buff: ZzzTeamBuff, sourceName: string }[] = [
+      ...(AGENT_BUFFS[giver.member.agentId] ?? []).map((buff) => ({ buff, sourceName: giver.member.name })),
+      ...fourPieceSets(giver.discs).flatMap((setId) =>
+        (SET_4PC_BUFFS[setId] ?? []).map((buff) => ({ buff, sourceName: `${giver.member.name}'s 4-piece set` }))
+      ),
+    ]
+    for (const { buff, sourceName } of sources) {
+      const key = settingKey(buff, giver.member.agentId)
+      const setting = setup.settings[key] ?? defaultSetting(buff, giver.member)
+      const base = { buff, key, sourceName, giver: giver.member, setting }
+      if (setting === false) {
+        applied.push({ ...base, value: 0, counted: false, reason: 'Turned off' })
+        continue
+      }
+      const context: ZzzBuffContext = { giver: giver.member, giverStats: giver.stats, receiver, squad, setting }
+      const value = buff.value(context)
+      if (buff.element && buff.element !== receiver.element) {
+        applied.push({ ...base, value: 0, counted: false, reason: `Only for ${buff.element} agents` })
+      } else if (!(value > 0)) {
+        applied.push({ ...base, value: 0, counted: false, reason: buff.blockedBy?.(context) ?? 'Doesn\'t apply' })
+      } else {
+        applied.push({ ...base, value, counted: true })
+      }
+    }
+  }
+
+  // Non-stacking buffs: only the biggest of each group counts
+  const best = new Map<string, ZzzAppliedBuff>()
+  for (const entry of applied) {
+    const group = entry.buff.nonStacking
+    if (!group || !entry.counted) continue
+    const current = best.get(group)
+    if (!current || entry.value > current.value) best.set(group, entry)
+  }
+  for (const entry of applied) {
+    const group = entry.buff.nonStacking
+    if (group && entry.counted && best.get(group) !== entry) {
+      entry.counted = false
+      entry.reason = `Doesn't stack with ${best.get(group)?.sourceName}`
+    }
+  }
+
+  const effects: StatEffect[] = applied.filter((a) => a.counted).map((a) => ({
+    stat: a.buff.stat,
+    value: a.value,
+    source: `${a.sourceName}: ${a.buff.label}`,
+    confidence: a.buff.confidence,
+  }))
+  return { effects, applied, missing }
+}

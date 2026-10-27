@@ -70,7 +70,7 @@ export function setPieceCounts(echoes: Echo[]): Map<string, number> {
   return new Map([...bySet].map(([setId, defs]) => [setId, defs.size]))
 }
 
-type Bonus = Partial<Record<StatKey, number>>
+export type Bonus = Partial<Record<StatKey, number>>
 
 function addTo(sums: Bonus, stats: Bonus) {
   for (const [stat, value] of Object.entries(stats)) sums[stat as StatKey] = (sums[stat as StatKey] ?? 0) + (value ?? 0)

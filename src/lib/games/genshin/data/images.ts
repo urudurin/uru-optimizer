@@ -74,7 +74,8 @@ export const loadGenshinImages = enkaStoreLoader(
     for (const [id, entry] of Object.entries(avatars as Record<string, AvatarEntry>)) {
       if (id.includes('-')) continue
       const weaponType = entry.WeaponType ? AVATAR_WEAPON_TYPES[entry.WeaponType] : undefined
-      if (id === TRAVELER_AVATAR_ID) characterInfo.Traveler = { name: 'Traveler', weaponType }
+      // Enka's Traveler entry has no weapon type; the Traveler only uses swords
+      if (id === TRAVELER_AVATAR_ID) characterInfo.Traveler = { name: 'Traveler', weaponType: weaponType ?? 'Sword' }
       const base = entry.SideIconName ? iconBase(entry.SideIconName) : undefined
       if (!base) continue
       const art = { portrait: url(`/ui/UI_Gacha_AvatarImg_${base}.png`), icon: url(`/ui/UI_AvatarIcon_${base}.png`) }

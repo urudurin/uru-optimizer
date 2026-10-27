@@ -19,12 +19,12 @@ import type { Element } from 'lib/games/genshin/types'
 import { useState } from 'react'
 
 const ELEMENTS: Element[] = ['Anemo', 'Geo', 'Electro', 'Dendro', 'Hydro', 'Pyro', 'Cryo']
-const WEAPON_RARITY: Record<string, number> = Object.fromEntries(Object.entries(stats.weapons).map(([id, weapon]) => [id, weapon.rarity]))
+export const WEAPON_RARITY: Record<string, number> = Object.fromEntries(Object.entries(stats.weapons).map(([id, weapon]) => [id, weapon.rarity]))
 
 const range = (from: number, to: number) => Array.from({ length: to - from + 1 }, (_, i) => String(from + i))
 
 // Every weapon with stat data, best rarity first, grouped by type; only the character's type when it's known
-function weaponOptions(weaponInfo: GenshinImages['weaponInfo'], weaponType: WeaponType | undefined) {
+export function weaponOptions(weaponInfo: GenshinImages['weaponInfo'], weaponType: WeaponType | undefined) {
   const groups = new Map<string, { value: string, label: string, rarity: number }[]>()
   for (const id of Object.keys(WEAPON_RARITY)) {
     const info = weaponInfo[id]

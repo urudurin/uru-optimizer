@@ -11,6 +11,7 @@ import {
 } from 'lib/games/shared/ranking'
 import { SONATA_SETS } from 'lib/games/wuwa/data/gameData'
 import {
+  type Bonus,
   computeWuwaStats,
   echoStats,
   finalizeWuwaStats,
@@ -70,6 +71,8 @@ export type EchoRequest = {
   minStats: Partial<Record<keyof WuwaStats, number>>,
   // Loadouts above any of these are left out, e.g. Energy Regen at most 130
   maxStats?: Partial<Record<keyof WuwaStats, number>>,
+  // What teammates give the Resonator (team/teamBuffs.ts), the same for every loadout
+  teamBonus?: Bonus,
   target: EchoTarget,
   limit: number,
   // Called now and then while searching (added by the worker, never sent to it)
@@ -207,7 +210,7 @@ function currentBuild(request: EchoRequest): EchoBuild | undefined {
   const byId = new Map(request.echoes.map((echo) => [echo.id, echo]))
   const worn = request.character.echoIds.flatMap((id) => (id && byId.get(id) ? [byId.get(id)!] : []))
   if (worn.length === 0) return undefined
-  const { stats } = computeWuwaStats(request.character, worn)
+  const { stats } = computeWuwaStats(request.character, worn, request.teamBonus)
   return { echoes: worn, stats, score: scoreStats(stats, request.target) }
 }
 
@@ -232,7 +235,8 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
   const meetsMins = (stats: WuwaStats) => minEntries.every(([stat, min]) => stats[stat] >= min)
   const maxEntries = (Object.entries(request.maxStats ?? {}) as [keyof WuwaStats, number][]).filter(([, v]) => Number.isFinite(v))
   const meetsMaxes = (stats: WuwaStats) => maxEntries.every(([stat, max]) => stats[stat] <= max)
-  const base = toVector(prepared.bonus)
+  const base = toVector({ ...prepared.bonus })
+  for (const [i, value] of toVector(request.teamBonus ?? {}).entries()) base[i] += value
 
   // Stats that change the target, a minimum or a maximum. More of a stat is better for the target and minimums, less for
   // maximums: direction 1 means more is better, -1 less is better, 0 that it has to match (both)
@@ -437,7 +441,7 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
   }
 
   const builds = top.map((entry): EchoBuild => {
-    const { stats } = computeWuwaStats(character, entry.item)
+    const { stats } = computeWuwaStats(character, entry.item, request.teamBonus)
     return { echoes: entry.item, stats, score: scoreStats(stats, target) }
   })
 

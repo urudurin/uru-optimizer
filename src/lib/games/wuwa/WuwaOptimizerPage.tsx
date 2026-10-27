@@ -37,6 +37,7 @@ import {
   limitsSummary,
   StatFilters,
 } from 'lib/games/shared/ui/optimizer/StatFilters'
+import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
 import {
   FormCard,
   FormRow,
@@ -81,6 +82,12 @@ import {
   wuwaBuildScore,
   wuwaEchoWeights,
 } from 'lib/games/wuwa/stats/echoScore'
+import type { WuwaBuffSetting } from 'lib/games/wuwa/team/buffs'
+import { wuwaTeamBuffsFor } from 'lib/games/wuwa/team/teamBuffs'
+import {
+  wuwaTeamEntries,
+  wuwaTeamSummary,
+} from 'lib/games/wuwa/team/teamEntries'
 import {
   type Cost,
   type Echo,
@@ -94,6 +101,7 @@ import {
   elementName,
   setName,
 } from 'lib/games/wuwa/ui/EchoCard'
+import { WEAPON_OPTIONS } from 'lib/games/wuwa/ui/ResonatorForm'
 import { wuwaStatRows } from 'lib/games/wuwa/ui/resonatorStats'
 import {
   useMemo,
@@ -133,11 +141,24 @@ type WuwaOptimizerSettings = {
   excludeEquippedByOthers: boolean,
   minStats: Partial<Record<keyof WuwaStats, number>>,
   maxStats: Partial<Record<keyof WuwaStats, number>>,
+  // Character ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
+  teammates: string[],
+  teamSettings: Record<string, WuwaBuffSetting>,
 }
 
 // What a Resonator starts with before their settings are changed (and saved)
 function defaultSettings(): WuwaOptimizerSettings {
-  return { targetValue: 'avg:atk', mainStats: {}, fullSet: null, twoPieceSets: [], excludeEquippedByOthers: true, minStats: {}, maxStats: {} }
+  return {
+    targetValue: 'avg:atk',
+    mainStats: {},
+    fullSet: null,
+    twoPieceSets: [],
+    excludeEquippedByOthers: true,
+    minStats: {},
+    maxStats: {},
+    teammates: [],
+    teamSettings: {},
+  }
 }
 
 export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
@@ -153,7 +174,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
 
   // Saved per Resonator, see shared/optimizerSettings.ts
   const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.charId ?? '', defaultSettings)
-  const { targetValue, mainStats, fullSet, twoPieceSets, excludeEquippedByOthers, minStats, maxStats } = settings
+  const { targetValue, mainStats, fullSet, twoPieceSets, excludeEquippedByOthers, minStats, maxStats, teammates, teamSettings } = settings
   const setTargetValue = fieldSetter(updateSettings, 'targetValue')
   const setMainStats = fieldSetter(updateSettings, 'mainStats')
   const setFullSet = fieldSetter(updateSettings, 'fullSet')
@@ -161,6 +182,11 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
+  const setTeammates = fieldSetter(updateSettings, 'teammates')
+  const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
+  // What the team gives this Resonator, the same for every loadout
+  const teamResult = wuwaTeamBuffsFor(character, { teammates, settings: teamSettings }, { characters, echoes })
+  const teammateOptions = characters.filter((c) => c.charId !== character.charId).map((c) => ({ value: c.charId, label: characterName(c.charId) }))
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: EchoOutcome, ms: number, target: EchoTarget } | undefined>()
@@ -209,7 +235,17 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   async function run() {
     setRunning(true)
     setProgress(undefined)
-    const response = await runEchoOptimizer({ character, characters, echoes, filters, minStats, maxStats, target, limit: RESULT_LIMIT }, setProgress)
+    const response = await runEchoOptimizer({
+      character,
+      characters,
+      echoes,
+      filters,
+      minStats,
+      maxStats,
+      teamBonus: teamResult.bonus,
+      target,
+      limit: RESULT_LIMIT,
+    }, setProgress)
     // undefined: cancelled, or replaced by a newer search that is still running
     if (response) {
       setResult({ ...response, target })
@@ -284,7 +320,20 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                 <Text size='xs' c='dimmed'>
                   {`Level ${character.level} · ${weapon ? `${weapon.name}, level ${character.weaponLevel}` : 'No weapon'}`}
                 </Text>
-                {/* Like HSR's Eidolon and Superimposition buttons, these change the saved Resonator */}
+                {/* Like HSR's light cone, Eidolon and Superimposition pickers, these change the saved Resonator */}
+                <Select
+                  label='Weapon'
+                  searchable
+                  allowDeselect={false}
+                  placeholder='No weapon'
+                  value={character.weaponId ?? null}
+                  onChange={(weaponId) => {
+                    if (!weaponId || weaponId === character.weaponId) return
+                    saveCharacter({ ...character, weaponId })
+                    setResult(undefined)
+                  }}
+                  data={WEAPON_OPTIONS}
+                />
                 <RankButtons
                   label='Sequence'
                   prefix='S'
@@ -329,6 +378,21 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                   onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
                 />
               </FormCard>
+            </FormRow>
+
+            <FormRow id='wuwa-team' title='Team' summary={wuwaTeamSummary(teammates.map(characterName), teamResult.applied)}>
+              <TeamCards
+                name={characterName(character.charId)}
+                options={teammateOptions}
+                teammates={teammates}
+                maxTeammates={2}
+                entries={wuwaTeamEntries(teamResult.applied)}
+                description='Their skills buff this Resonator. Teammates use the echoes they wear in the save.'
+                emptyText='Pick teammates to see what they give. Phase 1 covers Shorekeeper, Verina, Rebecca, Ciaccona, Denia, Buling, Suoming and Sigrika.'
+                footnote="DMG Amplification buffs (most Outros) scale every loadout the same, so they can't change the ranking and aren't listed. Echo Skill DMG isn't calculated yet."
+                onTeammates={(ids) => setTeammates(ids)}
+                onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
+              />
             </FormRow>
 
             <FormRow id='wuwa-filters' title='Echo filters' summary={filterSummary}>
@@ -481,7 +545,7 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                   format: (value: number) => formatValue(stat, value),
                 })),
               ]}
-              upgrades={wuwaSubstatUpgrades(character, build.echoes, result.target)}
+              upgrades={wuwaSubstatUpgrades(character, build.echoes, result.target, teamResult.bonus)}
               scoreLabel={targetLabel(result.target)}
               formatRoll={(upgrade) => upgrade.stat.endsWith('Flat') ? String(Math.round(upgrade.roll)) : `${upgrade.roll.toFixed(1)}%`}
             />

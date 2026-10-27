@@ -14,6 +14,7 @@ import {
   GenshinTeamCards,
   teamSummary,
 } from 'lib/games/genshin/GenshinTeamCards'
+import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
 import { genshinSubstatUpgrades } from 'lib/games/genshin/optimizer/analysis'
 import {
   filterPools,
@@ -56,6 +57,10 @@ import {
   ArtifactCard,
   elementColor,
 } from 'lib/games/genshin/ui/ArtifactCard'
+import {
+  WEAPON_RARITY,
+  weaponOptions,
+} from 'lib/games/genshin/ui/CharacterForm'
 import {
   ELEMENT_ACCENTS,
   genshinStatRows,
@@ -306,7 +311,27 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                 <Text size='xs' c='dimmed'>
                   {`Level ${character.level} · ${character.weapon ? `${character.weapon.name}, level ${character.weapon.level}` : 'No weapon'}`}
                 </Text>
-                {/* Like HSR's Eidolon and Superimposition buttons, these change the saved character */}
+                {/* Like HSR's light cone, Eidolon and Superimposition pickers, these change the saved character */}
+                <Select
+                  label='Weapon'
+                  searchable
+                  allowDeselect={false}
+                  placeholder='No weapon'
+                  value={character.weapon?.id ?? null}
+                  onChange={(id) => {
+                    if (!id || id === character.weapon?.id) return
+                    const weapon = {
+                      id,
+                      name: images.weaponInfo[id]?.name ?? nameFromGoodKey(id),
+                      rarity: WEAPON_RARITY[id] ?? 5,
+                      level: character.weapon?.level ?? 90,
+                      refinement: character.weapon?.refinement ?? 1,
+                    }
+                    saveCharacter({ ...character, weapon })
+                    setResult(undefined)
+                  }}
+                  data={weaponOptions(images.weaponInfo, images.characterInfo[character.id.startsWith('Traveler') ? 'Traveler' : character.id]?.weaponType)}
+                />
                 <RankButtons
                   label='Constellation'
                   prefix='C'

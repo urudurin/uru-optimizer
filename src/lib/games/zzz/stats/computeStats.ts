@@ -52,6 +52,8 @@ export type ComputeInput = {
   conditions: ActiveConditions,
   // Stat points to add on top, e.g. one more substat roll for the build analysis
   extraStats?: Partial<Record<ZzzStatsValues, number>>,
+  // What teammates give this agent (team/teamBuffs.ts), counted whatever the conditions
+  teamEffects?: StatEffect[],
 }
 
 export type ComputeResult = {
@@ -130,6 +132,8 @@ export function computeStats(input: ComputeInput): ComputeResult {
   for (const [stat, value] of Object.entries(input.extraStats ?? {}) as [ZzzStatsValues, number][]) {
     contributions.push({ source: 'Extra substat roll', stat, value })
   }
+
+  addEffects(input.teamEffects ?? [])
 
   // Set bonuses: a 4-piece also has its 2-piece, and 2-pieces from different sets stack
   const pieceCount = new Map<string, { name: string, count: number }>()
