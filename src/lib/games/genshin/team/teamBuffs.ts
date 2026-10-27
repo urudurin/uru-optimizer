@@ -208,13 +208,13 @@ export function teamBuffsFor(
     const bucket = totals[entry.buff.stage]
     bucket[entry.stat] = (bucket[entry.stat] ?? 0) + entry.value
   }
-  // Teammates' Moonsign Benediction and Stellar Jubilee passives, from their own stats; the biggest per kind
+  // Teammates' Moonsign Benediction and Stellar Jubilee passives, from their own stats. Different characters' passives add up (same-bucket buffs from different sources do)
   const baseBonus: Partial<Record<SpecialKind, number>> = {}
   for (const giver of givers) {
     const benediction = BENEDICTIONS[giver.character.id]
     if (!benediction) continue
     const value = benedictionValue(benediction, giver.stats)
-    for (const kind of benediction.kinds) baseBonus[kind] = Math.max(baseBonus[kind] ?? 0, value)
+    for (const kind of benediction.kinds) baseBonus[kind] = (baseBonus[kind] ?? 0) + value
   }
   return { ...totals, debuffs, lunarBonus, moonsign, baseBonus, applied, resonance }
 }

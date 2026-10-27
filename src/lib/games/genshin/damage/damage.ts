@@ -177,7 +177,7 @@ export type DamageSetup = {
   // The Lunar and Stellar kinds the team can trigger (teamReactions); missing means every kind
   teamReactions?: SpecialKind[],
   // Base DMG increase per Lunar or Stellar kind from teammates' passives (team/teamBuffs.ts), in percent. The character's
-  // own passive is worked out from their stats; the bigger one counts
+  // own passive is worked out from their stats; they add up
   baseBonus?: Partial<Record<SpecialKind, number>>,
 }
 
@@ -633,12 +633,12 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
     const fromEm = 16 * em / (em + 2000)
     const specialFromEm = 6 * em / (em + 2000)
     const crit = 1 + Math.min(Math.max(critRate, 0), 100) / 100 * critDmg / 100
-    // Lunar and Stellar Base DMG increase: the bigger of the teammates' and the character's own passive
+    // Lunar and Stellar Base DMG increase: the teammates' plus the character's own passive
     const own = prepared.ownBenediction
     const ownValue = own ? Math.min(own.cap, get(own.stat) * own.perPoint) : 0
     const baseFactor = (kind: SpecialKind | undefined) => {
       if (!kind) return 1
-      return 1 + Math.max(prepared.baseBonus[kind] ?? 0, own?.kinds.includes(kind) ? ownValue : 0) / 100
+      return 1 + ((prepared.baseBonus[kind] ?? 0) + (own?.kinds.includes(kind) ? ownValue : 0)) / 100
     }
     for (const reaction of prepared.transformative) {
       transformative += reaction.special

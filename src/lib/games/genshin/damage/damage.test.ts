@@ -181,8 +181,8 @@ describe('Genshin damage', () => {
     const direct: DamageSetup = { ...lunar, rotation: { ...lunar.rotation, counts: { [final.key]: 1 } } }
     const multiplier = final.terms[0][1][8] / 100
     expect(rotationDamage(stats, direct)).toBeCloseTo(2000 * multiplier * 3 * 1.14 * (1 + em) * crit * 0.9, 3)
-    // A teammate's bigger base increase wins over the character's own
-    expect(rotationDamage(stats, { ...direct, baseBonus: { lunarcharged: 20 } }) / rotationDamage(stats, direct)).toBeCloseTo(1.2 / 1.14, 6)
+    // A teammate's base increase adds to the character's own
+    expect(rotationDamage(stats, { ...direct, baseBonus: { lunarcharged: 20 } }) / rotationDamage(stats, direct)).toBeCloseTo(1.34 / 1.14, 6)
     // Set bonuses for the kind add inside the EM bracket
     expect(rotationDamage(stats, { ...direct, reactionBonus: { lunarcharged: 20 } }) / rotationDamage(stats, direct)).toBeCloseTo((1.2 + em) / (1 + em), 6)
 
