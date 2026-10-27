@@ -1,3 +1,4 @@
+import { resolveZzzCombat } from 'lib/games/zzz/damage/combatEffects'
 import {
   agentHits,
   anomalyHits,
@@ -5,10 +6,12 @@ import {
   anomalyMultiplier,
   DEFAULT_ENEMY,
   defaultRotation,
+  hitKind,
   hitMultiplier,
   levelFactor,
   NO_DEBUFFS,
   rotationAnomalyMultiplier,
+  rotationBonusMultiplier,
   rotationDamage,
   rotationMultiplier,
 } from 'lib/games/zzz/damage/damage'
@@ -81,5 +84,35 @@ describe('ZZZ damage', () => {
     const both = rotationDamage(stats, { ...setup, multiplier: 100 })
     expect(both - rotationDamage(stats, setup)).toBeCloseTo(rotationDamage(stats, { ...setup, anomalyMultiplier: 0, multiplier: 100 }), 6)
     expect(rotationDamage({ ...stats, critDmg: stats.critDmg + 50 }, setup)).toBeCloseTo(expected, 6)
+  })
+
+  it('reads what each hit counts as from its skill, and adds kit DMG Bonuses to those hits only', () => {
+    expect(hitKind('UltimateLingeringSnow', 'chain')).toBe('ult')
+    expect(hitKind('ChainAttackSpringsCall', 'chain')).toBe('chain')
+    expect(hitKind('EXSpecialAttackHisetsu', 'special')).toBe('exSpecial')
+    expect(hitKind('SpecialAttackMiyuki', 'special')).toBe('special')
+    expect(hitKind('DodgeCounterKanSuzume', 'dodge')).toBe('dodgeCounter')
+    expect(hitKind('FrostsCrushing', 'basic')).toBe('basic')
+
+    // An Ultimate +60% bonus reaches the Ultimate and nothing else
+    const rotation = { counts: { 'UltimateLingeringSnow:0': 1, 'EXSpecialAttackHisetsu:0': 1 }, skillLevel: 12 }
+    const ult = agentHits(MIYABI.id).find((hit) => hit.skill === 'UltimateLingeringSnow')!
+    expect(rotationBonusMultiplier(MIYABI.id, rotation, { ult: 60 }, {})).toBeCloseTo(hitMultiplier(ult, 12) * 0.6, 6)
+
+    // The bonus adds to the Element DMG Bonus of those hits: (1 + E) per hit, plus its own share
+    const setup = { multiplier: 100, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS }
+    const base = rotationDamage(stats, setup)
+    const withBonus = rotationDamage(stats, { ...setup, bonusMultiplier: 50 })
+    expect(withBonus / base).toBeCloseTo((1 + stats.elementDmg / 100 + 0.5) / (1 + stats.elementDmg / 100), 6)
+  })
+
+  it('resolves kit effects by Mindscape and toggles', () => {
+    const miyabi = resolveZzzCombat(MIYABI.id, 0, {})
+    expect(miyabi.skillBonus).toEqual({ BasicAttackShimotsuki: 60 })
+    expect(miyabi.statEffects.map((e) => e.value)).toEqual([30])
+    // Mindscape 2 isn't reached at M0
+    expect(miyabi.applied.find((a) => a.effect.id === 'miyabi-m2')?.counted).toBe(false)
+    expect(resolveZzzCombat(MIYABI.id, 2, {}).kindBonus).toEqual({ dodgeCounter: 30 })
+    expect(resolveZzzCombat(MIYABI.id, 0, { 'miyabi-ult-ice': false }).statEffects).toEqual([])
   })
 })

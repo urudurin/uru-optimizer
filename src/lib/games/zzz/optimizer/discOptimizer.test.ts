@@ -121,10 +121,11 @@ describe('optimizeDiscs', () => {
   })
 
   it('ranks by rotation damage like computing it for every build', () => {
-    // Standard hits plus an anomaly, so Anomaly Proficiency counts too
+    // Standard hits plus an anomaly, so Anomaly Proficiency counts too, and kit bonuses to some hits
     const damage = {
       multiplier: 1000,
       anomalyMultiplier: 1200,
+      bonusMultiplier: 300,
       agentLevel: 60,
       enemy: { ...DEFAULT_ENEMY, def: 900 },
       debuffs: { ...NO_DEBUFFS, defShred: 30 },

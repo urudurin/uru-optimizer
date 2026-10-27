@@ -48,6 +48,7 @@ import {
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
+import { resolveZzzCombat } from 'lib/games/zzz/damage/combatEffects'
 import {
   type DamageSetup,
   DEFAULT_ENEMY,
@@ -55,11 +56,13 @@ import {
   type EnemySettings,
   type Rotation,
   rotationAnomalyMultiplier,
+  rotationBonusMultiplier,
   rotationDamage,
   rotationMultiplier,
 } from 'lib/games/zzz/damage/damage'
 import {
   EnemyCard,
+  KitEffectsCard,
   RotationCard,
 } from 'lib/games/zzz/damage/DamageCards'
 import { AGENTS } from 'lib/games/zzz/data/agents'
@@ -164,6 +167,8 @@ type ZzzOptimizerSettings = {
   // The enemy and the rotation, for ranking by damage (damage/damage.ts)
   enemy: EnemySettings,
   rotation: Rotation,
+  // Toggles of the agent's own kit effects (damage/combatEffects.ts)
+  combatSettings: Record<string, boolean | number>,
 }
 
 // The user's own W-Engine for this agent when it's supported, otherwise the first one of the agent's specialty
@@ -232,6 +237,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     teamSettings: {},
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(id),
+    combatSettings: {},
   }), [agent, builds])
   const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, agentId, defaultSettings)
   const {
@@ -251,6 +257,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     teamSettings,
     enemy,
     rotation,
+    combatSettings,
   } = settings
   const setLoadout = fieldSetter(updateSettings, 'loadout')
   const setCoreSkill = fieldSetter(updateSettings, 'coreSkill')
@@ -268,12 +275,18 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
+  const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
   // What the squad gives this agent, the same for every build
   const team = { teammates, settings: teamSettings }
   const teamResult = zzzTeamBuffsFor(agent.id, team, { builds, discs })
+  // The agent's own kit effects, counted only when ranking by rotation damage
+  const byDamage = sortBy === 'damage'
+  const kit = resolveZzzCombat(agent.id, builds.find((b) => b.agentId === agent.id)?.mindscapeLevel ?? 0, combatSettings)
+  const combatEffects = byDamage ? [...teamResult.effects, ...kit.statEffects] : teamResult.effects
   // The rotation and enemy, for ranking by damage; the team's shred counts here
   const damageSetup: DamageSetup = {
     multiplier: rotationMultiplier(agent.id, rotation),
+    bonusMultiplier: rotationBonusMultiplier(agent.id, rotation, kit.kindBonus, kit.skillBonus),
     anomalyMultiplier: rotationAnomalyMultiplier(agent.id, agent.element, rotation),
     agentLevel: agent.level,
     enemy,
@@ -367,7 +380,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       filters,
       minStats,
       maxStats,
-      teamEffects: teamResult.effects,
+      teamEffects: combatEffects,
       damage: damageSetup,
       sortBy,
       thenBy,
@@ -412,13 +425,12 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   // The settings on the page now, for the build analysis: the agent's current discs, and the picked build again
   const wEngine = W_ENGINES[loadout.wEngineId]
   const computeInput = wEngine
-    ? { agent, wEngine, wEngineRefinement: Number(loadout.refinement), coreSkillLevel: Number(coreSkill), conditions, teamEffects: teamResult.effects }
+    ? { agent, wEngine, wEngineRefinement: Number(loadout.refinement), coreSkillLevel: Number(coreSkill), conditions, teamEffects: combatEffects }
     : undefined
   const currentDiscs = agentBuild ? Object.values(agentBuild.discIds).flatMap((id) => discs.find((d) => d.id === id) ?? []) : []
   const currentStats = computeInput && currentDiscs.length > 0 ? computeStats({ ...computeInput, discs: currentDiscs }).stats : undefined
   const currentDisplay = currentStats && toDisplayStats(currentStats)
   const currentDamage = currentStats && rotationDamage(currentStats, damageSetup)
-  const byDamage = sortBy === 'damage'
   const rankRow = statRows.find((row) => row.key === sortBy) ?? statRows[0]
   const rankLabel = byDamage ? 'Rotation damage' : rankRow.label
   const rankText = (
@@ -604,6 +616,11 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
             >
               <EnemyCard enemy={enemy} debuffs={teamResult.debuffs} onChange={(next) => setEnemy(next)} />
               <RotationCard agentId={agent.id} element={agent.element} rotation={rotation} damage={currentDamage} onChange={(next) => setRotation(next)} />
+              <KitEffectsCard
+                name={agent.name}
+                applied={kit.applied}
+                onSetting={(id, value) => setCombatSettings((current) => ({ ...current, [id]: value }))}
+              />
             </FormRow>
 
             <FormRow

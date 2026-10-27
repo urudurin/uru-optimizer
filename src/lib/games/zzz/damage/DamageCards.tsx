@@ -10,6 +10,7 @@ import {
 import { formatNumber } from 'lib/games/shared/format'
 import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
+import type { ZzzAppliedEffect } from 'lib/games/zzz/damage/combatEffects'
 import {
   agentHits,
   anomalyHits,
@@ -176,6 +177,52 @@ export function RotationCard({ agentId, element, rotation, damage, onChange }: {
           </Stack>
         )}
       </div>
+    </FormCard>
+  )
+}
+
+// The agent's own kit effects (damage/combatEffects.ts), with toggles; they count only in rotation damage
+export function KitEffectsCard({ name, applied, onSetting }: {
+  name: string,
+  applied: ZzzAppliedEffect[],
+  onSetting: (id: string, value: boolean | number) => void,
+}) {
+  return (
+    <FormCard title='Own effects' size='wide' description={`What ${name}'s kit does in combat, counted only when ranking by rotation damage.`}>
+      {applied.length === 0
+        ? <Text size='xs' c='dimmed'>No kit effects for this agent yet.</Text>
+        : (
+          <Stack gap='sm'>
+            {applied.map(({ effect, setting, counted, reason }) => (
+              <Group key={effect.id} justify='space-between' align='flex-end' wrap='nowrap' gap='sm'>
+                <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+                  <Text size='xs' c={counted ? undefined : 'dimmed'}>{effect.label}</Text>
+                  {!counted && reason && <Text size='xs' c='dimmed'>{reason}</Text>}
+                </Stack>
+                {effect.toggle?.kind === 'switch' && (
+                  <Switch
+                    size='xs'
+                    label={effect.toggle.label}
+                    checked={setting !== false}
+                    onChange={(event) => onSetting(effect.id, event.currentTarget.checked)}
+                  />
+                )}
+                {effect.toggle?.kind === 'stacks' && (
+                  <NumberInput
+                    size='xs'
+                    w={150}
+                    label={effect.toggle.label}
+                    min={0}
+                    max={effect.toggle.max}
+                    value={typeof setting === 'number' ? setting : effect.toggle.max}
+                    onChange={(value) => onSetting(effect.id, Math.max(0, Number(value) || 0))}
+                  />
+                )}
+                {!effect.toggle && <Text size='xs' c='dimmed'>Always on</Text>}
+              </Group>
+            ))}
+          </Stack>
+        )}
     </FormCard>
   )
 }

@@ -17,8 +17,11 @@ import type { FinalStats } from 'lib/games/zzz/stats/computeStats'
 // community wiki's damage page (pasted by the user): the multipliers match, and like the wiki the level multiplier is
 // truncated to 4 decimals and Disorder's time bonus counts whole ticks left (floored).
 //
-// Not yet: Sheer damage, skill-type DMG Bonuses (e.g. Basic Attack DMG), anomaly-specific bonuses (Burn DMG...) and hits
-// of another attribute than the agent's. Personal, non-commercial use.
+// Kit buffs to some hits only (Ultimate DMG +60%, damage/combatEffects.ts) go in as DamageSetup.bonusMultiplier: the
+// sum over the rotation of count x hit multiplier x its extra DMG Bonus, so a hit's DMG Bonus is (1 + Element DMG + its
+// own bonus) while the rest of the formula stays shared.
+// Not yet: Sheer damage, anomaly-specific bonuses (Burn DMG...), Aftershock hits and hits of another attribute than the
+// agent's. Personal, non-commercial use.
 
 // genshin-optimizer's defLevelFactor, by agent level
 const LEVEL_FACTOR = [
@@ -111,6 +114,8 @@ export type DamageSetup = {
   multiplier: number,
   // Sum over the rotation of count x anomaly multiplier, in percent of ATK (0 without anomalies)
   anomalyMultiplier?: number,
+  // Sum over the rotation of count x hit multiplier x the hit's own extra DMG Bonus (a fraction), in percent of ATK
+  bonusMultiplier?: number,
   agentLevel: number,
   enemy: EnemySettings,
   debuffs: EnemyDebuffs,
@@ -138,9 +143,9 @@ export function anomalyLevelMultiplier(level: number): number {
 // Average damage of the whole rotation (crits counted at their rate; anomalies don't crit)
 export function rotationDamage(stats: FinalStats, setup: DamageSetup): number {
   const f = damageFactors(stats, setup)
-  const shared = stats.atk * f.dmgBonus * f.def * f.res * f.dmgTaken * f.stun
-  const standard = (setup.multiplier / 100) * f.crit
-  const anomaly = ((setup.anomalyMultiplier ?? 0) / 100) * (stats.anomalyProficiency / 100) * anomalyLevelMultiplier(setup.agentLevel)
+  const shared = stats.atk * f.def * f.res * f.dmgTaken * f.stun
+  const standard = ((setup.multiplier * f.dmgBonus + (setup.bonusMultiplier ?? 0)) / 100) * f.crit
+  const anomaly = ((setup.anomalyMultiplier ?? 0) / 100) * f.dmgBonus * (stats.anomalyProficiency / 100) * anomalyLevelMultiplier(setup.agentLevel)
   return shared * (standard + anomaly)
 }
 
@@ -209,7 +214,29 @@ export function rotationAnomalyMultiplier(agentId: string, element: string, rota
 
 // Skills
 
-export type SkillHit = { skill: string, category: string, index: number, label: string, base: number, growth: number }
+// What a hit counts as, for kit DMG Bonuses: from the skill's name, or its category when the name doesn't say
+export type HitKind = 'basic' | 'dash' | 'dodgeCounter' | 'special' | 'exSpecial' | 'chain' | 'ult' | 'quickAssist' | 'assist' | 'assistFollowUp'
+
+const KIND_PREFIXES: [string, HitKind][] = [
+  ['BasicAttack', 'basic'],
+  ['DashAttack', 'dash'],
+  ['DodgeCounter', 'dodgeCounter'],
+  ['EXSpecialAttack', 'exSpecial'],
+  ['SpecialAttack', 'special'],
+  ['ChainAttack', 'chain'],
+  ['Ultimate', 'ult'],
+  ['QuickAssist', 'quickAssist'],
+  ['AssistFollowUp', 'assistFollowUp'],
+  ['DefensiveAssist', 'assist'],
+  ['EvasiveAssist', 'assist'],
+]
+const CATEGORY_KINDS: Record<string, HitKind> = { basic: 'basic', dodge: 'dash', special: 'special', chain: 'chain', assist: 'assistFollowUp' }
+
+export function hitKind(skill: string, category: string): HitKind {
+  return KIND_PREFIXES.find(([prefix]) => skill.startsWith(prefix))?.[1] ?? CATEGORY_KINDS[category] ?? 'basic'
+}
+
+export type SkillHit = { skill: string, category: string, kind: HitKind, index: number, label: string, base: number, growth: number }
 
 type SkillEntry = { key: string, category: string, hits: number[][] }
 // hits: [multiplier at level 1, growth per level]
@@ -226,6 +253,7 @@ export function agentHits(agentId: string): SkillHit[] {
     skill.hits.map(([base, growth], index) => ({
       skill: skill.key,
       category: skill.category,
+      kind: hitKind(skill.key, skill.category),
       index,
       label: skill.hits.length > 1 ? `${readable(skill.key)} ${index + 1}` : readable(skill.key),
       base,
@@ -260,6 +288,19 @@ export function defaultRotation(agentId: string): Rotation {
     if (hit.category === 'chain' || hit.skill.startsWith('EXSpecial')) counts[hitKey(hit)] = 1
   }
   return { counts, skillLevel: DEFAULT_SKILL_LEVEL }
+}
+
+// Sum of count x hit multiplier x the hit's extra DMG Bonus (kind and skill bonuses, in percent), for DamageSetup
+export function rotationBonusMultiplier(
+  agentId: string,
+  rotation: Rotation,
+  kindBonus: Partial<Record<HitKind, number>>,
+  skillBonus: Record<string, number>,
+): number {
+  return agentHits(agentId).reduce((sum, hit) => {
+    const bonus = (kindBonus[hit.kind] ?? 0) + (skillBonus[hit.skill] ?? 0)
+    return sum + (rotation.counts[hitKey(hit)] ?? 0) * hitMultiplier(hit, rotation.skillLevel) * bonus / 100
+  }, 0)
 }
 
 export function rotationMultiplier(agentId: string, rotation: Rotation): number {
