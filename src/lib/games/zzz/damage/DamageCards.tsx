@@ -12,12 +12,15 @@ import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 import {
   agentHits,
+  anomalyHits,
+  anomalyMultiplier,
   defaultRotation,
   type EnemyDebuffs,
   type EnemySettings,
   hitKey,
   hitMultiplier,
   type Rotation,
+  rotationAnomalyMultiplier,
   rotationMultiplier,
 } from 'lib/games/zzz/damage/damage'
 
@@ -64,8 +67,10 @@ export function EnemyCard({ enemy, debuffs, onChange }: {
   )
 }
 
-export function RotationCard({ agentId, rotation, damage, onChange }: {
+export function RotationCard({ agentId, element, rotation, damage, onChange }: {
   agentId: string,
+  // The agent's attribute, for the anomaly it triggers
+  element: string,
   rotation: Rotation,
   // The current build's rotation damage, when known
   damage?: number,
@@ -80,6 +85,8 @@ export function RotationCard({ agentId, rotation, damage, onChange }: {
     onChange({ ...rotation, counts })
   }
   const total = rotationMultiplier(agentId, rotation)
+  const anomalies = anomalyHits(agentId, element)
+  const anomalyTotal = rotationAnomalyMultiplier(agentId, element, rotation)
 
   if (hits.length === 0) {
     return (
@@ -108,7 +115,9 @@ export function RotationCard({ agentId, rotation, damage, onChange }: {
         <Button size='xs' variant='light' onClick={() => onChange(defaultRotation(agentId))}>Default</Button>
         <Button size='xs' variant='subtle' onClick={() => onChange({ ...rotation, counts: {} })}>Clear</Button>
         <Text size='xs' ml='auto'>
-          {`${formatNumber(Math.round(total))}% of ATK in total${damage !== undefined ? ` · ${formatNumber(Math.round(damage))} damage now` : ''}`}
+          {`${formatNumber(Math.round(total))}% of ATK${anomalyTotal ? ` + ${formatNumber(Math.round(anomalyTotal))}% anomaly` : ''} in total${
+            damage !== undefined ? ` · ${formatNumber(Math.round(damage))} damage now` : ''
+          }`}
         </Text>
       </Group>
       <div className={classes.hitList}>
@@ -133,6 +142,38 @@ export function RotationCard({ agentId, rotation, damage, onChange }: {
             ))}
           </Stack>
         ))}
+        {anomalies.length > 0 && (
+          <Stack gap={4}>
+            <Text size='xs' fw={600}>Attribute Anomaly</Text>
+            {anomalies.map((hit) => (
+              <div key={hit.key} className={classes.hitRow}>
+                <Text size='xs' className={classes.hitLabel} title={hit.label}>{hit.label}</Text>
+                <Text size='xs' c='dimmed' ta='right'>
+                  {`${anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter).toFixed(1)}%`}
+                </Text>
+                <NumberInput
+                  size='xs'
+                  min={0}
+                  max={99}
+                  hideControls
+                  aria-label={`${hit.label} count`}
+                  placeholder='0'
+                  value={rotation.counts[hit.key] ?? ''}
+                  onChange={(value) => setCount(hit.key, Number(value) || 0)}
+                />
+              </div>
+            ))}
+            <NumberInput
+              size='xs'
+              label='Disorder after (seconds of the anomaly)'
+              min={0}
+              max={20}
+              value={rotation.disorderAfter ?? 0}
+              onChange={(value) => onChange({ ...rotation, disorderAfter: Math.max(0, Number(value) || 0) })}
+            />
+            <Text size='xs' c='dimmed'>No CRIT; scales with Anomaly Proficiency and agent level.</Text>
+          </Stack>
+        )}
       </div>
     </FormCard>
   )

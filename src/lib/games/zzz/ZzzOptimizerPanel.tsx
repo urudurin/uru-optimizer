@@ -54,6 +54,7 @@ import {
   defaultRotation,
   type EnemySettings,
   type Rotation,
+  rotationAnomalyMultiplier,
   rotationDamage,
   rotationMultiplier,
 } from 'lib/games/zzz/damage/damage'
@@ -271,7 +272,13 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const team = { teammates, settings: teamSettings }
   const teamResult = zzzTeamBuffsFor(agent.id, team, { builds, discs })
   // The rotation and enemy, for ranking by damage; the team's shred counts here
-  const damageSetup: DamageSetup = { multiplier: rotationMultiplier(agent.id, rotation), agentLevel: agent.level, enemy, debuffs: teamResult.debuffs }
+  const damageSetup: DamageSetup = {
+    multiplier: rotationMultiplier(agent.id, rotation),
+    anomalyMultiplier: rotationAnomalyMultiplier(agent.id, agent.element, rotation),
+    agentLevel: agent.level,
+    enemy,
+    debuffs: teamResult.debuffs,
+  }
   const teammateOptions = [...new Map(builds.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
     .map(([value, label]) => ({ value, label }))
   const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
@@ -591,10 +598,12 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
             <FormRow
               id='zzz-damage'
               title='Damage'
-              summary={`${formatNumber(Math.round(damageSetup.multiplier))}% of ATK per rotation · enemy DEF ${enemy.def}${enemy.stunned ? ', stunned' : ''}`}
+              summary={`${formatNumber(Math.round(damageSetup.multiplier))}% of ATK per rotation${
+                damageSetup.anomalyMultiplier ? ` + ${formatNumber(Math.round(damageSetup.anomalyMultiplier))}% anomaly` : ''
+              } · enemy DEF ${enemy.def}${enemy.stunned ? ', stunned' : ''}`}
             >
               <EnemyCard enemy={enemy} debuffs={teamResult.debuffs} onChange={(next) => setEnemy(next)} />
-              <RotationCard agentId={agent.id} rotation={rotation} damage={currentDamage} onChange={(next) => setRotation(next)} />
+              <RotationCard agentId={agent.id} element={agent.element} rotation={rotation} damage={currentDamage} onChange={(next) => setRotation(next)} />
             </FormRow>
 
             <FormRow

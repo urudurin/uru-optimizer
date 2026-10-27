@@ -9,8 +9,14 @@ import type { FinalStats } from 'lib/games/zzz/stats/computeStats'
 // through the same multipliers here, so its damage is the sum of the hits' multipliers times one 100% hit.
 // Skill multipliers come from data/generated/skills.json (src/scripts/zzz/extractSkills.mjs).
 //
-// Not yet: Anomaly damage (Assault, Shatter, Disorder...), Sheer damage, skill-type DMG Bonuses (e.g. Basic Attack DMG)
-// and hits of another attribute than the agent's. Personal, non-commercial use.
+// Attribute Anomaly damage (Assault, Burn, Shatter, Shock, Corruption, Disorder) follows genshin-optimizer's prep.ts:
+//   ATK x anomaly multiplier x DMG Bonus x DEF x RES x DMG taken x Stun x Anomaly Proficiency / 100
+//   x (1 + (agent level - 1) / 59)
+// with no CRIT, and the anomaly multipliers from GO's data/char/util.ts (anomalyMultipliers, Disorder's base and time
+// multipliers). Burn, Shock and Corruption count their ticks over the standard 10 seconds.
+//
+// Not yet: Sheer damage, skill-type DMG Bonuses (e.g. Basic Attack DMG), anomaly-specific bonuses (Burn DMG...) and hits
+// of another attribute than the agent's. Personal, non-commercial use.
 
 // genshin-optimizer's defLevelFactor, by agent level
 const LEVEL_FACTOR = [
@@ -101,6 +107,8 @@ export const NO_DEBUFFS: EnemyDebuffs = { defShred: 0, resShred: 0, dmgTaken: 0 
 export type DamageSetup = {
   // Sum over the rotation of count x hit multiplier, in percent of ATK
   multiplier: number,
+  // Sum over the rotation of count x anomaly multiplier, in percent of ATK (0 without anomalies)
+  anomalyMultiplier?: number,
   agentLevel: number,
   enemy: EnemySettings,
   debuffs: EnemyDebuffs,
@@ -120,10 +128,80 @@ export function damageFactors(stats: FinalStats, setup: Omit<DamageSetup, 'multi
   }
 }
 
-// Average damage of the whole rotation (crits counted at their rate)
+// genshin-optimizer's Anomaly Level Multiplier: 1 + (level - 1) / 59, so 2 at level 60
+export function anomalyLevelMultiplier(level: number): number {
+  return 1 + (level - 1) / 59
+}
+
+// Average damage of the whole rotation (crits counted at their rate; anomalies don't crit)
 export function rotationDamage(stats: FinalStats, setup: DamageSetup): number {
   const f = damageFactors(stats, setup)
-  return stats.atk * (setup.multiplier / 100) * f.dmgBonus * f.crit * f.def * f.res * f.dmgTaken * f.stun
+  const shared = stats.atk * f.dmgBonus * f.def * f.res * f.dmgTaken * f.stun
+  const standard = (setup.multiplier / 100) * f.crit
+  const anomaly = ((setup.anomalyMultiplier ?? 0) / 100) * (stats.anomalyProficiency / 100) * anomalyLevelMultiplier(setup.agentLevel)
+  return shared * (standard + anomaly)
+}
+
+// Attribute Anomaly
+
+export type AnomalyKind = 'assault' | 'burn' | 'shatter' | 'shock' | 'corruption' | 'disorder'
+
+// What the agent's attribute triggers. Wind (Windswept) isn't modelled
+const ATTRIBUTE_ANOMALY: Record<string, Exclude<AnomalyKind, 'disorder'>> = {
+  Physical: 'assault',
+  Fire: 'burn',
+  Ice: 'shatter',
+  Electric: 'shock',
+  Ether: 'corruption',
+}
+
+// genshin-optimizer's anomalyMultipliers (per tick for the ones that tick), and the ticks in 10 seconds
+const ANOMALY_HIT: Record<Exclude<AnomalyKind, 'disorder'>, { label: string, perHit: number, ticks: number }> = {
+  assault: { label: 'Assault', perHit: 713, ticks: 1 },
+  burn: { label: 'Burn (10s, 20 ticks of 50%)', perHit: 50, ticks: 20 },
+  shatter: { label: 'Shatter', perHit: 500, ticks: 1 },
+  shock: { label: 'Shock (10s, 10 ticks of 125%)', perHit: 125, ticks: 10 },
+  corruption: { label: 'Corruption (10s, 20 ticks of 62.5%)', perHit: 62.5, ticks: 20 },
+}
+
+// Disorder: base + time multiplier x seconds left of the anomaly it ends (genshin-optimizer's disorderTimeMultipliers;
+// Miyabi's Frostbite lasts 20 seconds and has its own numbers)
+const DISORDER: Record<string, { base: number, perSecond: number, duration: number }> = {
+  Physical: { base: 450, perSecond: 7.5, duration: 10 },
+  Fire: { base: 450, perSecond: 100, duration: 10 },
+  Ice: { base: 450, perSecond: 7.5, duration: 10 },
+  Electric: { base: 450, perSecond: 125, duration: 10 },
+  Ether: { base: 450, perSecond: 125, duration: 10 },
+  Frost: { base: 600, perSecond: 75, duration: 20 },
+}
+
+const MIYABI_ID = '1091'
+
+export type AnomalyHit = { key: string, kind: AnomalyKind, label: string }
+
+// The anomalies an agent of this attribute triggers, as rotation lines
+export function anomalyHits(agentId: string, element: string): AnomalyHit[] {
+  const kind = ATTRIBUTE_ANOMALY[element]
+  if (!kind) return []
+  return [
+    { key: `anomaly:${kind}`, kind, label: ANOMALY_HIT[kind].label },
+    { key: 'anomaly:disorder', kind: 'disorder', label: agentId === MIYABI_ID ? 'Disorder (Frostbite)' : 'Disorder' },
+  ]
+}
+
+// One anomaly's multiplier in percent of ATK; Disorder with the seconds that had passed of the anomaly it ends
+export function anomalyMultiplier(agentId: string, element: string, kind: AnomalyKind, disorderAfter = 0): number {
+  if (kind !== 'disorder') return ANOMALY_HIT[kind].perHit * ANOMALY_HIT[kind].ticks
+  const disorder = DISORDER[agentId === MIYABI_ID ? 'Frost' : element]
+  if (!disorder) return 0
+  return disorder.base + disorder.perSecond * Math.max(0, disorder.duration - disorderAfter)
+}
+
+export function rotationAnomalyMultiplier(agentId: string, element: string, rotation: Rotation): number {
+  return anomalyHits(agentId, element).reduce(
+    (sum, hit) => sum + (rotation.counts[hit.key] ?? 0) * anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter),
+    0,
+  )
 }
 
 // Skills
@@ -163,9 +241,11 @@ export function hitMultiplier(hit: SkillHit, skillLevel: number): number {
 }
 
 export type Rotation = {
-  // How many times each hit lands, by hitKey
+  // How many times each hit lands, by hitKey, and each anomaly by its AnomalyHit key
   counts: Record<string, number>,
   skillLevel: number,
+  // Seconds of the anomaly that had passed when Disorder ends it (0: right away, the most damage)
+  disorderAfter?: number,
 }
 
 export const DEFAULT_SKILL_LEVEL = 12
