@@ -15,15 +15,18 @@ import {
 export type SavedOptimizerSettings = {
   last?: string,
   byCharacter: Record<string, Record<string, unknown>>,
+  // One-time changes already made to this save (see migrateOptimizerSettings)
+  migrations?: string[],
 }
 
 export function readOptimizerSettings(storageKey: string): SavedOptimizerSettings {
   try {
     const parsed: unknown = JSON.parse(readStorage(storageKey) ?? '{}')
     if (typeof parsed !== 'object' || parsed === null) return { byCharacter: {} }
-    const { last, byCharacter } = parsed as Partial<SavedOptimizerSettings>
+    const { last, byCharacter, migrations } = parsed as Partial<SavedOptimizerSettings>
     return {
       ...(typeof last === 'string' ? { last } : {}),
+      ...(Array.isArray(migrations) ? { migrations: migrations.filter((m): m is string => typeof m === 'string') } : {}),
       byCharacter: typeof byCharacter === 'object' && byCharacter !== null && !Array.isArray(byCharacter) ? byCharacter : {},
     }
   } catch {
@@ -82,4 +85,17 @@ export function rememberCharacter(storageKey: string, characterId: string) {
 export function fieldSetter<T extends object, K extends keyof T>(update: (change: SettingsUpdate<T>) => void, key: K) {
   return (value: T[K] | ((current: T[K]) => T[K])) =>
     update((current) => ({ [key]: typeof value === 'function' ? (value as (c: T[K]) => T[K])(current[key]) : value } as unknown as Partial<T>))
+}
+
+// Changes every saved character once (e.g. a new default worth moving old saves to), and records that it ran so it never
+// runs again. change gets one character's saved settings and returns them changed, or unchanged
+export function migrateOptimizerSettings(
+  storageKey: string,
+  id: string,
+  change: (characterId: string, saved: Record<string, unknown>) => Record<string, unknown>,
+) {
+  const saved = readOptimizerSettings(storageKey)
+  if (saved.migrations?.includes(id)) return
+  const byCharacter = Object.fromEntries(Object.entries(saved.byCharacter).map(([characterId, settings]) => [characterId, change(characterId, settings)]))
+  writeStorage(storageKey, JSON.stringify({ ...saved, byCharacter, migrations: [...(saved.migrations ?? []), id] }))
 }

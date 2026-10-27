@@ -220,11 +220,37 @@ export function hasTalentData(characterId: string): boolean {
   return characterData(characterId) !== undefined
 }
 
+// A hit's key: its talent and name, with " #2" and so on when a name repeats, so saved rotations survive the data being
+// regenerated (keys used to be the hit's position in the data file, "talent:12")
+function hitKeys(hits: { talent: string, label: string }[]): string[] {
+  const seen = new Map<string, number>()
+  return hits.map((hit) => {
+    const base = `${hit.talent}:${hit.label}`
+    const n = (seen.get(base) ?? 0) + 1
+    seen.set(base, n)
+    return n > 1 ? `${base} #${n}` : base
+  })
+}
+
+// Saved rotation counts with old position keys ("talent:12") turned into name keys; other keys stay as they are
+export function migrateRotationCounts(id: string, counts: Record<string, number>): Record<string, number> {
+  const hits = characterData(id)?.hits ?? []
+  const keys = hitKeys(hits)
+  return Object.fromEntries(
+    Object.entries(counts).map(([key, count]) => {
+      const old = /^(\w+):(\d+)$/.exec(key)
+      const index = old ? Number(old[2]) : -1
+      return [old && hits[index]?.talent === old[1] ? keys[index] : key, count]
+    }),
+  )
+}
+
 export function characterHits(characterId: string): TalentHit[] {
   const data = characterData(characterId)
   if (!data) return []
+  const keys = hitKeys(data.hits)
   return data.hits.map((hit, i) => ({
-    key: `${hit.talent}:${i}`,
+    key: keys[i],
     label: hit.label,
     talent: hit.talent as Talent,
     category: hit.category as TalentHit['category'],

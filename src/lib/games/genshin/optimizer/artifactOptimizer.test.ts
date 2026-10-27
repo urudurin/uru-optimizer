@@ -171,7 +171,12 @@ describe('optimizeArtifacts', () => {
         characterId: 'RaidenShogun',
         characterLevel: 90,
         element: 'Electro',
-        rotation: { counts: { 'auto:0': 3, 'skill:10': 1, 'burst:12': 2 }, infusion: false, reaction: 'none', reactionShare: 100 },
+        rotation: {
+          counts: { 'auto:1-Hit DMG': 3, 'skill:Skill DMG': 1, 'burst:Musou no Hitotachi Base DMG': 2 },
+          infusion: false,
+          reaction: 'none',
+          reactionShare: 100,
+        },
         talents: { auto: 9, skill: 9, burst: 9 },
         enemy: { level: 100, res: 10 },
         debuffs: { defShred: 15, resShred: { Electro: 40, all: 20 } },
@@ -182,6 +187,7 @@ describe('optimizeArtifacts', () => {
     if (!outcome.ok) throw new Error(outcome.reason)
     const expected = bruteForce(artifacts, target, {}, noFilters, teamBuffs).slice(0, 5)
 
+    expect(expected[0]).toBeGreaterThan(0)
     expect(outcome.truncated).toBe(false)
     expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
   })
@@ -193,7 +199,7 @@ describe('optimizeArtifacts', () => {
         characterId: 'RaidenShogun',
         characterLevel: 90,
         element: 'Electro',
-        rotation: { counts: { 'skill:10': 1, 'burst:12': 2 }, infusion: false, reaction: 'aggravate', reactionShare: 50 },
+        rotation: { counts: { 'skill:Skill DMG': 1, 'burst:Musou no Hitotachi Base DMG': 2 }, infusion: false, reaction: 'aggravate', reactionShare: 50 },
         talents: { auto: 9, skill: 9, burst: 9 },
         enemy: { level: 100, res: 10 },
         debuffs: { defShred: 0, resShred: {} },
@@ -211,6 +217,7 @@ describe('optimizeArtifacts', () => {
     if (!outcome.ok) throw new Error(outcome.reason)
     const expected = bruteForce(artifacts, target, {}, filters, undefined, {}, combat).slice(0, 5)
 
+    expect(expected[0]).toBeGreaterThan(0)
     expect(outcome.truncated).toBe(false)
     expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
     expect(outcome.builds[0].stats.burstDmg).toBeGreaterThan(0)

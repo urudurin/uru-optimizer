@@ -8,6 +8,7 @@ import {
   echoSkillText,
   hasSkillData,
   hitMultiplier,
+  migrateRotationCounts,
   rotationDamage,
 } from 'lib/games/wuwa/damage/damage'
 import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
@@ -106,5 +107,10 @@ describe('WuWa damage', () => {
     expect(resolveWuwaCombat('changli', 0, {}).defIgnore).toBe(15)
     expect(resolveWuwaCombat('cartethyia', 0, {}).amplify).toEqual({ all: 60 })
     expect(resolveWuwaCombat('cartethyia', 0, { 'cartethyia-imprint': 2 }).amplify).toEqual({ all: 30 })
+  })
+
+  it('keys lines by section and name, and turns old position keys into them', () => {
+    expect(characterHits('hsin')[0].key).toBe('normal:Basic Attack - Answering Form Stage 1 DMG')
+    expect(migrateRotationCounts('hsin', { 'normal:0': 3, 'skill:0': 1 })).toEqual({ 'normal:Basic Attack - Answering Form Stage 1 DMG': 3, 'skill:0': 1 })
   })
 })

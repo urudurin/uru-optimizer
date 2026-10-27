@@ -107,9 +107,36 @@ export function hasSkillData(charId: string): boolean {
   return DATA[charId] !== undefined
 }
 
+// A hit's key: its section and name, with " #2" and so on when a name repeats, so saved rotations survive the data being
+// regenerated (keys used to be the hit's position in the data file, "section:12")
+function hitKeys(hits: { section: string, label: string }[]): string[] {
+  const seen = new Map<string, number>()
+  return hits.map((hit) => {
+    const base = `${hit.section}:${hit.label}`
+    const n = (seen.get(base) ?? 0) + 1
+    seen.set(base, n)
+    return n > 1 ? `${base} #${n}` : base
+  })
+}
+
+// Saved rotation counts with old position keys ("section:12") turned into name keys; other keys stay as they are
+export function migrateRotationCounts(id: string, counts: Record<string, number>): Record<string, number> {
+  const hits = DATA[id]?.hits ?? []
+  const keys = hitKeys(hits)
+  return Object.fromEntries(
+    Object.entries(counts).map(([key, count]) => {
+      const old = /^(\w+):(\d+)$/.exec(key)
+      const index = old ? Number(old[2]) : -1
+      return [old && hits[index]?.section === old[1] ? keys[index] : key, count]
+    }),
+  )
+}
+
 export function characterHits(charId: string): SkillHit[] {
-  return (DATA[charId]?.hits ?? []).map((hit, i) => ({
-    key: `${hit.section}:${i}`,
+  const hits = DATA[charId]?.hits ?? []
+  const keys = hitKeys(hits)
+  return hits.map((hit, i) => ({
+    key: keys[i],
     label: hit.label,
     section: hit.section as Section,
     terms: hit.terms as [HitType, ScalingStat, number[]][],

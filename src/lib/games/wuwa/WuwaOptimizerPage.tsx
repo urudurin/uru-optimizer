@@ -12,6 +12,7 @@ import { IconTrendingUp } from '@tabler/icons-react'
 import { formatNumber } from 'lib/games/shared/format'
 import {
   fieldSetter,
+  migrateOptimizerSettings,
   readOptimizerSettings,
   rememberCharacter,
   useCharacterSettings,
@@ -50,6 +51,7 @@ import {
   defaultRotation,
   type EnemySettings,
   hasSkillData,
+  migrateRotationCounts,
   type Rotation,
   rotationDamage,
 } from 'lib/games/wuwa/damage/damage'
@@ -187,7 +189,24 @@ function defaultSettings(charId: string): WuwaOptimizerSettings {
   }
 }
 
+// One-time changes to saves from older versions: Resonators still on the old default move to Rotation damage, and saved
+// rotations switch from position keys to name keys
+function migrateSaves() {
+  migrateOptimizerSettings(
+    SETTINGS_KEY,
+    'rank-by-rotation-damage',
+    (id, saved) => (saved.targetValue === 'avg:atk' && hasSkillData(id) ? { ...saved, targetValue: DAMAGE_TARGET } : saved),
+  )
+  migrateOptimizerSettings(SETTINGS_KEY, 'rotation-name-keys', (characterId: string, saved: Record<string, unknown>) => {
+    const rotation = saved.rotation
+    if (typeof rotation !== 'object' || rotation === null || !('counts' in rotation)) return saved
+    const counts = (rotation as { counts: Record<string, number> }).counts
+    return { ...saved, rotation: { ...rotation, counts: migrateRotationCounts(characterId, counts) } }
+  })
+}
+
 export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
+  useState(migrateSaves)
   const echoes = useWuwaStore((s) => s.echoes)
   const characters = useWuwaStore((s) => s.characters)
   const art = useUserArt()

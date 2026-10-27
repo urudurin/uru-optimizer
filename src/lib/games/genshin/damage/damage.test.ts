@@ -5,6 +5,7 @@ import {
   DEFAULT_ENEMY,
   defaultRotation,
   hitMultiplier,
+  migrateRotationCounts,
   NO_DEBUFFS,
   polestarDmgBonus,
   polestarMultiplier,
@@ -225,5 +226,20 @@ describe('Genshin damage', () => {
     const plain: DamageSetup = { ...base, rotation: { ...base.rotation, counts: { [normal.key]: 1 }, infusion: true } }
     const inField = { ...plain, rotation: { ...plain.rotation, polestar: { active: true, hits: 6 } } }
     expect(rotationDamage(stats, inField) / rotationDamage(stats, plain)).toBeCloseTo(1.34, 6)
+  })
+
+  it('keys hits by talent and name, and turns old position keys into them', () => {
+    expect(hit('RaidenShogun', 'Musou no Hitotachi Base DMG').key).toBe('burst:Musou no Hitotachi Base DMG')
+    // A name that repeats in one talent gets a number
+    expect(characterHits('Odette').filter((h) => h.label === 'Stellar Swirl DMG').map((h) => h.key)).toEqual([
+      'skill:Stellar Swirl DMG',
+      'skill:Stellar Swirl DMG #2',
+      'skill:Stellar Swirl DMG #3',
+    ])
+    expect(migrateRotationCounts('RaidenShogun', { 'skill:10': 1, 'burst:12': 2, 'reaction:overloaded': 3, 'skill:Skill DMG': 4 })).toEqual({
+      'skill:Skill DMG': 4,
+      'burst:Musou no Hitotachi Base DMG': 2,
+      'reaction:overloaded': 3,
+    })
   })
 })

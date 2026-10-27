@@ -16,6 +16,7 @@ import { formatNumber } from 'lib/games/shared/format'
 import { scoreBuild } from 'lib/games/shared/gearScore'
 import {
   fieldSetter,
+  migrateOptimizerSettings,
   readOptimizerSettings,
   rememberCharacter,
   useCharacterSettings,
@@ -50,6 +51,7 @@ import {
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { resolveZzzCombat } from 'lib/games/zzz/damage/combatEffects'
 import {
+  agentHits,
   type DamageSetup,
   DEFAULT_ENEMY,
   defaultRotation,
@@ -206,7 +208,22 @@ function describeSets(discs: Disc[]): string {
     .join(' + ') || 'No set bonus'
 }
 
+// Agents with skill data rank by rotation damage unless changed
+function defaultRank(agentId: string): RankKey {
+  return agentHits(agentId).length > 0 ? 'damage' : 'critDmg'
+}
+
+// One-time change to saves from older versions: agents still on the old default (CRIT DMG) move to Rotation damage
+function migrateSaves() {
+  migrateOptimizerSettings(
+    SETTINGS_KEY,
+    'rank-by-rotation-damage',
+    (id, saved) => (saved.sortBy === 'critDmg' && defaultRank(id) === 'damage' ? { ...saved, sortBy: 'damage' } : saved),
+  )
+}
+
 export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
+  useState(migrateSaves)
   const discs = useZzzStore((s) => s.discs)
   const builds = useZzzStore((s) => s.builds)
   const images = useZzzImages()
@@ -214,17 +231,17 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   useZzzGameData()
 
   const agents = Object.values(AGENTS)
-  const [agentId, setAgentId] = useState(() => {
-    const last = readOptimizerSettings(SETTINGS_KEY).last
-    return last && AGENTS[last] ? last : (agents.find((a) => builds.some((b) => b.agentId === a.id)) ?? agents[0]).id
-  })
-  const agent = AGENTS[agentId]
+  const fallbackAgent = agents.find((a) => builds.some((b) => b.agentId === a.id)) ?? agents[0]
+  // The last agent opened, even one from Enka's data, which loads after the first render: until it has, the page shows
+  // the first agent with a build
+  const [agentId, setAgentId] = useState(() => readOptimizerSettings(SETTINGS_KEY).last ?? fallbackAgent.id)
+  const agent = AGENTS[agentId] ?? fallbackAgent
   // An agent nobody changed yet starts with the user's own W-Engine and the stat screen's conditions
   const defaultSettings = useCallback((id: string): ZzzOptimizerSettings => ({
     loadout: defaultLoadout(AGENTS[id] ?? agent, builds),
     coreSkill: '6',
     conditions: statScreenConditions(),
-    sortBy: 'critDmg',
+    sortBy: defaultRank(id),
     thenBy: [],
     presetChoice: '0',
     fourPieceSet: null,
@@ -239,7 +256,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     rotation: defaultRotation(id),
     combatSettings: {},
   }), [agent, builds])
-  const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, agentId, defaultSettings)
+  const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, agent.id, defaultSettings)
   const {
     loadout,
     coreSkill,
@@ -483,7 +500,7 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                 <Select
                   aria-label='Agent'
                   allowDeselect={false}
-                  value={agentId}
+                  value={agent.id}
                   onChange={changeAgent}
                   data={agents.map((a) => ({ value: a.id, label: a.name }))}
                 />

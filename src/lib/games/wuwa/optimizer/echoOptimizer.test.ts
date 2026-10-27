@@ -114,7 +114,7 @@ describe('optimizeEchoes', () => {
           characterLevel: 90,
           rotation: {
             ...defaultRotation('hsin'),
-            counts: { ...defaultRotation('hsin').counts, 'normal:0': 3, 'normal:6': 2 },
+            counts: { ...defaultRotation('hsin').counts, 'normal:Basic Attack - Answering Form Stage 1 DMG': 3, 'normal:Heavy Attack - Answering Form DMG': 2 },
             // An off-element Echo Skill (no element DMG Bonus) and DMG Amplified for Liberation hits
             echo: { id: 'nightmare-inferno-rider', counts: { '0': 1, '3': 1 } },
           },
@@ -134,6 +134,7 @@ describe('optimizeEchoes', () => {
       const outcome = optimizeEchoes({ character: hsin, characters: [hsin], echoes, filters, minStats, target, limit: 5 })
       if (!outcome.ok) throw new Error(outcome.reason)
       const expected = bruteForce(echoes, target, minStats, filters).slice(0, 5)
+      if (target.kind === 'damage') expect(expected[0]).toBeGreaterThan(0)
 
       expect(outcome.truncated).toBe(false)
       expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))

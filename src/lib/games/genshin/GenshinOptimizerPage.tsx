@@ -19,6 +19,7 @@ import {
   defaultRotation,
   type EnemySettings,
   hasTalentData,
+  migrateRotationCounts,
   type Rotation,
   rotationDamage,
   rotationTalents,
@@ -91,6 +92,7 @@ import {
 import { formatNumber } from 'lib/games/shared/format'
 import {
   fieldSetter,
+  migrateOptimizerSettings,
   readOptimizerSettings,
   rememberCharacter,
   useCharacterSettings,
@@ -201,7 +203,24 @@ function defaultSettings(characterId: string): GenshinOptimizerSettings {
   }
 }
 
+// One-time changes to saves from older versions: characters still on the old default move to Rotation damage, and saved
+// rotations switch from position keys to name keys
+function migrateSaves() {
+  migrateOptimizerSettings(
+    SETTINGS_KEY,
+    'rank-by-rotation-damage',
+    (id, saved) => (saved.targetValue === 'avg:atk' && hasTalentData(id) ? { ...saved, targetValue: DAMAGE_TARGET } : saved),
+  )
+  migrateOptimizerSettings(SETTINGS_KEY, 'rotation-name-keys', (characterId: string, saved: Record<string, unknown>) => {
+    const rotation = saved.rotation
+    if (typeof rotation !== 'object' || rotation === null || !('counts' in rotation)) return saved
+    const counts = (rotation as { counts: Record<string, number> }).counts
+    return { ...saved, rotation: { ...rotation, counts: migrateRotationCounts(characterId, counts) } }
+  })
+}
+
 export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
+  useState(migrateSaves)
   const artifacts = useGenshinStore((s) => s.artifacts)
   const characters = useGenshinStore((s) => s.characters)
   const images = useGenshinImages()
