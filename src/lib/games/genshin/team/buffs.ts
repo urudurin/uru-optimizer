@@ -25,7 +25,8 @@ export type BuffTarget =
   | 'next'
 
 export type BuffToggle =
-  | { kind: 'switch', label: string }
+  // offByDefault: starts off (it depends on something the page can't tell, like who is a Moonsign character)
+  | { kind: 'switch', label: string, offByDefault?: boolean }
   // A count from 0 to max (Fanfare points)
   | { kind: 'stacks', label: string, max: (giver: GenshinCharacter) => number, step: number }
   // Which element, for swirl and crystallize effects
@@ -35,7 +36,8 @@ export type BuffSetting = boolean | number | string
 
 // What a buff changes on the enemy instead of the receiver: DEF shred, or RES shred of one element or all of them
 export type EnemyDebuffKey = 'defShred' | `resShred:${DamageElement | 'all'}`
-export type BuffStat = GenshinStatKey | EnemyDebuffKey
+// lunarBonus: Lunar Reaction DMG Bonus (Moonsign: Ascendant Gleam), for the rotation damage
+export type BuffStat = GenshinStatKey | EnemyDebuffKey | 'lunarBonus'
 
 export function isDebuff(stat: BuffStat): stat is EnemyDebuffKey {
   return stat === 'defShred' || stat.startsWith('resShred:')
@@ -285,6 +287,41 @@ export const WEAPON_BUFFS: Record<string, TeamBuff[]> = {
 
 // By GOOD set key, for a wearer with 4 pieces
 export const SET_4PC_BUFFS: Record<string, TeamBuff[]> = {
+  SilkenMoonsSerenade: [
+    {
+      id: 'silken-moon-em-team',
+      label: 'Gleaming Moon: Devotion: Elemental Mastery +60 (Nascent Gleam) or +120 (Ascendant Gleam)',
+      target: 'team',
+      stage: 'premod',
+      stat: 'elementalMastery',
+      value: ({ setting }) => (typeof setting === 'number' ? 60 * setting : 0),
+      toggle: { kind: 'stacks', label: '1 Nascent, 2 Ascendant', max: () => 2, step: 1 },
+      nonStacking: 'gleaming-moon-devotion',
+      confidence: 'sourced',
+    },
+    {
+      id: 'silken-moon-lunar-team',
+      label: 'Lunar Reaction DMG +10% per different Gleaming Moon effect in the party',
+      target: 'team',
+      stage: 'premod',
+      stat: 'lunarBonus',
+      value: ({ setting }) => (typeof setting === 'number' ? 10 * setting : 0),
+      toggle: { kind: 'stacks', label: 'Gleaming Moon effects', max: () => 2, step: 1 },
+      nonStacking: 'gleaming-moon-lunar',
+      confidence: 'sourced',
+    },
+  ],
+  NightOfTheSkysUnveiling: [{
+    id: 'night-sky-lunar-team',
+    label: 'Lunar Reaction DMG +10% per different Gleaming Moon effect in the party',
+    target: 'team',
+    stage: 'premod',
+    stat: 'lunarBonus',
+    value: ({ setting }) => (typeof setting === 'number' ? 10 * setting : 0),
+    toggle: { kind: 'stacks', label: 'Gleaming Moon effects', max: () => 2, step: 1 },
+    nonStacking: 'gleaming-moon-lunar',
+    confidence: 'sourced',
+  }],
   ViridescentVenerer: [
     {
       id: 'vv-4pc-shred',
@@ -353,6 +390,36 @@ export const SET_4PC_BUFFS: Record<string, TeamBuff[]> = {
 }
 
 // Elemental resonance: a team of 4 with at least 2 members of an element. The giver is the team, not a member
+// Lunar Reaction DMG per point of the giver's stat for Moonsign: Ascendant Gleam, by the giver's element, up to 36%
+const ASCENDANT_GLEAM: Record<Element, { stat: GenshinStatKey, perPoint: number }> = {
+  Pyro: { stat: 'atk', perPoint: 0.009 },
+  Electro: { stat: 'atk', perPoint: 0.009 },
+  Cryo: { stat: 'atk', perPoint: 0.009 },
+  Hydro: { stat: 'hp', perPoint: 0.0006 },
+  Geo: { stat: 'def', perPoint: 0.01 },
+  Anemo: { stat: 'elementalMastery', perPoint: 0.0225 },
+  Dendro: { stat: 'elementalMastery', perPoint: 0.0225 },
+}
+
+// Buffs any teammate can give, whoever they are
+export const ANY_MEMBER_BUFFS: TeamBuff[] = [
+  {
+    id: 'moonsign-ascendant-gleam',
+    label:
+      'Moonsign: Ascendant Gleam: for 20s after a non-Moonsign teammate\'s Skill or Burst, Lunar Reaction DMG up by their stat (ATK, HP, DEF or EM by element), up to 36%',
+    target: 'team',
+    stage: 'premod',
+    stat: 'lunarBonus',
+    value: ({ giver, giverStats }) => {
+      const scaling = giver.element ? ASCENDANT_GLEAM[giver.element] : undefined
+      return scaling ? Math.min(36, (giverStats[scaling.stat] ?? 0) * scaling.perPoint) : 0
+    },
+    toggle: { kind: 'switch', label: 'Ascendant Gleam (2+ Moonsign), giver not Moonsign', offByDefault: true },
+    nonStacking: 'moonsign-ascendant-gleam',
+    confidence: 'sourced',
+  },
+]
+
 export const RESONANCE_BUFFS: Partial<Record<Element, TeamBuff[]>> = {
   Pyro: [{ id: 'resonance-pyro', label: 'Fervent Flames: ATK +25%', target: 'team', stage: 'premod', stat: 'atkPct', value: () => 25, confidence: 'sourced' }],
   Hydro: [{

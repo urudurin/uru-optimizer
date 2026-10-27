@@ -31,6 +31,7 @@ import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 
 function describeStat(stat: BuffStat, value: number): string {
   if (isDebuff(stat)) return `${value}% ${debuffLabel(stat)}`
+  if (stat === 'lunarBonus') return `+${value.toFixed(1)}% Lunar Reaction DMG`
   return `+${formatStatValue(stat, value)} ${statLabel(stat)}`
 }
 
@@ -92,6 +93,7 @@ export function GenshinTeamCards({ character, characters, team, result, onTeamma
     ...Object.entries(result.total) as [GenshinStatKey, number][],
     ...(result.debuffs.defShred ? [['defShred', result.debuffs.defShred] as [BuffStat, number]] : []),
     ...Object.entries(result.debuffs.resShred).map(([element, value]) => [`resShred:${element}`, value] as [BuffStat, number]),
+    ...(result.lunarBonus ? [['lunarBonus', result.lunarBonus] as [BuffStat, number]] : []),
   ]
   return (
     <>

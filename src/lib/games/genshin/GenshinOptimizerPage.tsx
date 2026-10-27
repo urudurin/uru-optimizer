@@ -296,7 +296,14 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     talents,
     enemy,
     debuffs,
-    reactionBonus: resolvedCombat.reactions,
+    // Lunar Reaction DMG from the team (Moonsign: Ascendant Gleam) adds to every Lunar kind
+    reactionBonus: {
+      ...resolvedCombat.reactions,
+      ...Object.fromEntries((['lunarcharged', 'lunarbloom', 'lunarcrystallize'] as const).map((kind) => [
+        kind,
+        (resolvedCombat.reactions[kind] ?? 0) + teamResult.lunarBonus,
+      ])),
+    },
     hitBuffs: resolvedCombat.hitBuffs,
   }
   const byDamage = targetValue === DAMAGE_TARGET && hasTalentData(character.id)

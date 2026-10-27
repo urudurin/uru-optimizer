@@ -80,7 +80,48 @@ export const COMBAT_2PC_BONUSES: Record<string, Stats> = {
 }
 
 // By GOOD set key
+const lunar = (bonus: number): Partial<Record<ReactionBonusKey, number>> => ({ lunarcharged: bonus, lunarbloom: bonus, lunarcrystallize: bonus })
+
 export const SET_4PC_EFFECTS: Record<string, CombatEffect[]> = {
+  NightOfTheSkysUnveiling: [
+    {
+      id: 'night-sky-crit',
+      label: 'Gleaming Moon: Intent: CRIT Rate +15% (Nascent Gleam) or +30% (Ascendant Gleam) on the field after a Lunar Reaction',
+      toggle: { kind: 'stacks', label: '1 Nascent, 2 Ascendant', max: 2 },
+      premod: ({ setting }) => ({ critRate: 15 * stacks(setting) }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'night-sky-lunar',
+      label: 'Lunar Reaction DMG +10% per different Gleaming Moon effect in the party (Intent, Devotion)',
+      toggle: { kind: 'stacks', label: 'Gleaming Moon effects', max: 2 },
+      reactions: ({ setting }) => lunar(10 * stacks(setting)),
+      confidence: 'sourced',
+    },
+  ],
+  SilkenMoonsSerenade: [
+    {
+      id: 'silken-moon-em',
+      label: 'Gleaming Moon: Devotion: Elemental Mastery +60 (Nascent Gleam) or +120 (Ascendant Gleam) after dealing Elemental DMG',
+      toggle: { kind: 'stacks', label: '1 Nascent, 2 Ascendant', max: 2 },
+      premod: ({ setting }) => ({ elementalMastery: 60 * stacks(setting) }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'silken-moon-lunar',
+      label: 'Lunar Reaction DMG +10% per different Gleaming Moon effect in the party (Intent, Devotion)',
+      toggle: { kind: 'stacks', label: 'Gleaming Moon effects', max: 2 },
+      reactions: ({ setting }) => lunar(10 * stacks(setting)),
+      confidence: 'sourced',
+    },
+  ],
+  AubadeOfMorningstarAndMoon: [{
+    id: 'aubade-lunar',
+    label: 'Lunar Reaction DMG +20% while off-field, +40% more at Ascendant Gleam (gone 3s after taking the field)',
+    toggle: { kind: 'stacks', label: '1 off-field, 2 + Ascendant', max: 2 },
+    reactions: ({ setting }) => lunar([0, 20, 60][stacks(setting)] ?? 0),
+    confidence: 'sourced',
+  }],
   GladiatorsFinale: [{
     id: 'gladiator-4pc',
     label: 'Normal Attack DMG +35% (sword, claymore or polearm)',

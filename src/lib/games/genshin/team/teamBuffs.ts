@@ -7,6 +7,7 @@ import {
   type TeamBuffTotals,
 } from 'lib/games/genshin/stats/computeStats'
 import {
+  ANY_MEMBER_BUFFS,
   type BuffContext,
   type BuffSetting,
   type BuffStat,
@@ -58,6 +59,8 @@ export type AppliedBuff = {
 export type TeamBuffResult = TeamBuffTotals & {
   // DEF and RES shred on the enemy, for the rotation damage
   debuffs: EnemyDebuffs,
+  // Lunar Reaction DMG Bonus from Moonsign: Ascendant Gleam, in percent
+  lunarBonus: number,
   applied: AppliedBuff[],
   resonance: Element[],
 }
@@ -71,7 +74,7 @@ export function settingKey(buff: TeamBuff, giverId?: string): string {
 
 export function defaultSetting(buff: TeamBuff, giver: GenshinCharacter | undefined, receiver: GenshinCharacter): BuffSetting {
   const toggle = buff.toggle
-  if (!toggle || toggle.kind === 'switch') return true
+  if (!toggle || toggle.kind === 'switch') return !toggle?.offByDefault
   if (toggle.kind === 'stacks') return giver ? toggle.max(giver) : 0
   return receiver.element && toggle.options.includes(receiver.element) ? receiver.element : toggle.options[0]
 }
@@ -121,6 +124,7 @@ export function teamBuffsFor(
   for (const giver of givers) {
     const { character } = giver
     for (const buff of CHARACTER_BUFFS[character.id] ?? []) candidates.push({ buff, sourceName: character.name, giver })
+    for (const buff of ANY_MEMBER_BUFFS) candidates.push({ buff, sourceName: character.name, giver })
     for (const buff of WEAPON_BUFFS[character.weapon?.id ?? ''] ?? []) {
       candidates.push({ buff, sourceName: `${character.name}'s ${character.weapon?.name}`, giver })
     }
@@ -176,8 +180,13 @@ export function teamBuffsFor(
 
   const totals: TeamBuffTotals = { premod: {}, total: {} }
   const debuffs: EnemyDebuffs = { defShred: 0, resShred: {} }
+  let lunarBonus = 0
   for (const entry of applied) {
     if (!entry.counted || !entry.stat) continue
+    if (entry.stat === 'lunarBonus') {
+      lunarBonus += entry.value
+      continue
+    }
     if (isDebuff(entry.stat)) {
       if (entry.stat === 'defShred') debuffs.defShred += entry.value
       else {
@@ -189,5 +198,5 @@ export function teamBuffsFor(
     const bucket = totals[entry.buff.stage]
     bucket[entry.stat] = (bucket[entry.stat] ?? 0) + entry.value
   }
-  return { ...totals, debuffs, applied, resonance }
+  return { ...totals, debuffs, lunarBonus, applied, resonance }
 }

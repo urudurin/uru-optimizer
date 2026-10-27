@@ -120,6 +120,39 @@ describe('team buffs', () => {
     expect(Object.keys({ ...result.premod, ...result.total }).some((stat) => stat.includes('Shred'))).toBe(false)
   })
 
+  it('gives the party Silken Moon\'s Serenade\'s Elemental Mastery and Lunar Reaction DMG, and Night of the Sky\'s once with it', () => {
+    const flins = character('Flins', { element: 'Electro' })
+    const wearing4 = (owner: string, setId: string): Artifact[] =>
+      noblesse(owner).map((a) => ({ ...a, id: `${owner}-${setId}-${a.slot}`, setId, setName: setId }))
+    const silken = wearing4('Furina', 'SilkenMoonsSerenade')
+    const night = wearing4('Bennett', 'NightOfTheSkysUnveiling')
+    const dressed = (c: GenshinCharacter, pieces: Artifact[]) => ({ ...c, artifactIds: Object.fromEntries(pieces.map((a) => [a.slot, a.id])) })
+    const team = [flins, dressed(furina, silken), dressed(bennett, night)]
+    const result = teamBuffsFor(flins, setup(['Furina', 'Bennett']), { characters: team, artifacts: [...silken, ...night] })
+    expect(result.premod.elementalMastery).toBe(120)
+    // Both sets give +10% per Gleaming Moon effect; it doesn't stack, so 20% once
+    expect(result.lunarBonus).toBe(20)
+  })
+
+  it('gives Moonsign: Ascendant Gleam Lunar Reaction DMG from a teammate\'s stat by element, off until turned on, at most 36%, once', () => {
+    const flins = character('Flins', { element: 'Electro' })
+    const team = [flins, furina, bennett]
+    const off = teamBuffsFor(flins, setup(['Furina', 'Bennett']), { characters: team, artifacts: [] })
+    expect(off.lunarBonus).toBe(0)
+
+    const on = {
+      'Furina:moonsign-ascendant-gleam': true,
+      'Bennett:moonsign-ascendant-gleam': true,
+    }
+    const result = teamBuffsFor(flins, setup(['Furina', 'Bennett'], { settings: on }), { characters: team, artifacts: [] })
+    const furinaHp = computeGenshinStats(furina, []).stats.hp!
+    const bennettAtk = computeGenshinStats(bennett, []).stats.atk!
+    // Hydro: 0.6% per 1,000 HP; Pyro: 0.9% per 100 ATK. Only the bigger one counts
+    expect(result.lunarBonus).toBeCloseTo(Math.min(36, Math.max(furinaHp * 0.0006, bennettAtk * 0.009)), 6)
+    // Not a stat
+    expect(Object.keys({ ...result.premod, ...result.total })).not.toContain('lunarBonus')
+  })
+
   it('adds elemental resonance for a team of 4', () => {
     const team = [bennett, kazuha, furina]
     const result = teamBuffsFor(xiangling, setup(['Bennett', 'KaedeharaKazuha', 'Furina']), { characters: [xiangling, ...team], artifacts: [] })

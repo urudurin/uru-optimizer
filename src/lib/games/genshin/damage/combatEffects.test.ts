@@ -79,6 +79,20 @@ describe('combat effects', () => {
     expect(computeGenshinStats(raiden, wearing('NoblesseOblige', 2)).stats.burstDmg ?? 0).toBe(0)
   })
 
+  it('gives the Lunar sets\' 4-piece effects to the wearer', () => {
+    const flins = character('Flins', { element: 'Electro' })
+    const four = (setId: string) => setCountsOf(Array(4).fill(setId))
+    const aubade = resolveCombat(flins, { sets: ['AubadeOfMorningstarAndMoon'], settings: {} }, four('AubadeOfMorningstarAndMoon'))
+    expect(aubade.reactions).toEqual({ lunarcharged: 60, lunarbloom: 60, lunarcrystallize: 60 })
+    const offField = resolveCombat(flins, { sets: ['AubadeOfMorningstarAndMoon'], settings: { 'aubade-lunar': 1 } }, four('AubadeOfMorningstarAndMoon'))
+    expect(offField.reactions.lunarcharged).toBe(20)
+    const night = resolveCombat(flins, { sets: ['NightOfTheSkysUnveiling'], settings: {} }, four('NightOfTheSkysUnveiling'))
+    expect(night.premod.critRate).toBe(30)
+    expect(night.reactions.lunarbloom).toBe(20)
+    const silken = resolveCombat(flins, { sets: ['SilkenMoonsSerenade'], settings: { 'silken-moon-em': 1 } }, four('SilkenMoonsSerenade'))
+    expect(silken.premod.elementalMastery).toBe(60)
+  })
+
   it('collects reaction bonuses and debuffs, with stack counts', () => {
     const crimson: CombatSetup = { sets: ['CrimsonWitchOfFlames'], settings: { 'crimson-witch-stacks': 1 } }
     const resolved = resolveCombat(character('Xiangling', { element: 'Pyro' }), crimson, setCountsOf(Array(4).fill('CrimsonWitchOfFlames')))
