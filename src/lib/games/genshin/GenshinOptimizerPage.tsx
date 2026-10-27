@@ -1,15 +1,17 @@
 import {
+  Badge,
   Button,
+  Group,
   MultiSelect,
   NumberInput,
   Select,
   SimpleGrid,
   Stack,
   Switch,
-  Table,
   Text,
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
+import { useGenshinImages } from 'lib/games/genshin/data/images'
 import {
   GenshinTeamCards,
   teamSummary,
@@ -35,6 +37,7 @@ import { genshinPiecesTaken } from 'lib/games/genshin/state/genshinState'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import {
   genshinArtifactWeights,
+  genshinBuildScore,
   scoreArtifact,
 } from 'lib/games/genshin/stats/artifactScore'
 import { hasStatData } from 'lib/games/genshin/stats/computeStats'
@@ -51,7 +54,14 @@ import {
   SLOT_LABELS,
   statLabel,
 } from 'lib/games/genshin/types'
-import { ArtifactCard } from 'lib/games/genshin/ui/ArtifactCard'
+import {
+  ArtifactCard,
+  elementColor,
+} from 'lib/games/genshin/ui/ArtifactCard'
+import {
+  ELEMENT_ACCENTS,
+  genshinStatRows,
+} from 'lib/games/genshin/ui/characterStats'
 import { formatNumber } from 'lib/games/shared/format'
 import {
   fieldSetter,
@@ -69,6 +79,13 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
+import {
+  CharacterPortrait,
+  RankButtons,
+} from 'lib/games/shared/ui/optimizer/CharacterPanel'
+import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
+import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
   FormCard,
   FormRow,
@@ -144,6 +161,8 @@ function defaultSettings(): GenshinOptimizerSettings {
 export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const artifacts = useGenshinStore((s) => s.artifacts)
   const characters = useGenshinStore((s) => s.characters)
+  const images = useGenshinImages()
+  const saveCharacter = useGenshinStore((s) => s.saveCharacter)
   const usable = useMemo(() => characters.filter(hasStatData), [characters])
   const [characterId, setCharacterId] = useState<string | null>(() => readOptimizerSettings(SETTINGS_KEY).last ?? null)
   const character = usable.find((c) => c.id === characterId) ?? usable[0]
@@ -221,6 +240,10 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
   const shown = statsToShow(character)
+  const resultValues = (score: number, stats: Partial<Record<GenshinStatKey, number>>) => ({
+    score,
+    ...Object.fromEntries(shown.map((stat) => [stat, stats[stat] ?? 0])),
+  })
   const setName = (id: string) => setOptions.find((o) => o.value === id)?.label ?? id
   const mainFilters = MAIN_STAT_SLOTS.filter((slot) => mainStats[slot]?.length).length
   const minCount = Object.values(minStats).filter((v) => v !== undefined).length
@@ -256,6 +279,12 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
         <Stack gap='md'>
           <FormRows>
             <FormRow id='genshin-character' title='Character' summary={`${character.name} · ${targetLabel(target)}`}>
+              <CharacterPortrait
+                name={character.name}
+                portrait={images.characters[character.id]?.portrait}
+                accent={character.element ? ELEMENT_ACCENTS[character.element] : undefined}
+                weapon={character.weapon && { image: images.weapons[character.weapon.id], name: character.weapon.name }}
+              />
               <FormCard title='Character'>
                 <Select
                   aria-label='Character'
@@ -271,10 +300,33 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                   data={usable.map((c) => ({ value: c.id, label: c.name }))}
                 />
                 <Text size='xs' c='dimmed'>
-                  {`Level ${character.level} · C${character.constellation} · ${
-                    character.weapon ? `${character.weapon.name} R${character.weapon.refinement}, level ${character.weapon.level}` : 'No weapon'
-                  }`}
+                  {`Level ${character.level} · ${character.weapon ? `${character.weapon.name}, level ${character.weapon.level}` : 'No weapon'}`}
                 </Text>
+                {/* Like HSR's Eidolon and Superimposition buttons, these change the saved character */}
+                <RankButtons
+                  label='Constellation'
+                  prefix='C'
+                  from={0}
+                  to={6}
+                  value={character.constellation}
+                  onChange={(constellation) => {
+                    saveCharacter({ ...character, constellation })
+                    setResult(undefined)
+                  }}
+                />
+                {character.weapon && (
+                  <RankButtons
+                    label='Refinement'
+                    prefix='R'
+                    from={1}
+                    to={5}
+                    value={character.weapon.refinement}
+                    onChange={(refinement) => {
+                      if (character.weapon) saveCharacter({ ...character, weapon: { ...character.weapon, refinement } })
+                      setResult(undefined)
+                    }}
+                  />
+                )}
               </FormCard>
               <FormCard title='Rank by' description='The average hit is the scaling stat times the crit multiplier, there is no full damage calculation.'>
                 <Select
@@ -320,27 +372,24 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                 title='Sets'
                 description='Only 2-piece bonuses the character screen shows are counted, not 4-piece effects, so pick the set you want to run here.'
               >
-                <Select
+                <SetPicker
                   label='4-piece set'
-                  placeholder='Any'
-                  searchable
-                  clearable
-                  value={fourPieceSet}
-                  onChange={(value) => {
-                    setFourPieceSet(value)
-                    if (value) setTwoPieceSets([])
+                  max={1}
+                  options={setOptions.map((o) => ({ ...o, icon: images.artifacts[o.value]?.flower }))}
+                  value={fourPieceSet ? [fourPieceSet] : []}
+                  onChange={(ids) => {
+                    setFourPieceSet(ids[0] ?? null)
+                    if (ids[0]) setTwoPieceSets([])
                   }}
-                  data={setOptions}
                 />
-                <MultiSelect
+                <SetPicker
                   label='2-piece sets'
-                  placeholder={fourPieceSet ? 'Not with a 4-piece set' : twoPieceSets.length ? undefined : 'Any'}
-                  searchable
+                  max={2}
+                  placeholder={fourPieceSet ? 'Not with a 4-piece set' : 'Any'}
                   disabled={!!fourPieceSet}
-                  maxValues={2}
+                  options={setOptions.map((o) => ({ ...o, icon: images.artifacts[o.value]?.flower }))}
                   value={twoPieceSets}
                   onChange={setTwoPieceSets}
-                  data={setOptions}
                 />
               </FormCard>
               <FormCard title='Main stats'>
@@ -399,68 +448,70 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                 {outcome.builds.length === 0
                   ? <Text size='sm' c='dimmed'>Nothing matched. Loosen the minimum stats or filters and search again.</Text>
                   : (
-                    <Table.ScrollContainer minWidth={640} mah={420}>
-                      <Table highlightOnHover verticalSpacing={6} stickyHeader>
-                        <Table.Thead>
-                          <Table.Tr>
-                            <Table.Th>#</Table.Th>
-                            <Table.Th ta='right' c='var(--primary-light)'>{targetLabel(result.target)}</Table.Th>
-                            {shown.map((stat) => <Table.Th key={stat} ta='right'>{statLabel(stat)}</Table.Th>)}
-                            <Table.Th>Sets</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {current && (
-                            <Table.Tr>
-                              <Table.Td c='dimmed'>Now</Table.Td>
-                              <Table.Td ta='right' c='dimmed'>{formatScore(result.target, current.score)}</Table.Td>
-                              {shown.map((stat) => <Table.Td key={stat} ta='right' c='dimmed'>{formatStatValue(stat, current.stats[stat] ?? 0)}</Table.Td>)}
-                              <Table.Td c='dimmed'>
-                                <Text size='xs' lineClamp={1}>{describeSets(current.artifacts)}</Text>
-                              </Table.Td>
-                            </Table.Tr>
-                          )}
-                          {outcome.builds.map((b, i) => (
-                            <Table.Tr
-                              key={b.artifacts.map((a) => a.id).join()}
-                              className={classes.resultRow}
-                              data-active={i === selected || undefined}
-                              onClick={() => setSelected(i)}
-                            >
-                              <Table.Td c='dimmed'>{i + 1}</Table.Td>
-                              <Table.Td ta='right' fw={600}>{formatScore(result.target, b.score)}</Table.Td>
-                              {shown.map((stat) => <Table.Td key={stat} ta='right'>{formatStatValue(stat, b.stats[stat] ?? 0)}</Table.Td>)}
-                              <Table.Td>
-                                <Text size='xs' lineClamp={1}>{describeSets(b.artifacts)}</Text>
-                              </Table.Td>
-                            </Table.Tr>
-                          ))}
-                        </Table.Tbody>
-                      </Table>
-                    </Table.ScrollContainer>
+                    <ResultsGrid
+                      key={outcome.builds.length + result.target.kind}
+                      columns={[
+                        {
+                          key: 'score',
+                          label: targetLabel(result.target),
+                          format: (value: number) => formatScore(result.target, value),
+                          primary: true,
+                          width: 110,
+                        },
+                        ...shown.map((stat) => ({ key: stat, label: statLabel(stat), format: (value: number) => formatStatValue(stat, value) })),
+                      ]}
+                      rows={outcome.builds.map((b, i) => ({
+                        id: String(i),
+                        rank: String(i + 1),
+                        values: resultValues(b.score, b.stats),
+                        sets: describeSets(b.artifacts),
+                      }))}
+                      current={current
+                        ? { id: 'now', rank: 'Now', values: resultValues(current.score, current.stats), sets: describeSets(current.artifacts) }
+                        : undefined}
+                      selected={selected}
+                      onSelect={setSelected}
+                    />
                   )}
               </Stack>
             </Panel>
           )}
 
           {build && result && (
-            <Panel
+            <BuildPreview
               title={`Build #${selected + 1}`}
               description={`${describeSets(build.artifacts)}${
                 current ? ` · ${build.score >= current.score ? '+' : ''}${(((build.score / current.score) - 1) * 100).toFixed(1)}% vs current` : ''
               }`}
-            >
-              <div className={gear.grid}>
-                {build.artifacts.map((artifact) => (
-                  <ArtifactCard
-                    key={artifact.id}
-                    artifact={artifact}
-                    owner={artifact.equippedBy ? (ownerNames.get(artifact.equippedBy) ?? artifact.equippedBy) : undefined}
-                    score={scoreArtifact(artifact, genshinArtifactWeights(character))}
-                  />
-                ))}
-              </div>
-            </Panel>
+              name={character.name}
+              accent={character.element ? ELEMENT_ACCENTS[character.element] : undefined}
+              portrait={images.characters[character.id]?.portrait}
+              weapon={character.weapon && {
+                image: images.weapons[character.weapon.id],
+                name: character.weapon.name,
+                meta: `${character.weapon.rarity}★ · Lv ${character.weapon.level} · R${character.weapon.refinement}`,
+              }}
+              heading={
+                <Group gap={6} mt={4}>
+                  {character.element && <Badge size='sm' variant='light' color={elementColor(character.element)}>{character.element}</Badge>}
+                  <Text size='xs' c='dimmed'>
+                    {`Lv ${character.level} · C${character.constellation}${teammates.some(Boolean) ? ' · with team buffs' : ''}`}
+                  </Text>
+                </Group>
+              }
+              rows={genshinStatRows(character, build.stats)}
+              rating={genshinBuildScore(character, build.artifacts)}
+              ratingLabel='Artifact score'
+              gear={build.artifacts.map((artifact) => (
+                <ArtifactCard
+                  key={artifact.id}
+                  artifact={artifact}
+                  icon={images.artifacts[artifact.setId]?.[artifact.slot]}
+                  owner={artifact.equippedBy ? (ownerNames.get(artifact.equippedBy) ?? artifact.equippedBy) : undefined}
+                  score={scoreArtifact(artifact, genshinArtifactWeights(character))}
+                />
+              ))}
+            />
           )}
 
           {build && result && (

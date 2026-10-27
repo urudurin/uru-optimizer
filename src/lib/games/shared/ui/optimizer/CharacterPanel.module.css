@@ -1,0 +1,50 @@
+/* The character's art at the start of the optimizer form (CharacterPanel.tsx), after HSR's optimizer character panel */
+
+.portraitCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 210px;
+  flex-shrink: 0;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(170deg, color-mix(in srgb, var(--accent, #6b8cd8) 22%, var(--layer-2)) 0%, var(--layer-2) 70%);
+}
+
+.portrait {
+  height: 250px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--accent, #6b8cd8) 45%, transparent), rgba(0, 0, 0, 0.25) 70%);
+}
+
+.portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.fallback {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 36px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.weapon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.weapon img {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+}

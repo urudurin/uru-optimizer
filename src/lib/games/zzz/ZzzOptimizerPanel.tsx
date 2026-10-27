@@ -1,7 +1,9 @@
 import {
   Accordion,
+  Badge,
   Button,
   FileInput,
+  Group,
   MultiSelect,
   NumberInput,
   SegmentedControl,
@@ -9,11 +11,11 @@ import {
   SimpleGrid,
   Stack,
   Switch,
-  Table,
   Text,
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
 import { formatNumber } from 'lib/games/shared/format'
+import { scoreBuild } from 'lib/games/shared/gearScore'
 import {
   fieldSetter,
   readOptimizerSettings,
@@ -30,6 +32,13 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
+import {
+  CharacterPortrait,
+  RankButtons,
+} from 'lib/games/shared/ui/optimizer/CharacterPanel'
+import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
+import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
   FormCard,
   FormRow,
@@ -43,6 +52,7 @@ import type {
   Condition,
 } from 'lib/games/zzz/data/dataTypes'
 import { useZzzGameData } from 'lib/games/zzz/data/enkaGameData'
+import { useZzzImages } from 'lib/games/zzz/data/images'
 import { parseImportedZzzPresets } from 'lib/games/zzz/data/importedPresets'
 import {
   daysSinceReview,
@@ -73,7 +83,6 @@ import { zzzPiecesTaken } from 'lib/games/zzz/state/zzzState'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
   CONDITION_LABELS,
-  CORE_SKILL_OPTIONS,
   formatStat,
   STAT_ROWS,
   type StatRow,
@@ -92,7 +101,11 @@ import type {
   Disc,
   ZzzStatsValues,
 } from 'lib/games/zzz/types'
-import { DiscCard } from 'lib/games/zzz/ui/DiscCard'
+import { zzzStatRows } from 'lib/games/zzz/ui/agentStats'
+import {
+  DiscCard,
+  elementColor,
+} from 'lib/games/zzz/ui/DiscCard'
 import {
   useCallback,
   useMemo,
@@ -102,7 +115,6 @@ import {
 const RESULT_LIMIT = 50
 const MAX_IMPORT_WARNINGS = 6
 const MAIN_STAT_SLOTS: MainStatSlot[] = [4, 5, 6]
-const REFINEMENT_OPTIONS = [1, 2, 3, 4, 5].map((r) => ({ value: String(r), label: `R${r}` }))
 
 type Loadout = { wEngineId: string, refinement: string }
 
@@ -161,6 +173,7 @@ function describeSets(discs: Disc[]): string {
 export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const discs = useZzzStore((s) => s.discs)
   const builds = useZzzStore((s) => s.builds)
+  const images = useZzzImages()
   // Every agent and W-Engine, once Enka's data has loaded (data/enkaGameData.ts)
   useZzzGameData()
 
@@ -327,7 +340,8 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const computeInput = wEngine ? { agent, wEngine, wEngineRefinement: Number(loadout.refinement), coreSkillLevel: Number(coreSkill), conditions } : undefined
   const currentDiscs = agentBuild ? Object.values(agentBuild.discIds).flatMap((id) => discs.find((d) => d.id === id) ?? []) : []
   const currentDisplay = computeInput && currentDiscs.length > 0 ? toDisplayStats(computeStats({ ...computeInput, discs: currentDiscs }).stats) : undefined
-  const rankLabel = statRows.find((row) => row.key === sortBy)?.label ?? sortBy
+  const rankRow = statRows.find((row) => row.key === sortBy) ?? statRows[0]
+  const rankLabel = rankRow.label
   const agentSummary = `${agent.name} · ${W_ENGINES[loadout.wEngineId]?.name ?? 'No W-Engine'} R${loadout.refinement} · ranked by ${rankLabel}`
   const mainFilters = MAIN_STAT_SLOTS.filter((slot) => mainStats[slot]?.length).length
   const minCount = Object.values(minStats).filter((v) => v !== undefined).length
@@ -363,6 +377,12 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
         <Stack gap='md'>
           <FormRows>
             <FormRow id='zzz-agent' title='Agent' summary={agentSummary}>
+              <CharacterPortrait
+                name={agent.name}
+                portrait={images.agents[agent.id]?.portrait}
+                accent={images.agents[agent.id]?.accent}
+                weapon={wEngine && { image: images.wEngines[wEngine.id], name: wEngine.name }}
+              />
               <FormCard title='Agent'>
                 <Select
                   aria-label='Agent'
@@ -378,22 +398,23 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                   onChange={(value) => value && setLoadout((prev) => ({ ...prev, wEngineId: value }))}
                   data={Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name }))}
                 />
-                <SimpleGrid cols={2} spacing='sm'>
-                  <Select
-                    label='Refinement'
-                    allowDeselect={false}
-                    value={loadout.refinement}
-                    onChange={(value) => value && setLoadout((prev) => ({ ...prev, refinement: value }))}
-                    data={REFINEMENT_OPTIONS}
-                  />
-                  <Select
-                    label='Core Skill'
-                    allowDeselect={false}
-                    value={coreSkill}
-                    onChange={(value) => setCoreSkill(value ?? '6')}
-                    data={CORE_SKILL_OPTIONS}
-                  />
-                </SimpleGrid>
+                <RankButtons
+                  label='Refinement'
+                  prefix='R'
+                  from={1}
+                  to={5}
+                  value={Number(loadout.refinement)}
+                  onChange={(value) => setLoadout((prev) => ({ ...prev, refinement: String(value) }))}
+                />
+                <RankButtons
+                  label='Core Skill'
+                  prefix=''
+                  from={1}
+                  to={6}
+                  names={['A', 'B', 'C', 'D', 'E', 'F']}
+                  value={Number(coreSkill)}
+                  onChange={(value) => setCoreSkill(String(value))}
+                />
               </FormCard>
 
               <FormCard title='Recommended build' size='wide' description={`${preset.source} · ${preset.confidence}`}>
@@ -495,8 +516,20 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
 
             <FormRow id='zzz-filters' title='Disc filters' summary={filterSummary}>
               <FormCard title='Sets' size='narrow'>
-                <Select label='4-piece set' placeholder='Any' clearable value={fourPieceSet} onChange={setFourPieceSet} data={setOptions} />
-                <Select label='2-piece set' placeholder='Any' clearable value={twoPieceSet} onChange={setTwoPieceSet} data={setOptions} />
+                <SetPicker
+                  label='4-piece set'
+                  max={1}
+                  options={setOptions.map((o) => ({ ...o, icon: images.sets[o.value] }))}
+                  value={fourPieceSet ? [fourPieceSet] : []}
+                  onChange={(ids) => setFourPieceSet(ids[0] ?? null)}
+                />
+                <SetPicker
+                  label='2-piece set'
+                  max={1}
+                  options={setOptions.map((o) => ({ ...o, icon: images.sets[o.value] }))}
+                  value={twoPieceSet ? [twoPieceSet] : []}
+                  onChange={(ids) => setTwoPieceSet(ids[0] ?? null)}
+                />
                 <Switch
                   label='Leave out discs other agents are wearing'
                   checked={excludeEquippedByOthers}
@@ -565,57 +598,66 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
               {outcome.builds.length === 0
                 ? <Text size='sm' c='dimmed'>Nothing matched. Loosen the minimum stats or filters and search again.</Text>
                 : (
-                  <Table.ScrollContainer minWidth={640} mah={420}>
-                    <Table highlightOnHover verticalSpacing={6} stickyHeader>
-                      <Table.Thead>
-                        <Table.Tr>
-                          <Table.Th>#</Table.Th>
-                          {resultColumns.map((row) => (
-                            <Table.Th key={row.key} ta='right' c={row.key === sortBy ? 'var(--primary-light)' : undefined}>{row.label}</Table.Th>
-                          ))}
-                          <Table.Th>Sets</Table.Th>
-                        </Table.Tr>
-                      </Table.Thead>
-                      <Table.Tbody>
-                        {outcome.builds.map((build, i) => (
-                          <Table.Tr
-                            key={build.discs.map((d) => d.id).join()}
-                            className={classes.resultRow}
-                            data-active={i === selected || undefined}
-                            onClick={() => setSelected(i)}
-                          >
-                            <Table.Td c='dimmed'>{i + 1}</Table.Td>
-                            {resultColumns.map((row) => (
-                              <Table.Td key={row.key} ta='right' fw={row.key === sortBy ? 600 : 400}>{formatStat(row, build.display[row.key])}</Table.Td>
-                            ))}
-                            <Table.Td>
-                              <Text size='xs' lineClamp={1}>{describeSets(build.discs)}</Text>
-                            </Table.Td>
-                          </Table.Tr>
-                        ))}
-                      </Table.Tbody>
-                    </Table>
-                  </Table.ScrollContainer>
+                  <ResultsGrid
+                    key={outcome.builds.length + sortBy}
+                    columns={resultColumns.map((row) => ({
+                      key: row.key,
+                      label: row.label,
+                      format: (value) => formatStat(row, value),
+                      primary: row.key === sortBy,
+                    }))}
+                    rows={outcome.builds.map((build, i) => ({
+                      id: String(i),
+                      rank: String(i + 1),
+                      values: Object.fromEntries(resultColumns.map((row) => [row.key, build.display[row.key]])),
+                      sets: describeSets(build.discs),
+                    }))}
+                    current={currentDisplay
+                      ? {
+                        id: 'now',
+                        rank: 'Now',
+                        values: Object.fromEntries(resultColumns.map((row) => [row.key, currentDisplay[row.key]])),
+                        sets: describeSets(currentDiscs),
+                      }
+                      : undefined}
+                    selected={selected}
+                    onSelect={setSelected}
+                  />
                 )}
             </Panel>
           )}
 
           {best && (
-            <Panel title={`Build #${selected + 1}`} description={describeSets(best.discs)}>
-              <Stack gap='md'>
-                <Notices messages={best.warnings} />
-                <div className={gear.grid}>
-                  {best.discs.map((disc) => (
-                    <DiscCard
-                      key={disc.id}
-                      disc={disc}
-                      owner={disc.equippedBy ? (ownerNames.get(disc.equippedBy) ?? `Agent ${disc.equippedBy}`) : undefined}
-                      score={scoreDisc(disc, zzzDiscWeights(agent))}
-                    />
-                  ))}
-                </div>
-              </Stack>
-            </Panel>
+            <BuildPreview
+              title={`Build #${selected + 1}`}
+              description={`${describeSets(best.discs)}${
+                currentDisplay ? ` · ${rankLabel} ${formatStat(rankRow, best.display[sortBy])} vs ${formatStat(rankRow, currentDisplay[sortBy])} now` : ''
+              }`}
+              name={agent.name}
+              accent={images.agents[agent.id]?.accent}
+              portrait={images.agents[agent.id]?.portrait}
+              weapon={wEngine && { image: images.wEngines[wEngine.id], name: wEngine.name, meta: `${wEngine.rarity}-rank · R${loadout.refinement}` }}
+              heading={
+                <Group gap={6} mt={4}>
+                  <Badge size='sm' variant='light' color={elementColor(agent.element)}>{agent.element}</Badge>
+                  <Badge size='sm' variant='light' color='gray'>{agent.specialty}</Badge>
+                  <Text size='xs' c='dimmed'>{`Lv ${agent.level} · Core Skill ${'ABCDEF'[Number(coreSkill) - 1]}`}</Text>
+                </Group>
+              }
+              rows={zzzStatRows(best.display, agent.specialty)}
+              rating={scoreBuild(best.discs.map((disc) => scoreDisc(disc, zzzDiscWeights(agent))), 6)}
+              ratingLabel='Disc score'
+              notes={best.warnings}
+              gear={best.discs.map((disc) => (
+                <DiscCard
+                  key={disc.id}
+                  disc={disc}
+                  icon={images.sets[disc.setId]}
+                  owner={disc.equippedBy ? (ownerNames.get(disc.equippedBy) ?? `Agent ${disc.equippedBy}`) : undefined}
+                  score={scoreDisc(disc, zzzDiscWeights(agent))}
+                />
+              ))}
+            />
           )}
 
           {best && computeInput && (

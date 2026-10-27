@@ -5,7 +5,6 @@ import {
   Stack,
   Text,
 } from '@mantine/core'
-import { formatNumber } from 'lib/games/shared/format'
 import { BuildRating } from 'lib/games/shared/ui/BuildRating'
 import {
   Notices,
@@ -16,9 +15,7 @@ import {
   RosterLayout,
   ShowcaseCard,
   StatList,
-  type StatListRow,
 } from 'lib/games/shared/ui/Showcase'
-import { statIcon } from 'lib/games/shared/ui/statIcons'
 import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
 import {
   characterName,
@@ -44,7 +41,6 @@ import {
   type CharacterState,
   type ElementDmgKey,
   MAX_LOADOUT_COST,
-  statLabel,
 } from 'lib/games/wuwa/types'
 import {
   EchoCard,
@@ -56,6 +52,7 @@ import {
   ResonatorForm,
   WEAPON_TYPES,
 } from 'lib/games/wuwa/ui/ResonatorForm'
+import { wuwaStatRows } from 'lib/games/wuwa/ui/resonatorStats'
 import {
   useMemo,
   useState,
@@ -148,19 +145,7 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
   const cost = loadout.reduce((sum, echo) => sum + echo.cost, 0)
   const name = characterName(character.charId)
 
-  const rows: StatListRow[] = [
-    { key: 'hp', icon: statIcon('hp'), label: 'HP', value: formatNumber(shown.hp) },
-    { key: 'atk', icon: statIcon('atk'), label: 'ATK', value: formatNumber(shown.atk), highlight: true },
-    { key: 'def', icon: statIcon('def'), label: 'DEF', value: formatNumber(shown.def) },
-    { key: 'er', icon: statIcon('energy'), label: 'Energy Regen', value: `${shown.energyRegen}%` },
-    { key: 'cr', icon: statIcon('critRate'), label: 'Crit Rate', value: `${shown.critRate}%`, highlight: true },
-    { key: 'cd', icon: statIcon('critDmg'), label: 'Crit DMG', value: `${shown.critDmg}%`, highlight: true },
-    ...(element ? [{ key: 'element', icon: statIcon('elementDmg'), label: statLabel(element), value: `${shown.elementDmg}%`, highlight: true }] : []),
-    { key: 'skill', icon: statIcon('dmgBonus'), label: 'Resonance Skill DMG', value: `${shown.skillDmg}%` },
-    { key: 'lib', icon: statIcon('dmgBonus'), label: 'Liberation DMG', value: `${shown.libDmg}%` },
-    { key: 'basic', icon: statIcon('dmgBonus'), label: 'Basic Attack DMG', value: `${shown.basicDmg}%` },
-    ...(shown.healingBonus > 0 ? [{ key: 'heal', icon: statIcon('heal'), label: 'Healing Bonus', value: `${shown.healingBonus}%` }] : []),
-  ]
+  const rows = wuwaStatRows(shown, element)
 
   return (
     <ShowcaseCard

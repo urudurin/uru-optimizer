@@ -21,10 +21,8 @@ import { computeGenshinStats } from 'lib/games/genshin/stats/computeStats'
 import {
   ARTIFACT_SLOTS,
   type Element,
-  ELEMENT_DMG_STAT,
   formatStatValue,
   type GenshinCharacter,
-  type GenshinStatKey,
   statLabel,
 } from 'lib/games/genshin/types'
 import {
@@ -32,6 +30,10 @@ import {
   elementColor,
 } from 'lib/games/genshin/ui/ArtifactCard'
 import { CharacterForm } from 'lib/games/genshin/ui/CharacterForm'
+import {
+  ELEMENT_ACCENTS,
+  genshinStatRows,
+} from 'lib/games/genshin/ui/characterStats'
 import { BuildRating } from 'lib/games/shared/ui/BuildRating'
 import { PageHeader } from 'lib/games/shared/ui/GameLayout'
 import {
@@ -39,12 +41,7 @@ import {
   RosterLayout,
   ShowcaseCard,
   StatList,
-  type StatListRow,
 } from 'lib/games/shared/ui/Showcase'
-import {
-  statIcon,
-  type StatIconKind,
-} from 'lib/games/shared/ui/statIcons'
 import {
   useMemo,
   useState,
@@ -54,48 +51,6 @@ import {
 // (shared/ui/Showcase.tsx). The roster lists every character with stat data; ones not in the save are dimmed and can be
 // added by hand (level, constellation, weapon). Art, names and weapon types come from Enka (data/images.ts); without
 // them the page shows initials and names from GOOD keys.
-
-const MAIN_STATS: GenshinStatKey[] = ['hp', 'atk', 'def', 'elementalMastery', 'critRate', 'critDmg', 'energyRecharge']
-const HIGHLIGHTED = new Set<GenshinStatKey>(['atk', 'critRate', 'critDmg'])
-
-const STAT_ICON_KINDS: Partial<Record<GenshinStatKey, StatIconKind>> = {
-  hp: 'hp',
-  atk: 'atk',
-  def: 'def',
-  elementalMastery: 'mastery',
-  critRate: 'critRate',
-  critDmg: 'critDmg',
-  energyRecharge: 'energy',
-  healingBonus: 'heal',
-  physicalDmg: 'dmgBonus',
-  allDmg: 'dmgBonus',
-}
-
-// Element accents for the showcase card, CSS colors
-const ELEMENT_ACCENTS: Record<Element, string> = {
-  Pyro: '#e2604a',
-  Hydro: '#3e8fe0',
-  Anemo: '#4ec2a4',
-  Electro: '#a46be0',
-  Dendro: '#7cbf3a',
-  Cryo: '#7fd0e6',
-  Geo: '#d9a93a',
-}
-
-// The character screen's main stats, then the DMG bonuses the character actually has
-function statRows(character: GenshinCharacter, stats: GenshinCharacter['stats']): StatListRow[] {
-  if (Object.keys(stats).length === 0) return []
-  const elementStat = character.element ? ELEMENT_DMG_STAT[character.element] : undefined
-  const bonuses = (Object.keys(stats) as GenshinStatKey[])
-    .filter((stat) => !MAIN_STATS.includes(stat) && (stat === elementStat || (stats[stat] ?? 0) > 0))
-  return [...MAIN_STATS, ...bonuses].map((stat) => ({
-    key: stat,
-    icon: statIcon(STAT_ICON_KINDS[stat] ?? 'elementDmg'),
-    label: statLabel(stat),
-    value: formatStatValue(stat, stats[stat] ?? 0),
-    highlight: HIGHLIGHTED.has(stat) || stat === elementStat,
-  }))
-}
 
 export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
   const characters = useGenshinStore((s) => s.characters)
@@ -172,7 +127,7 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
   // The game's own numbers from Enka when there are some, otherwise worked out from base stats and gear
   const fromGame = Object.keys(character.stats).length > 0
   const computed = fromGame ? undefined : computeGenshinStats(character, worn)
-  const rows = statRows(character, computed?.stats ?? character.stats)
+  const rows = genshinStatRows(character, computed?.stats ?? character.stats)
   const source = fromGame ? `From the game, ${character.statsDate}` : rows.length > 0 ? 'Calculated from base stats, weapon and artifacts' : ''
   const art = images.characters[character.id]
 

@@ -22,10 +22,6 @@ import {
   ShowcaseCard,
   StatList,
 } from 'lib/games/shared/ui/Showcase'
-import {
-  statIcon,
-  type StatIconKind,
-} from 'lib/games/shared/ui/statIcons'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type {
   ActiveConditions,
@@ -42,13 +38,10 @@ import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
   CONDITION_LABELS,
   CORE_SKILL_OPTIONS,
-  formatStat,
-  STAT_ROWS,
 } from 'lib/games/zzz/statLabels'
 import {
   computeStats,
   defaultConditions,
-  type FinalStats,
   statScreenConditions,
   toDisplayStats,
 } from 'lib/games/zzz/stats/computeStats'
@@ -61,6 +54,7 @@ import {
   AgentForm,
   defaultWEngine,
 } from 'lib/games/zzz/ui/AgentForm'
+import { zzzStatRows } from 'lib/games/zzz/ui/agentStats'
 import {
   DiscCard,
   elementColor,
@@ -74,24 +68,6 @@ import {
 // with the agent's art, W-Engine, stat screen and discs (shared/ui/Showcase.tsx). The roster lists every agent Enka
 // knows (or every agent with stat data until Enka loads); ones not in the save are dimmed, and those with stat data can
 // be added by hand (Mindscape, W-Engine). Art comes from Enka (data/images.ts); without it the page shows initials.
-
-const HIGHLIGHTED = new Set<keyof FinalStats>(['atk', 'critRate', 'critDmg', 'sheerForce'])
-
-const STAT_ICON_KINDS: Record<keyof FinalStats, StatIconKind> = {
-  hp: 'hp',
-  atk: 'atk',
-  def: 'def',
-  impact: 'impact',
-  anomalyMastery: 'mastery',
-  anomalyProficiency: 'proficiency',
-  critRate: 'critRate',
-  critDmg: 'critDmg',
-  penRatio: 'penRatio',
-  pen: 'pen',
-  energyRegen: 'energy',
-  elementDmg: 'elementDmg',
-  sheerForce: 'sheer',
-}
 
 type Preset = 'screen' | 'combat' | 'custom'
 
@@ -193,7 +169,6 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
   const wEngine = build.wEngineId ? W_ENGINES[build.wEngineId] : undefined
   const art = images.agents[entry.agentId]
   const display = computed ? toDisplayStats(computed.stats) : undefined
-  const rows = STAT_ROWS.filter((row) => !row.ruptureOnly || entry.specialty === 'Rupture')
   const notes = [...(resolved.ok ? resolved.notes : []), ...(computed?.warnings ?? [])]
   const discWeights = agent ? zzzDiscWeights(agent) : {}
   const worn = resolved.ok ? resolved.build.discs : []
@@ -253,15 +228,7 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
                 />
               )}
 
-              <StatList
-                rows={rows.map((row) => ({
-                  key: row.key,
-                  icon: statIcon(STAT_ICON_KINDS[row.key]),
-                  label: row.label,
-                  value: formatStat(row, display[row.key]),
-                  highlight: HIGHLIGHTED.has(row.key),
-                }))}
-              />
+              <StatList rows={zzzStatRows(display, entry.specialty)} />
               <BuildRating score={scoreBuild(worn.map((disc) => scoreDisc(disc, discWeights)), 6)} label='Disc score' />
 
               <SegmentedControl

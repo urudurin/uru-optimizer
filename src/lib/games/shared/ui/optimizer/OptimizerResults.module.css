@@ -1,0 +1,25 @@
+/* Optimizer results (ResultsGrid.tsx) and the build preview below them, after HSR's optimizer tab */
+
+.grid {
+  width: 100%;
+  height: 420px;
+  min-height: 200px;
+  overflow: hidden;
+  resize: vertical;
+}
+
+.primaryHeader {
+  color: var(--primary-light);
+}
+
+.primaryCell {
+  font-weight: 600;
+}
+
+.previewHeading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}

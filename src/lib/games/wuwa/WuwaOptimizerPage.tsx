@@ -1,12 +1,13 @@
 import {
+  Badge,
   Button,
+  Group,
   MultiSelect,
   NumberInput,
   Select,
   SimpleGrid,
   Stack,
   Switch,
-  Table,
   Text,
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
@@ -24,21 +25,29 @@ import {
   Notices,
   PageHeader,
   Panel,
-  StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
+import {
+  CharacterPortrait,
+  RankButtons,
+} from 'lib/games/shared/ui/optimizer/CharacterPanel'
+import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
+import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
   FormCard,
   FormRow,
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
+import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
 import {
   characterName,
   SONATA_SETS,
   WEAPONS,
 } from 'lib/games/wuwa/data/gameData'
+import { useUserArt } from 'lib/games/wuwa/data/userArt'
 import { MAIN_STAT_MAX } from 'lib/games/wuwa/echoStats'
 import { wuwaSubstatUpgrades } from 'lib/games/wuwa/optimizer/analysis'
 import {
@@ -67,6 +76,7 @@ import {
 } from 'lib/games/wuwa/stats/computeStats'
 import {
   scoreEcho,
+  wuwaBuildScore,
   wuwaEchoWeights,
 } from 'lib/games/wuwa/stats/echoScore'
 import {
@@ -78,8 +88,11 @@ import {
 } from 'lib/games/wuwa/types'
 import {
   EchoCard,
+  elementColor,
+  elementName,
   setName,
 } from 'lib/games/wuwa/ui/EchoCard'
+import { wuwaStatRows } from 'lib/games/wuwa/ui/resonatorStats'
 import {
   useMemo,
   useState,
@@ -90,12 +103,6 @@ const SHOWN_STATS: (keyof WuwaStats)[] = ['hp', 'atk', 'def', 'critRate', 'critD
 const MIN_STATS: (keyof WuwaStats)[] = ['energyRegen', 'critRate', 'critDmg', 'atk', 'hp', 'def', 'elementDmg']
 const FLAT_STATS = new Set<keyof WuwaStats>(['hp', 'atk', 'def'])
 const RESULT_LIMIT = 10
-
-// As the overview screen shows it: rounded down
-function formatStat(stat: keyof WuwaStats, stats: WuwaStats): string {
-  const shown = toDisplayStats(stats)[stat]
-  return FLAT_STATS.has(stat) ? formatNumber(shown) : `${shown}%`
-}
 
 // One stat value as the overview screen rounds it: down
 function formatValue(stat: keyof WuwaStats, value: number): string {
@@ -133,6 +140,8 @@ function defaultSettings(): WuwaOptimizerSettings {
 export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const echoes = useWuwaStore((s) => s.echoes)
   const characters = useWuwaStore((s) => s.characters)
+  const art = useUserArt()
+  const saveCharacter = useWuwaStore((s) => s.saveCharacter)
   const teams = useWuwaStore((s) => s.teams)
   const priority = useWuwaStore((s) => s.priority)
   const equip = useWuwaStore((s) => s.equip)
@@ -182,6 +191,12 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const maxTwoPiece = fullSet ? Math.floor((5 - fullSetPieces) / 2) : 2
   const twoPieceOptions = setOptions.filter((o) => o.value !== fullSet && (SONATA_SETS[o.value]?.fullPieces ?? 5) === 5)
   const weapon = character.weaponId ? WEAPONS[character.weaponId] : undefined
+  const element = CHARACTER_INFO[character.charId]?.element
+  const resultValues = (b: { echoes: Echo[], stats: WuwaStats, score: number }) => ({
+    score: b.score,
+    ...Object.fromEntries(SHOWN_STATS.map((stat) => [stat, toDisplayStats(b.stats)[stat]])),
+    cost: costOf(b.echoes),
+  })
 
   const filters = { mainStats, fullSet: fullSet ?? undefined, twoPieceSets: twoPieceSets.slice(0, maxTwoPiece), excludeEquippedByOthers }
   // Echoes per cost after the filters, and the loadouts they make, live as the filters change
@@ -243,6 +258,12 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
         <Stack gap='md'>
           <FormRows>
             <FormRow id='wuwa-resonator' title='Resonator' summary={`${characterName(character.charId)} · ${targetLabel(target)}`}>
+              <CharacterPortrait
+                name={characterName(character.charId)}
+                portrait={art[character.charId]?.portrait}
+                accent={element && `var(--mantine-color-${elementColor(element)}-6)`}
+                weapon={weapon && { name: weapon.name }}
+              />
               <FormCard title='Resonator'>
                 <Select
                   aria-label='Resonator'
@@ -258,8 +279,33 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                   data={characters.map((c) => ({ value: c.charId, label: characterName(c.charId) }))}
                 />
                 <Text size='xs' c='dimmed'>
-                  {`Level ${character.level} · S${character.sequence} · ${weapon ? `${weapon.name} R${character.refinement}` : 'No weapon'}`}
+                  {`Level ${character.level} · ${weapon ? `${weapon.name}, level ${character.weaponLevel}` : 'No weapon'}`}
                 </Text>
+                {/* Like HSR's Eidolon and Superimposition buttons, these change the saved Resonator */}
+                <RankButtons
+                  label='Sequence'
+                  prefix='S'
+                  from={0}
+                  to={6}
+                  value={character.sequence}
+                  onChange={(sequence) => {
+                    saveCharacter({ ...character, sequence })
+                    setResult(undefined)
+                  }}
+                />
+                {weapon && (
+                  <RankButtons
+                    label='Rank'
+                    prefix='R'
+                    from={1}
+                    to={5}
+                    value={character.refinement}
+                    onChange={(refinement) => {
+                      saveCharacter({ ...character, refinement })
+                      setResult(undefined)
+                    }}
+                  />
+                )}
               </FormCard>
               <FormCard
                 title='Rank by'
@@ -287,27 +333,24 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                 title='Sonata sets'
                 description='Only bonuses the overview screen shows are counted (2-pieces, not most 5-piece effects), so pick the set you want to run here. Two copies of one echo count once.'
               >
-                <Select
+                <SetPicker
                   label='Full set (5-piece, or 3 for three-piece sets)'
-                  placeholder='Any'
-                  searchable
-                  clearable
-                  value={fullSet}
-                  onChange={(value) => {
-                    setFullSet(value)
+                  max={1}
+                  options={setOptions}
+                  value={fullSet ? [fullSet] : []}
+                  onChange={(ids) => {
+                    setFullSet(ids[0] ?? null)
                     setTwoPieceSets([])
                   }}
-                  data={setOptions}
                 />
-                <MultiSelect
+                <SetPicker
                   label='2-piece sets'
-                  placeholder={maxTwoPiece === 0 ? 'No room with a 5-piece set' : twoPieceSets.length ? undefined : 'Any'}
-                  searchable
+                  max={Math.max(maxTwoPiece, 1)}
+                  placeholder={maxTwoPiece === 0 ? 'No room with a 5-piece set' : 'Any'}
                   disabled={maxTwoPiece === 0}
-                  maxValues={maxTwoPiece}
+                  options={twoPieceOptions}
                   value={twoPieceSets}
                   onChange={setTwoPieceSets}
-                  data={twoPieceOptions}
                 />
               </FormCard>
               <FormCard title='Main stats'>
@@ -366,75 +409,58 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                 {outcome.builds.length === 0
                   ? <Text size='sm' c='dimmed'>Nothing matched. Loosen the minimum stats or filters and search again.</Text>
                   : (
-                    <Table.ScrollContainer minWidth={640} mah={420}>
-                      <Table highlightOnHover verticalSpacing={6} stickyHeader>
-                        <Table.Thead>
-                          <Table.Tr>
-                            <Table.Th>#</Table.Th>
-                            <Table.Th ta='right' c='var(--primary-light)'>{targetLabel(result.target)}</Table.Th>
-                            {SHOWN_STATS.map((stat) => <Table.Th key={stat} ta='right'>{wuwaStatLabel(stat)}</Table.Th>)}
-                            <Table.Th ta='right'>Cost</Table.Th>
-                            <Table.Th>Sets</Table.Th>
-                          </Table.Tr>
-                        </Table.Thead>
-                        <Table.Tbody>
-                          {current && (
-                            <Table.Tr>
-                              <Table.Td c='dimmed'>Now</Table.Td>
-                              <Table.Td ta='right' c='dimmed'>{formatScore(result.target, current.score)}</Table.Td>
-                              {SHOWN_STATS.map((stat) => <Table.Td key={stat} ta='right' c='dimmed'>{formatStat(stat, current.stats)}</Table.Td>)}
-                              <Table.Td ta='right' c='dimmed'>{costOf(current.echoes)}</Table.Td>
-                              <Table.Td c='dimmed'>
-                                <Text size='xs' lineClamp={1}>{describeSets(current.echoes)}</Text>
-                              </Table.Td>
-                            </Table.Tr>
-                          )}
-                          {outcome.builds.map((b, i) => (
-                            <Table.Tr
-                              key={b.echoes.map((e) => e.id).join()}
-                              className={classes.resultRow}
-                              data-active={i === selected || undefined}
-                              onClick={() => setSelected(i)}
-                            >
-                              <Table.Td c='dimmed'>{i + 1}</Table.Td>
-                              <Table.Td ta='right' fw={600}>{formatScore(result.target, b.score)}</Table.Td>
-                              {SHOWN_STATS.map((stat) => <Table.Td key={stat} ta='right'>{formatStat(stat, b.stats)}</Table.Td>)}
-                              <Table.Td ta='right'>{costOf(b.echoes)}</Table.Td>
-                              <Table.Td>
-                                <Text size='xs' lineClamp={1}>{describeSets(b.echoes)}</Text>
-                              </Table.Td>
-                            </Table.Tr>
-                          ))}
-                        </Table.Tbody>
-                      </Table>
-                    </Table.ScrollContainer>
+                    <ResultsGrid
+                      key={outcome.builds.length + result.target.kind}
+                      columns={[
+                        {
+                          key: 'score',
+                          label: targetLabel(result.target),
+                          format: (value: number) => formatScore(result.target, value),
+                          primary: true,
+                          width: 110,
+                        },
+                        ...SHOWN_STATS.map((stat) => ({ key: stat, label: wuwaStatLabel(stat), format: (value: number) => formatValue(stat, value) })),
+                        { key: 'cost', label: 'Cost', format: (value: number) => String(value), width: 60 },
+                      ]}
+                      rows={outcome.builds.map((b, i) => ({ id: String(i), rank: String(i + 1), values: resultValues(b), sets: describeSets(b.echoes) }))}
+                      current={current ? { id: 'now', rank: 'Now', values: resultValues(current), sets: describeSets(current.echoes) } : undefined}
+                      selected={selected}
+                      onSelect={setSelected}
+                    />
                   )}
               </Stack>
             </Panel>
           )}
 
           {build && result && (
-            <Panel
+            <BuildPreview
               title={`Loadout #${selected + 1}`}
               description={`${describeSets(build.echoes)} · Cost ${costOf(build.echoes)} / ${MAX_LOADOUT_COST}${
                 current ? ` · ${build.score >= current.score ? '+' : ''}${(((build.score / current.score) - 1) * 100).toFixed(1)}% vs current` : ''
               }`}
-            >
-              <Stack gap='md'>
-                <StatGrid stats={SHOWN_STATS.map((stat) => ({ key: stat, label: wuwaStatLabel(stat), value: formatStat(stat, build.stats) }))} />
-                <Text size='xs' c='dimmed'>Pick the main echo (its skill) yourself: echo skills don't change the overview screen.</Text>
-                <div className={gear.grid}>
-                  {build.echoes.map((echo) => (
-                    <EchoCard
-                      key={echo.id}
-                      echo={echo}
-                      owner={ownerOf.get(echo.id)}
-                      score={scoreEcho(echo, wuwaEchoWeights(character))}
-                    />
-                  ))}
-                </div>
-              </Stack>
-            </Panel>
+              name={characterName(character.charId)}
+              accent={element && `var(--mantine-color-${elementColor(element)}-6)`}
+              portrait={art[character.charId]?.portrait}
+              weapon={weapon && { name: weapon.name, meta: `Lv ${character.weaponLevel} · R${character.refinement}` }}
+              heading={
+                <Group gap={6} mt={4}>
+                  {element && <Badge size='sm' variant='light' color={elementColor(element)}>{elementName(element)}</Badge>}
+                  <Text size='xs' c='dimmed'>{`Lv ${character.level} · S${character.sequence}`}</Text>
+                </Group>
+              }
+              rows={wuwaStatRows(toDisplayStats(build.stats), element)}
+              rating={wuwaBuildScore(character, build.echoes)}
+              ratingLabel='Echo score'
+              footer={<Text size='xs' c='dimmed'>Pick the main echo (its skill) yourself: echo skills don't change the overview screen.</Text>}
+              gear={build.echoes.map((echo) => (
+                <EchoCard
+                  key={echo.id}
+                  echo={echo}
+                  owner={ownerOf.get(echo.id)}
+                  score={scoreEcho(echo, wuwaEchoWeights(character))}
+                />
+              ))}
+            />
           )}
 
           {build && result && (
