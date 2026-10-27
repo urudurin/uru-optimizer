@@ -287,7 +287,9 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const damageSetup: DamageSetup = {
     multiplier: rotationMultiplier(agent.id, rotation),
     bonusMultiplier: rotationBonusMultiplier(agent.id, rotation, kit.kindBonus, kit.skillBonus),
-    scaling: agent.specialty === 'Rupture' ? 'sheer' : 'atk',
+    scaling: agent.specialty === 'Rupture' ? 'sheer' : agent.specialty === 'Armorer' ? 'sharp' : 'atk',
+    lacerationDmg: 150 + kit.lacerationBonus,
+    critRateFromCritDmg: kit.critRateFromCritDmg,
     anomalyMultiplier: rotationAnomalyMultiplier(agent.id, agent.element, rotation),
     agentLevel: agent.level,
     enemy,
@@ -619,7 +621,7 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
               <RotationCard
                 agentId={agent.id}
                 element={agent.element}
-                scaling={agent.specialty === 'Rupture' ? 'Sheer Force' : 'ATK'}
+                scaling={agent.specialty === 'Rupture' ? 'Sheer Force' : agent.specialty === 'Armorer' ? 'DEF' : 'ATK'}
                 rotation={rotation}
                 damage={currentDamage}
                 onChange={(next) => setRotation(next)}

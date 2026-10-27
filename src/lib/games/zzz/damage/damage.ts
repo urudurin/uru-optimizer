@@ -22,7 +22,10 @@ import type { FinalStats } from 'lib/games/zzz/stats/computeStats'
 // own bonus) while the rest of the formula stays shared.
 // Rupture agents deal Sheer damage with their skills, as genshin-optimizer has it (prep.ts sheerDmg): Sheer Force x
 // multiplier x DMG Bonus x CRIT x RES x DMG taken x Stun, with no DEF multiplier. Their anomalies stay ATK-based.
-// Not yet: Sheer DMG Bonus stats, Armorer (Claret) DEF-based Sharp damage, anomaly-specific bonuses (Burn DMG...), Aftershock hits and hits of another attribute than the
+// Armorer agents (Claret) deal Sharp damage (prep.ts sharpDmg): DEF x multiplier x DMG Bonus x DEF multiplier x RES x
+// DMG taken x Stun x the Laceration multiplier, which takes CRIT's place: (1 + min(CRIT Rate, 100%) x Laceration DMG) x
+// (1 + max(CRIT Rate - 100%, 0) x Laceration DMG), with 150% Laceration DMG to start (genshin-optimizer util.ts).
+// Not yet: Sheer and Sharp DMG Bonus stats, anomaly-specific bonuses (Burn DMG...), Aftershock hits and hits of another attribute than the
 // agent's. Personal, non-commercial use.
 
 // genshin-optimizer's defLevelFactor, by agent level
@@ -118,8 +121,12 @@ export type DamageSetup = {
   anomalyMultiplier?: number,
   // Sum over the rotation of count x hit multiplier x the hit's own extra DMG Bonus (a fraction), in percent of ATK
   bonusMultiplier?: number,
-  // What skill hits scale on: ATK, or Sheer Force for Rupture agents (Sheer damage, which ignores DEF)
-  scaling?: 'atk' | 'sheer',
+  // What skill hits scale on: ATK, Sheer Force for Rupture agents (Sheer damage, which ignores DEF), or DEF for Armorer
+  // agents (Sharp damage, with Laceration instead of CRIT)
+  scaling?: 'atk' | 'sheer' | 'sharp',
+  // Sharp damage: Laceration DMG in percent (150 to start), and CRIT Rate per point of CRIT DMG (Claret's Core Skill)
+  lacerationDmg?: number,
+  critRateFromCritDmg?: number,
   agentLevel: number,
   enemy: EnemySettings,
   debuffs: EnemyDebuffs,
@@ -149,9 +156,14 @@ export function rotationDamage(stats: FinalStats, setup: DamageSetup): number {
   const f = damageFactors(stats, setup)
   const shared = f.res * f.dmgTaken * f.stun
   // Rupture agents' skill hits are Sheer damage: Sheer Force instead of ATK, and no DEF multiplier
-  const sheer = setup.scaling === 'sheer'
-  const standard = (sheer ? stats.sheerForce : stats.atk * f.def)
-    * ((setup.multiplier * f.dmgBonus + (setup.bonusMultiplier ?? 0)) / 100) * f.crit
+  const hits = (setup.multiplier * f.dmgBonus + (setup.bonusMultiplier ?? 0)) / 100
+  let standard: number
+  if (setup.scaling === 'sheer') standard = stats.sheerForce * hits * f.crit
+  else if (setup.scaling === 'sharp') {
+    const critRate = Math.max(0, stats.critRate + (setup.critRateFromCritDmg ?? 0) * stats.critDmg) / 100
+    const laceration = (setup.lacerationDmg ?? 150) / 100
+    standard = stats.def * f.def * hits * (1 + Math.min(critRate, 1) * laceration) * (1 + Math.max(critRate - 1, 0) * laceration)
+  } else standard = stats.atk * f.def * hits * f.crit
   const anomaly = stats.atk * f.def * ((setup.anomalyMultiplier ?? 0) / 100) * f.dmgBonus * (stats.anomalyProficiency / 100)
     * anomalyLevelMultiplier(setup.agentLevel)
   return shared * (standard + anomaly)

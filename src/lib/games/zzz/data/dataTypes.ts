@@ -1,7 +1,7 @@
 import type { FinalStats } from 'lib/games/zzz/stats/computeStats'
 import type { ZzzStatsValues } from 'lib/games/zzz/types'
 
-export type Specialty = 'Attack' | 'Stun' | 'Anomaly' | 'Support' | 'Defense' | 'Rupture'
+export type Specialty = 'Attack' | 'Stun' | 'Anomaly' | 'Support' | 'Defense' | 'Rupture' | 'Armorer'
 
 // Situations a conditional effect can depend on
 export type Condition = 'onField' | 'inEtherVeil' | 'veilTriggered' | 'freezeOrShatter'

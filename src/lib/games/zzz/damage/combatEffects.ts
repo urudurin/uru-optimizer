@@ -33,6 +33,9 @@ export type ZzzCombatEffect = {
   stats?: (context: ZzzCombatContext) => { stat: ZzzStatsValues, value: number }[],
   kinds?: (context: ZzzCombatContext) => Partial<Record<HitKind, number>>,
   skills?: (context: ZzzCombatContext) => Record<string, number>,
+  // Sharp damage (Armorer agents): Laceration DMG in percent, and CRIT Rate per point of CRIT DMG
+  laceration?: (context: ZzzCombatContext) => number,
+  critRateFromCritDmg?: number,
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
 
@@ -123,6 +126,19 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
   // Claret
   '1611': [
     {
+      id: 'claret-core-crit-from-crit-dmg',
+      label: 'Core Skill: CRIT Rate +0.35% per 1% CRIT DMG (her Sharp damage uses CRIT Rate and Laceration, not CRIT DMG)',
+      critRateFromCritDmg: 0.35,
+      confidence: 'sourced',
+    },
+    {
+      id: 'claret-ability-laceration',
+      label: 'Additional Ability: Laceration DMG +25% with Remnant Edge, with 3 Stun, Armorer or Electric agents in the squad',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      laceration: () => 25,
+      confidence: 'sourced',
+    },
+    {
       id: 'claret-core-crit',
       label: 'Core Skill: CRIT Rate +30% with Crimson Inscription',
       toggle: { kind: 'switch', label: 'Crimson Inscription' },
@@ -156,6 +172,9 @@ export type ZzzResolvedCombat = {
   statEffects: StatEffect[],
   kindBonus: Partial<Record<HitKind, number>>,
   skillBonus: Record<string, number>,
+  // Sharp damage: extra Laceration DMG and CRIT Rate per point of CRIT DMG
+  lacerationBonus: number,
+  critRateFromCritDmg: number,
 }
 
 export function defaultEffectSetting(effect: ZzzCombatEffect): boolean | number {
@@ -163,7 +182,7 @@ export function defaultEffectSetting(effect: ZzzCombatEffect): boolean | number 
 }
 
 export function resolveZzzCombat(agentId: string, mindscape: number, settings: Record<string, boolean | number>): ZzzResolvedCombat {
-  const resolved: ZzzResolvedCombat = { applied: [], statEffects: [], kindBonus: {}, skillBonus: {} }
+  const resolved: ZzzResolvedCombat = { applied: [], statEffects: [], kindBonus: {}, skillBonus: {}, lacerationBonus: 0, critRateFromCritDmg: 0 }
   for (const effect of KIT_EFFECTS[agentId] ?? []) {
     const setting = settings[effect.id] ?? defaultEffectSetting(effect)
     if ((effect.minMindscape ?? 0) > mindscape) {
@@ -180,6 +199,8 @@ export function resolveZzzCombat(agentId: string, mindscape: number, settings: R
     for (const [kind, value] of Object.entries(effect.kinds?.(context) ?? {}) as [HitKind, number][]) {
       resolved.kindBonus[kind] = (resolved.kindBonus[kind] ?? 0) + value
     }
+    resolved.lacerationBonus += effect.laceration?.(context) ?? 0
+    resolved.critRateFromCritDmg += effect.critRateFromCritDmg ?? 0
     for (const [skill, value] of Object.entries(effect.skills?.(context) ?? {})) {
       resolved.skillBonus[skill] = (resolved.skillBonus[skill] ?? 0) + value
     }

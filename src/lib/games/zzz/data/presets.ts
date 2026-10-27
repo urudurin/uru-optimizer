@@ -156,6 +156,13 @@ const SPECIALTY_DEFAULTS: Record<Specialty, SpecialtyDefault> = {
     rankBy: 'sheerForce',
     thenBy: ['critDmg', 'critRate'],
   },
+  // Sharp damage scales on DEF and CRIT Rate (Laceration replaces CRIT DMG, which only helps through Claret's conversion)
+  Armorer: {
+    mainStats: { 4: [ZzzStats.CRIT_RATE, ZzzStats.CRIT_DMG], 5: [ZzzStats.ELEMENT_DMG, ZzzStats.DEF_P], 6: [ZzzStats.DEF_P] },
+    substatPriority: [ZzzStats.CRIT_RATE, ZzzStats.DEF_P, ZzzStats.CRIT_DMG],
+    rankBy: 'critRate',
+    thenBy: ['def'],
+  },
 }
 
 // The agent's own preset, or a generic one for its specialty

@@ -116,6 +116,22 @@ describe('ZZZ damage', () => {
     expect(resolveZzzCombat(MIYABI.id, 0, { 'miyabi-ult-ice': false }).statEffects).toEqual([])
   })
 
+  it('works out Armorer agents\' Sharp damage from DEF, with Laceration instead of CRIT DMG', () => {
+    const setup = { multiplier: 100, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS, scaling: 'sharp' as const }
+    const def = 794 / (794 + Math.max(0, 635 * (1 - stats.penRatio / 100) - stats.pen))
+    const bonus = 1 + stats.elementDmg / 100
+    // 60% CRIT Rate, 150% Laceration: 1 + 0.6 x 1.5
+    const at60 = { ...stats, def: 2000, critRate: 60 }
+    expect(rotationDamage(at60, setup)).toBeCloseTo(2000 * bonus * def * 1.9, 6)
+    // CRIT DMG doesn't count by itself
+    expect(rotationDamage({ ...at60, critDmg: 300 }, setup)).toBeCloseTo(rotationDamage(at60, setup), 6)
+    // CRIT Rate above 100% adds a second Laceration multiplier: 130% -> 2.5 x 1.45
+    expect(rotationDamage({ ...at60, critRate: 130 }, setup)).toBeCloseTo(2000 * bonus * def * 2.5 * 1.45, 6)
+    // Claret's conversion and Laceration bonus: 60% + 0.35 x 100% CRIT DMG = 95% CRIT Rate, 175% Laceration
+    const claret = { ...setup, critRateFromCritDmg: 0.35, lacerationDmg: 175 }
+    expect(rotationDamage({ ...at60, critDmg: 100 }, claret)).toBeCloseTo(2000 * bonus * def * (1 + 0.95 * 1.75), 6)
+  })
+
   it('works out Rupture agents\' Sheer damage from Sheer Force, without the DEF multiplier', () => {
     const sheer = { ...stats, sheerForce: 2696 }
     const setup = { multiplier: 100, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS, scaling: 'sheer' as const }
