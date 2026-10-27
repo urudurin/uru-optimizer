@@ -6,6 +6,8 @@ import {
   defaultRotation,
   hitMultiplier,
   NO_DEBUFFS,
+  reactionLevelMultiplier,
+  reactionsFor,
   rotationDamage,
 } from 'lib/games/genshin/damage/damage'
 import type {
@@ -102,5 +104,23 @@ describe('Genshin damage', () => {
     expect(infused / physical).toBeCloseTo(1.466 / 1.2, 6)
     // Physical hits don't vaporize
     expect(rotationDamage(stats, setup({ rotation: { ...rotation, reaction: 'vaporize' } }))).toBeCloseTo(physical, 6)
+  })
+
+  it('adds Aggravate and Spread as flat damage on each reacting hit, before the DMG Bonus and CRIT', () => {
+    expect(reactionLevelMultiplier(90)).toBeCloseTo(1446.8535, 4)
+    expect(reactionsFor('Electro')).toEqual(['aggravate'])
+    expect(reactionsFor('Dendro')).toEqual(['spread'])
+    expect(reactionsFor('Pyro')).toEqual(['vaporize', 'melt'])
+
+    // Nahida's Tri-Karma once, against the default enemy, with and without Spread on half the hits
+    const tkp = hit('Nahida', 'Tri-Karma Purification DMG')
+    const nahida = { ...stats, dendroDmg: 46.6, pyroDmg: 0 }
+    const rotation = { counts: { [tkp.key]: 2 }, infusion: false, reaction: 'none' as const, reactionShare: 50 }
+    const base: DamageSetup = { ...setup(), characterId: 'Nahida', element: 'Dendro', rotation }
+    const plain = rotationDamage(nahida, base)
+    const spread = rotationDamage(nahida, { ...base, rotation: { ...rotation, reaction: 'spread' } })
+    const flat = 1.25 * 1446.8535 * (1 + 5 * 200 / 1400)
+    const perPoint = plain / (2 * (2000 * 1.7544 + 200 * 3.5088))
+    expect(spread - plain).toBeCloseTo(perPoint * 0.5 * 2 * flat, 0)
   })
 })

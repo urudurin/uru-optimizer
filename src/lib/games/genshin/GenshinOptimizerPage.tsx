@@ -324,7 +324,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
     <Stack gap='lg'>
       <PageHeader
         title='Optimizer'
-        description='Searches your artifacts for the 5-piece builds that score highest, with stats worked out like the Characters page. Rotation damage counts talent multipliers, the enemy, team shred and Vaporize or Melt; set minimums (such as Energy Recharge) for anything else the character needs.'
+        description='Searches your artifacts for the 5-piece builds that score highest, with stats worked out like the Characters page. Rotation damage counts talent multipliers, the enemy, team shred and Vaporize, Melt, Aggravate or Spread; set minimums (such as Energy Recharge) for anything else the character needs.'
       />
 
       <div className={classes.optimizerLayout}>

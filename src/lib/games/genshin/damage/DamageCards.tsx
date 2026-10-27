@@ -41,7 +41,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const TALENT_LABELS: Record<Talent, string> = { auto: 'Normal Attack', skill: 'Skill', burst: 'Burst' }
 
-const REACTION_LABELS: Record<Reaction, string> = { none: 'None', vaporize: 'Vaporize', melt: 'Melt' }
+const REACTION_LABELS: Record<Reaction, string> = { none: 'None', vaporize: 'Vaporize', melt: 'Melt', aggravate: 'Aggravate', spread: 'Spread' }
 
 export function EnemyCard({ enemy, debuffs, onChange }: {
   enemy: EnemySettings,
