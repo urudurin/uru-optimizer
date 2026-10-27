@@ -1,0 +1,1452 @@
+{
+  "provenance": {
+    "source": "https://github.com/Arikatsu/WutheringWaves_Data/tree/3.7",
+    "files": [
+      "BinData/phantom/phantomitem.json",
+      "BinData/phantom/phantomskill.json",
+      "BinData/damage/damage.json",
+      "Textmaps/en/multi_text/MultiText.json"
+    ],
+    "extractedBy": "src/scripts/wuwa/extractEchoSkills.mjs",
+    "extractedOn": "2026-10-27",
+    "note": "Echo Skill damage hits at the highest rank: multiplier (percent), scaling stat and element. Personal, non-commercial use."
+  },
+  "echoes": {
+    "abyssal-gladius": {
+      "name": "Abyssal Gladius",
+      "description": "Transform into Abyssal Gladius and attack enemies in front of you with the sword, dealing {0} Glacio DMG.\nHold the Echo Skill to maintain the Echo form for a while to slash enemies and cast a ranged attack forward, dealing {1} and {2} Glacio DMG respectively.\nCD: {3}s.",
+      "values": ["268.20%", "268.20%", "670.50%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 268.2, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 670.5, "stat": "atk", "element": "glacio" }
+      ]
+    },
+    "abyssal-patricius": {
+      "name": "Abyssal Patricius",
+      "description": "Transform into Abyssal Patricius and charge forward to attack enemies, dealing {0} Glacio DMG.\nThe Resonator with this Echo equipped in the main slot gains {1} Glacio DMG Bonus.\nCD: {2}s.",
+      "values": ["268.20%", "12.00%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "glacio" }]
+    },
+    "aero-drake": {
+      "name": "Aero Drake",
+      "description": "Summon an Aero Drake to attack enemies, dealing {0} Aero DMG.\nCD: {1}s.",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "aero" }]
+    },
+    "aero-predator": {
+      "name": "Aero Predator",
+      "description": "Summon an Aero Predator that throws a dart forward. The dart will bounce between enemies up to three times, dealing {0} Aero DMG each time it hits.\n\nCD: {1}s",
+      "values": ["28.80%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 28.8, "stat": "atk", "element": "aero" }]
+    },
+    "aero-prism": {
+      "name": "Aero Prism",
+      "description": "Summon an Aero Prism to attack enemies, dealing {0} Aero DMG.\nCD: {1}s.",
+      "values": ["19.26%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 19.26, "stat": "atk", "element": "aero" }]
+    },
+    "aureate-picket": {
+      "name": "Aureate Picket",
+      "description": "Use Echo Skill to transform into an Aureate Picket, immediately recover {1} HP times plus an additional instance of {2} points of HP, then bash into enemies and deal {0} Aero DMG.\n\nCD: {3}s",
+      "values": ["153.90%", "0.55%", "24", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 153.9, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 0.55, "stat": "hp", "element": null }
+      ]
+    },
+    "autopuppet-scout": {
+      "name": "Autopuppet Scout",
+      "description": "Transform into Autopuppet Scout, dealing {0} Glacio DMG to the surroundings, and generate up to 3 Ice Walls to block off the enemies.\n\nCD: {1}s",
+      "values": ["272.00%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 272, "stat": "atk", "element": "glacio" }]
+    },
+    "bell-borne-geochelone": {
+      "name": "Bell-Borne Geochelone",
+      "description": "Activate the protection of Bell-Borne Geochelone. Deal Glacio DMG based on {0} of the current character's DEF to nearby enemies, and obtain a Bell-Borne Shield that lasts for {1}s\n\nThe Bell-Borne Shield provides {2} DMG Reduction and {3} DMG Boost for the current team members, and disappears after the current character is hit for {4} times.\n\nCD: {5}s",
+      "values": ["145.92%", "15", "50.00%", "10.00%", "3", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 145.92, "stat": "def", "element": "glacio" }]
+    },
+    "bloomburst-puppet": {
+      "name": "Bloomburst Puppet",
+      "description": "Summon a Bloomburst Puppet to startle the target, dealing 1 instance of {0} Glacio DMG, followed by 2 instances of {1} Glacio DMG and 1 instance of {2} Glacio DMG.\nCD: {3}s",
+      "values": ["25.92%", "12.96%", "77.76%", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 25.92, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 12.96, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 77.76, "stat": "atk", "element": "glacio" }
+      ]
+    },
+    "calamity-effigy": {
+      "name": "Calamity Effigy",
+      "description": "Transform into Calamity Effigy to deal {0} Aero DMG.\nThe Resonator with this Echo equipped in the main slot gains {1} Aero DMG Bonus, and additionally gains {2} Aero DMG Bonus for {3}s when inflicting Tune Strain - Shifting on the target.\nCD: {4}s",
+      "values": ["405.00%", "10.00%", "10.00%", "15", "25"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 405, "stat": "atk", "element": "aero" }]
+    },
+    "calcified-junrock": {
+      "name": "Calcified Junrock",
+      "description": "Summon a Calcified Junrock that restores HP for nearby Resonators in the team by {0} of their Max HP, up to 5 times.\nCD: {1}s",
+      "values": ["2.52%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 2.52, "stat": "hp", "element": null }]
+    },
+    "capitaneus": {
+      "name": "Capitaneus",
+      "description": "Summon a Capitaneus to jump up and smash enemies, dealing {0} Spectro DMG. This attack generates 4 extra Merciless Judgements, each dealing {1} Spectro DMG.\nThe Resonator with this Echo equipped in their main slot gains {2} Spectro DMG Bonus and {3} Heavy Attack DMG Bonus.\nCD: {4}s.",
+      "values": ["118.80%", "59.40%", "12.00%", "12.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 118.8, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 59.4, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "carapace": {
+      "name": "Carapace",
+      "description": "Transform into Carapace to perform a spinning attack that deals {0} Aero DMG, followed by a slash that deals {1} Aero DMG.\n\nCD: {2}s",
+      "values": ["112.00%", "168.00%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 112, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 168, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "chasm-guardian": {
+      "name": "Chasm Guardian",
+      "description": "Transform into Chasm Guardian to perform a Leap Strike that deals {0} Havoc DMG on hit. Current character loses {1} HP after the hit lands. Periodically restore current character's HP after {2}s for up to {3} of their Max HP.\n\nCD: {4}s",
+      "values": ["273.60%", "10.00%", "5", "10.00%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "havoc" }]
+    },
+    "chirpuff": {
+      "name": "Chirpuff",
+      "description": "Summon a Chirpuff that self-inflates and blasts a powerful gust of wind forward {0} times. Each blast inflicts {1} Aero DMG and pushes enemies backwards.\n\nCD: {2}s",
+      "values": ["3", "38.40%", "8"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 38.4, "stat": "atk", "element": "aero" }]
+    },
+    "chop-chop": {
+      "name": "Chop Chop",
+      "description": "Summon a Chop Chop to perform a series of consecutive attacks. The first 6 strikes each deal {0} Fusion DMG and finishing strike deals {1} Fusion DMG.\nCD: {2}s.",
+      "values": ["19.26%", "77.04%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 19.26, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 77.04, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "chop-chop-headless": {
+      "name": "Chop Chop: Headless",
+      "description": "Summon a Chop Chop: Headless to attack enemies, dealing {0} Fusion DMG.\nCD: {1}s.",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "fusion" }]
+    },
+    "chop-chop-leftless": {
+      "name": "Chop Chop: Leftless",
+      "description": "Summon a Chop Chop: Leftless to attack enemies, dealing {0} Spectro DMG.\nCD: {1}s.",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "spectro" }]
+    },
+    "chop-chop-rightless": {
+      "name": "Chop Chop: Rightless",
+      "description": "Summon a Chop Chop: Rightless to attack enemies, dealing {0} Havoc DMG.\nCD: {1}s.",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "havoc" }]
+    },
+    "corrosaurus": {
+      "name": "Corrosaurus",
+      "description": "Summon a Corrosaurus to attack enemies, dealing {0} Fusion DMG.\nThe Resonator with this Echo equipped in the main slot gains {1} Fusion DMG Bonus and {2} Echo Skill DMG Bonus.\nCD: {3}s",
+      "values": ["273.60%", "12.00%", "20.00%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "fusion" }]
+    },
+    "crownless": {
+      "name": "Crownless",
+      "description": "Transform into Crownless and perform up to 4 consecutive attacks. The first 2 attacks deal {0} Havoc DMG each, the 3rd attack deals {1} Havoc DMG 2 times, and the 4th attack deals {2} Havoc DMG 3 times.\n\nAfter the transformation, increase current character's Havoc DMG by {3} and Resonance Skill DMG by {4} for {5}s.\n\nCD: {6}s",
+      "values": ["134.08%", "100.56%", "67.04%", "12.00%", "12.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 134.08, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 100.56, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 67.04, "stat": "atk", "element": "havoc" }
+      ]
+    },
+    "cruisewing": {
+      "name": "Cruisewing",
+      "description": "Summon a Cruisewing that restores HP for all current team characters by {0} of their Max HPs plus an additional {1} points of HP, up to 4 times.\n\nCD: {2}s",
+      "values": ["1.80%", "80", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 1.8, "stat": "hp", "element": null }]
+    },
+    "cuddle-wuddle": {
+      "name": "Cuddle Wuddle",
+      "description": "Transform into Cuddle Wuddle and attack enemies with 4 strikes dealing {0} Physical DMG and 1 strike dealing {1} Physical DMG.\nCD: {2}s.",
+      "values": ["46.98%", "125.28%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 46.98, "stat": "atk", "element": null },
+        { "label": "Hit {1}", "index": 1, "multiplier": 125.28, "stat": "atk", "element": null }
+      ]
+    },
+    "cyan-feathered-heron": {
+      "name": "Cyan-Feathered Heron",
+      "description": "Transform into Cyan-Feathered Heron and charge at the enemies, dealing {0} Aero DMG; This Echo Skill interrupts enemy <color=Highlight>Special Skills</color> upon dealing damage.\n \nCD: {1}s",
+      "values": ["236.80%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 236.8, "stat": "atk", "element": "aero" }]
+    },
+    "devotees-flesh": {
+      "name": "Devotee's Flesh",
+      "description": "Summon a Devotee's Flesh to attack enemies, dealing {0} Aero DMG 3 times.\nCD: {1}s",
+      "values": ["43.20%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 43.2, "stat": "atk", "element": "aero" }]
+    },
+    "diggy-duggy": {
+      "name": "Diggy Duggy",
+      "description": "Transform into Diggy Duggy and jump up into the air to smash onto enemies, dealing {0} Physical DMG.\nCD: {1}s.",
+      "values": ["268.20%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": null }]
+    },
+    "diurnus-knight": {
+      "name": "Diurnus Knight",
+      "description": "Transform into Diurnus Knight and charge forward to attack enemies with the sword, dealing {0} Spectro DMG. DMG dealt to enemies inflicted by Spectro Frazzle is increased by {1}.\nCD: {2}s.",
+      "values": ["268.20%", "100.00%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "spectro" }]
+    },
+    "dragon-of-dirge": {
+      "name": "Dragon of Dirge",
+      "description": "Transform into Dragon of Dirge and summon a Grief Rift lasting for 5s. Periodically deal {0} Fusion DMG to enemies within the area of effect.\nThe Resonator with this Echo equipped in the main slot gains {1} Fusion DMG Bonus and {2} Basic Attack DMG Bonus.\nCD: {3}s.",
+      "values": ["36.81%", "12.00%", "12.00%", "25"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 36.81, "stat": "atk", "element": "fusion" }]
+    },
+    "dreamless": {
+      "name": "Dreamless",
+      "description": "Transform into Dreamless and perform 6 consecutive strikes. The first 5 strikes deal {0} Havoc DMG each, and the last strike deal {1} Havoc DMG.\nThe DMG of this Echo Skill is increased by {3} during the first {2}s after Rover: Havoc casts Resonance Liberation: Deadening Abyss.\n\nCD: {4}s",
+      "values": ["54.08%", "270.40%", "5", "50.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 54.08, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 270.4, "stat": "atk", "element": "havoc" }
+      ]
+    },
+    "dwarf-cassowary": {
+      "name": "Dwarf Cassowary",
+      "description": "Summon a Dwarf Cassowary that tracks and attacks the enemy, dealing {1} Physical DMG {0} time(s).\n\nCooldown: {2}s",
+      "values": ["3", "38.40%", "8", "0.00%"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 38.4, "stat": "atk", "element": null }]
+    },
+    "electro-drake": {
+      "name": "Electro Drake",
+      "description": "Summon an Electro Drake to attack enemies, dealing {0} Electro DMG 3 times.\nCD: {1}s.",
+      "values": ["43.20%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 43.2, "stat": "atk", "element": "electro" }]
+    },
+    "electro-predator": {
+      "name": "Electro Predator",
+      "description": "Summon an Electro Predator to shoot the enemy 5 times. The first 4 shots deals {0} Electro DMG, and the last deals {1} Electro DMG.\n\nCD: {2}s",
+      "values": ["17.28%", "46.08%", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 17.28, "stat": "atk", "element": "electro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 46.08, "stat": "atk", "element": "electro" }
+      ]
+    },
+    "fae-ignis": {
+      "name": "Fae Ignis",
+      "description": "Summon a Fae Ignis to attack enemies, dealing {0} Havoc DMG.\nCD: {1}s.",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "havoc" }]
+    },
+    "fallacy-of-no-return": {
+      "name": "Fallacy of No Return",
+      "description": "Activate the Echo Skill to summon a fraction of the Fallacy of No Return's power and deal a blast to the surrounding area, inflicting Spectro DMG equal to {0} of max HP, after which the Resonator gains 10% bonus Energy Regen and all team members 10% bonus ATK for 20s.\nHold Echo Skill to unleash a series of flurry assaults at the cost of STA, each dealing Spectro DMG equal to {1} of max HP; Release to end the assail in a powerful blow, dealing Spectro DMG equal to {2} of max HP.\nCD: {3}s",
+      "values": ["15.86%", "1.58%", "19.82%", "20"],
+      "hits": [
+        { "label": "Hit {1}", "index": 1, "multiplier": 1.58, "stat": "hp", "element": "spectro" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 19.82, "stat": "hp", "element": "spectro" }
+      ]
+    },
+    "false-sovereign": {
+      "name": "The False Sovereign",
+      "description": "Transform into the False Sovereign and dash forward in a spinning strike, dealing {0} Electro DMG 4 times.\nThe Resonator with this Echo equipped in the main slot gains {1} Electro DMG Bonus and {2} Heavy Attack DMG Bonus. Upon casting Intro Skill, the False Sovereign is also summoned to deal {3} Electro DMG.\nStart with {4} charges. Gain 1 charge every {5}s, up to {6} charges.\nCD: {7}s",
+      "values": ["55.35%", "12.00%", "12.00%", "405.00%", "2", "8", "2", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 55.35, "stat": "atk", "element": "electro" },
+        { "label": "Hit {3}", "index": 3, "multiplier": 405, "stat": "atk", "element": "electro" }
+      ]
+    },
+    "feilian-beringal": {
+      "name": "Feilian Beringal",
+      "description": "Transform into Feilian Beringal to perform a powerful kick. If the kick lands on an enemy, immediately perform a follow-up strike. The kick deals {0} Aero DMG, and the follow-up strike deals {1} Aero DMG.\n\nAfter the follow-up strike hits, the current character's Aero DMG increases by {2}, and the Heavy Attack DMG increases by {3} for {4}s\n\nCD: {5}s",
+      "values": ["231.84%", "283.36%", "12.00%", "12.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 231.84, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 283.36, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "fission-junrock": {
+      "name": "Fission Junrock",
+      "description": "Summon a Fission Junrock. Generate a Resonance Effect that restores {0} HP for friendly units each time. If not in combat, you can pick up minerals or plants nearby.\n\nCD: {1}s",
+      "values": ["2%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 2, "stat": "hp", "element": null }]
+    },
+    "flautist": {
+      "name": "Flautist",
+      "description": "Transform into Flautist, continuously emitting Electro lasers, dealing {0} Electro DMG for a total of 10 times. Gain {1} Concerto Energy every time a hit lands.\n\nCD: {2}s",
+      "values": ["53.28%", "1", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 53.28, "stat": "atk", "element": "electro" }]
+    },
+    "flora-drone": {
+      "name": "Flora Drone",
+      "description": "Summon a Flora Drone, dealing {0} Aero DMG to enemies and healing Resonators within range by {1} of their Max HP plus an additional {2} HP.\n\nCD: {3}s",
+      "values": ["64.80%", "3.60%", "160", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 64.8, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 3.6, "stat": "hp", "element": null }
+      ]
+    },
+    "flora-reindeer": {
+      "name": "Flora Reindeer",
+      "description": "Summon a Flora Reindeer to attack enemies within a large range, dealing {0} Aero DMG.\n\nCD: {1}s.",
+      "values": ["192.60%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 192.6, "stat": "atk", "element": "aero" }]
+    },
+    "fog-lionarch": {
+      "name": "Fog Lionarch",
+      "description": "Use Echo Skill to summon Fog Lionarch to spit fire toward enemies, dealing 7 stages of {0} Fusion DMG.\n\nCD: {1}s",
+      "values": ["33.93%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 33.93, "stat": "atk", "element": "fusion" }]
+    },
+    "fog-lionarch-body": {
+      "name": "Fog Lionarch: Body",
+      "description": "Use Echo Skill to summon Fog Lionarch: Body to ram into enemies, dealing {0} Fusion DMG.\n\nCD: {1}s",
+      "values": ["192.60%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 192.6, "stat": "atk", "element": "fusion" }]
+    },
+    "fog-lionarch-head": {
+      "name": "Fog Lionarch: Head",
+      "description": "Use Echo Skill to summon Fog Lionarch: Head to dart toward enemies, dealing {0} Fusion DMG.\n\nCD: {1}s",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "fusion" }]
+    },
+    "forbidden-bastion": {
+      "name": "Forbidden Bastion",
+      "description": "Use Echo Skill to summon Forbidden Bastion to bash over enemies, dealing {0} Glacio DMG.\n\nResonators with this Echo equipped in the main slot gain {2} Healing Bonus.\n\nCD: {1}s",
+      "values": ["237.60%", "20", "10.00%"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 237.6, "stat": "atk", "element": "glacio" }]
+    },
+    "formrender": {
+      "name": "Formrender",
+      "description": "Use Echo Skill to summon a Formrender, dealing {0} Fusion DMG.\nThe Resonator with this Echo equipped in the main slot gains {1} Energy Regen.\nCD: {2}s",
+      "values": ["273.60%", "10.00%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "fusion" }]
+    },
+    "frostbite-coleoid": {
+      "name": "Frostbite Coleoid",
+      "description": "Summon a Frostbite Coleoid to punch enemies, dealing {0} Glacio DMG.\n\nCD: {1}s.",
+      "values": ["192.60%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 192.6, "stat": "atk", "element": "glacio" }]
+    },
+    "frostscourge-stalker": {
+      "name": "Frostscourge Stalker",
+      "description": "Summon a Frostscourge Stalker to attack enemies, dealing {0} Glacio DMG.\nCD: {1}s.",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "glacio" }]
+    },
+    "fusion-drake": {
+      "name": "Fusion Drake",
+      "description": "Summon a Fusion Drake to attack enemies, dealing {0} Fusion DMG 3 times.\nCD: {1}s",
+      "values": ["25.92%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 25.92, "stat": "atk", "element": "fusion" }]
+    },
+    "fusion-warrior": {
+      "name": "Fusion Warrior",
+      "description": "Transform into Fusion Warrior to perform a Counterattack. If the Counterattack is successful, the cooldown time of this skill will be reduced by {0}, and {1} Fusion DMG will be dealt.\n\nCD: {2}s",
+      "values": ["70.00%", "288.00%", "15"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 288, "stat": "atk", "element": "fusion" }]
+    },
+    "galescourge-stalker": {
+      "name": "Galescourge Stalker",
+      "description": "Summon a Galescourge Stalker that restores nearby party members' HP by {0} of their Max HP, up to 3 times.\nCD: {1}s.",
+      "values": ["2.70%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 2.7, "stat": "hp", "element": null }]
+    },
+    "geospider-s4": {
+      "name": "Geospider S4",
+      "description": "Summon a Geospider S4 to attack enemies, dealing {0} Spectro DMG once and {1} Spectro DMG once.\n \n CD: {2}s.",
+      "values": ["51.84%", "77.76%", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 51.84, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 77.76, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "glacio-drake": {
+      "name": "Glacio Drake",
+      "description": "Summon a Glacio Drake to attack enemies, dealing {0} Glacio DMG 5 times.\nCD: {1}s.",
+      "values": ["25.92%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 25.92, "stat": "atk", "element": "glacio" }]
+    },
+    "glacio-dreadmane": {
+      "name": "Glacio Dreadmane",
+      "description": "Lacerate enemies as a Glacio Dreadmane, dealing {0} Glacio DMG on each hit. Equipped with 2 charges and can be cast mid-air. Glacio Dreadmane deals {1} more DMG while in mid-air and generates 6 Icicles upon landing, each dealing {2} Glacio DMG.\n\nCD: {3}s",
+      "values": ["214.40%", "20.00%", "32.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 214.4, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 32, "stat": "atk", "element": "glacio" }
+      ]
+    },
+    "glacio-predator": {
+      "name": "Glacio Predator",
+      "description": "Summon a Glacio Predator that throws an ice spear, dealing {0} Glacio DMG on hit. Deal {1} Glacio DMG up to 10 times during the charging time, and {2} Glacio DMG when the spear explodes.\n\nCD: {3}s",
+      "values": ["46.08%", "4.61%", "23.04%", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 46.08, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 23.04, "stat": "atk", "element": "glacio" }
+      ]
+    },
+    "glacio-prism": {
+      "name": "Glacio Prism",
+      "description": "Summon a Glacio Prism that continuously fires three crystal shards, each dealing {0} Glacio DMG.\n\nCD: {1}s",
+      "values": ["38.40%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 38.4, "stat": "atk", "element": "glacio" }]
+    },
+    "glommoth": {
+      "name": "Glommoth",
+      "description": "Summon a Glommoth to stomp enemies, dealing {0} Glacio DMG.\nCasting Outro Skill within {1}s after summoning Glommoth grants {2} Glacio DMG Bonus to the incoming Resonator for {3}s.\nCD: {4}s.",
+      "values": ["273.60%", "15", "12.00%", "15", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "glacio" }]
+    },
+    "golden-junrock": {
+      "name": "Golden Junrock",
+      "description": "Summon a Golden Junrock that charges forward, dealing {0} Spectro DMG to enemies in its path.\nCD: {1}s",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "spectro" }]
+    },
+    "gulpuff": {
+      "name": "Gulpuff",
+      "description": "Summon a Gulpuff that blows bubbles {0} times, each time dealing {1} Glacio DMG.\n\nCD: {2}s",
+      "values": ["5", "23.04%", "8"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 23.04, "stat": "atk", "element": "glacio" }]
+    },
+    "havoc-drake": {
+      "name": "Havoc Drake",
+      "description": "Summon a Havoc Drake to attack enemies, dealing {0} Havoc DMG 3 times.\nCD: {1}s",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "havoc" }]
+    },
+    "havoc-dreadmane": {
+      "name": "Havoc Dreadmane",
+      "description": "Transform into a Havoc Dreadmane to perform up to 2 tail strikes. Each strike deals {0} Havoc DMG and inflicts an additional instance of {1} Havoc DMG upon hitting the target.\n\nCD: {2}s",
+      "values": ["116.64%", "77.76%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 116.64, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 77.76, "stat": "atk", "element": "havoc" }
+      ]
+    },
+    "havoc-prism": {
+      "name": "Havoc Prism",
+      "description": "Summon a Havoc Prism to fire five crystal shards, each dealing {0} Havoc DMG.\n\nCD: {1}s",
+      "values": ["23.04%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 23.04, "stat": "atk", "element": "havoc" }]
+    },
+    "havoc-warrior": {
+      "name": "Havoc Warrior",
+      "description": "Transform into Havoc Warrior to attack up to 3 times, dealing {0} Havoc DMG each time.\n \nCD: {1}s",
+      "values": ["171.73%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 171.73, "stat": "atk", "element": "havoc" }]
+    },
+    "hecate": {
+      "name": "Hecate",
+      "description": "Summon 3 twirling Crescent Servants around you. Crescent Servants attack enemies with their spinning blades, dealing {0} Havoc DMG. Triggering a Counterattack with the Echo attacks resets the Crescent Servants' duration.\nThe Resonator with this Echo equipped in the main slot has their Coordinated Attack DMG increased by {1}.\nCD: {2}s.",
+      "values": ["45.59%", "40.00%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 45.59, "stat": "atk", "element": "havoc" }]
+    },
+    "hocus-pocus": {
+      "name": "Hocus Pocus",
+      "description": "Summon a Hocus Pocus to attack enemies with 3 consecutive strikes, each dealing {0} Havoc DMG.\nCD: {1}s.",
+      "values": ["43.20%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 43.2, "stat": "atk", "element": "havoc" }]
+    },
+    "hoochief": {
+      "name": "Hoochief",
+      "description": "Transform into Hoochief and smack the enemies, dealing {0} Aero DMG.\n\nCD: {1}s",
+      "values": ["268.20%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "aero" }]
+    },
+    "hurriclaw": {
+      "name": "Hurriclaw",
+      "description": "Transform into Hurriclaw and charge forward, dealing {0} Aero DMG upon hit plus {1} Aero DMG with a sweep attack. Hold the Echo Skill to continue charging forward. Use Echo Skill again while charging to perform a sweep attack.\nCD: {2}s.",
+      "values": ["156.60%", "156.60%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 156.6, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 156.6, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "hyvatia": {
+      "name": "Hyvatia",
+      "description": "Summon Hyvatia to fire lasers at enemies from mid-air, dealing {0} Spectro DMG 10 times.\n\nCasting Outro Skill within {1}s after summoning Hyvatia grants {2} All-Attribute DMG Bonus to the next Resonator using Intro Skill for {3}s.\n\nCD: {4}s.",
+      "values": ["27.36%", "15", "10.00%", "15", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 27.36, "stat": "atk", "element": "spectro" }]
+    },
+    "iceglint-dancer": {
+      "name": "Iceglint Dancer",
+      "description": "Transform into an Iceglint Dancer to attack enemies, dealing {0} Glacio DMG.\nCD: {1}s.",
+      "values": ["205.20%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 205.2, "stat": "atk", "element": "glacio" }]
+    },
+    "impermanence-heron": {
+      "name": "Impermanence Heron",
+      "description": "Transform into Impermanence Heron to fly up and smack down, dealing {0} Havoc DMG.\n\nLong press to stay as Impermanence Heron and continuously spit flames, each attack dealing {1} Havoc DMG.\n\nOnce the initial attack lands on any enemy, the current character regains 10 Resonance Energy. If the current character uses their Outro Skill within the next 15s, the next character's damage dealt will be boosted by 12% for 15s.\n\nCD: {2}s",
+      "values": ["310.56%", "55.73%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 310.56, "stat": "atk", "element": "havoc" }]
+    },
+    "inferno-rider": {
+      "name": "Inferno Rider",
+      "description": "Transform into the Inferno Rider to launch up to 3 consecutive slashes in a row, each slash dealing {0}, {1}, and {2} Fusion DMG respectively.\n\nAfter the final hit, increase the current Resonator's Fusion DMG by {3} and Basic Attack DMG by {4} for {5}s.\n\nLong press the Echo Skill to transform into the Inferno Rider and enter Riding Mode. When exiting Riding Mode, deal {2} Fusion DMG to enemies in front.\n\nCD: {6}s",
+      "values": ["242.40%", "282.80%", "282.80%", "12.00%", "12.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 242.4, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 282.8, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 282.8, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "ironhoof": {
+      "name": "Ironhoof",
+      "description": "Transform into an Ironhoof to charge at enemies, dealing {0} Fusion DMG. At the end of the charge, unleash a goring attack that deals {1} Fusion DMG 3 times and {2} Fusion DMG once.\n\nCD: {3}s.",
+      "values": ["53.64%", "13.41%", "174.33%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 53.64, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 13.41, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 174.33, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "jade-nether-serpent": {
+      "name": "Jade Nether Serpent",
+      "description": "Summon a Jade Nether Serpent that bombards the target with fireballs, dealing {0} Fusion DMG 5 times, then {1} Fusion DMG once.\nCD: {2}s",
+      "values": ["12.96%", "64.80%", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 12.96, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 64.8, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "jue": {
+      "name": "Jué",
+      "description": "Summon Jué to the aid. Jué soars through the air, dealing {0} Spectro DMG, and summons thunderbolts that strike nearby enemies up to 5 times, each hit dealing {1} Spectro DMG. Jué then spirals downward, attacking surrounding enemies twice, each hit dealing {2} Spectro DMG.\nCasting this Echo Skill grants the Resonator a Blessing of Time effect that lasts {3}s, during when:\n- The Resonator gains {4} Resonance Skill DMG Bonus.\n- When the Resonator's Resonance Skill hits the target, inflict {5} Spectro DMG 1 time per second for {6}s, considered as the Resonator's Resonance Skill DMG.\nCD: {7}s",
+      "values": ["48.64%", "19.46%", "48.64%", "15", "16.00%", "16.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 48.64, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 48.64, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {4}", "index": 4, "multiplier": 16, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {5}", "index": 5, "multiplier": 16, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "kerasaur": {
+      "name": "Kerasaur",
+      "description": "Transform into Kerasaur to leap into the air and slam down, dealing {0} Aero DMG. Shortly after hitting the target, cast Echo Skill again to charge at the target, dealing {1} Aero DMG.\nThe Resonator with this Echo equipped in the main slot gains {2} Aero DMG Bonus and {3} Resonance Liberation DMG Bonus.\nCD: {4}s",
+      "values": ["268.20%", "268.20%", "12.00%", "12.00%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 268.2, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "kernel-puppet-anger": {
+      "name": "Kernel Puppet: Anger",
+      "description": "Use Echo Skill to summon Kernel Puppet: Worry to attack enemies, dealing {0} Fusion DMG.\n\nCD: {1}s",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "fusion" }]
+    },
+    "kernel-puppet-fright": {
+      "name": "Kernel Puppet: Fright",
+      "description": "Use Echo Skill to summon Kernel Puppet: Fright to attack enemies, dealing an instance of {0} Havoc DMG and an instance of {1} Havoc DMG.\n\nCD: {2}s",
+      "values": ["51.84%", "77.76%", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 51.84, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 77.76, "stat": "atk", "element": "havoc" }
+      ]
+    },
+    "kernel-puppet-grief": {
+      "name": "Kernel Puppet: Grief",
+      "description": "Use Echo Skill to summon Kernel Puppet: Grief to attack enemies, dealing {0} Spectro DMG.\n\nCD: {1}s",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "spectro" }]
+    },
+    "kernel-puppet-joy": {
+      "name": "Kernel Puppet: Joy",
+      "description": "Use Echo Skill to summon Kernel Puppet: Joy to attack enemies, dealing {0} Physical DMG.\n\nCD: {1}s",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": null }]
+    },
+    "kernel-puppet-reflection": {
+      "name": "Kernel Puppet: Reflection",
+      "description": "Use Echo Skill to summon Kernel Puppet: Reflection to attack enemies, dealing {0} Electro DMG.\n\nCD: {1}s",
+      "values": ["64.80%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 64.8, "stat": "atk", "element": "electro" }]
+    },
+    "kernel-puppet-worry": {
+      "name": "Kernel Puppet: Worry",
+      "description": "Use Echo Skill to summon Kernel Puppet: Worry to attack enemies, dealing {0} Glacio DMG.\n\nCD: {1}s",
+      "values": ["64.80%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 64.8, "stat": "atk", "element": "glacio" }]
+    },
+    "kronablight": {
+      "name": "Kronablight",
+      "description": "Transform into a Kronablight, soar into the air, and dive to deal {0} Electro DMG to the enemies.\nCD: {1}s",
+      "values": ["268.20%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "electro" }]
+    },
+    "la-guardia": {
+      "name": "La Guardia",
+      "description": "Transform into La Guardia and attack nearby targets, dealing {0} Physical DMG.\nHold the Echo Skill to maintain the Echo form for a while to slash enemies and cast a ranged attack forward. The slash deals {1} Physical DMG, and the ranged attack deals {3} Physical DMG up to {2} times.\nCD: {4}s.",
+      "values": ["268.20%", "268.20%", "15", "17.87%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": null },
+        { "label": "Hit {1}", "index": 1, "multiplier": 268.2, "stat": "atk", "element": null }
+      ]
+    },
+    "lady-of-the-sea": {
+      "name": "Lady of the Sea",
+      "description": "Summon a Tidestorm to deal {0} Aero DMG ten times and {1} Aero DMG one time to enemies.\nThe Resonator with this Echo equipped in the main slot gains {2} Aero DMG Bonus and {3} Resonance Liberation DMG Bonus.\nCD: {4}s",
+      "values": ["13.68%", "164.16%", "12.00%", "12.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 13.68, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 164.16, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "lampylumen-myriad": {
+      "name": "Lampylumen Myriad",
+      "description": "Transform into Lampylumen Myriad. Perform up to 3 consecutive attacks.\n\nUnleash a freezing shock by performing consecutive forward strikes, with the initial two strikes inflicting {0} and {1} Glacio DMG respectively, and the final strike dealing {2} Glacio DMG. Enemies will be frozen on hit.\n\nEach shock increases the current character's Glacio DMG by {3} and Resonance Skill DMG dealt by {4} for {5}s, stacking up to 3 times\n\nCD: {6}s",
+      "values": ["200.16%", "200.16%", "266.88%", "4.00%", "4.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 200.16, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 200.16, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 266.88, "stat": "atk", "element": "glacio" }
+      ]
+    },
+    "lava-larva": {
+      "name": "Lava Larva",
+      "description": "Summon a Lava Larva that continuously attacks enemies, dealing {0} Fusion DMG with each hit. The Lava Larva disappears when the summoner is switched out or moves too far away.\n\nCD: {1}s",
+      "values": ["38.40%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 38.4, "stat": "atk", "element": "fusion" }]
+    },
+    "lightcrusher": {
+      "name": "Lightcrusher",
+      "description": "Lunge forward as a Lightcrusher, dealing {0} Spectro DMG. Generate {1} Ablucence on hit. Each Ablucence explosion deals {2} Spectro DMG.\nHold the Echo Skill to stay in the Lightcrusher form, which allows you to leap up and pounce forward in the air for a short distance.\n\nCooldown: {3}s",
+      "values": ["135.36%", "6", "15.04%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 135.36, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 15.04, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "lioness-of-glory": {
+      "name": "Lioness of Glory",
+      "description": "Summon the Halberd of Glory to crush an area, dealing {0} Fusion DMG to nearby targets, and then blast off after a short delay, dealing {1} Fusion DMG.\nThe Resonator with this Echo equipped in the main slot gains {2} Fusion DMG Bonus and {3} Resonance Liberation DMG Bonus.\nCD: {4}s",
+      "values": ["82.08%", "191.52%", "12.00%", "12.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 82.08, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 191.52, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "lorelei": {
+      "name": "Lorelei",
+      "description": "Transform into Lorelei and attack surrounding enemies, dealing {0} Havoc DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Havoc DMG Bonus and {2} Basic Attack DMG Bonus.\nCD: {3}s.",
+      "values": ["405.00%", "12.00%", "12.00%", "25"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 405, "stat": "atk", "element": "havoc" }]
+    },
+    "lottie-lost": {
+      "name": "Lottie Lost",
+      "description": "Summon a Lottie Lost to attack enemies, dealing {0} Spectro DMG.\nCD: {1}s.",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "spectro" }]
+    },
+    "lumiscale-construct": {
+      "name": "Lumiscale Construct",
+      "description": "Transform into a Lumiscale Construct and enter a Parry Stance. If you are not attacked during the Parry Stance, slash to deal {0} Glacio DMG when the stance finishes. If attacked, counterattack instantly, dealing {1} Glacio DMG. When hit with a <color=Highlight>Special Skill</color> attack while in the Parry Stance, break the <color=Highlight>Special Skill</color> and counterattack, dealing {1} Glacio DMG.\n\nCD: {2}s",
+      "values": ["553.60%", "553.60%+276.80%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 553.6, "stat": "atk", "element": "glacio" }]
+    },
+    "mech-abomination": {
+      "name": "Mech Abomination",
+      "description": "Strike enemies in front, dealing {0} Electro DMG, and summon Mech Waste to attack. Mech Waste deals {1} Electro DMG on hit and explodes after a while, dealing {2} Electro DMG.\n\nAfter casting this Echo Skill, increase the current character's ATK by {3} for {4}s. \nDamage dealt by Mech Waste equals to the Resonator's Outro Skill DMG. \n\nCD: {5}s",
+      "values": ["48.64%", "320.00%", "160.00%", "12.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 48.64, "stat": "atk", "element": "electro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 320, "stat": "atk", "element": "electro" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 160, "stat": "atk", "element": "electro" }
+      ]
+    },
+    "mining-drone": {
+      "name": "Mining Drone",
+      "description": "Transform into a Mining Drone to attack enemies, dealing {0} Havoc DMG twice.\nCD: {1}s.",
+      "values": ["102.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 102.6, "stat": "atk", "element": "havoc" }]
+    },
+    "mining-reindeer": {
+      "name": "Mining Reindeer",
+      "description": "Summon a Mining Reindeer to launch a charged attack at enemies, dealing {0} Electro DMG.\n\n CD: {1}s.",
+      "values": ["237.60%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 237.6, "stat": "atk", "element": "electro" }]
+    },
+    "mourning-aix": {
+      "name": "Mourning Aix",
+      "description": "Transform into Mourning Aix and perform 2 consecutive claw attacks, each attack dealing {0} and {1} Spectro DMG respectively.\n\nAfter the transformation, increase current character's Spectro DMG by {2} and Resonance Liberation DMG by {3} for {4}s\n\nCD: {5}s",
+      "values": ["157.44%", "236.16%", "12.00%", "12.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 157.44, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 236.16, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "myriad-snare-rustfire-chassis": {
+      "name": "Myriad Snare: Rustfire Chassis",
+      "description": "Summon Myriad Snare: Rustfire Chassis, dealing Fusion DMG equal to {0} of the Max HP on initial impact. During its duration, it repeatedly crushes enemies along its path up to {5} times, dealing Fusion DMG equal to {1} of the Max HP each time.\n\nResonators with this Echo equipped in the main slot gain {2} Fusion DMG Bonus and {3} Heavy Attack DMG Bonus.\n\nCD: {4}s",
+      "values": ["10.20%", "0.37%", "12.00%", "12.00%", "20", "19"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 10.2, "stat": "hp", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 0.37, "stat": "hp", "element": "fusion" }
+      ]
+    },
+    "nameless-explorer": {
+      "name": "Nameless Explorer",
+      "description": "Summon Nameless Explorer to attack enemies along its path, dealing {0} Aero DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Aero DMG Bonus and {2} Echo Skill DMG Bonus.\nCD: {3}s.",
+      "values": ["273.60%", "12.00%", "20.00%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "aero" }]
+    },
+    "nightmare-aero-predator": {
+      "name": "Nightmare: Aero Predator",
+      "description": "Summon an Aero Predator that throws a dart forward. The dart will bounce between enemies up to three times, dealing {0} Aero DMG each time it hits.\n\nCD: {1}s",
+      "values": ["28.80%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 28.8, "stat": "atk", "element": "aero" }]
+    },
+    "nightmare-chirpuff": {
+      "name": "Nightmare: Chirpuff",
+      "description": "Summon a Chirpuff that self-inflates and blasts a powerful gust of wind forward {0} times. Each blast inflicts {1} Aero DMG and pushes enemies backwards.\n\nCD: {2}s",
+      "values": ["3", "38.40%", "8"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 38.4, "stat": "atk", "element": "aero" }]
+    },
+    "nightmare-crownless": {
+      "name": "Nightmare: Crownless",
+      "description": "Transform into Nightmare: Crownless and attack enemies in front, dealing {0} Havoc DMG. The Resonator with this Echo equipped in their main slot gains {1} Havoc DMG Bonus and {2} Basic Attack DMG Bonus.\nThis skill has {3} initial charges, replenished once every {4}s, max {5} charges. When Nightmare: Crownless hits a target, DMG dealt by this skill is increased by {6}. This effect lasts for {7}s and does not stack.\nCD: {4}s.",
+      "values": ["264.60%", "12.00%", "12.00%", "3", "12", "3", "20.00%", "2"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 264.6, "stat": "atk", "element": "havoc" }]
+    },
+    "nightmare-cyan-feathered-heron": {
+      "name": "Nightmare: Cyan-Feathered Heron",
+      "description": "Transform into Cyan-Feathered Heron and charge at the enemies, dealing {0} Aero DMG; This Echo Skill interrupts enemy <color=Highlight>Special Skills</color> upon dealing damage.\n \nCD: {1}s",
+      "values": ["236.80%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 236.8, "stat": "atk", "element": "aero" }]
+    },
+    "nightmare-dwarf-cassowary": {
+      "name": "Nightmare: Dwarf Cassowary",
+      "description": "Summon a Dwarf Cassowary that tracks and attacks the enemy, dealing {1} Physical DMG {0} time(s).\n\nCooldown: {2}s",
+      "values": ["3", "38.40%", "8", "0.00%"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 38.4, "stat": "atk", "element": null }]
+    },
+    "nightmare-electro-predator": {
+      "name": "Nightmare: Electro Predator",
+      "description": "Summon an Electro Predator to shoot the enemy 5 times. The first 4 shots deals {0} Electro DMG, and the last deals {1} Electro DMG.\n\nCD: {2}s",
+      "values": ["17.28%", "46.08%", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 17.28, "stat": "atk", "element": "electro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 46.08, "stat": "atk", "element": "electro" }
+      ]
+    },
+    "nightmare-feilian-beringal": {
+      "name": "Nightmare: Feilian Beringal",
+      "description": "Summon a Nightmare: Feilian Beringal to attack enemies, dealing {0} Aero DMG. The remaining Whirlwind Beam will continuously attack surrounding enemies up to 5 times, each dealing {1} Aero DMG.\nThe Resonator with this Echo equipped in their main slot gains {2} Aero DMG Bonus and {3} Heavy Attack DMG Bonus.\nCD: {4}s.",
+      "values": ["164.16%", "21.89%", "12.00%", "12.00%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 164.16, "stat": "atk", "element": "aero" }]
+    },
+    "nightmare-glacio-predator": {
+      "name": "Nightmare: Glacio Predator",
+      "description": "Summon a Glacio Predator that throws an ice spear, dealing {0} Glacio DMG on hit. Deal {1} Glacio DMG up to 10 times during the charging time, and {2} Glacio DMG when the spear explodes.\n\nCD: {3}s",
+      "values": ["46.08%", "4.61%", "23.04%", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 46.08, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 23.04, "stat": "atk", "element": "glacio" }
+      ]
+    },
+    "nightmare-gulpuff": {
+      "name": "Nightmare: Gulpuff",
+      "description": "Summon a Gulpuff that blows bubbles {0} times, each time dealing {1} Glacio DMG.\n\nCD: {2}s",
+      "values": ["5", "23.04%", "8"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 23.04, "stat": "atk", "element": "glacio" }]
+    },
+    "nightmare-havoc-warrior": {
+      "name": "Nightmare: Havoc Warrior",
+      "description": "Transform into Havoc Warrior to attack up to 3 times, dealing {0} Havoc DMG each time.\n \nCD: {1}s",
+      "values": ["171.73%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 171.73, "stat": "atk", "element": "havoc" }]
+    },
+    "nightmare-impermanence-heron": {
+      "name": "Nightmare: Impermanence Heron",
+      "description": "Transform into Nightmare: Impermanence Heron and deliver up to 10 consecutive strikes to surrounding enemies, each dealing {0} Havoc DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Havoc DMG Bonus and {2} Heavy Attack DMG Bonus.\nCD: {3}s.",
+      "values": ["40.50%", "12.00%", "12.00%", "25"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 40.5, "stat": "atk", "element": "havoc" }]
+    },
+    "nightmare-inferno-rider": {
+      "name": "Nightmare: Inferno Rider",
+      "description": "Transform into Nightmare: Inferno Rider and jump to attack enemies in front, dealing {0} Fusion DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Fusion DMG Bonus and {2} Resonance Skill DMG Bonus.\nHold Echo Skill to transform into Nightmare: Inferno Rider and enter Riding Mode. When exiting Riding Mode, deal {3} Fusion DMG to enemies in front.\nCD: {4}s.",
+      "values": ["405.00%", "12.00%", "12.00%", "283.50%", "25"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 405, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {3}", "index": 3, "multiplier": 283.5, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "nightmare-kelpie": {
+      "name": "Nightmare: Kelpie",
+      "description": "Transform into Nightmare: Kelpie to attack nearby targets, dealing {0} Glacio DMG.\nThe Resonator with this Echo equipped in the main slot gains {2} Glacio DMG Bonus and {3} Aero DMG Bonus. Switching out the Resonator with Outro Skill summons Nightmare: Kelpie to deal {1} Aero DMG.\nCD: {4}s",
+      "values": ["405.00%", "405.00%", "12.00%", "12.00%", "25"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 405, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 405, "stat": "atk", "element": "glacio" }
+      ]
+    },
+    "nightmare-lampylumen-myriad": {
+      "name": "Nightmare: Lampylumen Myriad",
+      "description": "Summon Nightmare: Lampylumen Myriad and attack surrounding enemies, dealing {0} Glacio DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Glacio DMG Bonus and deals {2} more Coordinated Attack DMG.\nCD: {3}s.",
+      "values": ["273.60%", "12.00%", "30.00%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "glacio" }]
+    },
+    "nightmare-mourning-aix": {
+      "name": "Nightmare: Mourning Aix",
+      "description": "Summon a Nightmare: Mourning Aix to attack surrounding enemies, dealing {0} Spectro DMG. DMG dealt to enemies inflicted by Spectro Frazzle is increased by {1}.\nThe Resonator with this Echo equipped in their main slot gains {2} Spectro DMG Bonus.\nCD: {3}s.",
+      "values": ["273.60%", "100.00%", "12.00%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "spectro" }]
+    },
+    "nightmare-tambourinist": {
+      "name": "Nightmare: Tambourinist",
+      "description": "Summon a Tambourinist that plays out Melodies of Annihilation. Any Resonator on the team gains the following effect for 10s upon obtaining a Melody of Annihilation: When the Resonator hits a target, the Tambourinist deals {0} Havoc DMG to the target, up to 10 times.\n\nCD: {1}s",
+      "values": ["14.40%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 14.4, "stat": "atk", "element": "havoc" }]
+    },
+    "nightmare-tempest-mephis": {
+      "name": "Nightmare: Tempest Mephis",
+      "description": "Transform into Nightmare: Tempest Mephis and attack surrounding enemies, dealing {0} Electro DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Electro DMG Bonus and {2} Resonance Skill DMG Bonus.\nCD: {3}s.",
+      "values": ["405.00%", "12.00%", "12.00%", "25"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 405, "stat": "atk", "element": "electro" }]
+    },
+    "nightmare-thundering-mephis": {
+      "name": "Nightmare: Thundering Mephis",
+      "description": "Transform into Nightmare: Thundering Mephis and attack enemies in front, dealing {0} Electro DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Electro DMG Bonus and {2} Resonance Liberation DMG Bonus.\nCD: {3}s.",
+      "values": ["405.00%", "12.00%", "12.00%", "25"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 405, "stat": "atk", "element": "electro" }]
+    },
+    "nightmare-tick-tack": {
+      "name": "Nightmare: Tick Tack",
+      "description": "Summon a Tick Tack that charges and bites the enemy. The charge from Tick Tack will deal {0} Havoc DMG to the enemy, and the bite will deal {1} Havoc DMG to the enemy. Reduces enemy Vibration Strength by up to {3} during {2}s.\n\nCD: {4}s",
+      "values": ["68.48%", "102.72%", "5", "5.00%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 68.48, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 102.72, "stat": "atk", "element": "havoc" }
+      ]
+    },
+    "nightmare-violet-feathered-heron": {
+      "name": "Nightmare: Violet-Feathered Heron",
+      "description": "Transform into Violet-Feathered Heron and enter a Parry Stance. Counterattack when the Parry stance is over, dealing {0} Electro DMG. If attacked during Parry Stance, you can counterattack in advance and additionally recover {1} Concerto Energy.\n\nCD: {2}s",
+      "values": ["288.00%", "5", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 288, "stat": "atk", "element": "electro" }]
+    },
+    "nightmare-viridblaze-saurian": {
+      "name": "Nightmare: Viridblaze Saurian",
+      "description": "Summon a Viridblaze Saurian to continuously spit fire, dealing {0} Fusion DMG 10 times.\n\nCD: {1}s",
+      "values": ["17.12%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 17.12, "stat": "atk", "element": "fusion" }]
+    },
+    "nimbus-wraith": {
+      "name": "Nimbus Wraith",
+      "description": "Summon a Nimbus Wraith that restores the active Resonator's HP by {0} of their Max HP, up to 4 times.\nCD: {1}s.",
+      "values": ["2.70%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 2.7, "stat": "hp", "element": null }]
+    },
+    "nocturnus-knight": {
+      "name": "Nocturnus Knight",
+      "description": "Transform into Nocturnus Knight and strike enemies in front of you from the air, dealing {0} Havoc DMG.\nCD: {1}s.",
+      "values": ["268.20%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "havoc" }]
+    },
+    "phantom-capitaneus": {
+      "name": "Phantom: Capitaneus",
+      "description": "Summon a Capitaneus to jump up and smash enemies, dealing {0} Spectro DMG. This attack generates 4 extra Merciless Judgements, each dealing {1} Spectro DMG.\nThe Resonator with this Echo equipped in their main slot gains {2} Spectro DMG Bonus and {3} Heavy Attack DMG Bonus.\nCD: {4}s.",
+      "values": ["118.80%", "59.40%", "12.00%", "12.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 118.8, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 59.4, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "phantom-chop-chop": {
+      "name": "Phantom: Chop Chop",
+      "description": "Summon a Chop Chop to perform a series of consecutive attacks. The first 6 strikes each deal {0} Fusion DMG and finishing strike deals {1} Fusion DMG.\nCD: {2}s.",
+      "values": ["19.26%", "77.04%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 19.26, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 77.04, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "phantom-crownless": {
+      "name": "Phantom: Crownless",
+      "description": "Transform into Crownless and perform up to 4 consecutive attacks. The first 2 attacks deal {0} Havoc DMG each, the 3rd attack deals {1} Havoc DMG 2 times, and the 4th attack deals {2} Havoc DMG 3 times.\n\nAfter the transformation, increase current character's Havoc DMG by {3} and Resonance Skill DMG by {4} for {5}s.\n\nCD: {6}s",
+      "values": ["134.08%", "100.56%", "67.04%", "12.00%", "12.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 134.08, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 100.56, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 67.04, "stat": "atk", "element": "havoc" }
+      ]
+    },
+    "phantom-cuddle-wuddle": {
+      "name": "Phantom: Cuddle Wuddle",
+      "description": "Transform into Cuddle Wuddle and attack enemies with 4 strikes dealing {0} Physical DMG and 1 strike dealing {1} Physical DMG.\nCD: {2}s.",
+      "values": ["46.98%", "125.28%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 46.98, "stat": "atk", "element": null },
+        { "label": "Hit {1}", "index": 1, "multiplier": 125.28, "stat": "atk", "element": null }
+      ]
+    },
+    "phantom-dreamless": {
+      "name": "Phantom: Dreamless",
+      "description": "Transform into Dreamless and perform 6 consecutive strikes. The first 5 strikes deal {0} Havoc DMG each, and the last strike deal {1} Havoc DMG.\nThe DMG of this Echo Skill is increased by {3} during the first {2}s after Rover: Havoc casts Resonance Liberation: Deadening Abyss.\n\nCD: {4}s",
+      "values": ["54.08%", "270.40%", "5", "50.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 54.08, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 270.4, "stat": "atk", "element": "havoc" }
+      ]
+    },
+    "phantom-fae-ignis": {
+      "name": "Phantom: Fae Ignis",
+      "description": "Summon a Fae Ignis to attack enemies, dealing {0} Havoc DMG.\nCD: {1}s.",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "havoc" }]
+    },
+    "phantom-fallacy-of-no-return": {
+      "name": "Phantom: Fallacy of No Return",
+      "description": "Activate the Echo Skill to summon a fraction of the Fallacy of No Return's power and deal a blast to the surrounding area, inflicting Spectro DMG equal to {0} of max HP, after which the Resonator gains 10% bonus Energy Regen and all team members 10% bonus ATK for 20s.\nHold Echo Skill to unleash a series of flurry assaults at the cost of STA, each dealing Spectro DMG equal to {1} of max HP; Release to end the assail in a powerful blow, dealing Spectro DMG equal to {2} of max HP.\nCD: {3}s",
+      "values": ["15.86%", "1.58%", "19.82%", "20"],
+      "hits": [
+        { "label": "Hit {1}", "index": 1, "multiplier": 1.58, "stat": "hp", "element": "spectro" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 19.82, "stat": "hp", "element": "spectro" }
+      ]
+    },
+    "phantom-feilian-beringal": {
+      "name": "Phantom: Feilian Beringal",
+      "description": "Transform into Feilian Beringal to perform a powerful kick. If the kick lands on an enemy, immediately perform a follow-up strike. The kick deals {0} Aero DMG, and the follow-up strike deals {1} Aero DMG.\n\nAfter the follow-up strike hits, the current character's Aero DMG increases by {2}, and the Heavy Attack DMG increases by {3} for {4}s\n\nCD: {5}s",
+      "values": ["231.84%", "283.36%", "12.00%", "12.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 231.84, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 283.36, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "phantom-forbidden-bastion": {
+      "name": "Phantom: Forbidden Bastion",
+      "description": "Use Echo Skill to summon Forbidden Bastion to bash over enemies, dealing {0} Glacio DMG.\n\nResonators with this Echo equipped in the main slot gain {2} Healing Bonus.\n\nCD: {1}s",
+      "values": ["237.60%", "20", "10.00%"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 237.6, "stat": "atk", "element": "glacio" }]
+    },
+    "phantom-glommoth": {
+      "name": "Phantom: Glommoth",
+      "description": "Summon a Glommoth to stomp enemies, dealing {0} Glacio DMG.\nCasting Outro Skill within {1}s after summoning Glommoth grants {2} Glacio DMG Bonus to the incoming Resonator for {3}s.\nCD: {4}s.",
+      "values": ["273.60%", "15", "12.00%", "15", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "glacio" }]
+    },
+    "phantom-gulpuff": {
+      "name": "Phantom: Gulpuff",
+      "description": "Summon a Gulpuff that blows bubbles {0} times, each time dealing {1} Glacio DMG.\n\nCD: {2}s",
+      "values": ["5", "23.04%", "8"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 23.04, "stat": "atk", "element": "glacio" }]
+    },
+    "phantom-iceglint-dancer": {
+      "name": "Phantom: Iceglint Dancer",
+      "description": "Transform into an Iceglint Dancer to attack enemies, dealing {0} Glacio DMG.\nCD: {1}s.",
+      "values": ["205.20%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 205.2, "stat": "atk", "element": "glacio" }]
+    },
+    "phantom-inferno-rider": {
+      "name": "Phantom: Inferno Rider",
+      "description": "Transform into the Inferno Rider to launch up to 3 consecutive slashes in a row, each slash dealing {0}, {1}, and {2} Fusion DMG respectively.\n\nAfter the final hit, increase the current Resonator's Fusion DMG by {3} and Basic Attack DMG by {4} for {5}s.\n\nLong press the Echo Skill to transform into the Inferno Rider and enter Riding Mode. When exiting Riding Mode, deal {2} Fusion DMG to enemies in front.\n\nCD: {6}s",
+      "values": ["242.40%", "282.80%", "282.80%", "12.00%", "12.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 242.4, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 282.8, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 282.8, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "phantom-kerasaur": {
+      "name": "Phantom: Kerasaur",
+      "description": "Transform into Kerasaur to leap into the air and slam down, dealing {0} Aero DMG. Shortly after hitting the target, cast Echo Skill again to charge at the target, dealing {1} Aero DMG.\nThe Resonator with this Echo equipped in the main slot gains {2} Aero DMG Bonus and {3} Resonance Liberation DMG Bonus.\nCD: {4}s",
+      "values": ["268.20%", "268.20%", "12.00%", "12.00%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 268.2, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "phantom-kronaclaw": {
+      "name": "Phantom: Kronaclaw",
+      "description": "Transform into a Kronaclaw and soar into the air to deal {0} Aero DMG up to 8 times and {1} Aero DMG 2 times, then dive to deal {2} Aero DMG 1 time.\nCD: {3}s",
+      "values": ["8.04%", "24.13%", "155.55%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 8.04, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 24.13, "stat": "atk", "element": "aero" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 155.55, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "phantom-lightcrusher": {
+      "name": "Phantom: Lightcrusher",
+      "description": "Lunge forward as a Lightcrusher, dealing {0} Spectro DMG. Generate {1} Ablucence on hit. Each Ablucence explosion deals {2} Spectro DMG.\nHold the Echo Skill to stay in the Lightcrusher form, which allows you to leap up and pounce forward in the air for a short distance.\n\nCooldown: {3}s",
+      "values": ["135.36%", "6", "15.04%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 135.36, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 15.04, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "phantom-lorelei": {
+      "name": "Phantom: Lorelei",
+      "description": "Transform into Lorelei and attack surrounding enemies, dealing {0} Havoc DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Havoc DMG Bonus and {2} Basic Attack DMG Bonus.\nCD: {3}s.",
+      "values": ["405.00%", "12.00%", "12.00%", "25"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 405, "stat": "atk", "element": "havoc" }]
+    },
+    "phantom-lumiscale-construct": {
+      "name": "Phantom: Lumiscale Construct",
+      "description": "Transform into a Lumiscale Construct and enter a Parry Stance. If you are not attacked during the Parry Stance, slash to deal {0} Glacio DMG when the stance finishes. If attacked, counterattack instantly, dealing {1} Glacio DMG. When hit with a <color=Highlight>Special Skill</color> attack while in the Parry Stance, break the <color=Highlight>Special Skill</color> and counterattack, dealing {1} Glacio DMG.\n\nCD: {2}s",
+      "values": ["553.60%", "553.60%+276.80%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 553.6, "stat": "atk", "element": "glacio" }]
+    },
+    "phantom-mourning-aix": {
+      "name": "Phantom: Mourning Aix",
+      "description": "Transform into Mourning Aix and perform 2 consecutive claw attacks, each attack dealing {0} and {1} Spectro DMG respectively.\n\nAfter the transformation, increase current character's Spectro DMG by {2} and Resonance Liberation DMG by {3} for {4}s\n\nCD: {5}s",
+      "values": ["157.44%", "236.16%", "12.00%", "12.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 157.44, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 236.16, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "phantom-myriad-snare-rustfire-chassis": {
+      "name": "Phantom: Myriad Snare: Rustfire Chassis",
+      "description": "Summon Myriad Snare: Rustfire Chassis, dealing Fusion DMG equal to {0} of the Max HP on initial impact. During its duration, it repeatedly crushes enemies along its path up to {5} times, dealing Fusion DMG equal to {1} of the Max HP each time.\n\nResonators with this Echo equipped in the main slot gain {2} Fusion DMG Bonus and {3} Heavy Attack DMG Bonus.\n\nCD: {4}s",
+      "values": ["10.20%", "0.37%", "12.00%", "12.00%", "20", "19"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 10.2, "stat": "hp", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 0.37, "stat": "hp", "element": "fusion" }
+      ]
+    },
+    "phantom-nightmare-crownless": {
+      "name": "Phantom: Nightmare Crownless",
+      "description": "Transform into Nightmare: Crownless and attack enemies in front, dealing {0} Havoc DMG. The Resonator with this Echo equipped in their main slot gains {1} Havoc DMG Bonus and {2} Basic Attack DMG Bonus.\nThis skill has {3} initial charges, replenished once every {4}s, max {5} charges. When Nightmare: Crownless hits a target, DMG dealt by this skill is increased by {6}. This effect lasts for {7}s and does not stack.\nCD: {4}s.",
+      "values": ["264.60%", "12.00%", "12.00%", "3", "12", "3", "20.00%", "2"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 264.6, "stat": "atk", "element": "havoc" }]
+    },
+    "phantom-nightmare-inferno-rider": {
+      "name": "Phantom: Nightmare Inferno Rider",
+      "description": "Transform into Nightmare: Inferno Rider and jump to attack enemies in front, dealing {0} Fusion DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Fusion DMG Bonus and {2} Resonance Skill DMG Bonus.\nHold Echo Skill to transform into Nightmare: Inferno Rider and enter Riding Mode. When exiting Riding Mode, deal {3} Fusion DMG to enemies in front.\nCD: {4}s.",
+      "values": ["405.00%", "12.00%", "12.00%", "283.50%", "25"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 405, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {3}", "index": 3, "multiplier": 283.5, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "phantom-nimbus-wraith": {
+      "name": "Phantom: Nimbus Wraith",
+      "description": "Summon a Nimbus Wraith that restores the active Resonator's HP by {0} of their Max HP, up to 4 times.\nCD: {1}s.",
+      "values": ["2.70%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 2.7, "stat": "hp", "element": null }]
+    },
+    "phantom-reactor-husk": {
+      "name": "Phantom: Reactor Husk",
+      "description": "Transform into a Reactor Husk, jumping into the air and unleashing a heavy slash that deals {0} Fusion DMG to enemies.\n \nThe Resonator with this Echo equipped in their main slot gain {1} Energy Regen.\n \n CD: {4}s.",
+      "values": ["351.00%", "10.00%", "10%", "20", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 351, "stat": "atk", "element": "fusion" }]
+    },
+    "phantom-rocksteady-guardian": {
+      "name": "Phantom: Rocksteady Guardian",
+      "description": "Transform into Rocksteady Guardian and enter a Parry State. Upon being attacked, deal Spectro DMG equal to {0} of the Resonator's Max HP, and perform a follow-up attack that deals Spectro DMG equal to {0} of the Resonator's Max HP.\n \nUse the Echo Skill again to exit the transformation.\n \nIf the attack received is a <color=Highlight>Special Skill</color> attack, interrupt the enemy's <color=Highlight>Special Skill</color>, gain a Shield equal to 30% Max HP, and perform a two-stage follow-up attack, each dealing Spectro DMG equal to {1} of the Resonator's Max HP. These follow-up attacks simultaneously launch three ground-breaking waves, each dealing Spectro DMG equal to {2} of the Resonator's Max HP.\n \nCD: {3}s",
+      "values": ["8.29%", "5.52%", "4.59%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 8.29, "stat": "hp", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 5.52, "stat": "hp", "element": "spectro" }
+      ]
+    },
+    "phantom-sigillum": {
+      "name": "Phantom: Sigillum",
+      "description": "Summon Sigillum to unleash two attacks, dealing {0} and {1} Fusion DMG respectively.\nWhen equipped in the main slot by Aemeath, it grants {2} Resonance Liberation DMG Bonus.\nCD: {3}s",
+      "values": ["68.40%", "205.20%", "25.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 68.4, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 205.2, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "phantom-skywatch-lancer": {
+      "name": "Phantom: Skywatch Lancer",
+      "description": "Summon a Skywatch Lancer to attack the target, dealing {0} Aero DMG 6 times.\nCD: {1}s",
+      "values": ["32.09%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 32.09, "stat": "atk", "element": "aero" }]
+    },
+    "phantom-smiter": {
+      "name": "Phantom: Smiter",
+      "description": "Use Echo Skill to summon a Smiter to jab at enemies, dealing 7 instances of {0} Spectro DMG, and finish with an uppercut, dealing {1} Spectro DMG.\n\nCD: {2}s",
+      "values": ["19.26%", "57.78%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 19.26, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 57.78, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "phantom-smolder": {
+      "name": "Phantom: Smolder",
+      "description": "Use Echo Skill to summon Smolder to hurl fireballs toward enemies, dealing {0} Fusion DMG. If the fireball hits the ground, it explodes to deal {0} Fusion DMG to all enemies within the range.\n\nCD: {1}s",
+      "values": ["192.60%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 192.6, "stat": "atk", "element": "fusion" }]
+    },
+    "phantom-the-false-sovereign": {
+      "name": "Phantom: The False Sovereign",
+      "description": "Transform into the False Sovereign and dash forward in a spinning strike, dealing {0} Electro DMG 4 times.\nThe Resonator with this Echo equipped in the main slot gains {1} Electro DMG Bonus and {2} Heavy Attack DMG Bonus. Upon casting Intro Skill, the False Sovereign is also summoned to deal {3} Electro DMG.\nStart with {4} charges. Gain 1 charge every {5}s, up to {6} charges.\nCD: {7}s",
+      "values": ["55.35%", "12.00%", "12.00%", "405.00%", "2", "8", "2", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 55.35, "stat": "atk", "element": "electro" },
+        { "label": "Hit {3}", "index": 3, "multiplier": 405, "stat": "atk", "element": "electro" }
+      ]
+    },
+    "phantom-thundering-mephis": {
+      "name": "Phantom: Thundering Mephis",
+      "description": "Transform into Thundering Mephis, engaging in a rapid assault of up to 6 strikes. The first 5 strikes deal {0} Electro DMG each, while the final strike inflicts {1} Electro DMG, with an additional {2} Electro DMG from the thunder.\n\nAfter the final hit, increase the current character's Electro DMG by {3} and Resonance Liberation DMG by {4} for {5}s.\n\nCD: {6}s",
+      "values": ["132.61%", "189.44%", "31.57%", "12.00%", "12.00%", "15", "20"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 189.44, "stat": "atk", "element": "electro" }]
+    },
+    "phantom-twin-nova-collapsar-blade": {
+      "name": "Phantom: Twin Nova - Collapsar Blade",
+      "description": "Transform into a Twin Nova: Collapsar Blade to rapidly fire at enemies for 5s, with each attack dealing {0} Electro DMG.\n\nThe Resonator with this Echo equipped in the main slot gains {6} Electro DMG Bonus and {7} Basic Attack DMG Bonus.\n\nCD: {11}s.\n\nIf Twin Nova: Nebulous Cannon is equipped in another slot on the Resonator:\n- Casting Echo Skill in succession transforms you into Collapsar Blade and Nebulous Cannon alternately and is considered casting Echo skills of the same name.\n- DMG dealt by Twin Nova: Collapsar Blade becomes Spectro DMG. The Electro DMG Bonus gained from equipping it in the main slot is turned into Spectro DMG Bonus.\n- Casting Basic Attacks grants <SapTag=1>{1}</SapTag> {Cus:Sap,S=stack P=stacks SapTag=1} of Dyad Origins. Casting Resonance Skill grants <SapTag=2>{2}</SapTag> {Cus:Sap,S=stack P=stacks SapTag=2} of Dyad Origins. Dyad Origins can stack up to {3} times and lasts for {4}s. Each stack increases Echo Skill DMG by {5}, and all stacks are cleared after this Echo Skill ends.\n- This skill is capped at {10} uses. Initially, this skill can be used {8} times, with 1 use added every {9}s.",
+      "values": ["2.01%", "1", "3", "6", "8", "10%", "12.00%", "12.00%", "2", "8", "2", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 2.01, "stat": "atk", "element": "electro" }]
+    },
+    "phantom-twin-nova-nebulous-cannon": {
+      "name": "Phantom: Twin Nova - Nebulous Cannon",
+      "description": "Transform into a Twin Nova: Nebulous Cannon to slash enemies twice, with each attack dealing {0} Spectro DMG.\n\nThe Resonator with this Echo equipped in the main slot gains {6} Spectro DMG Bonus and {7} Basic Attack DMG Bonus.\n\nCD: {11}s.\n\nIf Twin Nova: Collapsar Blade is equipped in another slot on the Resonator:\n- Casting Echo Skill in succession transforms you into Nebulous Cannon and Collapsar Blade alternately and is considered casting Echo skills of the same name. The DMG Bonus from the Echo in the main slot remains unchanged.\n- DMG dealt by Twin Nova: Collapsar Blade becomes Spectro DMG.\n- Casting Basic Attacks grants <SapTag=1>{1}</SapTag> {Cus:Sap,S=stack P=stacks SapTag=1} of Dyad Origins. Casting Resonance Skill grants <SapTag=2>{2}</SapTag> {Cus:Sap,S=stack P=stacks SapTag=2} of Dyad Origins. Dyad Origins can stack up to {3} times and lasts for {4}s. Each stack increases Echo Skill DMG by {5}, and all stacks are cleared after this Echo Skill ends.\n-This skill is capped at {10} uses. Initially, this skill can be used {8} times, with 1 use added every {9}s.",
+      "values": ["80.51%", "1", "3", "6", "8", "10%", "12.00%", "12.00%", "2", "8", "2", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 80.51, "stat": "atk", "element": "spectro" }]
+    },
+    "phantom-zip-zap": {
+      "name": "Phantom: Zip Zap",
+      "description": "Summon a Zip Zap to launch spinning attacks at enemies, dealing {0} Electro DMG 5 times.\n\nCD: {1}s.",
+      "values": ["25.92%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 25.92, "stat": "atk", "element": "electro" }]
+    },
+    "pilgrims-shell": {
+      "name": "Pilgrim's Shell",
+      "description": "Transform into a Pilgrim's Shell to attack nearby enemies, dealing {0} Aero DMG.\nCD: {1}s",
+      "values": ["268.20%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "aero" }]
+    },
+    "porcelain-picket": {
+      "name": "Porcelain Picket",
+      "description": "Use Echo Skill to summon a Porcelain Picket to slash forward, dealing 2 instances of {0} Aero DMG and 7 instances of {1} Aero DMG to enemies along the path.\n\nCD: {2}s",
+      "values": ["19.44%", "12.96%", "8"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 19.44, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 12.96, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "questless-knight": {
+      "name": "Questless Knight",
+      "description": "Transform into Questless Knight and smash the surrounding enemies, dealing {0} Electro DMG.\nCD: {1}s.",
+      "values": ["313.20%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 313.2, "stat": "atk", "element": "electro" }]
+    },
+    "rage-against-the-statue": {
+      "name": "Rage Against the Statue",
+      "description": "Transform into Rage Against the Statue to attack enemies, dealing {0} Spectro DMG. Hold the Echo Skill to maintain the Echo form and charge towards enemies, dealing {1} Spectro DMG.\nCD: {2}s.",
+      "values": ["313.20%", "469.80%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 313.2, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 469.8, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "reactor-husk": {
+      "name": "Reactor Husk",
+      "description": "Transform into a Reactor Husk, jumping into the air and unleashing a heavy slash that deals {0} Fusion DMG to enemies.\n \nThe Resonator with this Echo equipped in their main slot gain {1} Energy Regen.\n \n CD: {4}s.",
+      "values": ["351.00%", "10.00%", "10%", "20", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 351, "stat": "atk", "element": "fusion" }]
+    },
+    "reminiscence-denia": {
+      "name": "Reminiscence: Denia",
+      "description": "Summon \"Trickster\" to deal {0} Fusion DMG to enemies. Within the next {1}s, casting Outro Skill grants the incoming Resonator {2} Fusion DMG Bonus for {3}s.\nCD: {4}s",
+      "values": ["273.60%", "15", "12.00%", "15", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "fusion" }]
+    },
+    "reminiscence-fenrico": {
+      "name": "Reminiscence: Fenrico",
+      "description": "Summon the Talons of Decree to attack nearby enemies, dealing {0} Aero DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Aero DMG Bonus and {2} Heavy Attack DMG Bonus.\nCD: {3}s.",
+      "values": ["273.60%", "12.00%", "12.00%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "aero" }]
+    },
+    "reminiscence-fleurdelys": {
+      "name": "Reminiscence: Fleurdelys",
+      "description": "Summon Windcleaver and attack the target, dealing {0} Aero DMG 8 times and {1} Aero DMG once.\nThe Resonator with this Echo equipped in the main slot gains {2} Aero DMG Bonus. When Resonator: Aero or Cartethyia equips this Echo, they gain {3} more Aero DMG Bonus.\nCD: {4}s.",
+      "values": ["27.36%", "136.80%", "10.00%", "10.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 27.36, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 136.8, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "reminiscence-kronaclaw": {
+      "name": "Reminiscence: Kronaclaw",
+      "description": "Transform into a Kronaclaw and soar into the air to deal {0} Aero DMG up to 8 times and {1} Aero DMG 2 times, then dive to deal {2} Aero DMG 1 time.\nCD: {3}s",
+      "values": ["8.04%", "24.13%", "155.55%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 8.04, "stat": "atk", "element": "aero" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 24.13, "stat": "atk", "element": "aero" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 155.55, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "reminiscence-nightmare-adam-smasher": {
+      "name": "Reminiscence - Nightmare: Adam Smasher",
+      "description": "Cast Echo Skill to deal 16 instances of Physical DMG equal to {2} of ATK to enemies within range.\nWhen Lucy or Rebecca has this Echo equipped in the main slot, their Crit. Rate is increased by {4} and they unlock special Echo Skills.\n\nIf equipped by Lucy:\n- {Cus:Ipt,Touch=Tap PC=Press Gamepad=Press} the Echo Skill button to deal Spectro DMG equal to {0} of ATK to nearby enemies.\n- Hold the Echo Skill button to deal Spectro DMG equal to {0} of ATK to nearby enemies and enter a special moving state, increasing Lucy's movement speed while slowing nearby enemies.\n\nIf equipped by Rebecca:\n- Cast Echo Skill to fire missiles, dealing 16 instances of Electro DMG equal to {1} of ATK to enemies.\nCD: {3}s",
+      "values": ["273.60%", "17.10%", "10.26%", "20", "15%"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 17.1, "stat": "atk", "element": "electro" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 10.26, "stat": "atk", "element": null }
+      ]
+    },
+    "reminiscence-suhsin-the-inevitable": {
+      "name": "Reminiscence: Suhsin the Inevitable",
+      "description": "Cast Echo Skill to deal 4 instances of {0} Electro DMG and 1 instance of {1} Electro DMG.\nWhen equipped by Hsin, the Echo Skill instead deals 5 instances of {2} Electro DMG and 1 instance of {3} Electro DMG to targets within a larger range.\nThe Resonator with this Echo equipped in their main slot gains {4} Electro DMG Bonus. Inflicting Electro Flare, gaining Unison, or triggering Unison Response grants the Resonator an extra {5} Electro DMG Bonus for {6}s.\nCD: {7}s",
+      "values": ["27.36%", "164.16%", "8.20%", "232.56%", "10.00%", "10.00%", "30", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 27.36, "stat": "atk", "element": "electro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 164.16, "stat": "atk", "element": "electro" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 8.2, "stat": "atk", "element": "electro" },
+        { "label": "Hit {3}", "index": 3, "multiplier": 232.56, "stat": "atk", "element": "electro" }
+      ]
+    },
+    "reminiscence-threnodian-leviathan": {
+      "name": "Reminiscence: Threnodian - Leviathan",
+      "description": "Summon a Collapsing Horizon, dealing two instances of {0} Havoc DMG to the nearby enemies and obtaining the Core of Collapse for {1}s.\n\nWhile it lasts, Core of Collapse deals {2} Havoc DMG when the active Resonator in the team deals damage. This effect can be triggered once every {4}s, up to <SapTag=3>{3}</SapTag> {Cus:Sap,S=time P=times SapTag=3}. Enemies with Havoc Bane take {5} more DMG from this effect.\n\nThe Resonator with this Echo equipped in the main slot gains {6} Havoc DMG Bonus and {7} Resonance Liberation DMG Bonus.\n\nCD: {8}s",
+      "values": ["131.04%", "15", "24.57%", "8", "0.5", "100%", "12.00%", "12.00%", "25"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 131.04, "stat": "atk", "element": "havoc" }]
+    },
+    "reminiscence-threnodian-voidborne-construct": {
+      "name": "Reminiscence: Threnodian - Voidborne Construct",
+      "description": "Summon Aleph-1's Creation to deal {0} Glacio DMG 5 times and {1} Glacio DMG 1 time to enemies.\nThe Resonator with this Echo equipped in the main slot gains {2} Glacio DMG Bonus and {3} Resonance Liberation DMG Bonus.\nCD: {4}s",
+      "values": ["21.88%", "164.16%", "12.00%", "12.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 21.88, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 164.16, "stat": "atk", "element": "glacio" }
+      ]
+    },
+    "rocksteady-guardian": {
+      "name": "Rocksteady Guardian",
+      "description": "Transform into Rocksteady Guardian and enter a Parry State. Upon being attacked, deal Spectro DMG equal to {0} of the Resonator's Max HP, and perform a follow-up attack that deals Spectro DMG equal to {0} of the Resonator's Max HP.\n \nUse the Echo Skill again to exit the transformation.\n \nIf the attack received is a <color=Highlight>Special Skill</color> attack, interrupt the enemy's <color=Highlight>Special Skill</color>, gain a Shield equal to 30% Max HP, and perform a two-stage follow-up attack, each dealing Spectro DMG equal to {1} of the Resonator's Max HP. These follow-up attacks simultaneously launch three ground-breaking waves, each dealing Spectro DMG equal to {2} of the Resonator's Max HP.\n \nCD: {3}s",
+      "values": ["8.29%", "5.52%", "4.59%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 8.29, "stat": "hp", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 5.52, "stat": "hp", "element": "spectro" }
+      ]
+    },
+    "sabercat-prowler": {
+      "name": "Sabercat Prowler",
+      "description": "Summon a Sabercat Prowler to fire beams at enemies, dealing {0} Havoc DMG.\n\nCD: {1}s.",
+      "values": ["192.60%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 192.6, "stat": "atk", "element": "havoc" }]
+    },
+    "sabercat-reaver": {
+      "name": "Sabercat Reaver",
+      "description": "Summon a Sabercat Reaver to attack enemies, dealing {0} Fusion DMG.\n\nCD: {1}s.",
+      "values": ["192.60%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 192.6, "stat": "atk", "element": "fusion" }]
+    },
+    "sacerdos": {
+      "name": "Sacerdos",
+      "description": "Summon a Sacerdos to attack enemies, dealing {0} Aero DMG 2 times.\nCD: {1}s.",
+      "values": ["64.80%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 64.8, "stat": "atk", "element": "aero" }]
+    },
+    "sagittario": {
+      "name": "Sagittario",
+      "description": "Transform into Sagittario to move a certain distance and perform a ranged attack, dealing {0} Spectro DMG.\nGetting attacked while moving in the Sagittario form triggers form triggers a damage avoiding enhanced Dodge Counter, dealing {1} Spectro DMG once and {2} Spectro DMG 5 times.\nCD: {3}s.",
+      "values": ["268.20%", "268.20%", "53.64%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 268.2, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 53.64, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "sentry-construct": {
+      "name": "Sentry Construct",
+      "description": "Transform into Sentry Construct and attack enemies in front, dealing {0} Glacio DMG. Each time the Resonator with this Echo casts Resonance Liberation, it charges the Strike Capacitor.\nOnce Strike Capacitor is at max level, the Echo Skill cooldown will be reset. Use Echo Skill to transform into Sentry Construct and dive into enemies from the air, dealing {1} Glacio DMG and freezing the target.\nThe Resonator with this Echo equipped in their main slot gains {2} Glacio DMG Bonus and {3} Resonance Skill DMG Bonus.\nCD: {4}s.",
+      "values": ["405.00%", "405.00%", "12.00%", "12.00%", "25"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 405, "stat": "atk", "element": "glacio" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 405, "stat": "atk", "element": "glacio" }
+      ]
+    },
+    "shadow-stepper": {
+      "name": "Shadow Stepper",
+      "description": "Summon a Shadow Stepper to attack enemies, dealing {0} Havoc DMG.\nCD: {1}s.",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "havoc" }]
+    },
+    "sigillum": {
+      "name": "Sigillum",
+      "description": "Summon Sigillum to unleash two attacks, dealing {0} and {1} Fusion DMG respectively.\nWhen equipped in the main slot by Aemeath, it grants {2} Resonance Liberation DMG Bonus.\nCD: {3}s",
+      "values": ["68.40%", "205.20%", "25.00%", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 68.4, "stat": "atk", "element": "fusion" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 205.2, "stat": "atk", "element": "fusion" }
+      ]
+    },
+    "skywatch-lancer": {
+      "name": "Skywatch Lancer",
+      "description": "Summon a Skywatch Lancer to attack the target, dealing {0} Aero DMG 6 times.\nCD: {1}s",
+      "values": ["32.09%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 32.09, "stat": "atk", "element": "aero" }]
+    },
+    "smiter": {
+      "name": "Smiter",
+      "description": "Use Echo Skill to summon a Smiter to jab at enemies, dealing 7 instances of {0} Spectro DMG, and finish with an uppercut, dealing {1} Spectro DMG.\n\nCD: {2}s",
+      "values": ["19.26%", "57.78%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 19.26, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 57.78, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "smolder": {
+      "name": "Smolder",
+      "description": "Use Echo Skill to summon Smolder to hurl fireballs toward enemies, dealing {0} Fusion DMG. If the fireball hits the ground, it explodes to deal {0} Fusion DMG to all enemies within the range.\n\nCD: {1}s",
+      "values": ["192.60%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 192.6, "stat": "atk", "element": "fusion" }]
+    },
+    "soulfrayer": {
+      "name": "Soulfrayer",
+      "description": "Use Echo Skill to summon a Soulfrayer, dealing {0} Electro DMG 3 times.\nCasting Outro Skill within {1}s after summoning Soulfrayer grants {2} Electro DMG Bonus to the incoming Resonator for {3}s.\nCD: {4}s",
+      "values": ["91.18%", "15", "12.00%", "15", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 91.18, "stat": "atk", "element": "electro" }]
+    },
+    "spearback": {
+      "name": "Spearback",
+      "description": "Summon a Spearback to perform 5 consecutive attacks. The first 4 attacks deal {0} Physical DMG, and the last deals {1} Physical DMG.\n\nCD: {2}s",
+      "values": ["29.96%", "51.36%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 29.96, "stat": "atk", "element": null },
+        { "label": "Hit {1}", "index": 1, "multiplier": 51.36, "stat": "atk", "element": null }
+      ]
+    },
+    "spectro-drake": {
+      "name": "Spectro Drake",
+      "description": "Summon a Spectro Drake to attack enemies, dealing {0} Spectro DMG 3 times.\nCD: {1}s",
+      "values": ["43.20%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 43.2, "stat": "atk", "element": "spectro" }]
+    },
+    "spectro-prism": {
+      "name": "Spectro Prism",
+      "description": "Summon a Spectro Prism to emit a laser that hits the enemy up to {0} times, dealing {1} Spectro DMG each time.\n\nCD: {2}s",
+      "values": ["8", "14.40%", "8"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 14.4, "stat": "atk", "element": "spectro" }]
+    },
+    "stone-picket": {
+      "name": "Stone Picket",
+      "description": "Use Echo Skill to summon a Stone Picket, dealing {0} Aero DMG.\n\nCD: {1}s",
+      "values": ["129.60%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 129.6, "stat": "atk", "element": "aero" }]
+    },
+    "stonewall-bracer": {
+      "name": "Stonewall Bracer",
+      "description": "Transform into Stonewall Bracer and charge forward, dealing {0} Physical DMG on-hit, then smash to deal {1} Physical DMG, and gain a shield of {2} of current character's Max HP that lasts {3}s. Use the Echo skill again to exit the transformation state.\n\nCD: {4}s",
+      "values": ["112.64%", "168.96%", "10.00%", "7", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 112.64, "stat": "atk", "element": null },
+        { "label": "Hit {1}", "index": 1, "multiplier": 168.96, "stat": "atk", "element": null }
+      ]
+    },
+    "tambourinist": {
+      "name": "Tambourinist",
+      "description": "Summon a Tambourinist that plays out Melodies of Annihilation. Any Resonator on the team gains the following effect for 10s upon obtaining a Melody of Annihilation: When the Resonator hits a target, the Tambourinist deals {0} Havoc DMG to the target, up to 10 times.\n\nCD: {1}s",
+      "values": ["14.40%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 14.4, "stat": "atk", "element": "havoc" }]
+    },
+    "tempest-mephis": {
+      "name": "Tempest Mephis",
+      "description": "Transform into Tempest Mephis to perform tail swing attacks followed by a claw attack. The lightning strike summoned by the tail swing deals {0} Electro DMG each time, while the claw attack deals {1} Electro DMG.\n\nAfter the claw hit, increase the current character's Electro DMG by {2} and Heavy Attack DMG by {3} for {4}s.\n\nCD: {5}s",
+      "values": ["102.48%", "175.68%", "12.00%", "12.00%", "15", "20"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 102.48, "stat": "atk", "element": "electro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 175.68, "stat": "atk", "element": "electro" }
+      ]
+    },
+    "thousand-puppet-pavilion": {
+      "name": "Thousand-Puppet Pavilion",
+      "description": "Use Echo Skill to attack nearby enemies, dealing {1} Havoc DMG and summoning 4 Blades of Thousand Memories that last {5}s.\n\nWhile Blades of Thousand Memories last, when the Resonator inflicts Havoc Bane, consume 1 Blade of Thousand Memories to deal {0} Havoc DMG once to the target. This effect can be triggered once every {6}s.\n\nResonators with this Echo equipped in the main slot gain {2} Havoc DMG and {3} Heavy Attack DMG bonuses.\n\nCD: {4}s",
+      "values": ["41.04%", "109.44%", "12.00%", "12.00%", "20", "15", "1"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 41.04, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 109.44, "stat": "atk", "element": "havoc" }
+      ]
+    },
+    "thundering-mephis": {
+      "name": "Thundering Mephis",
+      "description": "Transform into Thundering Mephis, engaging in a rapid assault of up to 6 strikes. The first 5 strikes deal {0} Electro DMG each, while the final strike inflicts {1} Electro DMG, with an additional {2} Electro DMG from the thunder.\n\nAfter the final hit, increase the current character's Electro DMG by {3} and Resonance Liberation DMG by {4} for {5}s.\n\nCD: {6}s",
+      "values": ["132.61%", "189.44%", "31.57%", "12.00%", "12.00%", "15", "20"],
+      "hits": [{ "label": "Hit {1}", "index": 1, "multiplier": 189.44, "stat": "atk", "element": "electro" }]
+    },
+    "tick-tack": {
+      "name": "Tick Tack",
+      "description": "Summon a Tick Tack that charges and bites the enemy. The charge from Tick Tack will deal {0} Havoc DMG to the enemy, and the bite will deal {1} Havoc DMG to the enemy. Reduces enemy Vibration Strength by up to {3} during {2}s.\n\nCD: {4}s",
+      "values": ["68.48%", "102.72%", "5", "5.00%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 68.48, "stat": "atk", "element": "havoc" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 102.72, "stat": "atk", "element": "havoc" }
+      ]
+    },
+    "tremor-warrior": {
+      "name": "Tremor Warrior",
+      "description": "Transform into a Tremor Warrior and viciously attack enemies in the front, dealing {0} Electro DMG.\n\nCD: {1}s.",
+      "values": ["205.20%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 205.2, "stat": "atk", "element": "electro" }]
+    },
+    "twin-nova-collapsar-blade": {
+      "name": "Twin Nova: Collapsar Blade",
+      "description": "Transform into a Twin Nova: Collapsar Blade to rapidly fire at enemies for 5s, with each attack dealing {0} Electro DMG.\n\nThe Resonator with this Echo equipped in the main slot gains {6} Electro DMG Bonus and {7} Basic Attack DMG Bonus.\n\nCD: {11}s.\n\nIf Twin Nova: Nebulous Cannon is equipped in another slot on the Resonator:\n- Casting Echo Skill in succession transforms you into Collapsar Blade and Nebulous Cannon alternately and is considered casting Echo skills of the same name.\n- DMG dealt by Twin Nova: Collapsar Blade becomes Spectro DMG. The Electro DMG Bonus gained from equipping it in the main slot is turned into Spectro DMG Bonus.\n- Casting Basic Attacks grants <SapTag=1>{1}</SapTag> {Cus:Sap,S=stack P=stacks SapTag=1} of Dyad Origins. Casting Resonance Skill grants <SapTag=2>{2}</SapTag> {Cus:Sap,S=stack P=stacks SapTag=2} of Dyad Origins. Dyad Origins can stack up to {3} times and lasts for {4}s. Each stack increases Echo Skill DMG by {5}, and all stacks are cleared after this Echo Skill ends.\n- This skill is capped at {10} uses. Initially, this skill can be used {8} times, with 1 use added every {9}s.",
+      "values": ["2.01%", "1", "3", "6", "8", "10%", "12.00%", "12.00%", "2", "8", "2", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 2.01, "stat": "atk", "element": "electro" }]
+    },
+    "twin-nova-nebulous-cannon": {
+      "name": "Twin Nova: Nebulous Cannon",
+      "description": "Transform into a Twin Nova: Nebulous Cannon to slash enemies twice, with each attack dealing {0} Spectro DMG.\n\nThe Resonator with this Echo equipped in the main slot gains {6} Spectro DMG Bonus and {7} Basic Attack DMG Bonus.\n\nCD: {11}s.\n\nIf Twin Nova: Collapsar Blade is equipped in another slot on the Resonator:\n- Casting Echo Skill in succession transforms you into Nebulous Cannon and Collapsar Blade alternately and is considered casting Echo skills of the same name. The DMG Bonus from the Echo in the main slot remains unchanged.\n- DMG dealt by Twin Nova: Collapsar Blade becomes Spectro DMG.\n- Casting Basic Attacks grants <SapTag=1>{1}</SapTag> {Cus:Sap,S=stack P=stacks SapTag=1} of Dyad Origins. Casting Resonance Skill grants <SapTag=2>{2}</SapTag> {Cus:Sap,S=stack P=stacks SapTag=2} of Dyad Origins. Dyad Origins can stack up to {3} times and lasts for {4}s. Each stack increases Echo Skill DMG by {5}, and all stacks are cleared after this Echo Skill ends.\n-This skill is capped at {10} uses. Initially, this skill can be used {8} times, with 1 use added every {9}s.",
+      "values": ["80.51%", "1", "3", "6", "8", "10%", "12.00%", "12.00%", "2", "8", "2", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 80.51, "stat": "atk", "element": "spectro" }]
+    },
+    "violet-feathered-heron": {
+      "name": "Violet-Feathered Heron",
+      "description": "Transform into Violet-Feathered Heron and enter a Parry Stance. Counterattack when the Parry stance is over, dealing {0} Electro DMG. If attacked during Parry Stance, you can counterattack in advance and additionally recover {1} Concerto Energy.\n\nCD: {2}s",
+      "values": ["288.00%", "5", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 288, "stat": "atk", "element": "electro" }]
+    },
+    "viridblaze-saurian": {
+      "name": "Viridblaze Saurian",
+      "description": "Summon a Viridblaze Saurian to continuously spit fire, dealing {0} Fusion DMG 10 times.\n\nCD: {1}s",
+      "values": ["17.12%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 17.12, "stat": "atk", "element": "fusion" }]
+    },
+    "vitreum-dancer": {
+      "name": "Vitreum Dancer",
+      "description": "Transform into Vitreum Dancer and attack surrounding enemies, dealing {0} Electro DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Electro DMG Bonus.\nCD: {2}s.",
+      "values": ["313.20%", "12.00%", "20"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 313.2, "stat": "atk", "element": "electro" }]
+    },
+    "voidwing-moth": {
+      "name": "Voidwing Moth",
+      "description": "{Cus:Ipt,Touch=Tap PC=Press Gamepad=Press} Echo Skill to transform into Voidwing Moth, dealing {0} Spectro DMG to nearby enemies.\nHold Echo Skill to continuously attack, dealing up to 12 instances of {1} Spectro DMG.\nWithin {2}s after using this Echo skill, casting Outro Skill increases the incoming Resonator's ATK by {3} for {4}s.\nCD: {5}s",
+      "values": ["405.00%", "49.33%", "15", "12.00%", "15", "25"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 405, "stat": "atk", "element": "spectro" },
+        { "label": "Hit {1}", "index": 1, "multiplier": 49.33, "stat": "atk", "element": "spectro" }
+      ]
+    },
+    "voltscourge-stalker": {
+      "name": "Voltscourge Stalker",
+      "description": "Summon a Voltscourge Stalker to perform 3 stages of attacks on enemies, each dealing {0} Electro DMG.\nCD: {1}s.",
+      "values": ["43.20%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 43.2, "stat": "atk", "element": "electro" }]
+    },
+    "whiff-whaff": {
+      "name": "Whiff Whaff",
+      "description": "Summon a Whiff Whaff that triggers an air explosion, dealing {0} Aero DMG and produce a Low-pressure Zone. The Low-pressure Zone continuously pulls enemies nearby towards the center for {1}s, dealing {2} Aero DMG up to 6 times.\n\nCD: {3}s",
+      "values": ["51.36%", "2", "19.97%", "15"],
+      "hits": [
+        { "label": "Hit {0}", "index": 0, "multiplier": 51.36, "stat": "atk", "element": "aero" },
+        { "label": "Hit {2}", "index": 2, "multiplier": 19.97, "stat": "atk", "element": "aero" }
+      ]
+    },
+    "windlash-coleoid": {
+      "name": "Windlash Coleoid",
+      "description": "Transform into a Windlash Coleoid to kick enemies, dealing {0} Aero DMG.\n\nCD: {1}s.",
+      "values": ["268.20%", "15"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 268.2, "stat": "atk", "element": "aero" }]
+    },
+    "zip-zap": {
+      "name": "Zip Zap",
+      "description": "Summon a Zip Zap to launch spinning attacks at enemies, dealing {0} Electro DMG 5 times.\n\nCD: {1}s.",
+      "values": ["25.92%", "8"],
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 25.92, "stat": "atk", "element": "electro" }]
+    }
+  }
+}

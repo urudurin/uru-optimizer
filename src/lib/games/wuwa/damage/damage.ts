@@ -1,3 +1,4 @@
+import echoSkillData from 'lib/games/wuwa/data/generated/echoSkills.json'
 import skillData from 'lib/games/wuwa/data/generated/skills.json'
 import type { WuwaStats } from 'lib/games/wuwa/stats/computeStats'
 
@@ -11,12 +12,15 @@ import type { WuwaStats } from 'lib/games/wuwa/stats/computeStats'
 // it takes that type's DMG bonus. Skill multipliers come from data/generated/skills.json
 // (src/scripts/wuwa/extractSkills.mjs).
 //
+// Echo Skill hits (data/generated/echoSkills.json, src/scripts/wuwa/extractEchoSkills.mjs) count as Echo Skill DMG at the
+// echo's highest rank, and only take the element DMG Bonus when the echo's element is the Resonator's.
+// DMG Amplified adds up per hit: the enemy card's (for everything) plus the kit's, for everything or one kind of hit.
 // A rotation is a count of each damage line. Lines sum per type and scaling stat, so the rotation's damage is, per
 // group, the summed multipliers times the stat, times the rest. Not yet: Echo Skill damage, Resonators' own buffs from
 // their kit, and team DEF ignore or RES shred (set them on the enemy by hand). Personal, non-commercial use.
 
 export type ScalingStat = 'atk' | 'hp' | 'def'
-export type HitType = 'basic' | 'heavy' | 'skill' | 'liberation' | 'intro' | 'outro' | 'none'
+export type HitType = 'basic' | 'heavy' | 'skill' | 'liberation' | 'intro' | 'outro' | 'echo' | 'none'
 export type Section = 'normal' | 'skill' | 'liberation' | 'intro' | 'forte' | 'outro'
 
 export type SkillHit = {
@@ -58,6 +62,8 @@ export type Rotation = {
   // Times each damage line lands, by hit key
   counts: Record<string, number>,
   skillLevel: number,
+  // The main echo whose Echo Skill is in the rotation, and how many times each of its hits lands (by hit index)
+  echo?: { id: string, counts: Record<string, number> },
 }
 
 export type DamageSetup = {
@@ -65,6 +71,36 @@ export type DamageSetup = {
   characterLevel: number,
   rotation: Rotation,
   enemy: EnemySettings,
+  // The Resonator's element DMG stat ('fusionDmg'...), so an echo of another element doesn't get it
+  element?: string,
+  // DMG Amplified from the kit (damage/combatEffects.ts), for every hit ('all') or one kind, in percent
+  amplify?: Partial<Record<HitType | 'all', number>>,
+}
+
+type EchoSkillFile = {
+  echoes: Record<
+    string,
+    { name: string, description: string, values: string[], hits: { index: number, multiplier: number, stat: string, element: string | null }[] }
+  >,
+}
+const ECHO_SKILLS = (echoSkillData as unknown as EchoSkillFile).echoes
+
+export type EchoSkillHit = { key: string, index: number, multiplier: number, stat: ScalingStat, element: string | null }
+
+// An echo's Echo Skill damage hits, keyed by their place in the skill text
+export function echoSkillHits(echoId: string): EchoSkillHit[] {
+  return (ECHO_SKILLS[echoId]?.hits ?? []).map((hit) => ({ ...hit, key: String(hit.index), stat: hit.stat as ScalingStat }))
+}
+
+// The echo's skill text with its numbers filled in, for showing what each hit is
+export function echoSkillText(echoId: string): string {
+  const echo = ECHO_SKILLS[echoId]
+  if (!echo) return ''
+  return echo.description.replace(/\{(\d+)\}/g, (token, i: string) => echo.values[Number(i)] ?? token)
+}
+
+export function hasEchoSkill(echoId: string): boolean {
+  return ECHO_SKILLS[echoId] !== undefined
 }
 
 export function hasSkillData(charId: string): boolean {
@@ -110,10 +146,12 @@ const TYPE_LABELS: Record<HitType, string> = {
   liberation: 'Liberation',
   intro: 'Intro',
   outro: 'Outro',
+  echo: 'Echo Skill',
   none: 'Other',
 }
 
-type Group = { bonus?: keyof WuwaStats, stat: ScalingStat, multiplier: number }
+// elemental: takes the element DMG Bonus; amplify: DMG Amplified for these hits, in percent
+type Group = { bonus?: keyof WuwaStats, stat: ScalingStat, multiplier: number, elemental: boolean, amplify: number }
 type Prepared = { groups: Group[], factor: number }
 
 function resMultiplier(res: number): number {
@@ -129,20 +167,32 @@ function prepare(setup: DamageSetup): Prepared {
   const cached = prepared.get(setup)
   if (cached) return cached
   const { rotation, enemy } = setup
+  const amplifyFor = (type: HitType) => enemy.amplify + (setup.amplify?.all ?? 0) + (setup.amplify?.[type] ?? 0)
   const groups = new Map<string, Group>()
   for (const hit of characterHits(setup.charId)) {
     const count = rotation.counts[hit.key] ?? 0
     if (count <= 0) continue
     for (const [type, stat, values] of hit.terms) {
       const key = `${type}:${stat}`
-      const group = groups.get(key) ?? { bonus: TYPE_BONUS[type], stat, multiplier: 0 }
+      const group = groups.get(key) ?? { bonus: TYPE_BONUS[type], stat, multiplier: 0, elemental: true, amplify: amplifyFor(type) }
       group.multiplier += count * (values[levelIndex(rotation.skillLevel)] ?? 0)
+      groups.set(key, group)
+    }
+  }
+  if (rotation.echo) {
+    for (const hit of echoSkillHits(rotation.echo.id)) {
+      const count = rotation.echo.counts[hit.key] ?? 0
+      if (count <= 0) continue
+      const elemental = !hit.element || !setup.element || `${hit.element}Dmg` === setup.element
+      const key = `echo:${hit.stat}:${elemental}`
+      const group = groups.get(key) ?? { stat: hit.stat, multiplier: 0, elemental, amplify: amplifyFor('echo') }
+      group.multiplier += count * hit.multiplier
       groups.set(key, group)
     }
   }
   const own = 800 + 8 * setup.characterLevel
   const enemyDef = (8 * enemy.level + 792) * Math.max(0, 1 - enemy.defIgnore / 100)
-  const factor = own / (own + enemyDef) * resMultiplier((enemy.res - enemy.resShred) / 100) * (1 + enemy.amplify / 100)
+  const factor = own / (own + enemyDef) * resMultiplier((enemy.res - enemy.resShred) / 100)
   const result = { groups: [...groups.values()], factor }
   prepared.set(setup, result)
   return result
@@ -153,7 +203,8 @@ export function rotationDamage(stats: WuwaStats, setup: DamageSetup): number {
   const crit = 1 + Math.min(Math.max(stats.critRate, 0), 100) / 100 * (stats.critDmg - 100) / 100
   let total = 0
   for (const group of groups) {
-    total += group.multiplier / 100 * stats[group.stat] * (1 + (stats.elementDmg + (group.bonus ? stats[group.bonus] : 0)) / 100)
+    const dmgBonus = (group.elemental ? stats.elementDmg : 0) + (group.bonus ? stats[group.bonus] : 0)
+    total += group.multiplier / 100 * stats[group.stat] * (1 + dmgBonus / 100) * (1 + group.amplify / 100)
   }
   return total * crit * factor
 }

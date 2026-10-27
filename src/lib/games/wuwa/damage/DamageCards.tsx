@@ -4,20 +4,26 @@ import {
   NumberInput,
   Select,
   Stack,
+  Switch,
   Text,
 } from '@mantine/core'
 import { formatNumber } from 'lib/games/shared/format'
 import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
+import type { WuwaAppliedEffect } from 'lib/games/wuwa/damage/combatEffects'
 import {
   characterHits,
   defaultRotation,
   describeHit,
+  echoSkillHits,
+  echoSkillText,
   type EnemySettings,
+  hasEchoSkill,
   hitMultiplier,
   MAX_SKILL_LEVEL,
   type Rotation,
 } from 'lib/games/wuwa/damage/damage'
+import { ECHO_DEFINITIONS } from 'lib/games/wuwa/data/gameData'
 
 // The Damage row of the WuWa optimizer, like ZZZ's and Genshin's: the enemy, and how many times each skill's damage
 // lines land in a rotation.
@@ -54,9 +60,17 @@ export function EnemyCard({ enemy, onChange }: { enemy: EnemySettings, onChange:
   )
 }
 
-export function RotationCard({ charId, rotation, damage, onChange }: {
+// Echoes with Echo Skill damage, for the main echo picker
+const ECHO_OPTIONS = Object.values(ECHO_DEFINITIONS as Record<string, { id: string, name: string }>)
+  .filter((echo) => hasEchoSkill(echo.id))
+  .map((echo) => ({ value: echo.id, label: echo.name }))
+  .sort((a, b) => a.label.localeCompare(b.label))
+
+export function RotationCard({ charId, rotation, mainEcho, damage, onChange }: {
   charId: string,
   rotation: Rotation,
+  // The echo in the Resonator's main slot now, picked when the rotation hasn't chosen one
+  mainEcho?: string,
   // The current loadout's rotation damage, when known
   damage?: number,
   onChange: (rotation: Rotation) => void,
@@ -123,7 +137,99 @@ export function RotationCard({ charId, rotation, damage, onChange }: {
             ))}
           </Stack>
         ))}
+        <EchoSkillLines rotation={rotation} mainEcho={mainEcho} onChange={onChange} />
       </div>
+    </FormCard>
+  )
+}
+
+// The main echo's Echo Skill hits: assumes the picked echo is the one in the main slot of every loadout searched
+function EchoSkillLines({ rotation, mainEcho, onChange }: { rotation: Rotation, mainEcho?: string, onChange: (rotation: Rotation) => void }) {
+  const echoId = rotation.echo?.id ?? (mainEcho && hasEchoSkill(mainEcho) ? mainEcho : undefined)
+  const counts = rotation.echo?.counts ?? {}
+  const hits = echoId ? echoSkillHits(echoId) : []
+  const text = echoId ? echoSkillText(echoId) : ''
+  const setCount = (key: string, count: number) => {
+    if (!echoId) return
+    const next = { ...counts }
+    if (count > 0) next[key] = count
+    else delete next[key]
+    onChange({ ...rotation, echo: { id: echoId, counts: next } })
+  }
+  return (
+    <Stack gap={4}>
+      <Text size='xs' fw={600}>Echo Skill</Text>
+      <Select
+        size='xs'
+        searchable
+        placeholder='Main echo'
+        value={echoId ?? null}
+        onChange={(id) => onChange({ ...rotation, echo: id ? { id, counts: {} } : undefined })}
+        data={ECHO_OPTIONS}
+      />
+      {hits.map((hit, i) => (
+        <div key={hit.key} className={classes.hitRow}>
+          <Text size='xs' className={classes.hitLabel} title={text}>{`Hit ${i + 1} (${hit.stat.toUpperCase()}${hit.element ? `, ${hit.element}` : ''})`}</Text>
+          <Text size='xs' c='dimmed' ta='right'>{`${hit.multiplier.toFixed(1)}%`}</Text>
+          <NumberInput
+            size='xs'
+            min={0}
+            max={99}
+            hideControls
+            aria-label={`Echo Skill hit ${i + 1} count`}
+            placeholder='0'
+            value={counts[hit.key] ?? ''}
+            onChange={(value) => setCount(hit.key, Number(value) || 0)}
+          />
+        </div>
+      ))}
+      {echoId && <Text size='xs' c='dimmed' title={text}>Highest rank. Assumes this echo is in the main slot; hover a hit for the skill text.</Text>}
+    </Stack>
+  )
+}
+
+// The Resonator's own kit effects (damage/combatEffects.ts), with toggles; they count only in rotation damage
+export function KitEffectsCard({ name, applied, onSetting }: {
+  name: string,
+  applied: WuwaAppliedEffect[],
+  onSetting: (id: string, value: boolean | number) => void,
+}) {
+  return (
+    <FormCard title='Own effects' size='wide' description={`What ${name}'s kit does in combat, counted only when ranking by rotation damage.`}>
+      {applied.length === 0
+        ? <Text size='xs' c='dimmed'>No kit effects for this Resonator yet.</Text>
+        : (
+          <Stack gap='sm'>
+            {applied.map(({ effect, setting, counted, reason }) => (
+              <Group key={effect.id} justify='space-between' align='flex-end' wrap='nowrap' gap='sm'>
+                <Stack gap={2} style={{ minWidth: 0, flex: 1 }}>
+                  <Text size='xs' c={counted ? undefined : 'dimmed'}>{effect.label}</Text>
+                  {!counted && reason && <Text size='xs' c='dimmed'>{reason}</Text>}
+                </Stack>
+                {effect.toggle?.kind === 'switch' && (
+                  <Switch
+                    size='xs'
+                    label={effect.toggle.label}
+                    checked={setting !== false}
+                    onChange={(event) => onSetting(effect.id, event.currentTarget.checked)}
+                  />
+                )}
+                {effect.toggle?.kind === 'stacks' && (
+                  <NumberInput
+                    size='xs'
+                    w={150}
+                    label={effect.toggle.label}
+                    min={0}
+                    max={effect.toggle.max}
+                    value={typeof setting === 'number' ? setting : 0}
+                    onChange={(value) => onSetting(effect.id, Math.max(0, Number(value) || 0))}
+                  />
+                )}
+                {!effect.toggle && <Text size='xs' c='dimmed'>Always on</Text>}
+              </Group>
+            ))}
+          </Stack>
+        )}
     </FormCard>
   )
 }

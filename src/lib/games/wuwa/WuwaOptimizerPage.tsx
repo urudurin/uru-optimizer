@@ -44,6 +44,7 @@ import {
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
+import { resolveWuwaCombat } from 'lib/games/wuwa/damage/combatEffects'
 import {
   DEFAULT_ENEMY,
   defaultRotation,
@@ -54,6 +55,7 @@ import {
 } from 'lib/games/wuwa/damage/damage'
 import {
   EnemyCard,
+  KitEffectsCard,
   RotationCard,
 } from 'lib/games/wuwa/damage/DamageCards'
 import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
@@ -160,6 +162,8 @@ type WuwaOptimizerSettings = {
   // The rotation damage target (damage/damage.ts): the enemy and the rotation
   enemy: EnemySettings,
   rotation: Rotation,
+  // Toggles of the Resonator's own kit effects (damage/combatEffects.ts)
+  combatSettings: Record<string, boolean | number>,
 }
 
 // Rank by values: 'damage' plus the stat targets in optimizer/targets.ts
@@ -179,6 +183,7 @@ function defaultSettings(charId: string): WuwaOptimizerSettings {
     teamSettings: {},
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(charId),
+    combatSettings: {},
   }
 }
 
@@ -195,7 +200,20 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
 
   // Saved per Resonator, see shared/optimizerSettings.ts
   const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.charId ?? '', () => defaultSettings(character?.charId ?? ''))
-  const { targetValue, mainStats, fullSet, twoPieceSets, excludeEquippedByOthers, minStats, maxStats, teammates, teamSettings, enemy, rotation } = settings
+  const {
+    targetValue,
+    mainStats,
+    fullSet,
+    twoPieceSets,
+    excludeEquippedByOthers,
+    minStats,
+    maxStats,
+    teammates,
+    teamSettings,
+    enemy,
+    rotation,
+    combatSettings,
+  } = settings
   const setTargetValue = fieldSetter(updateSettings, 'targetValue')
   const setMainStats = fieldSetter(updateSettings, 'mainStats')
   const setFullSet = fieldSetter(updateSettings, 'fullSet')
@@ -207,6 +225,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
+  const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
   // What the team gives this Resonator, the same for every loadout
   const teamResult = wuwaTeamBuffsFor(character, { teammates, settings: teamSettings }, { characters, echoes })
   const teammateOptions = characters.filter((c) => c.charId !== character.charId).map((c) => ({ value: c.charId, label: characterName(c.charId) }))
@@ -239,12 +258,27 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   }
 
   const byDamage = targetValue === DAMAGE_TARGET && hasSkillData(character.charId)
-  const damageSetup = { charId: character.charId, characterLevel: character.level, rotation, enemy }
+  // The Resonator's own kit effects, counted only when ranking by rotation damage
+  const kit = resolveWuwaCombat(character.charId, character.sequence, combatSettings)
+  const combatBonus = { ...teamResult.bonus }
+  if (byDamage) {
+    for (const [stat, value] of Object.entries(kit.bonus) as [keyof typeof combatBonus, number][]) {
+      combatBonus[stat] = (combatBonus[stat] ?? 0) + value
+    }
+  }
+  const damageSetup = {
+    charId: character.charId,
+    characterLevel: character.level,
+    rotation,
+    enemy: { ...enemy, defIgnore: enemy.defIgnore + kit.defIgnore },
+    element: CHARACTER_INFO[character.charId]?.element ?? undefined,
+    amplify: kit.amplify,
+  }
   const target: EchoTarget = byDamage ? { kind: 'damage', setup: damageSetup } : wuwaTarget(targetValue)
   // The current loadout's rotation damage, for the Rotation card
   const wornEchoes = character.echoIds.flatMap((id) => echoes.find((e) => e.id === id) ?? [])
   const currentDamage = hasSkillData(character.charId) && wornEchoes.length > 0
-    ? rotationDamage(computeWuwaStats(character, wornEchoes, teamResult.bonus).stats, damageSetup)
+    ? rotationDamage(computeWuwaStats(character, wornEchoes, combatBonus).stats, damageSetup)
     : undefined
   // A complete 5-piece set leaves no room for a 2-piece set, a 3-piece set leaves room for one
   const fullSetPieces = fullSet ? (SONATA_SETS[fullSet]?.fullPieces ?? 5) : 0
@@ -272,7 +306,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
       filters,
       minStats,
       maxStats,
-      teamBonus: teamResult.bonus,
+      teamBonus: combatBonus,
       target,
       limit: RESULT_LIMIT,
     }, setProgress)
@@ -430,9 +464,18 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
               <RotationCard
                 charId={character.charId}
                 rotation={rotation}
+                mainEcho={wornEchoes[0]?.defId}
                 damage={currentDamage}
                 onChange={(next) => {
                   setRotation(next)
+                  setResult(undefined)
+                }}
+              />
+              <KitEffectsCard
+                name={characterName(character.charId)}
+                applied={kit.applied}
+                onSetting={(id, value) => {
+                  setCombatSettings((current) => ({ ...current, [id]: value }))
                   setResult(undefined)
                 }}
               />
@@ -603,7 +646,7 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                   format: (value: number) => formatValue(stat, value),
                 })),
               ]}
-              upgrades={wuwaSubstatUpgrades(character, build.echoes, result.target, teamResult.bonus)}
+              upgrades={wuwaSubstatUpgrades(character, build.echoes, result.target, result.target.kind === 'damage' ? combatBonus : teamResult.bonus)}
               scoreLabel={targetLabel(result.target)}
               formatRoll={(upgrade) => upgrade.stat.endsWith('Flat') ? String(Math.round(upgrade.roll)) : `${upgrade.roll.toFixed(1)}%`}
             />

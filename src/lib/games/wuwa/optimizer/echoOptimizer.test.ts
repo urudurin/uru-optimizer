@@ -112,8 +112,15 @@ describe('optimizeEchoes', () => {
         setup: {
           charId: 'hsin',
           characterLevel: 90,
-          rotation: { ...defaultRotation('hsin'), counts: { ...defaultRotation('hsin').counts, 'normal:0': 3, 'normal:6': 2 } },
+          rotation: {
+            ...defaultRotation('hsin'),
+            counts: { ...defaultRotation('hsin').counts, 'normal:0': 3, 'normal:6': 2 },
+            // An off-element Echo Skill (no element DMG Bonus) and DMG Amplified for Liberation hits
+            echo: { id: 'nightmare-inferno-rider', counts: { '0': 1, '3': 1 } },
+          },
           enemy: { ...DEFAULT_ENEMY, defIgnore: 18, resShred: 10 },
+          element: 'electroDmg',
+          amplify: { liberation: 30 },
         },
       },
       {},

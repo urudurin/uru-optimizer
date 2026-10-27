@@ -1,8 +1,11 @@
+import { resolveWuwaCombat } from 'lib/games/wuwa/damage/combatEffects'
 import {
   characterHits,
   type DamageSetup,
   DEFAULT_ENEMY,
   defaultRotation,
+  echoSkillHits,
+  echoSkillText,
   hasSkillData,
   hitMultiplier,
   rotationDamage,
@@ -68,5 +71,40 @@ describe('WuWa damage', () => {
     expect(rotationDamage(stats, { ...one, enemy: { ...DEFAULT_ENEMY, amplify: 25 } })).toBeCloseTo(base * 1.25, 6)
     const cartethyia = setup('cartethyia', 'Blade of Howling Squall DMG')
     expect(rotationDamage(stats, cartethyia) / rotationDamage({ ...stats, hp: 30000 }, cartethyia)).toBeCloseTo(0.5, 6)
+  })
+
+  it('adds Echo Skill hits, with the element DMG Bonus only for an echo of the Resonator\'s element', () => {
+    expect(echoSkillHits('nightmare-inferno-rider').map((hit) => hit.multiplier)).toEqual([405, 283.5])
+    expect(echoSkillText('nightmare-inferno-rider')).toContain('405.00%')
+    const echo = { id: 'nightmare-inferno-rider', counts: { '0': 1 } }
+    const fusion: DamageSetup = {
+      charId: 'changli',
+      characterLevel: 90,
+      rotation: { counts: {}, skillLevel: 10, echo },
+      enemy: DEFAULT_ENEMY,
+      element: 'fusionDmg',
+    }
+    const def = (800 + 720) / (800 + 720 + 8 * 100 + 792)
+    expect(rotationDamage(stats, fusion)).toBeCloseTo(2000 * 4.05 * (1 + 40 / 100) * (1 + 0.6 * 1.5) * def * 0.9, 6)
+    // An Electro Resonator with a Fusion echo gets no element DMG Bonus on it
+    expect(rotationDamage(stats, { ...fusion, element: 'electroDmg' })).toBeCloseTo(2000 * 4.05 * (1 + 0.6 * 1.5) * def * 0.9, 6)
+  })
+
+  it('amplifies by kind of hit on top of the enemy card', () => {
+    const one = setup('encore', 'Energetic Welcome Damage')
+    const base = rotationDamage(stats, one)
+    expect(rotationDamage(stats, { ...one, amplify: { skill: 20 } })).toBeCloseTo(base * 1.2, 6)
+    expect(rotationDamage(stats, { ...one, amplify: { liberation: 20 } })).toBeCloseTo(base, 6)
+    expect(rotationDamage(stats, { ...one, enemy: { ...DEFAULT_ENEMY, amplify: 10 }, amplify: { all: 15, skill: 5 } })).toBeCloseTo(base * 1.3, 6)
+  })
+
+  it('resolves kit effects with toggles and modes', () => {
+    const hsin = resolveWuwaCombat('hsin', 0, {})
+    // Unison's ATK on, Electro Flare's off by default
+    expect(hsin.bonus).toEqual({ atkPct: 50 })
+    expect(resolveWuwaCombat('hsin', 0, { 'hsin-tides-electro': 2 }).bonus).toEqual({ atkPct: 50, electroDmg: 50 })
+    expect(resolveWuwaCombat('changli', 0, {}).defIgnore).toBe(15)
+    expect(resolveWuwaCombat('cartethyia', 0, {}).amplify).toEqual({ all: 60 })
+    expect(resolveWuwaCombat('cartethyia', 0, { 'cartethyia-imprint': 2 }).amplify).toEqual({ all: 30 })
   })
 })
