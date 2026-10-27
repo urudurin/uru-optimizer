@@ -1,0 +1,1468 @@
+{
+  "provenance": {
+    "source": "https://github.com/frzyc/genshin-optimizer/blob/master/libs/zzz/stats/src/allStat_gen.json",
+    "license": "MIT, Copyright (c) 2020 frzyc",
+    "extractedBy": "src/scripts/zzz/extractSkills.mjs",
+    "extractedOn": "2026-10-27",
+    "note": "Skill hits as [percent of ATK at level 1, growth per level]. Personal, non-commercial use."
+  },
+  "agents": {
+    "1011": {
+      "name": "Anby",
+      "skills": [
+        {
+          "key": "BasicAttackTurboVolt",
+          "category": "basic",
+          "hits": [[31.2, 2.9], [33.7, 3.1], [113.6, 10.4], [239.1, 21.8]]
+        },
+        { "key": "BasicAttackThunderbolt", "category": "basic", "hits": [[328.6, 29.9]] },
+        { "key": "DashAttackTaserBlast", "category": "dodge", "hits": [[56.7, 5.2]] },
+        { "key": "DodgeCounterThunderclap", "category": "dodge", "hits": [[180.2, 16.4]] },
+        { "key": "SpecialAttackForkLightning", "category": "special", "hits": [[93.4, 8.5]] },
+        { "key": "EXSpecialAttackLightningBolt", "category": "special", "hits": [[583, 53]] },
+        { "key": "ChainAttackElectroEngine", "category": "chain", "hits": [[542.4, 49.4]] },
+        { "key": "UltimateOverdriveEngine", "category": "chain", "hits": [[1512.6, 137.6]] },
+        { "key": "QuickAssistThunderfall", "category": "assist", "hits": [[61.7, 5.7]] },
+        { "key": "AssistFollowUpLightningWhirl", "category": "assist", "hits": [[335.2, 30.5]] }
+      ]
+    },
+    "1021": {
+      "name": "Nekomata",
+      "skills": [
+        {
+          "key": "BasicAttackKittySlash",
+          "category": "basic",
+          "hits": [[55.2, 5.1], [62.6, 5.7], [72.7, 6.7], [170.2, 15.5], [123.6, 11.3]]
+        },
+        { "key": "BasicAttackCrimsonBlade", "category": "basic", "hits": [[71.8, 6.6]] },
+        { "key": "DashAttackOverHere", "category": "dodge", "hits": [[35.1, 3.2]] },
+        { "key": "DodgeCounterPhantomClaws", "category": "dodge", "hits": [[227.9, 20.8]] },
+        { "key": "DodgeCounterFluffyPiercingClaw", "category": "dodge", "hits": [[1263.9, 114.9]] },
+        { "key": "SpecialAttackSurpriseAttack", "category": "special", "hits": [[47.3, 4.3]] },
+        { "key": "EXSpecialAttackSuperSurpriseAttack", "category": "special", "hits": [[539.7, 49.1]] },
+        { "key": "ChainAttackClawSwipe", "category": "chain", "hits": [[536.2, 48.8]] },
+        { "key": "UltimateClawSmash", "category": "chain", "hits": [[1571.1, 142.9]] },
+        { "key": "QuickAssistCatsPaw", "category": "assist", "hits": [[94.5, 8.6]] },
+        { "key": "AssistFollowUpShadowStrike", "category": "assist", "hits": [[300.4, 27.4]] }
+      ]
+    },
+    "1031": {
+      "name": "Nicole",
+      "skills": [
+        {
+          "key": "BasicAttackCunningCombo",
+          "category": "basic",
+          "hits": [[38.9, 3.6], [27.1, 2.5], [35.3, 3.3], [36.1, 3.3], [124.3, 11.3], [180.4, 16.4]]
+        },
+        {
+          "key": "BasicAttackDoAsIPlease",
+          "category": "basic",
+          "hits": [[38.9, 3.6], [49.4, 4.5], [35.3, 3.3], [65.8, 6], [124.3, 11.3], [329, 30]]
+        },
+        { "key": "DashAttackJackInTheBox", "category": "dodge", "hits": [[41.2, 3.8], [117.3, 10.7], [60, 5.5]] },
+        { "key": "DodgeCounterDivertedBombard", "category": "dodge", "hits": [[91.2, 8.3], [91.2, 8.3]] },
+        { "key": "SpecialAttackSugarcoatedBullet", "category": "special", "hits": [[26.3, 2.4], [26.3, 2.4]] },
+        {
+          "key": "EXSpecialAttackStuffedSugarcoatedBullet",
+          "category": "special",
+          "hits": [[215, 19.6], [107.5, 9.8], [107.5, 9.8], [387, 35.2]]
+        },
+        {
+          "key": "ChainAttackEtherShellacking",
+          "category": "chain",
+          "hits": [[104.8, 9.6], [104.8, 9.6], [283, 25.8]]
+        },
+        { "key": "UltimateEtherGrenade", "category": "chain", "hits": [[646.8, 58.8], [873.2, 79.4]] },
+        { "key": "QuickAssistEmergencyBombard", "category": "assist", "hits": [[31.7, 2.9], [31.7, 2.9]] },
+        { "key": "AssistFollowUpWindowOfOpportunity", "category": "assist", "hits": [[377.1, 34.3]] }
+      ]
+    },
+    "1041": {
+      "name": "Soldier11",
+      "skills": [
+        {
+          "key": "BasicAttackWarmupSparks",
+          "category": "basic",
+          "hits": [[34.4, 3.2], [41.2, 3.8], [102.8, 9.4], [213.4, 19.4]]
+        },
+        {
+          "key": "BasicAttackFireSuppression",
+          "category": "basic",
+          "hits": [[55.1, 5.1], [57.2, 5.2], [132, 12], [340.7, 31], [441.7, 40.2], [441.7, 40.2], [82.8, 7.6]]
+        },
+        { "key": "BasicAttackFireAssault", "category": "basic", "hits": [[94.1, 8.6]] },
+        { "key": "DashAttackBlazingFire", "category": "dodge", "hits": [[68.3, 6.3]] },
+        { "key": "DashAttackFireSuppression", "category": "dodge", "hits": [[78.8, 7.2]] },
+        { "key": "DodgeCounterBackdraft", "category": "dodge", "hits": [[262, 23.9]] },
+        { "key": "SpecialAttackRagingFire", "category": "special", "hits": [[52.6, 4.8]] },
+        { "key": "EXSpecialAttackFerventFire", "category": "special", "hits": [[675, 61.4]] },
+        { "key": "ChainAttackUpliftingFlame", "category": "chain", "hits": [[632.5, 57.5]] },
+        { "key": "UltimateBellowingFlame", "category": "chain", "hits": [[2103, 191.2]] },
+        { "key": "QuickAssistCoveringFire", "category": "assist", "hits": [[120.8, 11]] },
+        { "key": "AssistFollowUpReignition", "category": "assist", "hits": [[383.7, 34.9]] }
+      ]
+    },
+    "1051": {
+      "name": "Yidhari",
+      "skills": [
+        {
+          "key": "BasicAttackCrushingStrike",
+          "category": "basic",
+          "hits": [[60.7, 5.6], [62.4, 5.7], [86, 7.9], [207.8, 18.9]]
+        },
+        {
+          "key": "BasicAttackFrostbiteEmbrace",
+          "category": "basic",
+          "hits": [[161.4, 14.7], [254.1, 23.1], [345.9, 31.5], [235.8, 21.5]]
+        },
+        { "key": "FrostsCrushingWeight", "category": "basic", "hits": [[48.7, 4.5]] },
+        { "key": "DashAttackFrostbloomImpact", "category": "dodge", "hits": [[70.5, 6.5]] },
+        { "key": "DodgeCounterIcehaulReverb", "category": "dodge", "hits": [[185.3, 16.9]] },
+        { "key": "SpecialAttackCeaseThoughts", "category": "special", "hits": [[39.6, 3.6]] },
+        { "key": "EXSpecialAttackFrostCoil", "category": "special", "hits": [[510.2, 46.4]] },
+        { "key": "SpecialAttackSurgingColdCrushingPursuit", "category": "special", "hits": [[83.7, 7.7]] },
+        { "key": "EXSpecialAttackGlacialCrush", "category": "special", "hits": [[1007.6, 91.6], [79.2, 7.2]] },
+        { "key": "ChainAttackFrostboundOath", "category": "chain", "hits": [[572.7, 52.1], [629.9, 57.3]] },
+        { "key": "UltimateFinalActCrossingTheRiverOfRegret", "category": "chain", "hits": [[1522.1, 138.4]] },
+        { "key": "QuickAssistFrostshockReinforcement", "category": "assist", "hits": [[82.2, 7.5]] },
+        { "key": "AssistFollowUpGlacialOnslaught", "category": "assist", "hits": [[313.4, 28.5]] }
+      ]
+    },
+    "1061": {
+      "name": "Corin",
+      "skills": [
+        {
+          "key": "BasicAttackWipeout",
+          "category": "basic",
+          "hits": [[82, 7.5], [76.6, 7], [179.2, 16.3], [233.4, 21.3], [421.2, 38.3]]
+        },
+        { "key": "DashAttackOopsyDaisy", "category": "dodge", "hits": [[96.7, 8.8]] },
+        { "key": "DodgeCounterNope", "category": "dodge", "hits": [[135.6, 12.4], [135.6, 12.4]] },
+        { "key": "SpecialAttackCleanSweep", "category": "special", "hits": [[66.7, 6.1], [37.5, 3.5], [25, 2.3]] },
+        {
+          "key": "EXSpecialAttackSkirtAlert",
+          "category": "special",
+          "hits": [[345.1, 31.4], [1035.2, 94.2], [345.1, 31.4]]
+        },
+        { "key": "ChainAttackSorry", "category": "chain", "hits": [[687.3, 62.5]] },
+        { "key": "UltimateVeryVerySorry", "category": "chain", "hits": [[2028.8, 184.5]] },
+        { "key": "QuickAssistEmergencyMeasures", "category": "assist", "hits": [[131.7, 12], [83.3, 7.6]] },
+        { "key": "AssistFollowUpQuickSweep", "category": "assist", "hits": [[547.5, 49.8]] }
+      ]
+    },
+    "1071": {
+      "name": "Caesar",
+      "skills": [
+        {
+          "key": "BasicAttackRampagingSlash",
+          "category": "basic",
+          "hits": [[47.2, 4.3], [40.9, 3.8], [148.3, 13.5], [118.4, 10.8], [78.8, 7.2], [198.6, 18.1], [399.9, 36.4]]
+        },
+        { "key": "BasicAttackDeadEnd", "category": "basic", "hits": [[126.3, 11.5]] },
+        { "key": "DashAttackHogRush", "category": "dodge", "hits": [[62.3, 5.7]] },
+        { "key": "DodgeCounterEyeForAnEye", "category": "dodge", "hits": [[193.5, 17.6]] },
+        { "key": "SpecialAttackShockwaveShieldBash", "category": "special", "hits": [[53.3, 4.9], [0, 0]] },
+        { "key": "SpecialAttackRoaringThrust", "category": "special", "hits": [[58.8, 5.4]] },
+        { "key": "EXSpecialAttackParryCounter", "category": "special", "hits": [[387.2, 35.2], [0, 0], [387.2, 35.2]] },
+        { "key": "EXSpecialAttackOverpoweredShieldBash", "category": "special", "hits": [[425.7, 38.7], [0, 0]] },
+        { "key": "ChainAttackRoadRageSlam", "category": "chain", "hits": [[638.8, 58.1]] },
+        { "key": "UltimateSavageSmash", "category": "chain", "hits": [[2012.3, 183]] },
+        { "key": "QuickAssistLaneChange", "category": "assist", "hits": [[64.2, 5.9]] },
+        { "key": "AssistFollowUpAidingBlade", "category": "assist", "hits": [[407.2, 37.1]] }
+      ]
+    },
+    "1081": {
+      "name": "Billy",
+      "skills": [
+        {
+          "key": "BasicAttackFullFirepower",
+          "category": "basic",
+          "hits": [[68, 6.2], [7.6, 0.7], [61.8, 5.7], [12.7, 1.2], [49.5, 4.5]]
+        },
+        { "key": "DashAttackStarlightSanction", "category": "dodge", "hits": [[63, 5.8], [39, 3.6]] },
+        { "key": "DodgeCounterFairFight", "category": "dodge", "hits": [[221.4, 20.2]] },
+        { "key": "SpecialAttackStandStill", "category": "special", "hits": [[24.2, 2.2], [51.7, 4.7], [50.1, 4.6]] },
+        { "key": "EXSpecialAttackClearanceTime", "category": "special", "hits": [[543.8, 49.5]] },
+        { "key": "ChainAttackStarlightMirage", "category": "chain", "hits": [[735.2, 66.9]] },
+        { "key": "UltimateStarlightShineBright", "category": "chain", "hits": [[1597.7, 145.3]] },
+        { "key": "QuickAssistPowerOfTeamwork", "category": "assist", "hits": [[93.4, 8.5]] },
+        { "key": "AssistFollowUpFatalShot", "category": "assist", "hits": [[388.8, 35.4]] }
+      ]
+    },
+    "1091": {
+      "name": "Miyabi",
+      "skills": [
+        {
+          "key": "BasicAttackKazahana",
+          "category": "basic",
+          "hits": [[26.9, 2.5], [29.6, 2.7], [62.8, 5.8], [96.5, 8.8], [129, 11.8]]
+        },
+        {
+          "key": "BasicAttackShimotsuki",
+          "category": "basic",
+          "hits": [[454.7, 41.4], [858.1, 78.1], [2141.1, 194.7]]
+        },
+        { "key": "DashAttackFuyubachi", "category": "dodge", "hits": [[25.8, 2.4]] },
+        { "key": "DodgeCounterKanSuzume", "category": "dodge", "hits": [[245.9, 22.4]] },
+        { "key": "SpecialAttackMiyuki", "category": "special", "hits": [[35.8, 3.3]] },
+        {
+          "key": "EXSpecialAttackHisetsu",
+          "category": "special",
+          "hits": [[157.4, 14.4], [236, 21.5], [193.3, 17.6], [289.9, 26.4]]
+        },
+        { "key": "ChainAttackSpringsCall", "category": "chain", "hits": [[188.4, 17.2], [188.4, 17.2], [251.2, 22.9]] },
+        { "key": "UltimateLingeringSnow", "category": "chain", "hits": [[2388, 217.1]] },
+        { "key": "QuickAssistDancingPetals", "category": "assist", "hits": [[104.5, 9.5]] },
+        { "key": "AssistFollowUpFallingPetals", "category": "assist", "hits": [[337.8, 30.8]] }
+      ]
+    },
+    "1101": {
+      "name": "Koleda",
+      "skills": [
+        {
+          "key": "BasicAttackSmashNBash",
+          "category": "basic",
+          "hits": [[63.6, 5.8], [79.2, 7.2], [126.1, 11.5], [317.4, 28.9], [160.8, 14.7], [404.9, 36.9], [501.3, 45.6]]
+        },
+        { "key": "DashAttackTremble", "category": "dodge", "hits": [[56.1, 5.1]] },
+        { "key": "DodgeCounterDontLookDownOnMe", "category": "dodge", "hits": [[343.9, 31.3]] },
+        { "key": "SpecialAttackHammerTime", "category": "special", "hits": [[51.9, 4.8], [77.8, 7.1], [85.5, 7.8]] },
+        {
+          "key": "EXSpecialAttackBoilingFurnace",
+          "category": "special",
+          "hits": [[152.3, 13.9], [606, 55.1], [666.6, 60.6]]
+        },
+        { "key": "ChainAttackNaturalDisaster", "category": "chain", "hits": [[636, 57.9]] },
+        { "key": "UltimateHammerquake", "category": "chain", "hits": [[1548.8, 140.8], [1694, 154]] },
+        { "key": "QuickAssistComingThru", "category": "assist", "hits": [[183.8, 16.8]] },
+        { "key": "AssistFollowUpHammerBell", "category": "assist", "hits": [[359.2, 32.7]] }
+      ]
+    },
+    "1111": {
+      "name": "Anton",
+      "skills": [
+        {
+          "key": "BasicAttackEnthusiasticDrills",
+          "category": "basic",
+          "hits": [[67.8, 6.2], [92.3, 8.4], [109.8, 10], [229.1, 20.9]]
+        },
+        {
+          "key": "BasicAttackEnthusiasticDrillsBurstMode",
+          "category": "basic",
+          "hits": [[240.9, 21.9], [469.2, 42.7], [456.9, 41.6]]
+        },
+        { "key": "DashAttackFireWithFire", "category": "dodge", "hits": [[68.4, 6.3]] },
+        { "key": "DodgeCounterRetaliation", "category": "dodge", "hits": [[271.2, 24.7]] },
+        { "key": "DodgeCounterOverloadDrillBurstMode", "category": "dodge", "hits": [[465.4, 42.4]] },
+        { "key": "SpecialAttackSpinBro", "category": "special", "hits": [[44.2, 4.1]] },
+        { "key": "EXSpecialAttackSmashTheHorizonBro", "category": "special", "hits": [[195.1, 17.8]] },
+        { "key": "SpecialAttackExplosiveDrillBurstMode", "category": "special", "hits": [[231.4, 21.1]] },
+        { "key": "ChainAttackGoGoGo", "category": "chain", "hits": [[640.7, 58.3]] },
+        { "key": "UltimateGoGoGoGoGo", "category": "chain", "hits": [[1816.4, 165.2]] },
+        { "key": "QuickAssistShoulderToShoulder", "category": "assist", "hits": [[263.4, 24]] },
+        { "key": "QuickAssistProtectiveDrillBurstMode", "category": "assist", "hits": [[365.4, 33.3]] },
+        { "key": "AssistFollowUpLimitBurst", "category": "assist", "hits": [[325.8, 29.7]] }
+      ]
+    },
+    "1121": {
+      "name": "Ben",
+      "skills": [
+        {
+          "key": "BasicAttackDebtReconciliation",
+          "category": "basic",
+          "hits": [[65.9, 6], [189, 17.2], [348.3, 31.7]]
+        },
+        { "key": "DashAttackIncomingExpense", "category": "dodge", "hits": [[138.4, 12.6]] },
+        { "key": "DodgeCounterAccountsSettled", "category": "dodge", "hits": [[225.7, 20.6]] },
+        { "key": "SpecialAttackFiscalFist", "category": "special", "hits": [[41.7, 3.8], [233.4, 21.3]] },
+        {
+          "key": "EXSpecialAttackCashflowCounter",
+          "category": "special",
+          "hits": [[438.5, 39.9], [438.5, 39.9], [500.5, 45.5], [551.2, 50.2]]
+        },
+        { "key": "ChainAttackSignedAndSealed", "category": "chain", "hits": [[627.3, 57.1]] },
+        { "key": "UltimateCompletePayback", "category": "chain", "hits": [[1643, 149.4]] },
+        { "key": "QuickAssistJointAccount", "category": "assist", "hits": [[96.7, 8.8]] },
+        { "key": "AssistFollowUpDontBreakContract", "category": "assist", "hits": [[325.9, 29.7]] }
+      ]
+    },
+    "1131": {
+      "name": "Soukaku",
+      "skills": [
+        {
+          "key": "BasicAttackMakingRiceCakes",
+          "category": "basic",
+          "hits": [[66.2, 6.1], [216.3, 19.7], [293.1, 26.7]]
+        },
+        {
+          "key": "BasicAttackMakingRiceCakesFrostedBanner",
+          "category": "basic",
+          "hits": [[76.6, 7], [228.5, 20.8], [511.4, 46.5]]
+        },
+        { "key": "DashAttack5050", "category": "dodge", "hits": [[76.7, 7]] },
+        { "key": "DashAttack5050FrostedBanner", "category": "dodge", "hits": [[131.5, 12]] },
+        { "key": "DodgeCounterAwayFromMySnacks", "category": "dodge", "hits": [[247.3, 22.5]] },
+        { "key": "SpecialAttackCoolingBento", "category": "special", "hits": [[28.4, 2.6], [100.1, 9.1]] },
+        { "key": "EXSpecialAttackFanningMosquitoes", "category": "special", "hits": [[262.4, 23.9], [102.1, 9.3]] },
+        { "key": "SpecialAttackRally", "category": "special", "hits": [[250.1, 22.8], [140.1, 12.8], [245, 22.3]] },
+        { "key": "ChainAttackPuddingSlash", "category": "chain", "hits": [[745.8, 67.8]] },
+        { "key": "UltimateJumboPuddingSlash", "category": "chain", "hits": [[1989.8, 180.9]] },
+        { "key": "QuickAssistASetForTwo", "category": "assist", "hits": [[113.4, 10.4]] },
+        { "key": "AssistFollowUpSweepingStrike", "category": "assist", "hits": [[264, 24], [113.2, 10.3]] }
+      ]
+    },
+    "1141": {
+      "name": "Lycaon",
+      "skills": [
+        {
+          "key": "BasicAttackMoonHunter",
+          "category": "basic",
+          "hits": [
+            [29.2, 2.7],
+            [37.1, 3.4],
+            [34.9, 3.2],
+            [56.4, 5.2],
+            [58.4, 5.4],
+            [99.5, 9.1],
+            [152, 13.9],
+            [210.9, 19.2],
+            [180.7, 16.5],
+            [277.6, 25.3],
+            [355.7, 32.4]
+          ]
+        },
+        { "key": "DashAttackKeepItClean", "category": "dodge", "hits": [[47.3, 4.3]] },
+        { "key": "DodgeCounterEtiquetteManual", "category": "dodge", "hits": [[187, 17]] },
+        { "key": "SpecialAttackTimeToHunt", "category": "special", "hits": [[22.8, 2.1], [54.3, 5], [110.3, 10.1]] },
+        {
+          "key": "EXSpecialAttackThrillOfTheHunt",
+          "category": "special",
+          "hits": [[252.4, 23], [281.9, 25.7], [537.1, 48.9]]
+        },
+        { "key": "ChainAttackAsYouWish", "category": "chain", "hits": [[637.8, 58]] },
+        { "key": "UltimateMissionComplete", "category": "chain", "hits": [[1694.1, 154.1]] },
+        { "key": "QuickAssistWolfPack", "category": "assist", "hits": [[63.1, 5.8]] },
+        { "key": "AssistFollowUpVengefulCounterattack", "category": "assist", "hits": [[288.3, 26.3]] },
+        { "key": "AssistFollowUpVengefulCounterattackGlacialWaltz", "category": "assist", "hits": [[410.7, 37.4]] }
+      ]
+    },
+    "1151": {
+      "name": "Lucy",
+      "skills": [
+        {
+          "key": "BasicAttackLadysBat",
+          "category": "basic",
+          "hits": [[56.6, 5.2], [77.8, 7.1], [188.9, 17.2], [211.5, 19.3], [272.6, 24.8]]
+        },
+        { "key": "GuardBoarsToArms", "category": "basic", "hits": [[92.5, 8.5], [127.5, 11.6], [175, 16]] },
+        { "key": "GuardBoarsSpinningSwing", "category": "basic", "hits": [[250, 22.8]] },
+        { "key": "DashAttackFearlessBoar", "category": "dodge", "hits": [[78.4, 7.2]] },
+        { "key": "DodgeCounterReturningTusk", "category": "dodge", "hits": [[308, 28]] },
+        { "key": "SpecialAttackSolidHit", "category": "special", "hits": [[61.7, 5.7], [69.2, 6.3]] },
+        { "key": "EXSpecialAttackHomeRun", "category": "special", "hits": [[508.4, 46.3], [536.4, 48.8]] },
+        { "key": "ChainAttackGrandSlam", "category": "chain", "hits": [[492.4, 44.8]] },
+        { "key": "UltimateWalkOffHomeRun", "category": "chain", "hits": [[1718.6, 156.3]] },
+        { "key": "QuickAssistHitByPitch", "category": "assist", "hits": [[160, 14.6]] },
+        { "key": "AssistFollowUpScoredARun", "category": "assist", "hits": [[349.1, 31.8]] }
+      ]
+    },
+    "1161": {
+      "name": "Lighter",
+      "skills": [
+        {
+          "key": "BasicAttackLFormThunderingFist",
+          "category": "basic",
+          "hits": [
+            [39.2, 3.6],
+            [48, 4.4],
+            [55.3, 5.1],
+            [86.9, 7.9],
+            [47.7, 4.4],
+            [58.1, 5.3],
+            [32.8, 3],
+            [89, 8.1],
+            [78.9, 7.2],
+            [163.6, 14.9],
+            [122.9, 11.2],
+            [104.6, 9.6],
+            [177.2, 16.2],
+            [364.3, 33.2],
+            [119.7, 10.9],
+            [435.4, 39.6]
+          ]
+        },
+        { "key": "DashAttackChargingSlam", "category": "dodge", "hits": [[89.9, 8.2]] },
+        { "key": "DodgeCounterBlazingFlash", "category": "dodge", "hits": [[186.3, 17]] },
+        { "key": "SpecialAttackVFormSunriseUppercut", "category": "special", "hits": [[36.3, 3.3]] },
+        {
+          "key": "EXSpecialAttackVFormSunriseUppercutFullDistance",
+          "category": "special",
+          "hits": [[486.3, 44.3], [292.7, 26.7]]
+        },
+        { "key": "ChainAttackVFormScorchingSun", "category": "chain", "hits": [[712.1, 64.8]] },
+        { "key": "UltimateWFormCrownedInferno", "category": "chain", "hits": [[1508, 137.1]] },
+        { "key": "QuickAssistBlazingFlashGuard", "category": "assist", "hits": [[69.7, 6.4]] },
+        { "key": "AssistFollowUpChargingSlamStab", "category": "assist", "hits": [[219.8, 20]] }
+      ]
+    },
+    "1171": {
+      "name": "Burnice",
+      "skills": [
+        {
+          "key": "BasicAttackDirectFlameBlend",
+          "category": "basic",
+          "hits": [[44.8, 4.1], [43.5, 4], [71.7, 6.6], [66.6, 6.1], [96.3, 8.8]]
+        },
+        { "key": "BasicAttackMixedFlameBlend", "category": "basic", "hits": [[125.4, 11.4], [232.8, 21.2]] },
+        { "key": "DashAttackDangerousFermentation", "category": "dodge", "hits": [[67.9, 6.2]] },
+        { "key": "DodgeCounterFlutteringSteps", "category": "dodge", "hits": [[219.7, 20]] },
+        { "key": "SpecialAttackIntenseHeatAgingMethod", "category": "special", "hits": [[57.8, 5.3], [62.4, 5.7]] },
+        {
+          "key": "EXSpecialAttackIntenseHeatStirringMethod",
+          "category": "special",
+          "hits": [[543.8, 49.5], [96.7, 8.8]]
+        },
+        {
+          "key": "EXSpecialAttackIntenseHeatStirringMethodDoubleShot",
+          "category": "special",
+          "hits": [[958.1, 87.1], [287.1, 26.1]]
+        },
+        { "key": "EXSpecialAttackIntenseHeatTossingMethod", "category": "special", "hits": [[199.9, 18.2]] },
+        { "key": "ChainAttackFuelFedFlame", "category": "chain", "hits": [[680.9, 61.9]] },
+        { "key": "UltimateGloriousInferno", "category": "chain", "hits": [[2012.2, 183]] },
+        { "key": "QuickAssistEnergizingSpecialtyDrink", "category": "assist", "hits": [[84.4, 7.7]] },
+        { "key": "AssistFollowUpScorchingDew", "category": "assist", "hits": [[327.6, 29.8]] }
+      ]
+    },
+    "1181": {
+      "name": "Grace",
+      "skills": [
+        {
+          "key": "BasicAttackHighPressureSpike",
+          "category": "basic",
+          "hits": [[55.1, 5.1], [59.7, 5.5], [124.8, 11.4], [186.3, 17], [40.3, 3.7]]
+        },
+        { "key": "DashAttackQuickInspection", "category": "dodge", "hits": [[33.3, 3.1]] },
+        { "key": "DodgeCounterViolationPenalty", "category": "dodge", "hits": [[164.2, 15]] },
+        { "key": "SpecialAttackObstructionRemoval", "category": "special", "hits": [[42.1, 3.9]] },
+        { "key": "EXSpecialAttackSuperchargedObstructionRemoval", "category": "special", "hits": [[166.9, 15.2]] },
+        { "key": "SpecialAttackObstructionRemovalCycle", "category": "special", "hits": [[563.4, 51.3]] },
+        { "key": "VortexClusterGrenadeBaseMultiplier", "category": "special", "hits": [[87.5, 8]] },
+        { "key": "PulseGrenadeMultiplier", "category": "special", "hits": [[42, 3.9]] },
+        { "key": "ChainAttackCollaborativeConstruction", "category": "chain", "hits": [[571.3, 52]] },
+        { "key": "UltimateDemolitionBlastBeware", "category": "chain", "hits": [[1478.8, 134.5]] },
+        { "key": "QuickAssistIncidentManagement", "category": "assist", "hits": [[45.5, 4.2]] },
+        { "key": "AssistFollowUpCounterVoltNeedle", "category": "assist", "hits": [[359.3, 32.7]] }
+      ]
+    },
+    "1191": {
+      "name": "Ellen",
+      "skills": [
+        {
+          "key": "BasicAttackSawTeethTrimming",
+          "category": "basic",
+          "hits": [[48.8, 4.5], [111.1, 10.1], [297.3, 27.1]]
+        },
+        {
+          "key": "BasicAttackFlashFreezeTrimming",
+          "category": "basic",
+          "hits": [[99.6, 9.1], [184, 16.8], [496.2, 45.2]]
+        },
+        { "key": "BasicAttackGlacialBladeWave", "category": "basic", "hits": [[230.2, 21], [146.8, 13.4]] },
+        { "key": "BasicAttackIcyBlade", "category": "basic", "hits": [[60.4, 5.5], [13, 1.2]] },
+        { "key": "DashAttackArcticAmbush", "category": "dodge", "hits": [[62.3, 5.7], [127.6, 11.6], [158.2, 14.4]] },
+        { "key": "DashAttackMonstrousWave", "category": "dodge", "hits": [[77, 7]] },
+        { "key": "DashAttackColdSnap", "category": "dodge", "hits": [[145.7, 13.3]] },
+        { "key": "DodgeCounterReefRock", "category": "dodge", "hits": [[152.6, 13.9]] },
+        { "key": "SpecialAttackDrift", "category": "special", "hits": [[50.5, 4.6]] },
+        { "key": "EXSpecialAttackTailSwipe", "category": "special", "hits": [[377.2, 34.3]] },
+        { "key": "EXSpecialAttackSharknami", "category": "special", "hits": [[553.3, 50.3]] },
+        { "key": "ChainAttackAvalanche", "category": "chain", "hits": [[794.6, 72.3]] },
+        { "key": "UltimateEndlessWinter", "category": "chain", "hits": [[1890.8, 171.9]] },
+        { "key": "QuickAssistSharkSentinel", "category": "assist", "hits": [[121.1, 11.1]] },
+        { "key": "AssistFollowUpSharkCruiser", "category": "assist", "hits": [[437.9, 39.9]] }
+      ]
+    },
+    "1201": {
+      "name": "Harumasa",
+      "skills": [
+        {
+          "key": "BasicAttackCloudPiercer",
+          "category": "basic",
+          "hits": [[42.4, 3.9], [39.8, 3.7], [70.9, 6.5], [90.1, 8.2], [132.9, 12.1]]
+        },
+        { "key": "BasicAttackCloudPiercerDrift", "category": "basic", "hits": [[69.5, 6.4]] },
+        { "key": "BasicAttackFallingFeather", "category": "basic", "hits": [[105.4, 9.6]] },
+        { "key": "BasicAttackHaOtoNoYa", "category": "basic", "hits": [[15.9, 1.5]] },
+        { "key": "DashAttackHitenNoTsuru", "category": "dodge", "hits": [[80.7, 7.4]] },
+        { "key": "DodgeCounterHiddenEdge", "category": "dodge", "hits": [[219.6, 20]] },
+        {
+          "key": "DashAttackHitenNoTsuruSlash",
+          "category": "dodge",
+          "hits": [[162.3, 14.8], [166.6, 15.2], [189.6, 17.3]]
+        },
+        { "key": "ChasingThunder", "category": "dodge", "hits": [[41.2, 3.8]] },
+        { "key": "SpecialAttackNowhereToHide", "category": "special", "hits": [[52.3, 4.8]] },
+        { "key": "EXSpecialAttackNowhereToRun", "category": "special", "hits": [[449.3, 40.9]] },
+        { "key": "EXSpecialAttackNowhereToRunPatrol", "category": "special", "hits": [[513.1, 46.7]] },
+        { "key": "ChainAttackKaiHanare", "category": "chain", "hits": [[517.6, 47.1]] },
+        { "key": "UltimateZanshin", "category": "chain", "hits": [[1953.9, 177.7]] },
+        { "key": "ZanshinScatteredBlossoms", "category": "chain", "hits": [[236.5, 21.5]] },
+        { "key": "QuickAssistBracedBow", "category": "assist", "hits": [[84.3, 7.7]] },
+        { "key": "AssistFollowUpYugamaeSlash", "category": "assist", "hits": [[307.1, 28]] }
+      ]
+    },
+    "1211": {
+      "name": "Rina",
+      "skills": [
+        {
+          "key": "BasicAttackWhackTheDimwit",
+          "category": "basic",
+          "hits": [[44, 4], [111.4, 10.2], [117.1, 10.7], [183.9, 16.8]]
+        },
+        { "key": "BasicAttackShooTheFool", "category": "basic", "hits": [[315.1, 28.7]] },
+        { "key": "BasicAttackMorningCleanup", "category": "basic", "hits": [[52.5, 4.8], [52.5, 4.8], [52.5, 4.8]] },
+        { "key": "BasicAttackMidnightCleanup", "category": "basic", "hits": [[210, 19.1]] },
+        { "key": "DashAttackSuddenSurprise", "category": "dodge", "hits": [[105, 9.6]] },
+        { "key": "DodgeCounterBangbooCallback", "category": "dodge", "hits": [[227.6, 20.7]] },
+        { "key": "SpecialAttackBeatTheBlockhead", "category": "special", "hits": [[61.3, 5.6]] },
+        { "key": "EXSpecialAttackDimwitDisappearingTrick", "category": "special", "hits": [[546, 49.7]] },
+        { "key": "ChainAttackCodeOfConduct", "category": "chain", "hits": [[1013, 92.1]] },
+        { "key": "UltimateTheQueensAttendants", "category": "chain", "hits": [[2116.7, 192.5]] },
+        { "key": "QuickAssistDupleMeterAllemande", "category": "assist", "hits": [[122.6, 11.2]] },
+        { "key": "AssistFollowUpQuadrupleMeterGavotte", "category": "assist", "hits": [[349.4, 31.8]] }
+      ]
+    },
+    "1221": {
+      "name": "Yanagi",
+      "skills": [
+        {
+          "key": "StanceJougen",
+          "category": "basic",
+          "hits": [[56.6, 5.2], [99.7, 9.1], [113.1, 10.3], [126.6, 11.6], [236.9, 21.6]]
+        },
+        {
+          "key": "StanceKagen",
+          "category": "basic",
+          "hits": [[113.1, 10.3], [129.2, 11.8], [72.8, 6.7], [107.7, 9.8], [271.8, 24.8]]
+        },
+        { "key": "DashAttackFleetingFlight", "category": "dodge", "hits": [[50.4, 4.6]] },
+        { "key": "DodgeCounterRapidRetaliation", "category": "dodge", "hits": [[231.6, 21.1]] },
+        { "key": "SpecialAttackRuten", "category": "special", "hits": [[117.4, 10.7]] },
+        { "key": "EXSpecialAttackGekkaRuten", "category": "special", "hits": [[163.8, 14.9], [377.8, 34.4]] },
+        { "key": "ChainAttackCelestialHarmony", "category": "chain", "hits": [[593.1, 54]] },
+        { "key": "UltimateRaieiTenge", "category": "chain", "hits": [[1511.8, 137.5]] },
+        { "key": "QuickAssistBladeOfElegance", "category": "assist", "hits": [[93.6, 8.6]] },
+        { "key": "AssistFollowUpWeepingWillowStab", "category": "assist", "hits": [[407.1, 37.1]] }
+      ]
+    },
+    "1241": {
+      "name": "ZhuYuan",
+      "skills": [
+        {
+          "key": "BasicAttackDontMove",
+          "category": "basic",
+          "hits": [[43.1, 4], [126.4, 11.5], [137.3, 12.5], [151, 13.8], [162.2, 14.8]]
+        },
+        {
+          "key": "BasicAttackPleaseDoNotResist",
+          "category": "basic",
+          "hits": [[53.7, 4.9], [53.7, 4.9], [160.9, 14.7], [135.9, 12.4], [135.9, 12.4], [407.7, 37.1]]
+        },
+        { "key": "DashAttackFirepowerOffensive", "category": "dodge", "hits": [[55.1, 5.1]] },
+        { "key": "DashAttackOverwhelmingFirepower", "category": "dodge", "hits": [[53.7, 4.9], [135.9, 12.4]] },
+        { "key": "DodgeCounterFireBlast", "category": "dodge", "hits": [[176.8, 16.1]] },
+        { "key": "SpecialAttackBuckshotBlast", "category": "special", "hits": [[18.4, 1.7]] },
+        { "key": "EXSpecialAttackFullBarrage", "category": "special", "hits": [[587.4, 53.4]] },
+        { "key": "ChainAttackEradicationMode", "category": "chain", "hits": [[587.5, 53.5]] },
+        { "key": "UltimateMaxEradicationMode", "category": "chain", "hits": [[1977.6, 179.8]] },
+        { "key": "QuickAssistCoveringShot", "category": "assist", "hits": [[51.4, 4.7]] },
+        { "key": "AssistFollowUpDefensiveCounter", "category": "assist", "hits": [[355.8, 32.4]] }
+      ]
+    },
+    "1251": {
+      "name": "Qingyi",
+      "skills": [
+        {
+          "key": "BasicAttackPenultimate",
+          "category": "basic",
+          "hits": [[47.2, 4.3], [110.3, 10.1], [122.1, 11.1], [17.6, 1.6], [106.4, 9.7], [234.4, 21.4]]
+        },
+        { "key": "BasicAttackEnchantedBlossoms", "category": "basic", "hits": [[85.6, 7.8]] },
+        { "key": "BasicAttackEnchantedMoonlitBlossoms", "category": "basic", "hits": [[448.7, 40.8], [394.4, 35.9]] },
+        { "key": "DashAttackBreach", "category": "dodge", "hits": [[49.5, 4.5]] },
+        { "key": "DodgeCounterLingeringSentiments", "category": "dodge", "hits": [[284, 25.9]] },
+        { "key": "SpecialAttackSunlitGlory", "category": "special", "hits": [[62.4, 5.7]] },
+        {
+          "key": "EXSpecialAttackMoonlitBegonia",
+          "category": "special",
+          "hits": [[150.7, 13.7], [211, 19.2], [241.1, 22]]
+        },
+        { "key": "ChainAttackTranquilSerenade", "category": "chain", "hits": [[647.9, 58.9]] },
+        { "key": "UltimateEightSoundsOfGanzhou", "category": "chain", "hits": [[1670.7, 151.9]] },
+        { "key": "QuickAssistWindThroughThePines", "category": "assist", "hits": [[133.9, 12.2]] },
+        { "key": "AssistFollowUpSongOfTheClearRiver", "category": "assist", "hits": [[376.4, 34.3]] }
+      ]
+    },
+    "1261": {
+      "name": "Jane",
+      "skills": [
+        {
+          "key": "BasicAttackDancingBlades",
+          "category": "basic",
+          "hits": [[36.1, 3.3], [62.3, 5.7], [83.5, 7.6], [163.4, 14.9], [98.8, 9], [291.3, 26.5]]
+        },
+        { "key": "BasicAttackSalchowJump", "category": "basic", "hits": [[482.1, 43.9], [161.3, 14.7]] },
+        { "key": "DashAttackEdgeJump", "category": "dodge", "hits": [[71.5, 6.5], [71.5, 6.5]] },
+        { "key": "DashAttackPhantomThrust", "category": "dodge", "hits": [[104.5, 9.5]] },
+        { "key": "DodgeCounterSwiftShadow", "category": "dodge", "hits": [[341.2, 31.1], [341.2, 31.1]] },
+        { "key": "DodgeCounterSwiftShadowDance", "category": "dodge", "hits": [[387, 35.2]] },
+        { "key": "SpecialAttackAerialSweep", "category": "special", "hits": [[57.8, 5.3]] },
+        { "key": "EXSpecialAttackAerialSweepClearout", "category": "special", "hits": [[574.7, 52.3]] },
+        { "key": "EXSpecialAttackAerialSweepOnslaught", "category": "special", "hits": [[595.1, 54.1]] },
+        { "key": "ChainAttackFlowersOfSin", "category": "chain", "hits": [[632.6, 57.6]] },
+        { "key": "UltimateFinalCurtain", "category": "chain", "hits": [[1470.6, 133.7]] },
+        { "key": "QuickAssistDarkThorn", "category": "assist", "hits": [[119.2, 10.9]] },
+        { "key": "QuickAssistLutzJump", "category": "assist", "hits": [[137.5, 12.5]] },
+        { "key": "AssistFollowUpGaleSweep", "category": "assist", "hits": [[345.5, 31.5]] }
+      ]
+    },
+    "1271": {
+      "name": "Seth",
+      "skills": [
+        {
+          "key": "BasicAttackLightningStrike",
+          "category": "basic",
+          "hits": [[36.2, 3.3], [56.5, 5.2], [193.3, 17.6], [97.4, 8.9]]
+        },
+        { "key": "BasicAttackLightningStrikeElectrified", "category": "basic", "hits": [[382.8, 34.8], [424.2, 38.6]] },
+        { "key": "DashAttackThunderAssault", "category": "dodge", "hits": [[110, 10]] },
+        { "key": "DodgeCounterRetreatToAdvance", "category": "dodge", "hits": [[230, 21]] },
+        { "key": "SpecialAttackThunderShieldRush", "category": "special", "hits": [[69.2, 6.3]] },
+        {
+          "key": "EXSpecialAttackThunderShieldRushHighVoltage",
+          "category": "special",
+          "hits": [[646, 58.8], [999.8, 90.9]]
+        },
+        { "key": "ChainAttackFinalJudgment", "category": "chain", "hits": [[704.1, 64.1]] },
+        { "key": "UltimateJusticePrevails", "category": "chain", "hits": [[2024.3, 184.1]] },
+        { "key": "QuickAssistArmedSupport", "category": "assist", "hits": [[100, 9.1]] },
+        { "key": "AssistFollowUpPublicSecurityRuling", "category": "assist", "hits": [[428.5, 39]] }
+      ]
+    },
+    "1281": {
+      "name": "Piper",
+      "skills": [
+        {
+          "key": "BasicAttackLoadUpAndRollOut",
+          "category": "basic",
+          "hits": [[59, 5.4], [78.8, 7.2], [150.1, 13.7], [320.6, 29.2]]
+        },
+        { "key": "DashAttackPedalToTheMetal", "category": "dodge", "hits": [[90.1, 8.2]] },
+        { "key": "DodgeCounterPowerDrift", "category": "dodge", "hits": [[269, 24.5]] },
+        { "key": "SpecialAttackTireSpin", "category": "special", "hits": [[271.7, 24.7]] },
+        {
+          "key": "SpecialAttackOneTrillionTons",
+          "category": "special",
+          "hits": [[93.4, 8.5], [103.4, 9.4], [235, 21.4]]
+        },
+        { "key": "EXSpecialAttackEngineSpin", "category": "special", "hits": [[187.1, 17.1]] },
+        { "key": "EXSpecialAttackReallyHeavy", "category": "special", "hits": [[612.9, 55.8]] },
+        { "key": "ChainAttackBuckleUp", "category": "chain", "hits": [[652.3, 59.3]] },
+        { "key": "UltimateHoldOnTight", "category": "chain", "hits": [[1660.4, 151]] },
+        { "key": "QuickAssistBrakeTap", "category": "assist", "hits": [[130, 11.9]] },
+        { "key": "AssistFollowUpOvertakingManeuver", "category": "assist", "hits": [[400.5, 36.5]] }
+      ]
+    },
+    "1291": {
+      "name": "Hugo",
+      "skills": [
+        {
+          "key": "BasicAttackDarkAbyssQuartet",
+          "category": "basic",
+          "hits": [[43.1, 4], [74.1, 6.8], [169.6, 15.5], [149.1, 13.6], [58.6, 5.4], [118, 10.8]]
+        },
+        {
+          "key": "BasicAttackDarkAbyssConcerto",
+          "category": "basic",
+          "hits": [[143.4, 13.1], [86.7, 7.9], [170.6, 15.6]]
+        },
+        { "key": "DashAttackPhantasmShatter", "category": "dodge", "hits": [[93.5, 8.5]] },
+        {
+          "key": "DodgeCounterPhantasmSlash",
+          "category": "dodge",
+          "hits": [[245.9, 22.4], [162.1, 14.8], [212.1, 19.3]]
+        },
+        { "key": "SpecialAttackSoulHunterJudgment", "category": "special", "hits": [[85.3, 7.8]] },
+        { "key": "EXSpecialAttackSoulHunterPunishment", "category": "special", "hits": [[18.7, 1.7], [354.5, 32.3]] },
+        { "key": "ChainAttackTrickOfFate", "category": "chain", "hits": [[701.1, 63.8]] },
+        { "key": "UltimateBlaspheme", "category": "chain", "hits": [[1527.1, 138.9]] },
+        { "key": "QuickAssistElegy", "category": "assist", "hits": [[104.5, 9.5], [124.7, 11.4], [163.2, 14.9]] },
+        { "key": "AssistFollowUpAceReversal", "category": "assist", "hits": [[291.7, 26.6]] }
+      ]
+    },
+    "1301": {
+      "name": "OrphieMagus",
+      "skills": [
+        {
+          "key": "BasicAttackHighPressureFlamethrower",
+          "category": "basic",
+          "hits": [[14.5, 1.4], [44.4, 4.1], [41.5, 3.8], [86.7, 7.9], [181.6, 16.6], [158.4, 14.4]]
+        },
+        { "key": "DashAttackRushCommand", "category": "dodge", "hits": [[62.3, 5.7]] },
+        { "key": "DodgeCounterCounterStrikeOpportunity", "category": "dodge", "hits": [[257.8, 23.5]] },
+        { "key": "SpecialAttackBlazingChamber", "category": "special", "hits": [[39.5, 3.6]] },
+        { "key": "SpecialAttackCorrosiveFlash", "category": "special", "hits": [[495, 45]] },
+        { "key": "EXSpecialAttackWatchYourStep", "category": "special", "hits": [[280.9, 25.6]] },
+        { "key": "EXSpecialAttackCrimsonVortex", "category": "special", "hits": [[678.4, 61.7]] },
+        { "key": "EXSpecialAttackHeatCharge", "category": "special", "hits": [[389.4, 35.4]] },
+        { "key": "EXSpecialAttackFieryEruption", "category": "special", "hits": [[259.6, 23.6]] },
+        { "key": "ChainAttackOverheatedBarrel", "category": "chain", "hits": [[626.3, 57]] },
+        { "key": "UltimateDanceWithFire", "category": "chain", "hits": [[698.7, 63.6], [465.8, 42.4]] },
+        { "key": "QuickAssistSearingSlash", "category": "assist", "hits": [[113.7, 10.4]] },
+        { "key": "AssistFollowUpBoilingPierce", "category": "assist", "hits": [[360.9, 32.9]] }
+      ]
+    },
+    "1311": {
+      "name": "AstraYao",
+      "skills": [
+        {
+          "key": "BasicAttackCapriccio",
+          "category": "basic",
+          "hits": [[43.8, 4], [59.1, 5.4], [120.9, 11], [270.7, 24.7]]
+        },
+        { "key": "BasicAttackInterlude", "category": "basic", "hits": [[55, 5]] },
+        { "key": "BasicAttackChorus", "category": "basic", "hits": [[55, 5]] },
+        { "key": "BasicAttackFinale", "category": "basic", "hits": [[55, 5]] },
+        { "key": "DashAttackLunarEclipseMelody", "category": "dodge", "hits": [[80.7, 7.4]] },
+        { "key": "DodgeCounterUmbrellaWaltz", "category": "dodge", "hits": [[110, 10]] },
+        { "key": "SpecialAttackWindchimesOaths", "category": "special", "hits": [[55, 5]] },
+        { "key": "Chord", "category": "special", "hits": [[46, 4.2], [24, 2.2]] },
+        { "key": "ChainAttackTipsyConcerto", "category": "chain", "hits": [[671.8, 61.1]] },
+        { "key": "UltimateFantasianSonata", "category": "chain", "hits": [[1959.8, 178.2]] },
+        { "key": "QuickAssistOneLuminousSky", "category": "assist", "hits": [[55, 5]] },
+        { "key": "AssistFollowUpThreeLifetimesOfFate", "category": "assist", "hits": [[304.6, 27.7]] }
+      ]
+    },
+    "1321": {
+      "name": "Evelyn",
+      "skills": [
+        {
+          "key": "BasicAttackRazorWire",
+          "category": "basic",
+          "hits": [[51.2, 4.7], [62.1, 5.7], [78.2, 7.2], [186.7, 17], [223.4, 20.4]]
+        },
+        { "key": "BasicAttackGarroteFirstForm", "category": "basic", "hits": [[226.4, 20.6]] },
+        { "key": "BasicAttackGarroteSecondForm", "category": "basic", "hits": [[245.2, 22.3]] },
+        { "key": "DashAttackPiercingAmbush", "category": "dodge", "hits": [[60.5, 5.5]] },
+        { "key": "DodgeCounterStranglingReversal", "category": "dodge", "hits": [[210.2, 19.2]] },
+        { "key": "SpecialAttackLockedPosition", "category": "special", "hits": [[52.3, 4.8]] },
+        { "key": "SpecialAttackBindingSunderFirstForm", "category": "special", "hits": [[40.4, 3.7], [34, 3.1]] },
+        { "key": "EXSpecialAttackBindingSunderFinalForm", "category": "special", "hits": [[541.2, 49.2], [59.6, 5.5]] },
+        { "key": "ChainAttackLunaluxSnare", "category": "chain", "hits": [[829.3, 75.4]] },
+        { "key": "UltimateLunaluxGarroteTimbre", "category": "chain", "hits": [[1988.5, 180.8]] },
+        { "key": "UltimateLunaluxGarroteShadow", "category": "chain", "hits": [[1988.5, 180.8]] },
+        { "key": "QuickAssistFierceBlade", "category": "assist", "hits": [[77.1, 7.1]] },
+        { "key": "AssistFollowUpCourseDisruption", "category": "assist", "hits": [[291.6, 26.6]] }
+      ]
+    },
+    "1331": {
+      "name": "Vivian",
+      "skills": [
+        {
+          "key": "BasicAttackFeatheredStrike",
+          "category": "basic",
+          "hits": [[34.1, 3.1], [24.2, 2.2], [76.9, 7], [128.4, 11.7]]
+        },
+        { "key": "BasicAttackNoblewomanWaltz", "category": "basic", "hits": [[47.8, 4.4]] },
+        { "key": "BasicAttackFlutteringFrockSuspension", "category": "basic", "hits": [[80.2, 7.3]] },
+        { "key": "BasicAttackFeatherbloom", "category": "basic", "hits": [[220, 20]] },
+        { "key": "DashAttackSilverThornedMelody", "category": "dodge", "hits": [[49.6, 4.6]] },
+        { "key": "DodgeCounterWingbladeReverb", "category": "dodge", "hits": [[236.4, 21.5]] },
+        { "key": "SpecialAttackSongOfSilverWings", "category": "special", "hits": [[56.9, 5.2]] },
+        { "key": "EXSpecialAttackVioletRequiem", "category": "special", "hits": [[592.6, 53.9]] },
+        { "key": "ChainAttackChorusOfCelestialWings", "category": "chain", "hits": [[658.9, 59.9]] },
+        { "key": "UltimateSoaringBirdsSong", "category": "chain", "hits": [[1686.8, 153.4]] },
+        { "key": "QuickAssistFrostwingGuard", "category": "assist", "hits": [[97.3, 8.9]] },
+        { "key": "AssistFollowUpFeatherbladeExecution", "category": "assist", "hits": [[373.9, 34]] }
+      ]
+    },
+    "1341": {
+      "name": "Zhao",
+      "skills": [
+        {
+          "key": "BasicAttackGlacialJudgment",
+          "category": "basic",
+          "hits": [[73.4, 6.7], [66, 6], [115.8, 10.6], [185.6, 16.9], [309.1, 28.1], [77.3, 7.1]]
+        },
+        { "key": "BasicAttackFinalVerdict", "category": "basic", "hits": [[69.7, 6.4]] },
+        { "key": "DashAttackBouncingDash", "category": "dodge", "hits": [[86.3, 7.9]] },
+        { "key": "DodgeCounterSwiftBlink", "category": "dodge", "hits": [[338.8, 30.8]] },
+        { "key": "SpecialAttackShatterfrostSurge", "category": "special", "hits": [[56.9, 5.2]] },
+        { "key": "EXSpecialAttackFrostflowTundra", "category": "special", "hits": [[1210.8, 110.1]] },
+        { "key": "ChainAttackTemporaryAlliance", "category": "chain", "hits": [[770.8, 70.1]] },
+        { "key": "UltimateBunnyBarrage", "category": "chain", "hits": [[1749.8, 159.1], [437.5, 39.8]] },
+        { "key": "EntrySkillBurstOfFrost", "category": "assist", "hits": [[680.3, 61.9]] },
+        { "key": "QuickAssistPatchTheGaps", "category": "assist", "hits": [[176, 16]] },
+        { "key": "AssistFollowUpFrostlightReflection", "category": "assist", "hits": [[366.1, 33.3]] }
+      ]
+    },
+    "1351": {
+      "name": "Pulchra",
+      "skills": [
+        { "key": "BasicAttackSwiftStrike", "category": "basic", "hits": [[35.7, 3.3], [94.1, 8.6], [167.6, 15.3]] },
+        { "key": "BasicAttackLeapingStrike", "category": "basic", "hits": [[135, 12.3]] },
+        { "key": "DashAttackFirstStrikeAdvantage", "category": "dodge", "hits": [[48.3, 4.4]] },
+        { "key": "DodgeCounterRelentlessRetribution", "category": "dodge", "hits": [[201.8, 18.4]] },
+        { "key": "SpecialAttackRendingClaw", "category": "special", "hits": [[25.1, 2.3]] },
+        { "key": "SpecialAttackRendingClawNightmareShadow", "category": "special", "hits": [[46.3, 4.3], [53.5, 4.9]] },
+        { "key": "EXSpecialAttackRendingClawFlashstep", "category": "special", "hits": [[347.7, 31.7]] },
+        { "key": "ChainAttackHeyDidntExpectThatRight", "category": "chain", "hits": [[534.1, 48.6]] },
+        { "key": "UltimateOhTimeToPlay", "category": "chain", "hits": [[1393.8, 126.8]] },
+        { "key": "QuickAssistContractBodyguard", "category": "assist", "hits": [[78.3, 7.2]] },
+        { "key": "AssistFollowUpIndependentPricing", "category": "assist", "hits": [[307.1, 28]] }
+      ]
+    },
+    "1361": {
+      "name": "Trigger",
+      "skills": [
+        {
+          "key": "BasicAttackColdBoreShot",
+          "category": "basic",
+          "hits": [[34.5, 3.2], [56.9, 5.2], [110.9, 10.1], [243, 22.1]]
+        },
+        { "key": "BasicAttackSilencedShot", "category": "basic", "hits": [[47.6, 4.4], [233.9, 21.3], [131.2, 12]] },
+        { "key": "BasicAttackHarmonizingShot", "category": "basic", "hits": [[47.9, 4.4]] },
+        { "key": "BasicAttackHarmonizingShotTartarus", "category": "basic", "hits": [[22.6, 2.1], [45.2, 4.2]] },
+        { "key": "DashAttackVengefulSpecter", "category": "dodge", "hits": [[51.4, 4.7]] },
+        { "key": "DodgeCounterCondemnedSoul", "category": "dodge", "hits": [[219.7, 20]] },
+        { "key": "SpecialAttackSpectralFlash", "category": "special", "hits": [[71.5, 6.5]] },
+        { "key": "EXSpecialAttackFlashBurial", "category": "special", "hits": [[634.4, 57.7]] },
+        { "key": "ChainAttackStygianGuide", "category": "chain", "hits": [[574.7, 52.3]] },
+        { "key": "UltimateUnderworldRequiem", "category": "chain", "hits": [[1480.5, 134.6]] },
+        { "key": "QuickAssistColdBoreCoverFire", "category": "assist", "hits": [[84.4, 7.7]] },
+        { "key": "AssistFollowUpPiercingThunder", "category": "assist", "hits": [[432.9, 39.4]] }
+      ]
+    },
+    "1371": {
+      "name": "Yixuan",
+      "skills": [
+        {
+          "key": "BasicAttackCirrusStrike",
+          "category": "basic",
+          "hits": [[45.8, 4.2], [65.5, 6], [87.1, 8], [104.8, 9.6], [113.7, 10.4]]
+        },
+        { "key": "BasicAttackInkVeilCloudCoalescence", "category": "basic", "hits": [[234.7, 21.4]] },
+        { "key": "BasicAttackAuricArray", "category": "basic", "hits": [[305.2, 27.8]] },
+        { "key": "BasicAttackQingmingEruption", "category": "basic", "hits": [[110.6, 10.1]] },
+        { "key": "DashAttackSkybreaker", "category": "dodge", "hits": [[49.9, 4.6]] },
+        { "key": "DodgeCounterBanishingBlow", "category": "dodge", "hits": [[219.6, 20]] },
+        { "key": "SpecialAttackShadowIgnition", "category": "special", "hits": [[52.1, 4.8]] },
+        {
+          "key": "EXSpecialAttackInkManifestation",
+          "category": "special",
+          "hits": [[300.3, 27.3], [149.6, 13.6], [370.6, 33.7], [426.4, 38.8]]
+        },
+        { "key": "EXSpecialAttackCloudShaper", "category": "special", "hits": [[671.8, 61.1]] },
+        { "key": "EXSpecialAttackAshenInkBecomesShadows", "category": "special", "hits": [[234.3, 21.3]] },
+        { "key": "ChainAttackAuricInkRush", "category": "chain", "hits": [[533.1, 48.5]] },
+        { "key": "UltimateQingmingSkyshade", "category": "chain", "hits": [[1853.4, 168.5]] },
+        { "key": "UltimateEndlessTalismanSuppression", "category": "chain", "hits": [[1466.2, 133.3]] },
+        { "key": "QuickAssistCloudstreamShadow", "category": "assist", "hits": [[101.2, 9.2]] },
+        { "key": "AssistFollowUpCelestialCloudBlitz", "category": "assist", "hits": [[297, 27]] }
+      ]
+    },
+    "1381": {
+      "name": "Soldier0Anby",
+      "skills": [
+        {
+          "key": "BasicAttackPenetratingShock",
+          "category": "basic",
+          "hits": [[32.7, 3], [62.2, 5.7], [100.1, 9.1], [39.9, 3.7], [154.5, 14.1], [148.5, 13.5]]
+        },
+        { "key": "DashAttackTorrent", "category": "dodge", "hits": [[82.5, 7.5]] },
+        { "key": "DodgeCounterGroundFlashCounter", "category": "dodge", "hits": [[250.6, 22.8]] },
+        { "key": "SpecialAttackCelestialThunder", "category": "special", "hits": [[59.6, 5.5]] },
+        { "key": "SpecialAttackAzureFlash", "category": "special", "hits": [[167.2, 15.2], [43, 4]] },
+        { "key": "SpecialAttackThunderSmite", "category": "special", "hits": [[188.1, 17.1]] },
+        { "key": "SpecialAttackAzureFlashBoundary", "category": "special", "hits": [[249.4, 22.7]] },
+        { "key": "EXSpecialAttackSunderingBolt", "category": "special", "hits": [[379.6, 34.6]] },
+        { "key": "ChainAttackLeapingThunderstrike", "category": "chain", "hits": [[563.8, 51.3]] },
+        { "key": "UltimateVoidstrike", "category": "chain", "hits": [[1734.9, 157.8]] },
+        { "key": "QuickAssistCloudFlash", "category": "assist", "hits": [[108.2, 9.9]] },
+        { "key": "AssistFollowUpConductingBlow", "category": "assist", "hits": [[407.1, 37.1]] }
+      ]
+    },
+    "1391": {
+      "name": "JuFufu",
+      "skills": [
+        {
+          "key": "BasicAttackTigerSevenFormsFlamingClaw",
+          "category": "basic",
+          "hits": [[42.5, 3.9], [45.2, 4.2], [31.5, 2.9], [218.4, 19.9]]
+        },
+        { "key": "BasicAttackHuWei", "category": "basic", "hits": [[92.4, 8.4]] },
+        { "key": "DashAttackTigerSevenFormsTigerCharge", "category": "dodge", "hits": [[36.8, 3.4]] },
+        { "key": "DashAttackTigerSevenFormsMountainKingsGame", "category": "dodge", "hits": [[18.4, 1.7]] },
+        { "key": "DodgeCounterTigerSevenFormsReignitedMountain", "category": "dodge", "hits": [[207.8, 18.9]] },
+        { "key": "DashAttackTigerSevenFormsMountainKingsGameMomentum", "category": "dodge", "hits": [[19.2, 1.8]] },
+        { "key": "DashAttackTigerSevenFormsMountainKingsGameHuWei", "category": "dodge", "hits": [[92.4, 8.4]] },
+        { "key": "SpecialAttackTigerSevenFormsMountainDescendingTiger", "category": "special", "hits": [[66.1, 6.1]] },
+        {
+          "key": "EXSpecialAttackTigerSevenFormsAltMountainDescendingSavageTiger",
+          "category": "special",
+          "hits": [[526.5, 47.9]]
+        },
+        { "key": "ChainAttackTigerCauldronCollapse", "category": "chain", "hits": [[668.1, 60.8]] },
+        { "key": "ChainAttackSuppressingTigerCauldron", "category": "chain", "hits": [[354.5, 32.3]] },
+        { "key": "UltimateTigerSevenFormsRagingTigerExplosion", "category": "chain", "hits": [[1663.8, 151.3]] },
+        { "key": "QuickAssistDecisiveStomp", "category": "assist", "hits": [[75.3, 6.9]] },
+        { "key": "AssistFollowUpFeralBlazingMaw", "category": "assist", "hits": [[407.2, 37.1]] }
+      ]
+    },
+    "1401": {
+      "name": "Alice",
+      "skills": [
+        {
+          "key": "BasicAttackCelestialOverture",
+          "category": "basic",
+          "hits": [[55.1, 5.1], [88, 8], [66.1, 6.1], [111.9, 10.2], [130.3, 11.9], [218.3, 19.9]]
+        },
+        {
+          "key": "BasicAttackStarshineWaltz",
+          "category": "basic",
+          "hits": [[188.9, 17.2], [304.4, 27.7], [965.7, 87.8]]
+        },
+        { "key": "DashAttackBladeDancersGale", "category": "dodge", "hits": [[75.3, 6.9]] },
+        { "key": "DodgeCounterCeremonyOfSwordlight", "category": "dodge", "hits": [[284, 25.9]] },
+        { "key": "SpecialAttackPiercingDawn", "category": "special", "hits": [[62.4, 5.7]] },
+        { "key": "EXSpecialAttackAuroraThrustNorthernCross", "category": "special", "hits": [[460, 41.9]] },
+        { "key": "EXSpecialAttackAuroraThrustSouthernCross", "category": "special", "hits": [[532, 48.4]] },
+        { "key": "ChainAttackStarfallIntermission", "category": "chain", "hits": [[666.3, 60.6]] },
+        { "key": "UltimateStarfallFinale", "category": "chain", "hits": [[2262, 205.7]] },
+        { "key": "QuickAssistIntertwinedStab", "category": "assist", "hits": [[163.3, 14.9]] },
+        { "key": "AssistFollowUpCrossRiposte", "category": "assist", "hits": [[332.7, 30.3]] }
+      ]
+    },
+    "1411": {
+      "name": "Yuzuha",
+      "skills": [
+        {
+          "key": "BasicAttackTanukiClaws",
+          "category": "basic",
+          "hits": [[37.7, 3.5], [57.7, 5.3], [66, 6], [98.1, 9], [164.1, 15]]
+        },
+        { "key": "BasicAttackHardCandyShot", "category": "basic", "hits": [[132, 12]] },
+        { "key": "BasicAttackSugarburstSparkles", "category": "basic", "hits": [[27.5, 2.5]] },
+        { "key": "BasicAttackSugarburstSparklesMax", "category": "basic", "hits": [[308, 28]] },
+        { "key": "BasicAttackTanukiHelper", "category": "basic", "hits": [[110, 10], [110, 10]] },
+        { "key": "DashAttackYoureOuttaLuck", "category": "dodge", "hits": [[69.8, 6.4]] },
+        { "key": "DodgeCounterTimeForPayback", "category": "dodge", "hits": [[276.9, 25.2]] },
+        { "key": "SpecialAttackGummyBombardment", "category": "special", "hits": [[50.5, 4.6]] },
+        { "key": "EXSpecialAttackCavityAlert", "category": "special", "hits": [[421, 38.3]] },
+        { "key": "EXSpecialAttackCavityAlertRightNow", "category": "special", "hits": [[241.4, 22]] },
+        { "key": "ChainAttackPrankAssault", "category": "chain", "hits": [[598.7, 54.5]] },
+        { "key": "UltimateSurrenderOrSufferTheMischief", "category": "chain", "hits": [[1443.2, 131.2]] },
+        { "key": "QuickAssistDessertTime", "category": "assist", "hits": [[122.9, 11.2]] },
+        { "key": "AssistFollowUpWeHaveCookies", "category": "assist", "hits": [[294.3, 26.8]] },
+        { "key": "AssistFollowUpStuffedHardCandyShot", "category": "assist", "hits": [[463.6, 42.2]] }
+      ]
+    },
+    "1421": {
+      "name": "PanYinhu",
+      "skills": [
+        {
+          "key": "BasicAttackUnyieldingStrikes",
+          "category": "basic",
+          "hits": [[49.7, 4.6], [49.8, 4.6], [109.4, 10], [211.3, 19.3]]
+        },
+        { "key": "DashAttackSizzlingOilSupreme", "category": "dodge", "hits": [[83.4, 7.6]] },
+        { "key": "DodgeCounterMovingMountainsAndSeas", "category": "dodge", "hits": [[219.2, 20]] },
+        { "key": "SpecialAttackSonicPressurePointStrike", "category": "special", "hits": [[62.5, 5.7]] },
+        { "key": "SpecialAttackTouchOfDeath", "category": "special", "hits": [[97.3, 8.9], [97.3, 8.9], [97.3, 8.9]] },
+        { "key": "EXSpecialAttackMountainousPulseStrike", "category": "special", "hits": [[384.1, 35]] },
+        { "key": "ChainAttackAnointedWithWokSteam", "category": "chain", "hits": [[632.3, 57.5]] },
+        { "key": "UltimateAFeastFitForAnEmperor", "category": "chain", "hits": [[1627.9, 148]] },
+        { "key": "QuickAssistLiftYourGazeToGoodFortune", "category": "assist", "hits": [[91.7, 8.4]] },
+        { "key": "AssistFollowUpRideTheMomentum", "category": "assist", "hits": [[337.4, 30.7]] }
+      ]
+    },
+    "1431": {
+      "name": "YeShunguang",
+      "skills": [
+        {
+          "key": "BasicAttackSwiftedge",
+          "category": "basic",
+          "hits": [[79.4, 7.3], [244.1, 22.2], [124.6, 11.4], [368, 33.5]]
+        },
+        { "key": "BasicAttackCloudstreamSwordWill", "category": "basic", "hits": [[116.7, 10.7]] },
+        {
+          "key": "BasicAttackEnlightenedMindSplittingCurrents",
+          "category": "basic",
+          "hits": [[112.6, 10.3], [155.9, 14.2], [216.6, 19.7]]
+        },
+        { "key": "BasicAttackEnlightenedMindSkywardAscent", "category": "basic", "hits": [[91, 8.3]] },
+        { "key": "BasicAttackEnlightenedMindSunderlightMaximum", "category": "basic", "hits": [[604.8, 55]] },
+        { "key": "BasicAttackEnlightenedMindSunderlight", "category": "basic", "hits": [[120.7, 11], [156.5, 14.3]] },
+        {
+          "key": "BasicAttackEnlightenedMindSunderlightAnnihilation",
+          "category": "basic",
+          "hits": [[891.2, 81.1], [159.9, 14.6]]
+        },
+        { "key": "DashAttackPhantasmDash", "category": "dodge", "hits": [[105, 9.6]] },
+        { "key": "DodgeCounterSwallowStrike", "category": "dodge", "hits": [[346.3, 31.5]] },
+        { "key": "SpecialAttackGuidingTides", "category": "special", "hits": [[98.9, 9], [315.9, 28.8]] },
+        { "key": "EXSpecialAttackGaleSuppression", "category": "special", "hits": [[1178.4, 107.2]] },
+        { "key": "SpecialAttackEnlightenedMindCleanExit", "category": "special", "hits": [[71, 6.5]] },
+        { "key": "EXSpecialAttackEnlightenedMindSoaringLight", "category": "special", "hits": [[1058, 96.2]] },
+        { "key": "EXSpecialAttackEnlightenedMindReturnToDust", "category": "special", "hits": [[1161.1, 105.6]] },
+        { "key": "ChainAttackSmiteTheWicked", "category": "chain", "hits": [[871.6, 79.3]] },
+        { "key": "UltimateChasingStorms", "category": "chain", "hits": [[1925, 175]] },
+        { "key": "ChainAttackEnlightenedMindLureThunder", "category": "chain", "hits": [[908.6, 82.6]] },
+        { "key": "UltimateCleavingHeavens", "category": "chain", "hits": [[3084.3, 280.4]] },
+        { "key": "EntrySkillIlluminatingDarkness", "category": "assist", "hits": [[400.4, 36.4]] },
+        { "key": "QuickAssistSupportGuard", "category": "assist", "hits": [[80.5, 7.4]] },
+        { "key": "AssistFollowUpCeaseHostility", "category": "assist", "hits": [[413.7, 37.7]] },
+        { "key": "QuickAssistEnlightenedMindTacticalSupport", "category": "assist", "hits": [[67.3, 6.2]] },
+        { "key": "AssistFollowUpEnlightenedMindUnification", "category": "assist", "hits": [[430, 39.1]] }
+      ]
+    },
+    "1441": {
+      "name": "Manato",
+      "skills": [
+        {
+          "key": "BasicAttackBlazingWindSlash",
+          "category": "basic",
+          "hits": [[28.7, 2.7], [38.2, 3.5], [44.5, 4.1], [60, 5.5], [74.6, 6.8], [34.4, 3.2], [57.3, 5.3], [83.3, 7.6]]
+        },
+        {
+          "key": "BasicAttackBlazingWindMistySlash",
+          "category": "basic",
+          "hits": [[53.1, 4.9], [111.2, 10.2], [154.5, 14.1], [237.8, 21.7]]
+        },
+        { "key": "DashAttackRadiantBladeZanshin", "category": "dodge", "hits": [[58.7, 5.4]] },
+        { "key": "DodgeCounterRadiantBladeBattleSweep", "category": "dodge", "hits": [[198, 18]] },
+        { "key": "SpecialAttackReturnToAshes", "category": "special", "hits": [[50.7, 4.7], [130.7, 11.9]] },
+        { "key": "EXSpecialAttackReturnToAshesFall", "category": "special", "hits": [[652.6, 59.4]] },
+        { "key": "ChainAttackBlazingEruption", "category": "chain", "hits": [[483.3, 44]] },
+        { "key": "UltimateMusouAratama", "category": "chain", "hits": [[1562.3, 142.1]] },
+        { "key": "QuickAssistLoneShadowRegroup", "category": "assist", "hits": [[90.7, 8.3]] },
+        {
+          "key": "DefensiveAssistLoneShadowMountainStand",
+          "category": "assist",
+          "hits": [[40, 3.7], [0, 0], [0, 0], [0, 0]]
+        },
+        { "key": "AssistFollowUpLoneShadowBreakingFang", "category": "assist", "hits": [[166.7, 15.2], [403.4, 36.7]] }
+      ]
+    },
+    "1451": {
+      "name": "Lucia",
+      "skills": [
+        {
+          "key": "BasicAttackOrbitalCombo",
+          "category": "basic",
+          "hits": [[40.9, 3.8], [27.8, 2.6], [83.5, 7.6], [80.1, 7.3], [172.9, 15.8], [412.5, 37.5], [550, 50]]
+        },
+        { "key": "DashAttackRefraction", "category": "dodge", "hits": [[86.3, 7.9]] },
+        { "key": "DodgeCounterStardustEcho", "category": "dodge", "hits": [[248.3, 22.6], [385.8, 35.1]] },
+        {
+          "key": "SpecialAttackSymphonyOfTheReaperStorm",
+          "category": "special",
+          "hits": [[45.9, 4.2], [183.4, 16.7], [550, 50]]
+        },
+        { "key": "EXSpecialAttackSymphonyOfTheReaperDaybreak", "category": "special", "hits": [[638.1, 58.1]] },
+        { "key": "ChainAttackStageOfBrilliance", "category": "chain", "hits": [[616.7, 56.1]] },
+        { "key": "UltimateChargeGreatArmor", "category": "chain", "hits": [[93, 8.5], [1902.7, 173]] },
+        { "key": "QuickAssistCrushingMist", "category": "assist", "hits": [[106.4, 9.7], [243.9, 22.2], [550, 50]] },
+        { "key": "AssistFollowUpHarmonyOfPaintedDreams", "category": "assist", "hits": [[327.7, 29.8]] }
+      ]
+    },
+    "1461": {
+      "name": "Seed",
+      "skills": [
+        {
+          "key": "BasicAttackChrysanthemumWheelDance",
+          "category": "basic",
+          "hits": [[46.5, 4.3], [124.1, 11.3], [71.8, 6.6], [358.6, 32.6]]
+        },
+        { "key": "BasicAttackFallingPetalsSlaughter", "category": "basic", "hits": [[166.6, 15.2]] },
+        { "key": "BasicAttackFallingPetalsDownfallFirstForm", "category": "basic", "hits": [[528.3, 48.1]] },
+        { "key": "BasicAttackFallingPetalsDownfallSecondForm", "category": "basic", "hits": [[989.4, 90]] },
+        { "key": "DashAttackMagneticWheelDance", "category": "dodge", "hits": [[64.2, 5.9]] },
+        { "key": "DodgeCounterBlossomBurst", "category": "dodge", "hits": [[320.1, 29.1]] },
+        { "key": "SpecialAttackWitheredInFrost", "category": "special", "hits": [[47.7, 4.4]] },
+        { "key": "EXSpecialAttackRainingIronPetals", "category": "special", "hits": [[683.4, 62.2]] },
+        { "key": "EXSpecialAttackRainingIronPetalsAway", "category": "special", "hits": [[18.4, 1.7]] },
+        { "key": "ChainAttackTempestOfFrostyPetals", "category": "chain", "hits": [[734.2, 66.8]] },
+        { "key": "UltimateClockworkGardenBloom", "category": "chain", "hits": [[3249.7, 295.5]] },
+        { "key": "QuickAssistBarrageOfRainingFlowers", "category": "assist", "hits": [[154, 14]] },
+        { "key": "AssistFollowUpCrimsonCoreBurst", "category": "assist", "hits": [[456, 41.5]] }
+      ]
+    },
+    "1471": {
+      "name": "Banyue",
+      "skills": [
+        {
+          "key": "BasicAttackToweringPeaks",
+          "category": "basic",
+          "hits": [[39.6, 3.6], [49.8, 4.6], [101.3, 9.3], [116.3, 10.6]]
+        },
+        {
+          "key": "BasicAttackMajesticSummit",
+          "category": "basic",
+          "hits": [[52.8, 4.8], [70.4, 6.4], [135.5, 12.4], [92.4, 8.4]]
+        },
+        { "key": "BasicAttackImmolate", "category": "basic", "hits": [[110.6, 10.1]] },
+        { "key": "BasicAttackTopplingMountain", "category": "basic", "hits": [[869.8, 79.1]] },
+        { "key": "BasicAttackCrushingPeaks", "category": "basic", "hits": [[378.3, 34.4]] },
+        { "key": "DashAttackScatteringSands", "category": "dodge", "hits": [[39.7, 3.7]] },
+        { "key": "DodgeCounterStoneburst", "category": "dodge", "hits": [[194.9, 17.8]] },
+        { "key": "EXSpecialAttackEarthShaker", "category": "special", "hits": [[254.8, 23.2]] },
+        { "key": "EXSpecialAttackMountainTremor", "category": "special", "hits": [[171.3, 15.6]] },
+        { "key": "EXSpecialAttackOnesPath", "category": "special", "hits": [[162.4, 14.8]] },
+        { "key": "EXSpecialAttackLionsRoar", "category": "special", "hits": [[153.7, 14]] },
+        { "key": "EXSpecialAttackMountainTremorWrath", "category": "special", "hits": [[325, 29.6]] },
+        { "key": "EXSpecialAttackLionsRoarWrath", "category": "special", "hits": [[300.1, 27.3]] },
+        { "key": "ChainAttackBlazingWrath", "category": "chain", "hits": [[560.9, 51]] },
+        { "key": "UltimateTheWorldTrembles", "category": "chain", "hits": [[1598.4, 145.4]] },
+        { "key": "QuickAssistBatholith", "category": "assist", "hits": [[73.4, 6.7]] },
+        { "key": "AssistFollowUpLoftyAscent", "category": "assist", "hits": [[241.6, 22]] },
+        { "key": "AssistFollowUpPierceHeavens", "category": "assist", "hits": [[221.6, 20.2]] }
+      ]
+    },
+    "1481": {
+      "name": "Dialyn",
+      "skills": [
+        {
+          "key": "BasicAttackHappyToBeOfService",
+          "category": "basic",
+          "hits": [[25.6, 2.4], [51.3, 4.7], [64.8, 5.9], [99.5, 9.1]]
+        },
+        {
+          "key": "BasicAttackRockPaperScissors",
+          "category": "basic",
+          "hits": [[89.5, 8.2], [113.9, 10.4], [103.1, 9.4], [100.3, 9.2]]
+        },
+        { "key": "DashAttackSuddenCall", "category": "dodge", "hits": [[60.5, 5.5]] },
+        { "key": "DodgeCounterNumberUnavailable", "category": "dodge", "hits": [[267.3, 24.3]] },
+        { "key": "EXSpecialAttackGetLost", "category": "special", "hits": [[549.7, 50]] },
+        { "key": "SpecialAttackWelcomeGesture", "category": "special", "hits": [[54.2, 5]] },
+        { "key": "EXSpecialAttackRock", "category": "special", "hits": [[404, 36.8]] },
+        { "key": "EXSpecialAttackScissors", "category": "special", "hits": [[524.9, 47.8]] },
+        { "key": "EXSpecialAttackPaper", "category": "special", "hits": [[701.7, 63.8]] },
+        { "key": "ChainAttackWelcomeMat", "category": "chain", "hits": [[620.4, 56.4]] },
+        { "key": "UltimateServiceStoppedForNumberDialed", "category": "chain", "hits": [[1622.5, 147.5]] },
+        { "key": "QuickAssistForwardCall", "category": "assist", "hits": [[121, 11]] },
+        { "key": "AssistFollowUpBacktoBackCalls", "category": "assist", "hits": [[376.4, 34.3]] }
+      ]
+    },
+    "1491": {
+      "name": "Sunna",
+      "skills": [
+        {
+          "key": "BasicAttackMischiefMeteorHammer",
+          "category": "basic",
+          "hits": [[43.4, 4], [175.9, 16], [181.2, 16.5], [405.3, 36.9]]
+        },
+        { "key": "BasicAttackNaughtyCatSpotted", "category": "basic", "hits": [[208, 19]] },
+        { "key": "DashAttackSkywardHammer", "category": "dodge", "hits": [[99.7, 9.1]] },
+        { "key": "DodgeCounterDelusionStrikeout", "category": "dodge", "hits": [[318.8, 29]] },
+        { "key": "SpecialAttackStarShooter", "category": "special", "hits": [[56.4, 5.2]] },
+        { "key": "EXSpecialAttackBubblegumBarrage", "category": "special", "hits": [[794.1, 72.2], [119.2, 10.9]] },
+        {
+          "key": "EXSpecialAttackSpecialPhotographyTechnique",
+          "category": "special",
+          "hits": [[828.1, 75.3], [124.3, 11.3]]
+        },
+        { "key": "ChainAttackDontMessWithTheCat", "category": "chain", "hits": [[811.3, 73.8]] },
+        { "key": "UltimateSmashItAll", "category": "chain", "hits": [[2090.9, 190.1]] },
+        { "key": "QuickAssistSonicBeatdown", "category": "assist", "hits": [[72.7, 6.7]] },
+        { "key": "AssistFollowUpJumpTraining", "category": "assist", "hits": [[535.7, 48.7]] }
+      ]
+    },
+    "1501": {
+      "name": "Aria",
+      "skills": [
+        {
+          "key": "BasicAttackSweetMelody",
+          "category": "basic",
+          "hits": [[33.2, 3.1], [71.6, 6.6], [93.8, 8.6], [194.2, 17.7]]
+        },
+        {
+          "key": "BasicAttackPerfectPitch",
+          "category": "basic",
+          "hits": [[181.5, 16.5], [207.2, 18.9], [275, 25], [41.3, 3.8], [320.9, 29.2]]
+        },
+        { "key": "DashAttackSilkySmoothCombo", "category": "dodge", "hits": [[45.8, 4.2]] },
+        { "key": "DodgeCounterSlideShiftVariation", "category": "dodge", "hits": [[241.2, 22]] },
+        { "key": "SpecialAttackFullSugarElectronica", "category": "special", "hits": [[54.3, 5]] },
+        { "key": "SpecialAttackFullSugarElectronicaNoIce", "category": "special", "hits": [[64.8, 5.9]] },
+        { "key": "EXSpecialAttackFallIntoDelusion", "category": "special", "hits": [[511.2, 46.5]] },
+        { "key": "EXSpecialAttackInstantlyHooked", "category": "special", "hits": [[544.5, 49.5]] },
+        { "key": "ChainAttackDreamCollab", "category": "chain", "hits": [[816.2, 74.2]] },
+        { "key": "Ultimate100Energy", "category": "chain", "hits": [[1622.5, 147.5]] },
+        { "key": "QuickAssistShatterFantasy", "category": "assist", "hits": [[49.6, 4.6]] },
+        { "key": "AssistFollowUpEncoreSong", "category": "assist", "hits": [[363.5, 33.1]] }
+      ]
+    },
+    "1511": {
+      "name": "NangongYu",
+      "skills": [
+        {
+          "key": "BasicAttackShootingStarStep",
+          "category": "basic",
+          "hits": [[114.9, 10.5], [136.9, 12.5], [263.8, 24]]
+        },
+        {
+          "key": "BasicAttackAdorableExplosiveImpact",
+          "category": "basic",
+          "hits": [[104, 9.5], [304.4, 27.7], [510.8, 46.5], [76.7, 7]]
+        },
+        { "key": "DashAttackSpinningMeteor", "category": "dodge", "hits": [[190.7, 17.4]] },
+        { "key": "DodgeCounterAsteroidWaltz", "category": "dodge", "hits": [[355.3, 32.3]] },
+        { "key": "SpecialAttackTheWeightOfLove", "category": "special", "hits": [[83.5, 7.6]] },
+        { "key": "EXSpecialAttackTheUnbearableWeightOfLove", "category": "special", "hits": [[533, 48.5]] },
+        { "key": "ChainAttackCometGravity", "category": "chain", "hits": [[798.2, 72.6]] },
+        { "key": "UltimateMeteorShower", "category": "chain", "hits": [[2101.7, 191.1]] },
+        { "key": "QuickAssistEmergencySave", "category": "assist", "hits": [[74.8, 6.8]] },
+        { "key": "AssistFollowUpImprovisedPerformance", "category": "assist", "hits": [[535.8, 48.8]] }
+      ]
+    },
+    "1521": {
+      "name": "Cissia",
+      "skills": [
+        {
+          "key": "BasicAttackTongueFlick",
+          "category": "basic",
+          "hits": [[77.7, 7.1], [138.7, 12.7], [135.1, 12.3], [250.2, 22.8]]
+        },
+        { "key": "BasicAttackSerpentsKiss", "category": "basic", "hits": [[504.2, 45.9]] },
+        { "key": "CorrodeBone", "category": "basic", "hits": [[126.8, 11.6]] },
+        { "key": "DashAttackBiteMark", "category": "dodge", "hits": [[147.3, 13.4]] },
+        { "key": "DodgeCounterBiteBack", "category": "dodge", "hits": [[324.5, 29.5]] },
+        { "key": "SpecialAttackBaredFangs", "category": "special", "hits": [[52, 4.8]] },
+        { "key": "EXSpecialAttackVenomousBite", "category": "special", "hits": [[200.4, 18.3], [66.8, 6.1]] },
+        { "key": "ChainAttackGangOperation", "category": "chain", "hits": [[737.8, 67.1]] },
+        { "key": "UltimateOphidiophobia", "category": "chain", "hits": [[1811, 164.7]] },
+        { "key": "QuickAssistAlarmSystem", "category": "assist", "hits": [[74.8, 6.8]] },
+        { "key": "AssistFollowUpPartnersInCrime", "category": "assist", "hits": [[520.6, 47.4]] }
+      ]
+    },
+    "1531": {
+      "name": "StarlightBilly",
+      "skills": [
+        {
+          "key": "BasicAttackKnightsTechnique",
+          "category": "basic",
+          "hits": [[50.3, 4.6], [68, 6.2], [54.5, 5], [206, 18.8]]
+        },
+        { "key": "BasicAttackFullThrottleStarlight", "category": "basic", "hits": [[1043.2, 94.9]] },
+        { "key": "DashAttackStarlightRetribution", "category": "dodge", "hits": [[45.1, 4.1]] },
+        { "key": "DodgeCounterDuelKing", "category": "dodge", "hits": [[119.5, 10.9]] },
+        { "key": "DodgeCounterAfterfireSpin", "category": "dodge", "hits": [[198.7, 18.1]] },
+        { "key": "SpecialAttackDriveSuppression", "category": "special", "hits": [[52, 4.8]] },
+        { "key": "SpecialAttackRunWild", "category": "special", "hits": [[72.1, 6.6]] },
+        { "key": "EXSpecialAttackCoolWheelie", "category": "special", "hits": [[389.7, 35.5]] },
+        { "key": "EXSpecialAttackHighTractionWheels", "category": "special", "hits": [[929.9, 84.6]] },
+        { "key": "EXSpecialAttackRockingFootwork", "category": "special", "hits": [[959, 87.2]] },
+        { "key": "ChainAttackKnightsSwagger", "category": "chain", "hits": [[662.9, 60.3]] },
+        { "key": "UltimateStarlightKnightFlyingKick", "category": "chain", "hits": [[1592.1, 144.8]] },
+        { "key": "QuickAssistStarlightPowerOfBonds", "category": "assist", "hits": [[92, 8.4]] },
+        { "key": "AssistFollowUpVillainsExit", "category": "assist", "hits": [[229.6, 20.9]] }
+      ]
+    },
+    "1541": {
+      "name": "Promeia",
+      "skills": [
+        {
+          "key": "BasicAttackSweepingEdge",
+          "category": "basic",
+          "hits": [[49.8, 4.6], [103.2, 9.4], [190.9, 17.4], [204.7, 18.7], [241.5, 22], [19.5, 1.8]]
+        },
+        { "key": "BasicAttackWhirlingBlade", "category": "basic", "hits": [[175.5, 16]] },
+        { "key": "DashAttackGrimReap", "category": "dodge", "hits": [[56.3, 5.2]] },
+        { "key": "DodgeCounterSoaringBat", "category": "dodge", "hits": [[335.7, 30.6]] },
+        { "key": "SpecialAttackExecutionColdFlash", "category": "special", "hits": [[127.8, 11.7]] },
+        { "key": "EXSpecialAttackExecutionGlacialDeath", "category": "special", "hits": [[79.3, 7.3]] },
+        { "key": "SpecialAttackExecutionDescendingFrost", "category": "special", "hits": [[383.8, 34.9]] },
+        { "key": "SpecialAttackExecutionLayeredFrost", "category": "special", "hits": [[608.2, 55.3], [12.1, 1.1]] },
+        { "key": "EXSpecialAttackExecutionMercilessJudgment", "category": "special", "hits": [[512.3, 46.6]] },
+        { "key": "ChainAttackHangingJudgment", "category": "chain", "hits": [[830.8, 75.6]] },
+        { "key": "UltimateGlaciatingImpalement", "category": "chain", "hits": [[1538.4, 139.9]] },
+        { "key": "QuickAssistAmbushingStrike", "category": "assist", "hits": [[79.1, 7.2]] },
+        { "key": "AssistFollowUpInterceptingStrike", "category": "assist", "hits": [[469, 42.7]] }
+      ]
+    },
+    "1551": {
+      "name": "Pyrois",
+      "skills": [
+        { "key": "BasicAttackEmberglow", "category": "basic", "hits": [[45.6, 4.2], [64.1, 5.9], [276.3, 25.2]] },
+        {
+          "key": "BasicAttackCelestialLight",
+          "category": "basic",
+          "hits": [[107, 9.8], [143.8, 13.1], [549, 50], [641, 58.3]]
+        },
+        { "key": "DashAttackSunrise", "category": "dodge", "hits": [[95.3, 8.7]] },
+        { "key": "DodgeCounterFirstLight", "category": "dodge", "hits": [[228.7, 20.8]] },
+        { "key": "SpecialAttackFadingRays", "category": "special", "hits": [[52.1, 4.8]] },
+        { "key": "EXSpecialAttackSunsHalo", "category": "special", "hits": [[737.4, 67.1]] },
+        { "key": "SpecialAttackAssaultDirective", "category": "special", "hits": [[82.8, 7.6]] },
+        { "key": "ChainAttackCeremonialMarch", "category": "chain", "hits": [[1058.3, 96.3]] },
+        { "key": "UltimateTotalAnnihilation", "category": "chain", "hits": [[866.2, 78.8]] },
+        { "key": "UltimateTriumphantReturn", "category": "chain", "hits": [[535.7, 48.7]] },
+        { "key": "UltimateUnboundSwordstorm", "category": "chain", "hits": [[973.3, 88.5]] },
+        { "key": "UltimateEternalImprisonment", "category": "chain", "hits": [[997, 90.7]] },
+        { "key": "QuickAssistDuskguard", "category": "assist", "hits": [[41.2, 3.8]] },
+        { "key": "AssistFollowUpReturnToDaylight", "category": "assist", "hits": [[338.6, 30.8]] }
+      ]
+    },
+    "1561": {
+      "name": "Velina",
+      "skills": [
+        {
+          "key": "BasicAttackDancingFans",
+          "category": "basic",
+          "hits": [[51.7, 4.7], [48.9, 4.5], [169.1, 15.4], [125.6, 11.5], [229.6, 20.9]]
+        },
+        { "key": "DashAttackGaleStep", "category": "dodge", "hits": [[99.7, 9.1]] },
+        { "key": "DodgeCounterCloudrend", "category": "dodge", "hits": [[394.9, 35.9]] },
+        { "key": "SpecialAttackWindShearPurgingSurge", "category": "special", "hits": [[58.6, 5.4]] },
+        { "key": "EXSpecialAttackWindShearPurifyingRise", "category": "special", "hits": [[440.5, 40.1]] },
+        { "key": "EXSpecialAttackWindShearTripleDeathblow", "category": "special", "hits": [[725.2, 66]] },
+        { "key": "EXSpecialAttackWindShearEyeOfTheStorm", "category": "special", "hits": [[216.7, 19.7]] },
+        { "key": "SweepingCyclone", "category": "special", "hits": [[39, 3.6], [97.5, 8.9]] },
+        { "key": "CondensedCyclone", "category": "special", "hits": [[32.5, 3]] },
+        { "key": "ChainAttackThousandfoldSpiral", "category": "chain", "hits": [[800.4, 72.8]] },
+        { "key": "UltimateHeedTheTempest", "category": "chain", "hits": [[2188.3, 199]] },
+        { "key": "QuickAssistEmergencyProtocol", "category": "assist", "hits": [[203.8, 18.6]] },
+        { "key": "AssistFollowUpNegotiationTechniques", "category": "assist", "hits": [[532.7, 48.5]] }
+      ]
+    },
+    "1571": {
+      "name": "Norma",
+      "skills": [
+        {
+          "key": "BasicAttackEngineeringInsurance",
+          "category": "basic",
+          "hits": [[26.1, 2.4], [37.8, 3.5], [73.3, 6.7], [140.9, 12.9]]
+        },
+        { "key": "BasicAttackHatTrick", "category": "basic", "hits": [[56.9, 5.2]] },
+        { "key": "DashAttackDeadlineRush", "category": "dodge", "hits": [[82.3, 7.5]] },
+        { "key": "DodgeCounterComplianceTesting", "category": "dodge", "hits": [[313.1, 28.5]] },
+        { "key": "SpecialAttackThermalShutdown", "category": "special", "hits": [[15, 1.4]] },
+        {
+          "key": "EXSpecialAttackEnNahBarrage",
+          "category": "special",
+          "hits": [[205.4, 18.7], [308, 28], [341.4, 31.1], [130.6, 11.9], [195.9, 17.9], [216.7, 19.7]]
+        },
+        { "key": "SpecialAttackTargetPractice", "category": "special", "hits": [[195, 17.8]] },
+        { "key": "EXSpecialAttackExplosiveExperiment", "category": "special", "hits": [[82.8, 7.6], [92.3, 8.4]] },
+        { "key": "ChainAttackImpactDrill", "category": "chain", "hits": [[752.7, 68.5]] },
+        { "key": "UltimateDoctrineOfSuperiorFirepower", "category": "chain", "hits": [[1936.5, 176.1]] },
+        { "key": "QuickAssistRoaringBackup", "category": "assist", "hits": [[70.5, 6.5]] },
+        { "key": "AssistFollowUpTechnologicalSuppression", "category": "assist", "hits": [[450.8, 41]] }
+      ]
+    },
+    "1581": {
+      "name": "Remielle",
+      "skills": [
+        { "key": "BasicAttackLeap", "category": "basic", "hits": [[31.2, 2.9], [54.5, 5], [84.3, 7.7], [250.8, 22.8]] },
+        { "key": "BasicAttackSoloDance", "category": "basic", "hits": [[96.5, 8.8]] },
+        { "key": "BasicAttackRainbowsEnd", "category": "basic", "hits": [[195, 17.8]] },
+        { "key": "BasicAttackFleetingGrace", "category": "basic", "hits": [[597.2, 54.3]] },
+        { "key": "DashAttackKeenLight", "category": "dodge", "hits": [[39, 3.6]] },
+        { "key": "DodgeCounterMirroredShadow", "category": "dodge", "hits": [[214.5, 19.5]] },
+        { "key": "SpecialAttackSliverOfLight", "category": "special", "hits": [[49.9, 4.6]] },
+        { "key": "EXSpecialAttackOdeToDawn", "category": "special", "hits": [[721.5, 65.6]] },
+        { "key": "SpecialAttackOdeToDawnRadiantTurn", "category": "special", "hits": [[164.7, 15]] },
+        { "key": "ChainAttackInterwovenDanceSteps", "category": "chain", "hits": [[785.2, 71.4]] },
+        { "key": "UltimateDazzlingCurtainCall", "category": "chain", "hits": [[2009.7, 182.7]] },
+        { "key": "QuickAssistFeatherglowRebirth", "category": "assist", "hits": [[32.5, 3]] },
+        { "key": "AssistFollowUpAwakeningGlimmer", "category": "assist", "hits": [[381.1, 34.7]] },
+        { "key": "AssistFlowerFeatherDance", "category": "assist", "hits": [[453.5, 41.3]] }
+      ]
+    },
+    "1591": {
+      "name": "Sigrid",
+      "skills": [
+        {
+          "key": "BasicAttackFrostTippedSpear",
+          "category": "basic",
+          "hits": [[77, 7], [143.8, 13.1], [101.4, 9.3], [221, 20.1]]
+        },
+        { "key": "BasicAttackConvergingSpear1stStage", "category": "basic", "hits": [[358.3, 32.6]] },
+        { "key": "BasicAttackConvergingSpear2ndStage", "category": "basic", "hits": [[609.1, 55.4]] },
+        { "key": "BasicAttackConvergingSpear3rdStage", "category": "basic", "hits": [[814.6, 74.1]] },
+        { "key": "DashAttackWindchase", "category": "dodge", "hits": [[119, 10.9]] },
+        { "key": "DodgeCounterCounterthrust", "category": "dodge", "hits": [[243.1, 22.1]] },
+        { "key": "SpecialAttackFrostflower", "category": "special", "hits": [[53.7, 4.9]] },
+        { "key": "EXSpecialAttackScatteredJade", "category": "special", "hits": [[438.8, 39.9]] },
+        { "key": "EXSpecialAttackShatteredJade", "category": "special", "hits": [[1047.8, 95.3]] },
+        { "key": "ChainAttackEncroachingIce", "category": "chain", "hits": [[943.7, 85.8]] },
+        { "key": "UltimateFrozenHeavens", "category": "chain", "hits": [[2189.8, 199.1]] },
+        { "key": "QuickAssistIronSentinel", "category": "assist", "hits": [[39.7, 3.7]] },
+        { "key": "AssistFollowUpDevouringFrost", "category": "assist", "hits": [[514.9, 46.9]] }
+      ]
+    },
+    "1611": {
+      "name": "Claret",
+      "skills": [
+        {
+          "key": "BasicAttackBloodforgingFourForms",
+          "category": "basic",
+          "hits": [[54.4, 5], [67.2, 6.2], [95.2, 8.7], [289.5, 26.4]]
+        },
+        {
+          "key": "BasicAttackBloodbloomOathStarforging",
+          "category": "basic",
+          "hits": [[107.7, 9.8], [287.4, 26.2], [452.1, 41.1], [177.3, 16.2]]
+        },
+        { "key": "BasicAttackBloodbloomOathSubduingAxe", "category": "basic", "hits": [[328, 29.9]] },
+        { "key": "DashAttackTempering", "category": "dodge", "hits": [[52.9, 4.9]] },
+        { "key": "DodgeCounterReturningEdge", "category": "dodge", "hits": [[272.5, 24.8]] },
+        { "key": "DodgeCounterBloodbloomOathReturningEdge", "category": "dodge", "hits": [[330, 30]] },
+        { "key": "SpecialAttackPorcelumesFirstCall", "category": "special", "hits": [[90.1, 8.2]] },
+        {
+          "key": "EXSpecialAttackBloodbloomOathSecretForgingTechniques",
+          "category": "special",
+          "hits": [[624.8, 56.8]]
+        },
+        {
+          "key": "SpecialAttackBloodbloomOathCleavingGoldAndIron",
+          "category": "special",
+          "hits": [[76.6, 7], [87.7, 8], [812.7, 73.9]]
+        },
+        { "key": "SpecialAttackBloodbloomOathBloodBurialAssault", "category": "special", "hits": [[312.8, 28.5]] },
+        { "key": "ChainAttackBloodbloomOathResonantBloodPact", "category": "chain", "hits": [[1058, 96.2]] },
+        { "key": "UltimateBloodbloomOathTrialAfterTrial", "category": "chain", "hits": [[2252, 204.8]] },
+        { "key": "QuickAssistReturnOfTheDireMoon", "category": "assist", "hits": [[52.9, 4.9]] },
+        { "key": "QuickAssistBloodbloomOathReturnOfTheDireMoon", "category": "assist", "hits": [[115.8, 10.6]] },
+        { "key": "AssistFollowUpBloodbloomOathPureforgedEdge", "category": "assist", "hits": [[446.2, 40.6]] },
+        { "key": "CounterAssistGiveNotAnInchOfSteel", "category": "assist", "hits": [[1153, 104.9]] },
+        { "key": "AssistFollowUpBloodbloomOathHammerIntoShape", "category": "assist", "hits": [[856.3, 77.9]] }
+      ]
+    },
+    "1621": {
+      "name": "Roxy",
+      "skills": [
+        {
+          "key": "BasicAttackDoStayAWhile",
+          "category": "basic",
+          "hits": [[52.4, 4.8], [107.9, 9.9], [172.4, 15.7], [192.5, 17.5]]
+        },
+        { "key": "DashAttackForgiveMyRudeness", "category": "dodge", "hits": [[35.6, 3.3]] },
+        { "key": "DodgeCounterReturnedCourtesy", "category": "dodge", "hits": [[392, 35.7]] },
+        { "key": "SpecialAttackMuchObliged", "category": "special", "hits": [[50.9, 4.7]] },
+        { "key": "SpecialAttackForgiveMeForNotSeeingYouOff", "category": "special", "hits": [[250, 22.8]] },
+        { "key": "EXSpecialAttackDontCatchAChill", "category": "special", "hits": [[13.7, 1.3], [1304, 118.6]] },
+        { "key": "EXSpecialAttackKindlyRestInPeace", "category": "special", "hits": [[31.9, 2.9], [26.1, 2.4]] },
+        { "key": "EyeOfTheStorm", "category": "special", "hits": [[52.1, 4.8], [52.1, 4.8], [208.4, 19]] },
+        { "key": "ChainAttackGaleBurialGreatHammer", "category": "chain", "hits": [[902.2, 82.1]] },
+        { "key": "UltimateRequiemForTheNightBurial", "category": "chain", "hits": [[2131.5, 193.8]] },
+        { "key": "AssistMoreOvertime", "category": "assist", "hits": [[39, 3.6], [611.6, 55.6]] },
+        { "key": "QuickAssistAtYourService", "category": "assist", "hits": [[100.8, 9.2]] },
+        { "key": "AssistFollowUpMidnightCode", "category": "assist", "hits": [[611.6, 55.6]] }
+      ]
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import {
-  SegmentedControl,
+  Button,
+  Group,
   Text,
 } from '@mantine/core'
 import classes from 'lib/games/shared/ui/optimizer/CharacterPanel.module.css'
@@ -45,7 +46,20 @@ export function RankButtons({ label, prefix, from, to, value, onChange, names }:
   return (
     <div>
       <Text size='xs' c='dimmed' mb={4}>{label}</Text>
-      <SegmentedControl fullWidth size='xs' value={String(value)} onChange={(v) => onChange(Number(v))} data={data} />
+      {/* Buttons that wrap, unlike a segmented control, so a narrow card never overflows */}
+      <Group gap={4}>
+        {data.map((option) => (
+          <Button
+            key={option.value}
+            size='compact-xs'
+            miw={32}
+            variant={option.value === String(value) ? 'filled' : 'default'}
+            onClick={() => onChange(Number(option.value))}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </Group>
     </div>
   )
 }

@@ -1,3 +1,7 @@
+import {
+  type EnemyDebuffs,
+  NO_DEBUFFS,
+} from 'lib/games/zzz/damage/damage'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type { StatEffect } from 'lib/games/zzz/data/dataTypes'
 import { FACTIONS } from 'lib/games/zzz/data/factions'
@@ -10,6 +14,7 @@ import {
 import { resolveBuild } from 'lib/games/zzz/stats/resolveBuild'
 import {
   AGENT_BUFFS,
+  type EnemyDebuffKey,
   SET_4PC_BUFFS,
   type SquadMember,
   type ZzzBuffContext,
@@ -42,12 +47,14 @@ export type ZzzAppliedBuff = {
 
 export type ZzzTeamResult = {
   effects: StatEffect[],
+  // DEF shred, RES shred and DMG taken on the enemy, for rotation damage
+  debuffs: EnemyDebuffs,
   applied: ZzzAppliedBuff[],
   // Teammates whose stat screen couldn't be worked out (no saved build, or no data for them)
   missing: string[],
 }
 
-export const NO_TEAM: ZzzTeamResult = { effects: [], applied: [], missing: [] }
+export const NO_TEAM: ZzzTeamResult = { effects: [], debuffs: NO_DEBUFFS, applied: [], missing: [] }
 
 export function settingKey(buff: ZzzTeamBuff, giverId: string): string {
   return `${giverId}:${buff.id}`
@@ -63,6 +70,10 @@ export function squadMember(agentId: string, mindscape: number): SquadMember | u
   const agent = AGENTS[agentId]
   if (!agent) return undefined
   return { agentId, name: agent.name, element: agent.element, specialty: agent.specialty, faction: FACTIONS[agentId], mindscape }
+}
+
+export function isDebuff(stat: string): stat is EnemyDebuffKey {
+  return stat === 'defShred' || stat === 'resShred' || stat === 'dmgTaken'
 }
 
 function fourPieceSets(discs: Disc[]): string[] {
@@ -139,11 +150,13 @@ export function zzzTeamBuffsFor(
     }
   }
 
-  const effects: StatEffect[] = applied.filter((a) => a.counted).map((a) => ({
+  const debuffs: EnemyDebuffs = { ...NO_DEBUFFS }
+  for (const a of applied) if (a.counted && isDebuff(a.buff.stat)) debuffs[a.buff.stat] += a.value
+  const effects: StatEffect[] = applied.filter((a) => a.counted).flatMap((a) => (isDebuff(a.buff.stat) ? [] : [{
     stat: a.buff.stat,
     value: a.value,
     source: `${a.sourceName}: ${a.buff.label}`,
     confidence: a.buff.confidence,
-  }))
-  return { effects, applied, missing }
+  }]))
+  return { effects, debuffs, applied, missing }
 }

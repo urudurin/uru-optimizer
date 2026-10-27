@@ -1,0 +1,22 @@
+/* The rotation editor (DamageCards.tsx): skill hits grouped by category, each with its multiplier and a count */
+
+.hitList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.hitRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px 52px;
+  gap: 6px;
+  align-items: center;
+}
+
+.hitLabel {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

@@ -10,6 +10,10 @@ import {
   type Ranked,
   wouldRank,
 } from 'lib/games/shared/ranking'
+import {
+  type DamageSetup,
+  rotationDamage,
+} from 'lib/games/zzz/damage/damage'
 import type {
   ActiveConditions,
   AgentData,
@@ -52,6 +56,9 @@ export type OptimizerFilters = {
   excludeEquippedByOthers: boolean,
 }
 
+// What builds are ranked by: a stat, or the rotation's damage
+export type RankKey = keyof FinalStats | 'damage'
+
 export type OptimizerRequest = {
   agent: AgentData,
   wEngine: WEngineData,
@@ -66,9 +73,11 @@ export type OptimizerRequest = {
   teamEffects?: StatEffect[],
   // Builds above any of these are left out, compared against the unrounded stat too
   maxStats?: Partial<Record<keyof FinalStats, number>>,
-  sortBy: keyof FinalStats,
+  sortBy: RankKey,
   // Breaks ties in sortBy, compared in order
-  thenBy?: (keyof FinalStats)[],
+  thenBy?: RankKey[],
+  // Needed to rank by 'damage': the rotation and the enemy (damage/damage.ts)
+  damage?: DamageSetup,
   limit: number,
   // Called now and then while searching (added by the worker, never sent to it)
   onProgress?: ProgressCallback,
@@ -78,6 +87,8 @@ export type OptimizerBuild = {
   // In slot order 1-6
   discs: Disc[],
   display: FinalStats,
+  // The rotation's average damage, when the request had a damage setup
+  damage?: number,
   warnings: string[],
 }
 
@@ -185,6 +196,8 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   const minEntries = Object.entries(request.minStats).filter(([, v]) => v !== undefined) as [keyof FinalStats, number][]
   const maxEntries = Object.entries(request.maxStats ?? {}).filter(([, v]) => v !== undefined) as [keyof FinalStats, number][]
   const rankKeys = [sortBy, ...(request.thenBy ?? []).filter((key) => key !== sortBy)]
+  const damage = request.damage
+  const rankValue = (key: RankKey, stats: FinalStats) => (key === 'damage' ? (damage ? rotationDamage(stats, damage) : 0) : stats[key])
 
   // sums[d] holds base + the first d discs
   const sums = Array.from({ length: 7 }, () => new Float64Array(STAT_COUNT))
@@ -226,8 +239,8 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
     matched++
 
     // Cheap check on the main stat first, most combinations stop here
-    if (top.length === limit && stats[sortBy] < top[top.length - 1].values[0]) return
-    const values = rankKeys.map((key) => stats[key])
+    if (top.length === limit && rankValue(sortBy, stats) < top[top.length - 1].values[0]) return
+    const values = rankKeys.map((key) => rankValue(key, stats))
     if (wouldRank(top, values, limit)) insertRanked(top, { values, item: [...picks] }, limit)
   }
 
@@ -273,7 +286,12 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
       conditions,
       teamEffects: request.teamEffects,
     })
-    return { discs, display: toDisplayStats(result.stats), warnings: result.warnings }
+    return {
+      discs,
+      display: toDisplayStats(result.stats),
+      ...(damage ? { damage: rotationDamage(result.stats, damage) } : {}),
+      warnings: result.warnings,
+    }
   })
 
   return { ok: true, builds, combinations, matched }

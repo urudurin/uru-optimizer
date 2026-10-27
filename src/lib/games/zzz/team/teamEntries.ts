@@ -2,7 +2,11 @@ import {
   type TeamEntry,
   teamSummary,
 } from 'lib/games/shared/ui/optimizer/TeamCards'
-import type { ZzzAppliedBuff } from 'lib/games/zzz/team/teamBuffs'
+import { DEBUFF_LABELS } from 'lib/games/zzz/team/buffs'
+import {
+  isDebuff,
+  type ZzzAppliedBuff,
+} from 'lib/games/zzz/team/teamBuffs'
 import { ZzzStats } from 'lib/games/zzz/types'
 
 // ZZZ team buffs as the shared Team row's entries (shared/ui/optimizer/TeamCards.tsx)
@@ -10,6 +14,7 @@ import { ZzzStats } from 'lib/games/zzz/types'
 const FLAT = new Set<string>([ZzzStats.ATK, ZzzStats.HP, ZzzStats.DEF, ZzzStats.ANOMALY_PROFICIENCY, ZzzStats.PEN])
 
 function describeValue(entry: ZzzAppliedBuff): string {
+  if (isDebuff(entry.buff.stat)) return `+${Math.round(entry.value * 10) / 10}% ${DEBUFF_LABELS[entry.buff.stat]}`
   const stat = entry.buff.stat === ZzzStats.ELEMENT_DMG ? (entry.buff.element ? `${entry.buff.element} DMG` : 'DMG Bonus') : entry.buff.stat
   return `+${FLAT.has(entry.buff.stat) ? Math.round(entry.value) : `${Math.round(entry.value * 10) / 10}%`} ${stat}`
 }

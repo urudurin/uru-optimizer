@@ -1,0 +1,49 @@
+import {
+  agentHits,
+  DEFAULT_ENEMY,
+  defaultRotation,
+  hitMultiplier,
+  levelFactor,
+  NO_DEBUFFS,
+  rotationDamage,
+  rotationMultiplier,
+} from 'lib/games/zzz/damage/damage'
+import { MIYABI } from 'lib/games/zzz/data/agents'
+import { HAILSTORM_SHRINE } from 'lib/games/zzz/data/wEngines'
+import {
+  computeStats,
+  defaultConditions,
+} from 'lib/games/zzz/stats/computeStats'
+import {
+  describe,
+  expect,
+  it,
+} from 'vitest'
+
+const stats =
+  computeStats({ agent: MIYABI, wEngine: HAILSTORM_SHRINE, wEngineRefinement: 1, coreSkillLevel: 6, discs: [], conditions: defaultConditions() }).stats
+
+describe('ZZZ damage', () => {
+  it('reads skill multipliers by level', () => {
+    const ultimate = agentHits(MIYABI.id).find((hit) => hit.skill === 'UltimateLingeringSnow')!
+    expect(hitMultiplier(ultimate, 1)).toBeCloseTo(2388, 6)
+    expect(hitMultiplier(ultimate, 12)).toBeCloseTo(2388 + 217.1 * 11, 6)
+    expect(rotationMultiplier(MIYABI.id, { counts: { 'UltimateLingeringSnow:0': 2 }, skillLevel: 12 })).toBeCloseTo(2 * (2388 + 217.1 * 11), 6)
+    expect(Object.keys(defaultRotation(MIYABI.id).counts).length).toBeGreaterThan(0)
+  })
+
+  it('multiplies every factor like genshin-optimizer\'s formula', () => {
+    const setup = { multiplier: 100, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS }
+    const crit = 1 + (Math.min(100, stats.critRate) / 100) * (stats.critDmg / 100)
+    const def = 794 / (794 + Math.max(0, 635 * (1 - stats.penRatio / 100) - stats.pen))
+    expect(levelFactor(60)).toBe(794)
+    expect(rotationDamage(stats, setup)).toBeCloseTo(stats.atk * (1 + stats.elementDmg / 100) * crit * def, 6)
+
+    // DEF shred and stun raise it; RES lowers it
+    const base = rotationDamage(stats, setup)
+    expect(rotationDamage(stats, { ...setup, debuffs: { ...NO_DEBUFFS, defShred: 40 } })).toBeGreaterThan(base)
+    expect(rotationDamage(stats, { ...setup, enemy: { ...DEFAULT_ENEMY, stunned: true } })).toBeCloseTo(base * 1.5, 6)
+    expect(rotationDamage(stats, { ...setup, enemy: { ...DEFAULT_ENEMY, res: 20 } })).toBeCloseTo(base * 0.8, 6)
+    expect(rotationDamage(stats, { ...setup, debuffs: { ...NO_DEBUFFS, dmgTaken: 25 } })).toBeCloseTo(base * 1.25, 6)
+  })
+})

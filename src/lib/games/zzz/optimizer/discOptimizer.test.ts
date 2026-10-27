@@ -1,4 +1,9 @@
 import {
+  DEFAULT_ENEMY,
+  NO_DEBUFFS,
+  rotationDamage,
+} from 'lib/games/zzz/damage/damage'
+import {
   MIYABI,
   SOLDIER_0_ANBY,
 } from 'lib/games/zzz/data/agents'
@@ -62,7 +67,7 @@ function bruteForce(request: OptimizerRequest, keep: (discs: Disc[], stats: Fina
       return { combo, stats: result.stats, display: toDisplayStats(result.stats) }
     })
     .filter(({ combo, stats }) => keep(combo, stats))
-    .sort((a, b) => b.stats[request.sortBy] - a.stats[request.sortBy])
+    .sort((a, b) => b.stats[request.sortBy as keyof FinalStats] - a.stats[request.sortBy as keyof FinalStats])
 }
 
 function setCount(combo: Disc[], setId: string): number {
@@ -113,6 +118,16 @@ describe('optimizeDiscs', () => {
       .slice(0, 10)
       .map((r) => keys.map((key) => r.display[key]))
     expect(outcome.builds.map((b) => keys.map((key) => b.display[key]))).toEqual(expected)
+  })
+
+  it('ranks by rotation damage like computing it for every build', () => {
+    const damage = { multiplier: 1000, agentLevel: 60, enemy: { ...DEFAULT_ENEMY, def: 900 }, debuffs: { ...NO_DEBUFFS, defShred: 30 } }
+    const request = makeRequest({ sortBy: 'damage', damage })
+    const outcome = optimizeDiscs(request)
+    if (!outcome.ok) throw new Error(outcome.reason)
+
+    const expected = bruteForce(request).map((r) => rotationDamage(r.stats, damage)).sort((a, b) => b - a).slice(0, 10)
+    expect(outcome.builds.map((b) => b.damage)).toEqual(expected.map((value) => expect.closeTo(value, 6)))
   })
 
   it('counts team buffs in the ranking and in the results shown', () => {

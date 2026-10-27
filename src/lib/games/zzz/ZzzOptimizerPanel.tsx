@@ -48,6 +48,19 @@ import {
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
+import {
+  type DamageSetup,
+  DEFAULT_ENEMY,
+  defaultRotation,
+  type EnemySettings,
+  type Rotation,
+  rotationDamage,
+  rotationMultiplier,
+} from 'lib/games/zzz/damage/damage'
+import {
+  EnemyCard,
+  RotationCard,
+} from 'lib/games/zzz/damage/DamageCards'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type {
   ActiveConditions,
@@ -76,6 +89,7 @@ import {
   type OptimizerBuild,
   type OptimizerFilters,
   type OptimizerOutcome,
+  type RankKey,
 } from 'lib/games/zzz/optimizer/discOptimizer'
 import {
   cancelDiscOptimizer,
@@ -134,7 +148,7 @@ type ZzzOptimizerSettings = {
   loadout: Loadout,
   coreSkill: string,
   conditions: ActiveConditions,
-  sortBy: keyof FinalStats,
+  sortBy: RankKey,
   thenBy: (keyof FinalStats)[],
   presetChoice: string,
   fourPieceSet: string | null,
@@ -146,6 +160,9 @@ type ZzzOptimizerSettings = {
   // Agent ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
   teammates: string[],
   teamSettings: Record<string, ZzzBuffSetting>,
+  // The enemy and the rotation, for ranking by damage (damage/damage.ts)
+  enemy: EnemySettings,
+  rotation: Rotation,
 }
 
 // The user's own W-Engine for this agent when it's supported, otherwise the first one of the agent's specialty
@@ -212,6 +229,8 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     excludeEquippedByOthers: false,
     teammates: [],
     teamSettings: {},
+    enemy: DEFAULT_ENEMY,
+    rotation: defaultRotation(id),
   }), [agent, builds])
   const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, agentId, defaultSettings)
   const {
@@ -229,6 +248,8 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     excludeEquippedByOthers,
     teammates,
     teamSettings,
+    enemy,
+    rotation,
   } = settings
   const setLoadout = fieldSetter(updateSettings, 'loadout')
   const setCoreSkill = fieldSetter(updateSettings, 'coreSkill')
@@ -244,9 +265,13 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
+  const setEnemy = fieldSetter(updateSettings, 'enemy')
+  const setRotation = fieldSetter(updateSettings, 'rotation')
   // What the squad gives this agent, the same for every build
   const team = { teammates, settings: teamSettings }
   const teamResult = zzzTeamBuffsFor(agent.id, team, { builds, discs })
+  // The rotation and enemy, for ranking by damage; the team's shred counts here
+  const damageSetup: DamageSetup = { multiplier: rotationMultiplier(agent.id, rotation), agentLevel: agent.level, enemy, debuffs: teamResult.debuffs }
   const teammateOptions = [...new Map(builds.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
     .map(([value, label]) => ({ value, label }))
   const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
@@ -336,6 +361,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       minStats,
       maxStats,
       teamEffects: teamResult.effects,
+      damage: damageSetup,
       sortBy,
       thenBy,
       limit: RESULT_LIMIT,
@@ -382,9 +408,15 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     ? { agent, wEngine, wEngineRefinement: Number(loadout.refinement), coreSkillLevel: Number(coreSkill), conditions, teamEffects: teamResult.effects }
     : undefined
   const currentDiscs = agentBuild ? Object.values(agentBuild.discIds).flatMap((id) => discs.find((d) => d.id === id) ?? []) : []
-  const currentDisplay = computeInput && currentDiscs.length > 0 ? toDisplayStats(computeStats({ ...computeInput, discs: currentDiscs }).stats) : undefined
+  const currentStats = computeInput && currentDiscs.length > 0 ? computeStats({ ...computeInput, discs: currentDiscs }).stats : undefined
+  const currentDisplay = currentStats && toDisplayStats(currentStats)
+  const currentDamage = currentStats && rotationDamage(currentStats, damageSetup)
+  const byDamage = sortBy === 'damage'
   const rankRow = statRows.find((row) => row.key === sortBy) ?? statRows[0]
-  const rankLabel = rankRow.label
+  const rankLabel = byDamage ? 'Rotation damage' : rankRow.label
+  const rankText = (
+    build: { display: FinalStats, damage?: number },
+  ) => (byDamage ? formatNumber(Math.round(build.damage ?? 0)) : formatStat(rankRow, build.display[sortBy as keyof FinalStats]))
   const agentSummary = `${agent.name} · ${W_ENGINES[loadout.wEngineId]?.name ?? 'No W-Engine'} R${loadout.refinement} · ranked by ${rankLabel}`
   const mainFilters = MAIN_STAT_SLOTS.filter((slot) => mainStats[slot]?.length).length
   const conditionCount = Object.values(conditions).filter(Boolean).length
@@ -543,8 +575,8 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                   label='Rank by'
                   allowDeselect={false}
                   value={sortBy}
-                  onChange={(value) => value && setSortBy(value as keyof FinalStats)}
-                  data={statRows.map((row) => ({ value: row.key, label: row.label }))}
+                  onChange={(value) => value && setSortBy(value as RankKey)}
+                  data={[{ value: 'damage', label: 'Rotation damage' }, ...statRows.map((row) => ({ value: row.key, label: row.label }))]}
                 />
                 <MultiSelect
                   label='Then by (breaks ties)'
@@ -554,6 +586,15 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                   data={statRows.filter((row) => row.key !== sortBy).map((row) => ({ value: row.key, label: row.label }))}
                 />
               </FormCard>
+            </FormRow>
+
+            <FormRow
+              id='zzz-damage'
+              title='Damage'
+              summary={`${formatNumber(Math.round(damageSetup.multiplier))}% of ATK per rotation · enemy DEF ${enemy.def}${enemy.stunned ? ', stunned' : ''}`}
+            >
+              <EnemyCard enemy={enemy} debuffs={teamResult.debuffs} onChange={(next) => setEnemy(next)} />
+              <RotationCard agentId={agent.id} rotation={rotation} damage={currentDamage} onChange={(next) => setRotation(next)} />
             </FormRow>
 
             <FormRow
@@ -651,23 +692,28 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                 : (
                   <ResultsGrid
                     key={outcome.builds.length + sortBy}
-                    columns={resultColumns.map((row) => ({
-                      key: row.key,
-                      label: row.label,
-                      format: (value) => formatStat(row, value),
-                      primary: row.key === sortBy,
-                    }))}
+                    columns={[
+                      ...(byDamage
+                        ? [{ key: 'damage', label: 'Rotation damage', format: (value: number) => formatNumber(Math.round(value)), primary: true, width: 110 }]
+                        : []),
+                      ...resultColumns.map((row) => ({
+                        key: row.key,
+                        label: row.label,
+                        format: (value: number) => formatStat(row, value),
+                        primary: row.key === sortBy,
+                      })),
+                    ]}
                     rows={outcome.builds.map((build, i) => ({
                       id: String(i),
                       rank: String(i + 1),
-                      values: Object.fromEntries(resultColumns.map((row) => [row.key, build.display[row.key]])),
+                      values: { ...Object.fromEntries(resultColumns.map((row) => [row.key, build.display[row.key]])), damage: build.damage ?? 0 },
                       sets: describeSets(build.discs),
                     }))}
                     current={currentDisplay
                       ? {
                         id: 'now',
                         rank: 'Now',
-                        values: Object.fromEntries(resultColumns.map((row) => [row.key, currentDisplay[row.key]])),
+                        values: { ...Object.fromEntries(resultColumns.map((row) => [row.key, currentDisplay[row.key]])), damage: currentDamage ?? 0 },
                         sets: describeSets(currentDiscs),
                       }
                       : undefined}
@@ -682,7 +728,7 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
             <BuildPreview
               title={`Build #${selected + 1}`}
               description={`${describeSets(best.discs)}${
-                currentDisplay ? ` · ${rankLabel} ${formatStat(rankRow, best.display[sortBy])} vs ${formatStat(rankRow, currentDisplay[sortBy])} now` : ''
+                currentDisplay ? ` · ${rankLabel} ${rankText(best)} vs ${rankText({ display: currentDisplay, damage: currentDamage })} now` : ''
               }`}
               name={agent.name}
               accent={images.agents[agent.id]?.accent}
@@ -721,7 +767,7 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                 current: currentDisplay?.[row.key],
                 format: (value: number) => formatStat(row, value),
               }))}
-              upgrades={zzzSubstatUpgrades({ ...computeInput, discs: best.discs }, sortBy)}
+              upgrades={zzzSubstatUpgrades({ ...computeInput, discs: best.discs }, sortBy, damageSetup)}
               scoreLabel={rankLabel}
               formatRoll={(upgrade) => /%|CRIT/.test(upgrade.stat) ? `${upgrade.roll}%` : String(upgrade.roll)}
             />
@@ -746,12 +792,21 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
 }
 
 // The columns of the results table: the ranking stats first, then what matters for the agent's specialty
-function resultColumnsFor(agent: AgentData, sortBy: keyof FinalStats, thenBy: (keyof FinalStats)[]): StatRow[] {
+function resultColumnsFor(agent: AgentData, sortBy: RankKey, thenBy: (keyof FinalStats)[]): StatRow[] {
   const bySpecialty: Partial<Record<string, (keyof FinalStats)[]>> = {
     Anomaly: ['anomalyProficiency', 'anomalyMastery'],
     Stun: ['impact'],
     Rupture: ['sheerForce'],
   }
-  const keys = [sortBy, ...thenBy, 'atk', 'critRate', 'critDmg', ...(bySpecialty[agent.specialty] ?? []), 'hp', 'def'] as (keyof FinalStats)[]
+  const keys = [
+    ...(sortBy === 'damage' ? [] : [sortBy]),
+    ...thenBy,
+    'atk',
+    'critRate',
+    'critDmg',
+    ...(bySpecialty[agent.specialty] ?? []),
+    'hp',
+    'def',
+  ] as (keyof FinalStats)[]
   return [...new Set(keys)].flatMap((key) => STAT_ROWS.filter((row) => row.key === key))
 }

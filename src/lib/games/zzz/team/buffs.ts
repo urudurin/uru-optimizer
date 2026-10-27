@@ -10,8 +10,9 @@ import {
 // libs/zzz/formula/src/data/disc/sheets, libs/zzz/stats/src/allStat_gen.json; https://github.com/frzyc/genshin-optimizer,
 // MIT, Copyright (c) 2020 frzyc). Personal, non-commercial use.
 //
-// Phase 1 covers what the stat calculator has: ATK, CRIT, PEN Ratio, Anomaly Proficiency and DMG Bonus. All-type DMG
-// Bonus is counted as Element DMG, the same multiplier in ZZZ. Not yet: enemy DEF/RES shred, Daze, Anomaly buildup,
+// Covered: ATK, CRIT, PEN Ratio, Anomaly Proficiency and DMG Bonus on the agent, and DEF shred, RES shred and DMG taken
+// on the enemy (they count in rotation damage, damage/damage.ts). All-type DMG Bonus is counted as Element DMG, the same
+// multiplier in ZZZ. Not yet: Daze, Anomaly buildup,
 // buffs a character gives only themselves, W-Engines, and agents whose genshin-optimizer sheets are still templates
 // (Nangong Yu, Norma, Velina, Sunna). Saved builds don't record skill or Core Skill levels, so every giver is taken at
 // skill level 12 and Core Skill F; Mindscape comes from their saved build.
@@ -41,10 +42,15 @@ export type ZzzBuffContext = {
   setting: ZzzBuffSetting,
 }
 
+// Effects on the enemy rather than the agent, in percent (damage/damage.ts EnemyDebuffs)
+export type EnemyDebuffKey = 'defShred' | 'resShred' | 'dmgTaken'
+
+export const DEBUFF_LABELS: Record<EnemyDebuffKey, string> = { defShred: 'enemy DEF shred', resShred: 'enemy RES shred', dmgTaken: 'enemy DMG taken' }
+
 export type ZzzTeamBuff = {
   id: string,
   label: string,
-  stat: ZzzStatsValues,
+  stat: ZzzStatsValues | EnemyDebuffKey,
   // Only for agents of this element (Ice DMG), all of them when left out
   element?: string,
   // In display units (25 = 25%); 0 when it doesn't apply
@@ -109,6 +115,15 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
       value: (c) => (switchOn(c) ? 8 + ASSUMED_SKILL_LEVEL : 0),
       confidence: 'sourced',
     },
+    {
+      id: 'm1-res-shred',
+      label: 'Mindscape 1: enemy RES shred per hit (up to 3)',
+      stat: 'resShred',
+      toggle: { kind: 'stacks', label: 'Hits (max 3)', max: () => 3 },
+      value: (c) => (c.giver.mindscape >= 1 && typeof c.setting === 'number' ? 6 * c.setting : 0),
+      blockedBy: needsMindscape(1),
+      confidence: 'sourced',
+    },
   ],
   // Lucy: Cheer On! from her EX Special
   '1151': [
@@ -165,6 +180,14 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
       value: (c) => (switchOn(c) ? [40, 135, 240, 400, 650, 900, 1000][ASSUMED_CORE] * (c.giver.mindscape >= 2 ? 1.5 : 1) : 0),
       confidence: 'sourced',
     },
+    {
+      id: 'ability-dmg-taken',
+      label: 'Additional Ability: enemy takes more DMG (after her Defensive Assist, or with another Sons of Calydon member)',
+      stat: 'dmgTaken',
+      toggle: { kind: 'switch', label: 'Debuff on the enemy' },
+      value: (c) => (switchOn(c) ? 25 : 0),
+      confidence: 'sourced',
+    },
   ],
   // Rina: PEN Ratio while Drusilla or Anastella are on the field
   '1211': [
@@ -195,6 +218,14 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
   ],
   // Nicole
   '1031': [
+    {
+      id: 'core-def-shred',
+      label: 'Core Skill: enemy DEF shred after her EX Special or field hits',
+      stat: 'defShred',
+      toggle: { kind: 'switch', label: 'Enemy hit by her field' },
+      value: (c) => (switchOn(c) ? [20, 25, 30, 34, 36, 38, 40][ASSUMED_CORE] : 0),
+      confidence: 'sourced',
+    },
     {
       id: 'ability-ether-dmg',
       label: 'Additional Ability: Ether DMG when her EX Special or field hits',
