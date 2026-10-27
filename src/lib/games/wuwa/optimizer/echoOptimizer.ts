@@ -9,6 +9,10 @@ import {
   type Ranked,
   wouldRank,
 } from 'lib/games/shared/ranking'
+import {
+  type DamageSetup,
+  rotationDamage,
+} from 'lib/games/wuwa/damage/damage'
 import { SONATA_SETS } from 'lib/games/wuwa/data/gameData'
 import {
   type Bonus,
@@ -50,6 +54,8 @@ export type EchoTarget =
   | { kind: 'critValue' }
   // stat x (1 + Crit Rate x (Crit DMG - 100%)) x (1 + element DMG + the chosen skill type's DMG), Crit Rate capped at 100%
   | { kind: 'averageHit', stat: 'atk' | 'hp' | 'def', bonus: AverageHitBonus }
+  // A rotation's damage against an enemy (damage/damage.ts)
+  | { kind: 'damage', setup: DamageSetup }
 
 export type EchoFilters = {
   // Allowed main stats per cost, missing or empty means any
@@ -142,6 +148,7 @@ export function countLoadouts(pool: Echo[]): number {
 export function scoreStats(stats: WuwaStats, target: EchoTarget): number {
   if (target.kind === 'stat') return stats[target.stat]
   if (target.kind === 'critValue') return 2 * stats.critRate + stats.critDmg
+  if (target.kind === 'damage') return rotationDamage(stats, target.setup)
   const critRate = Math.min(Math.max(stats.critRate, 0), 100)
   const crit = 1 + critRate / 100 * (stats.critDmg - 100) / 100
   const bonus = stats.elementDmg + (target.bonus === 'none' ? 0 : stats[target.bonus])
@@ -170,6 +177,7 @@ export function wuwaStatLabel(stat: keyof WuwaStats): string {
 export function targetLabel(target: EchoTarget): string {
   if (target.kind === 'stat') return WUWA_STAT_LABELS[target.stat]
   if (target.kind === 'critValue') return 'Crit Value'
+  if (target.kind === 'damage') return 'Rotation damage'
   const bonus = target.bonus === 'none' ? '' : ` (${WUWA_STAT_LABELS[target.bonus].replace(' DMG%', '')})`
   return `Average ${WUWA_STAT_LABELS[target.stat]} hit${bonus}`
 }

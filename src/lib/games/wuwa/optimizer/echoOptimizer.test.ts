@@ -1,3 +1,7 @@
+import {
+  DEFAULT_ENEMY,
+  defaultRotation,
+} from 'lib/games/wuwa/damage/damage'
 import { SUBSTAT_TIERS } from 'lib/games/wuwa/echoStats'
 import {
   costPatterns,
@@ -101,6 +105,20 @@ describe('optimizeEchoes', () => {
     ['ATK', { kind: 'stat', stat: 'atk' }, {}, noFilters],
     ['Crit Value', { kind: 'critValue' }, {}, noFilters],
     ['average ATK hit with skill DMG and 120% Energy Regen', { kind: 'averageHit', stat: 'atk', bonus: 'skillDmg' }, { energyRegen: 120 }, noFilters],
+    [
+      'rotation damage with basic, heavy, skill and liberation hits',
+      {
+        kind: 'damage',
+        setup: {
+          charId: 'hsin',
+          characterLevel: 90,
+          rotation: { ...defaultRotation('hsin'), counts: { ...defaultRotation('hsin').counts, 'normal:0': 3, 'normal:6': 2 } },
+          enemy: { ...DEFAULT_ENEMY, defIgnore: 18, resShred: 10 },
+        },
+      },
+      {},
+      noFilters,
+    ],
     ['Element DMG with 2+2 sets', { kind: 'stat', stat: 'elementDmg' }, {}, { ...noFilters, twoPieceSets: ['void-thunder', 'lingering-tunes'] }],
   ]
 
