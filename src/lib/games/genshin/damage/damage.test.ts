@@ -136,8 +136,10 @@ describe('Genshin damage', () => {
       'reaction:swirl:Hydro',
       'reaction:swirl:Electro',
       'reaction:swirl:Cryo',
+      'reaction:stellarswirl:Anemo',
+      'reaction:stellarswirl:Cryo',
     ])
-    expect(transformativeLines('Electro').map((line) => line.reaction)).toEqual(['overloaded', 'electrocharged', 'superconduct', 'hyperbloom'])
+    expect(transformativeLines('Electro').map((line) => line.reaction)).toEqual(['overloaded', 'electrocharged', 'superconduct', 'hyperbloom', 'lunarcharged'])
 
     const nahida = { ...stats, elementalMastery: 800 }
     const rotation = { counts: { 'reaction:bloom': 3 }, infusion: false, reaction: 'none' as const, reactionShare: 100 }
@@ -149,5 +151,32 @@ describe('Genshin damage', () => {
     const swirl: DamageSetup = { ...setup(), characterId: 'KaedeharaKazuha', element: 'Anemo', rotation: { ...rotation, counts: { 'reaction:swirl:Pyro': 1 } } }
     const shredded = rotationDamage(stats, { ...swirl, debuffs: { defShred: 0, resShred: { Pyro: 40 } } })
     expect(shredded / rotationDamage(stats, swirl)).toBeCloseTo(1.15 / 0.9, 6)
+  })
+
+  it('works out Lunar and Stellar damage: no DEF or DMG Bonus, the smaller EM bracket, and CRIT', () => {
+    const crit = 1 + 0.6 * 1.5
+    const em = 6 * 200 / 2200
+    // Lunar-Charged as a reaction: 1.8 x level multiplier, Electro RES
+    const lunar: DamageSetup = {
+      ...setup(),
+      characterId: 'Flins',
+      element: 'Electro',
+      rotation: { counts: { 'reaction:lunarcharged': 2 }, infusion: false, reaction: 'none', reactionShare: 100 },
+    }
+    expect(rotationDamage(stats, lunar)).toBeCloseTo(2 * 1.8 * 1446.8535 * (1 + em) * crit * 0.9, 3)
+    expect(rotationDamage({ ...stats, electroDmg: 99 }, lunar)).toBeCloseTo(rotationDamage(stats, lunar), 6)
+
+    // Flins's Burst line deals Lunar-Charged directly: ATK x multiplier x 3
+    const final = hit('Flins', 'Final Phase Lunar-Charged DMG')
+    expect(final.special).toBe('lunarcharged')
+    const direct: DamageSetup = { ...lunar, rotation: { ...lunar.rotation, counts: { [final.key]: 1 } } }
+    const multiplier = final.terms[0][1][8] / 100
+    expect(rotationDamage(stats, direct)).toBeCloseTo(2000 * multiplier * 3 * (1 + em) * crit * 0.9, 3)
+    // Set bonuses for the kind add inside the EM bracket
+    expect(rotationDamage(stats, { ...direct, reactionBonus: { lunarcharged: 20 } }) / rotationDamage(stats, direct)).toBeCloseTo((1.2 + em) / (1 + em), 6)
+
+    // Stellar lines are found by name too
+    const sandrone = hit('Sandrone', 'Prism Shot Stellar-Conduct DMG')
+    expect(sandrone.special).toBe('stellarconduct')
   })
 })

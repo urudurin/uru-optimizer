@@ -42,6 +42,11 @@ export type ReactionBonusKey =
   | 'bloom'
   | 'hyperbloom'
   | 'burgeon'
+  | 'lunarcharged'
+  | 'lunarbloom'
+  | 'lunarcrystallize'
+  | 'stellarconduct'
+  | 'stellarswirl'
 
 export type CombatContext = {
   character: GenshinCharacter,

@@ -163,7 +163,11 @@ export function RotationCard({ character, rotation, talents, damage, onChange }:
             <Text size='xs' fw={600}>{CATEGORY_LABELS[category] ?? category}</Text>
             {hits.filter((hit) => hit.category === category).map((hit) => (
               <div key={hit.key} className={`${classes.hitRow} ${classes.hitRowWide}`}>
-                <Text size='xs' className={classes.hitLabel} title={hit.label}>
+                <Text
+                  size='xs'
+                  className={classes.hitLabel}
+                  title={hit.special ? `${hit.label}: Lunar or Stellar damage, no DEF or DMG Bonus, can CRIT` : hit.label}
+                >
                   {hit.physical && !rotation.infusion ? `${hit.label} (Physical)` : hit.label}
                 </Text>
                 <Text size='xs' c='dimmed' ta='right'>{describeMultiplier(hitMultiplier(hit, talents))}</Text>
@@ -202,7 +206,9 @@ export function RotationCard({ character, rotation, talents, damage, onChange }:
                 />
               </div>
             ))}
-            <Text size='xs' c='dimmed'>Triggered by {character.name}: scale with their Elemental Mastery and level, no DEF or CRIT.</Text>
+            <Text size='xs' c='dimmed'>
+              Triggered by {character.name}: scale with their Elemental Mastery and level, no DEF. Only Lunar-Charged and Stellar Swirl can CRIT.
+            </Text>
           </Stack>
         )}
       </div>

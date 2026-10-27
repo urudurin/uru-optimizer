@@ -28,7 +28,13 @@ import {
 // Transformative reactions (Bloom, Hyperbloom, Swirl, Overloaded...) are counted as triggers, each
 //   reaction multiplier x level multiplier x (1 + 16 EM / (EM + 2000)) x RES of the reaction's element
 // with no DEF and no CRIT, after genshin-optimizer's reaction.ts (transInfo multipliers, transBase).
-// Not yet: Lunar and Stellar reactions, reaction DMG bonuses (Crimson Witch, Gilded Dreams...), self-buffs from the character's own
+// Lunar and Stellar damage (Lunar-Charged, Lunar-Bloom, Lunar-Crystallize, Stellar-Conduct, Stellar Swirl) follows
+// genshin-optimizer's wr/src/reaction/special.ts: no DEF and no DMG Bonus, but it can CRIT:
+//   multiplier x (stat, or the level multiplier for a reaction) x reaction factor x (1 + 6 EM / (EM + 2000) + bonus)
+//   x CRIT x RES
+// Talent lines named Lunar-... or Stellar... deal it directly (factor 3 Lunar-Charged, 1 Lunar-Bloom, 1.6
+// Lunar-Crystallize, 1 Stellar); Lunar-Charged (1.8) and Stellar Swirl (0.75) are also reactions with rotation lines.
+// Not yet: Moonsign and other Lunar base DMG bonuses, reaction DMG bonuses (Crimson Witch, Gilded Dreams...), self-buffs from the character's own
 // kit (Hu Tao's ATK from HP, Raiden's Resolve), skill-type DMG Bonuses and hits that only some of a talent's levels have.
 // Personal, non-commercial use.
 
@@ -47,6 +53,23 @@ export type TalentHit = {
   physical: boolean,
   // Times the line lands ("4-Hit DMG ×4"), for reactions that apply per hit
   times: number,
+  // Lunar or Stellar damage instead of a standard hit, from the line's name
+  special?: SpecialKind,
+}
+
+// Lunar and Stellar damage dealt directly by talents: the reaction it counts as, its factor and the RES it uses
+export type SpecialKind = 'lunarcharged' | 'lunarbloom' | 'lunarcrystallize' | 'stellarconduct' | 'stellarswirl'
+const SPECIAL: Record<SpecialKind, { pattern: RegExp, factor: number, resist?: DamageElement }> = {
+  lunarcharged: { pattern: /Lunar-Charged/, factor: 3, resist: 'Electro' },
+  lunarbloom: { pattern: /Lunar-Bloom/, factor: 1, resist: 'Dendro' },
+  lunarcrystallize: { pattern: /Lunar-Crystallize/, factor: 1.6, resist: 'Geo' },
+  // Stellar damage uses the character's own element's RES
+  stellarconduct: { pattern: /Stellar-Conduct/, factor: 1 },
+  stellarswirl: { pattern: /Stellar Swirl/, factor: 1 },
+}
+
+function specialKind(label: string): SpecialKind | undefined {
+  return (Object.entries(SPECIAL) as [SpecialKind, (typeof SPECIAL)[SpecialKind]][]).find(([, info]) => info.pattern.test(label))?.[0]
 }
 
 type TalentFile = {
@@ -156,6 +179,7 @@ export function characterHits(characterId: string): TalentHit[] {
     terms: hit.terms as [ScalingStat, number[]][],
     physical: !!hit.physical && !data.catalyst,
     times: Number(/×(\d+)$/.exec(hit.label)?.[1] ?? 1),
+    special: specialKind(hit.label),
   }))
 }
 
@@ -333,13 +357,36 @@ type ElementTerms = {
 }
 
 // transformative: summed reaction multiplier x level multiplier x RES over the rotation, before Elemental Mastery
-// transformative: per reaction, the summed multiplier x level multiplier x RES and the reaction's DMG bonus (a fraction)
-export type PreparedDamage = { groups: ElementTerms[], def: number, reactionShare: number, transformative: { base: number, bonus: number }[] }
+// transformative: per reaction, the summed multiplier x level multiplier x RES and the reaction's DMG bonus (a fraction);
+// special ones (Lunar, Stellar) can CRIT and take the smaller EM bracket.
+// special: direct Lunar and Stellar talent damage, the summed multipliers per stat x factor x RES
+export type PreparedDamage = {
+  groups: ElementTerms[],
+  def: number,
+  reactionShare: number,
+  transformative: { base: number, bonus: number, special: boolean }[],
+  special: { terms: [ScalingStat, number][], bonus: number }[],
+}
 
 // Transformative reactions: genshin-optimizer's transInfo multipliers, which elements trigger them, and the element
 // the damage is (Swirl takes the swirled element's)
-export type TransformativeReaction = 'overloaded' | 'electrocharged' | 'superconduct' | 'shattered' | 'swirl' | 'burning' | 'bloom' | 'hyperbloom' | 'burgeon'
-const TRANSFORMATIVE: Record<TransformativeReaction, { label: string, multiplier: number, triggeredBy: Element[], variants: DamageElement[] }> = {
+// Lunar-Charged and Stellar Swirl are 'special': they can CRIT and take 6 EM / (EM + 2000) instead of 16 EM / (EM + 2000)
+export type TransformativeReaction =
+  | 'overloaded'
+  | 'electrocharged'
+  | 'superconduct'
+  | 'shattered'
+  | 'swirl'
+  | 'burning'
+  | 'bloom'
+  | 'hyperbloom'
+  | 'burgeon'
+  | 'lunarcharged'
+  | 'stellarswirl'
+const TRANSFORMATIVE: Record<
+  TransformativeReaction,
+  { label: string, multiplier: number, triggeredBy: Element[], variants: DamageElement[], special?: boolean }
+> = {
   overloaded: { label: 'Overloaded', multiplier: 2, triggeredBy: ['Pyro', 'Electro'], variants: ['Pyro'] },
   electrocharged: { label: 'Electro-Charged', multiplier: 1.2, triggeredBy: ['Electro', 'Hydro'], variants: ['Electro'] },
   superconduct: { label: 'Superconduct', multiplier: 0.5, triggeredBy: ['Cryo', 'Electro'], variants: ['Cryo'] },
@@ -349,6 +396,8 @@ const TRANSFORMATIVE: Record<TransformativeReaction, { label: string, multiplier
   bloom: { label: 'Bloom (per Dendro Core)', multiplier: 2, triggeredBy: ['Dendro', 'Hydro'], variants: ['Dendro'] },
   hyperbloom: { label: 'Hyperbloom (per Sprawling Shot)', multiplier: 3, triggeredBy: ['Electro'], variants: ['Dendro'] },
   burgeon: { label: 'Burgeon (per Dendro Core)', multiplier: 3, triggeredBy: ['Pyro'], variants: ['Dendro'] },
+  lunarcharged: { label: 'Lunar-Charged', multiplier: 1.8, triggeredBy: ['Electro'], variants: ['Electro'], special: true },
+  stellarswirl: { label: 'Stellar Swirl', multiplier: 0.75, triggeredBy: ['Anemo', 'Cryo'], variants: ['Anemo', 'Cryo'], special: true },
 }
 
 export type TransformativeLine = { key: string, label: string, reaction: TransformativeReaction, variant: DamageElement }
@@ -387,9 +436,20 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
   // Hits per group, for Aggravate and Spread's flat damage on each
   const hitCounts = new Map<string, number>()
   const hitBuffs = setup.hitBuffs ?? []
+  const reactionBonus = (key: ReactionBonusKey) => (setup.reactionBonus?.[key] ?? 0) / 100
+  // Direct Lunar and Stellar damage, by kind
+  const special = new Map<SpecialKind, Map<ScalingStat, number>>()
   for (const hit of characterHits(setup.characterId)) {
     const count = rotation.counts[hit.key] ?? 0
     if (count <= 0) continue
+    if (hit.special) {
+      const terms = special.get(hit.special) ?? new Map<ScalingStat, number>()
+      for (const [stat, value] of Object.entries(hitMultiplier(hit, setup.talents)) as [ScalingStat, number][]) {
+        terms.set(stat, (terms.get(stat) ?? 0) + count * value)
+      }
+      special.set(hit.special, terms)
+      continue
+    }
     const hitElement: DamageElement = hit.physical && !rotation.infusion ? 'Physical' : (element ?? 'Physical')
     const reaching = hitBuffs.flatMap((buff, i) => (buffReaches(buff, hit) ? [i] : []))
     const key = `${hitElement}|${CATEGORY_DMG[hit.category]}|${reaching.join(',')}`
@@ -407,7 +467,6 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     byElement.set(key, terms)
     hitCounts.set(key, (hitCounts.get(key) ?? 0) + count * hit.times)
   }
-  const reactionBonus = (key: ReactionBonusKey) => (setup.reactionBonus?.[key] ?? 0) / 100
   const groups = [...byElement].map(([key, terms]): ElementTerms => {
     const [hitElement, typeStat, reachingText] = key.split('|') as [DamageElement, GenshinStatKey, string]
     const reaching = reachingText ? reachingText.split(',').map((i) => hitBuffs[Number(i)]) : []
@@ -440,9 +499,21 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     if (count <= 0) continue
     const shred = (debuffs.resShred[line.variant] ?? 0) + (debuffs.resShred.all ?? 0)
     const base = count * transformativeBase(line.reaction, setup.characterLevel) * resMultiplier((enemy.res - shred) / 100)
-    transformative.push({ base, bonus: reactionBonus(line.reaction) })
+    transformative.push({ base, bonus: reactionBonus(line.reaction), special: !!TRANSFORMATIVE[line.reaction].special })
   }
-  return { groups, def, reactionShare: Math.max(0, Math.min(100, rotation.reactionShare)) / 100, transformative }
+  const specialGroups = [...special].map(([kind, terms]) => {
+    const resist = SPECIAL[kind].resist ?? element ?? 'Physical'
+    const shred = (debuffs.resShred[resist] ?? 0) + (debuffs.resShred.all ?? 0)
+    const scale = SPECIAL[kind].factor * resMultiplier((enemy.res - shred) / 100)
+    return { terms: [...terms].map(([stat, value]): [ScalingStat, number] => [stat, value * scale]), bonus: reactionBonus(kind) }
+  })
+  return {
+    groups,
+    def,
+    reactionShare: Math.max(0, Math.min(100, rotation.reactionShare)) / 100,
+    transformative,
+    special: specialGroups,
+  }
 }
 
 // The rotation's damage from final stats; get reads a stat (a record or the optimizer's vectors)
@@ -474,10 +545,21 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
     total += base * (1 + ((group.dmgStat ? get(group.dmgStat) : 0) + get(group.typeStat) + allDmg + dmgBonus) / 100) * group.res * amplify * crit
   }
   let transformative = 0
-  if (prepared.transformative.length > 0) {
+  if (prepared.transformative.length > 0 || prepared.special.length > 0) {
     const em = get('elementalMastery')
     const fromEm = 16 * em / (em + 2000)
-    for (const reaction of prepared.transformative) transformative += reaction.base * (1 + fromEm + reaction.bonus)
+    const specialFromEm = 6 * em / (em + 2000)
+    const crit = 1 + Math.min(Math.max(critRate, 0), 100) / 100 * critDmg / 100
+    for (const reaction of prepared.transformative) {
+      transformative += reaction.special
+        ? reaction.base * (1 + specialFromEm + reaction.bonus) * crit
+        : reaction.base * (1 + fromEm + reaction.bonus)
+    }
+    for (const group of prepared.special) {
+      let base = 0
+      for (const [stat, multiplier] of group.terms) base += multiplier / 100 * get(stat)
+      transformative += base * (1 + specialFromEm + group.bonus) * crit
+    }
   }
   return total * prepared.def + transformative
 }
