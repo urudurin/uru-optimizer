@@ -167,8 +167,8 @@ const ANOMALY_HIT: Record<Exclude<AnomalyKind, 'disorder'>, { label: string, per
 }
 
 // Disorder: base + per tick x whole ticks left of the anomaly it ends, floor((duration - time passed) x ticks per
-// second). Burn and Corruption tick twice a second, the rest once. Miyabi's Frostbite (20 seconds, 600% + 75% a
-// second) is genshin-optimizer's and isn't on the wiki's table
+// second). Burn and Corruption tick twice a second, the rest once. Miyabi's Frost (20 seconds, 600% + floor(t) x 75%)
+// is genshin-optimizer's, and matches zerozoneshop.com's damage formula guide (read once by hand, user's link)
 const DISORDER: Record<string, { base: number, perTick: number, ticksPerSecond: number, duration: number }> = {
   Physical: { base: 450, perTick: 7.5, ticksPerSecond: 1, duration: 10 },
   Fire: { base: 450, perTick: 50, ticksPerSecond: 2, duration: 10 },
