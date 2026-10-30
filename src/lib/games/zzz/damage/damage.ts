@@ -162,6 +162,8 @@ export type DamageSetup = {
   // Anomaly damage that grows with Anomaly Proficiency, per point of it: atk in percent of ATK (Vivian's Abloom), flat as
   // damage (Yanagi's Polarity Disorder); the Bonus parts are their anomaly-only DMG Bonus like anomalyBonusMultiplier
   anomalyPerAp?: { atk: number, atkBonus: number, flat: number, flatBonus: number },
+  // Anomaly damage that grows with Anomaly Mastery instead (Aria's Abloom), in percent of ATK per point of it
+  anomalyPerAm?: { atk: number, atkBonus: number },
   agentLevel: number,
   enemy: EnemySettings,
   debuffs: EnemyDebuffs,
@@ -253,6 +255,8 @@ export function rotationDamage(stats: FinalStats, setup: DamageSetup): number {
   const ap = stats.anomalyProficiency
   const perAp = setup.anomalyPerAp
   if (perAp) anomalyHits += (perAp.atk * f.dmgBonus + perAp.atkBonus) * ap
+  const perAm = setup.anomalyPerAm
+  if (perAm) anomalyHits += (perAm.atk * f.dmgBonus + perAm.atkBonus) * stats.anomalyMastery
   const flat = perAp ? (perAp.flat * f.dmgBonus + perAp.flatBonus) * ap : 0
   const anomaly = anomalyHits === 0 && flat === 0
     ? 0
@@ -313,6 +317,7 @@ const VORTEX_SECONDS = 30
 const MIYABI_ID = '1091'
 const VIVIAN_ID = '1331'
 const YANAGI_ID = '1221'
+const ARIA_ID = '1501'
 
 // Vivian's Abloom (GO's Vivian sheet and util.ts abloomDmgInst): an anomaly's single-hit multiplier (GO's
 // anomalyMultipliers) times her Core Skill's per-attribute rate per 10 Anomaly Proficiency, at Core Skill F. Its
@@ -324,6 +329,30 @@ const ABLOOM: Record<string, { perHit: number, per10Ap: number }> = {
   Electric: { perHit: 125, per10Ap: 0.032 },
   Ether: { perHit: 62.5, per10Ap: 0.0615 },
   Wind: { perHit: 1250, per10Ap: 0.0032 },
+}
+
+// Aria's Abloom (her Core Skill, in-game text at Core Skill level 7, the user's screenshot): the same single-hit
+// multipliers times a per-attribute rate per 10 points of Anomaly Mastery; +50% (a multiplier of its own) on a stunned
+// enemy, which her kit effect adds from the Enemy card
+const ARIA_ABLOOM_PER_10_AM: Record<string, number> = {
+  Physical: 0.025,
+  Fire: 0.357,
+  Ice: 0.036,
+  Electric: 0.143,
+  Ether: 0.275,
+  Wind: 0.014,
+}
+
+// Whether an agent's Abloom grows with Anomaly Mastery (Aria) rather than Anomaly Proficiency (Vivian)
+export function abloomScalesWithMastery(agentId: string): boolean {
+  return agentId === ARIA_ID
+}
+
+// Aria's Abloom multiplier in percent of ATK per point of Anomaly Mastery
+export function ariaAbloomPerAm(attribute: string): number {
+  const rate = ARIA_ABLOOM_PER_10_AM[attribute]
+  const abloom = ABLOOM[attribute]
+  return rate && abloom ? abloom.perHit * rate / 10 : 0
 }
 
 // Abloom multiplier in percent of ATK per point of Anomaly Proficiency
@@ -360,7 +389,7 @@ export function anomalyHits(agentId: string, element: string, teamElements: stri
     { key: 'anomaly:disorder', kind: 'disorder', label: agentId === MIYABI_ID ? 'Disorder (Frostbite)' : 'Disorder' },
     ...(agentId === YANAGI_ID ? [{ key: 'anomaly:polarity', kind: 'polarity', label: 'Polarity Disorder' } satisfies AnomalyHit] : []),
     ...vortex.map((attribute): AnomalyHit => ({ key: `anomaly:vortex:${attribute}`, kind: 'vortex', label: `Vortex (${attribute})`, attribute })),
-    ...(agentId === VIVIAN_ID
+    ...(agentId === VIVIAN_ID || agentId === ARIA_ID
       ? Object.keys(ABLOOM).map((attribute): AnomalyHit => ({ key: `anomaly:abloom:${attribute}`, kind: 'abloom', label: `Abloom (${attribute})`, attribute }))
       : []),
   ]
@@ -426,11 +455,12 @@ export function rotationAnomaly(
   rotation: Rotation,
   teamElements: string[] = [],
   bonuses: AnomalyBonuses = {},
-): Pick<DamageSetup, 'anomalyMultiplier' | 'anomalyBonusMultiplier' | 'anomalyCrits' | 'anomalyPerAp'> {
+): Pick<DamageSetup, 'anomalyMultiplier' | 'anomalyBonusMultiplier' | 'anomalyCrits' | 'anomalyPerAp' | 'anomalyPerAm'> {
   let multiplier = 0
   let bonusMultiplier = 0
   const crits: AnomalyCrit[] = []
   const perAp = { atk: 0, atkBonus: 0, flat: 0, flatBonus: 0 }
+  const perAm = { atk: 0, atkBonus: 0 }
   const secondsLeft = Math.max(0, 10 - (rotation.disorderAfter ?? 0))
   for (const hit of anomalyHits(agentId, element, teamElements)) {
     const count = rotation.counts[hit.key] ?? 0
@@ -438,6 +468,12 @@ export function rotationAnomaly(
     const bonus = bonusFor(hit.kind, bonuses)
     const buff = 1 + (bonus.buff ?? 0) / 100
     const add = (bonus.add ?? 0) + (hit.kind === 'disorder' || hit.kind === 'polarity' ? (bonus.addPerSecondLeft ?? 0) * secondsLeft : 0)
+    if (hit.kind === 'abloom' && agentId === ARIA_ID) {
+      const perPoint = count * ariaAbloomPerAm(hit.attribute ?? element) * buff
+      perAm.atk += perPoint
+      perAm.atkBonus += perPoint * (bonus.dmg ?? 0) / 100
+      continue
+    }
     if (hit.kind === 'abloom') {
       perAp.atk += count * abloomPerAp(hit.attribute ?? element) * buff
       perAp.atkBonus += count * abloomPerAp(hit.attribute ?? element) * buff * (bonus.dmg ?? 0) / 100
@@ -463,7 +499,13 @@ export function rotationAnomaly(
     }
   }
   const anyPerAp = perAp.atk !== 0 || perAp.flat !== 0
-  return { anomalyMultiplier: multiplier, anomalyBonusMultiplier: bonusMultiplier, anomalyCrits: crits, ...(anyPerAp ? { anomalyPerAp: perAp } : {}) }
+  return {
+    anomalyMultiplier: multiplier,
+    anomalyBonusMultiplier: bonusMultiplier,
+    anomalyCrits: crits,
+    ...(anyPerAp ? { anomalyPerAp: perAp } : {}),
+    ...(perAm.atk !== 0 ? { anomalyPerAm: perAm } : {}),
+  }
 }
 
 export function rotationAnomalyMultiplier(agentId: string, element: string, rotation: Rotation, teamElements: string[] = []): number {

@@ -318,7 +318,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     specialty: agent.specialty,
     element: agent.element,
   }
-  const kit = resolveZzzCombat(agent.id, builds.find((b) => b.agentId === agent.id)?.mindscapeLevel ?? 0, combatSettings, combatGear)
+  const kit = resolveZzzCombat(agent.id, builds.find((b) => b.agentId === agent.id)?.mindscapeLevel ?? 0, combatSettings, combatGear, enemy.stunned)
   // The agent's kit and gear plus what teammates give some hits only (Pulchra's Aftershock DMG)
   const kindBonus = { ...kit.kindBonus }
   for (const [kind, value] of Object.entries(teamResult.kindBonus) as [keyof typeof kindBonus, number][]) {

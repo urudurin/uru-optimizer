@@ -35,6 +35,8 @@ export type ZzzCombatContext = {
   mindscape: number,
   // true/false for a switch, the stack count for stacks
   setting: boolean | number,
+  // The Enemy card's Stunned switch, for effects that only work on a stunned enemy
+  enemyStunned: boolean,
 }
 
 export type ZzzCombatEffect = {
@@ -310,6 +312,29 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       confidence: 'sourced',
     },
   ],
+  // Aria: in-game text at Core Skill level 7 (the user's screenshot, Oct 30 2026); GO's sheet is a placeholder. Her
+  // Abloom lines are in damage.ts (ariaAbloomPerAm)
+  '1501': [
+    {
+      id: 'aria-core-ap',
+      label: 'Core Skill: Anomaly Proficiency +90',
+      stats: () => [{ stat: ZzzStats.ANOMALY_PROFICIENCY, value: 90 }],
+      confidence: 'confirmed',
+    },
+    {
+      id: 'aria-core-abloom-stunned',
+      label: 'Core Skill: Abloom +50% (a multiplier of its own) when the enemy is stunned (the Enemy card\'s Stunned switch)',
+      anomalies: ({ enemyStunned }) => (enemyStunned ? { abloom: { buff: 50 } } : {}),
+      confidence: 'confirmed',
+    },
+    {
+      id: 'aria-ability-corruption',
+      label: 'Additional Ability: Corruption lasts 3s longer (6 more ticks of 62.5%), with a Stun, Support or Anomaly agent or her faction in the squad',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      anomalies: () => ({ corruption: { add: 6 * 62.5 } }),
+      confidence: 'confirmed',
+    },
+  ],
   // Claret
   '1611': [
     {
@@ -409,6 +434,7 @@ export function resolveZzzCombat(
   mindscape: number,
   settings: Record<string, boolean | number>,
   gear?: ZzzCombatGear,
+  enemyStunned = false,
 ): ZzzResolvedCombat {
   const resolved: ZzzResolvedCombat = {
     applied: [],
@@ -444,7 +470,7 @@ export function resolveZzzCombat(
     const counted = setting !== false && setting !== 0
     resolved.applied.push({ effect, setting, counted, reason: counted ? undefined : 'Turned off' })
     if (!counted) continue
-    const context = { mindscape, setting }
+    const context = { mindscape, setting, enemyStunned }
     for (const { stat, value, fromStat } of effect.stats?.(context) ?? []) {
       resolved.statEffects.push({ stat, value, ...(fromStat ? { fromStat } : {}), source: `${source}: ${effect.label}`, confidence: effect.confidence })
     }

@@ -14,10 +14,12 @@ import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 import type { ZzzAppliedEffect } from 'lib/games/zzz/damage/combatEffects'
 import {
   abloomPerAp,
+  abloomScalesWithMastery,
   agentHits,
   type AnomalyHit,
   anomalyHits,
   anomalyMultiplier,
+  ariaAbloomPerAm,
   defaultRotation,
   type EnemyDebuffs,
   type EnemySettings,
@@ -33,9 +35,14 @@ import {
 // The Damage row of the ZZZ optimizer, after HSR's enemy settings and combo drawer: who the enemy is, and how many times
 // each skill hit lands in a rotation. The optimizer can then rank builds by the rotation's damage (damage/damage.ts).
 
-// An anomaly line's multiplier as the card shows it; Abloom's and Polarity Disorder's grow with Anomaly Proficiency
+// An anomaly line's multiplier as the card shows it; Abloom's grows with Anomaly Proficiency (Anomaly Mastery for Aria),
+// Polarity Disorder's with Anomaly Proficiency
 function anomalyText(agentId: string, element: string, hit: AnomalyHit, rotation: Rotation): string {
-  if (hit.kind === 'abloom') return `${(abloomPerAp(hit.attribute ?? element) * 10).toFixed(2)}% / 10 AP`
+  if (hit.kind === 'abloom') {
+    return abloomScalesWithMastery(agentId)
+      ? `${(ariaAbloomPerAm(hit.attribute ?? element) * 10).toFixed(2)}% / 10 AM`
+      : `${(abloomPerAp(hit.attribute ?? element) * 10).toFixed(2)}% / 10 AP`
+  }
   const multiplier = `${anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute).toFixed(1)}%`
   return hit.kind === 'polarity' ? `${multiplier} + ${polarityFlatPerAp(rotation.skillLevel)} x AP` : multiplier
 }

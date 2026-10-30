@@ -11,6 +11,7 @@ import {
   anomalyHits,
   anomalyLevelMultiplier,
   anomalyMultiplier,
+  ariaAbloomPerAm,
   DEFAULT_ENEMY,
   defaultRotation,
   hitKind,
@@ -366,6 +367,30 @@ describe('ZZZ damage', () => {
     expect(parts.map((p) => p.key).sort()).toEqual(Object.keys(rotation.counts).sort())
     expect(parts.reduce((sum, p) => sum + p.damage, 0)).toBeCloseTo(rotationDamage(stats, setupFor(rotation)), 4)
     expect(parts.find((p) => p.key === 'anomaly:shatter')?.group).toBe('Attribute Anomaly')
+  })
+
+  it('Aria: Abloom per point of Anomaly Mastery, +50% on a stunned enemy, and longer Corruption', () => {
+    const ARIA = '1501'
+    expect(anomalyHits(ARIA, 'Ether').filter((hit) => hit.kind === 'abloom').map((hit) => hit.attribute))
+      .toEqual(['Physical', 'Fire', 'Ice', 'Electric', 'Ether', 'Wind'])
+    // 27.5% of Corruption's 62.5% tick per 10 Anomaly Mastery
+    expect(ariaAbloomPerAm('Ether')).toBeCloseTo(62.5 * 0.275 / 10, 9)
+    const rotation: Rotation = { counts: { 'anomaly:abloom:Ether': 2 }, skillLevel: 12 }
+    const plain = rotationAnomaly(ARIA, 'Ether', rotation)
+    expect(plain.anomalyPerAm?.atk).toBeCloseTo(2 * ariaAbloomPerAm('Ether'), 9)
+    expect(plain.anomalyPerAp).toBeUndefined()
+
+    const setup = { multiplier: 0, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS, ...plain }
+    const def = 794 / (794 + Math.max(0, 635 * (1 - stats.penRatio / 100) - stats.pen))
+    const expected = stats.atk * 2 * ariaAbloomPerAm('Ether') * stats.anomalyMastery / 100 * (1 + stats.elementDmg / 100) * def
+      * (stats.anomalyProficiency / 100) * 2
+    expect(rotationDamage(stats, setup)).toBeCloseTo(expected, 4)
+
+    // The stunned bonus follows the Enemy card; the Additional Ability adds 6 Corruption ticks
+    expect(resolveZzzCombat(ARIA, 0, {}, undefined, false).anomalyBonus).toEqual({ corruption: { add: 375 } })
+    const stunned = resolveZzzCombat(ARIA, 0, {}, undefined, true).anomalyBonus
+    expect(rotationAnomaly(ARIA, 'Ether', rotation, [], stunned).anomalyPerAm?.atk).toBeCloseTo(2 * ariaAbloomPerAm('Ether') * 1.5, 9)
+    expect(rotationAnomaly(ARIA, 'Ether', { counts: { 'anomaly:corruption': 1 }, skillLevel: 12 }, [], stunned).anomalyMultiplier).toBe(1250 + 375)
   })
 
   it('Ye Shunguang: Ether Veil vulnerability, Mindscape 1 DEF ignore and Mindscape 2 EX Special / Ultimate DEF ignore', () => {
