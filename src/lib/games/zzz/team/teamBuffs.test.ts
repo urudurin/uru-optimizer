@@ -112,6 +112,30 @@ describe('zzzTeamBuffsFor', () => {
     expect(buffed.critDmg - alone.critDmg).toBe(25)
   })
 
+  it('Remielle: squad ATK by Anomaly agents in the squad, and Refringe on the receiver\'s anomalies', () => {
+    const REMIELLE = '1581'
+    AGENTS[REMIELLE] = { ...MIYABI, id: REMIELLE, name: 'Remielle', element: 'Lumiflux', specialty: 'Anomaly' }
+    try {
+      const withRemielle = [...builds, build(REMIELLE, 'Remielle')]
+      const result = zzzTeamBuffsFor(MIYABI.id, { teammates: [REMIELLE], settings: {} }, { builds: withRemielle, discs })
+      const giver = computeStats({
+        agent: AGENTS[REMIELLE],
+        wEngine: HAILSTORM_SHRINE,
+        wEngineRefinement: 1,
+        coreSkillLevel: 6,
+        discs: [],
+        conditions: statScreenConditions(),
+      }).stats
+      // Miyabi and Remielle: 2 Anomaly agents, 12% of her initial ATK
+      expect(result.applied.find((a) => a.buff.id === 'remielle-squad-atk')?.value).toBeCloseTo(giver.atk * 0.12, 6)
+      // Refringe: 0.02% of her Anomaly Proficiency as a multiplier on attribute anomalies, rotation damage only
+      expect(result.anomalyBonus).toEqual({ anomaly: { buff: expect.closeTo(0.02 * giver.anomalyProficiency, 6) } })
+      expect(result.effects.map((e) => e.stat)).toEqual([ZzzStats.ATK])
+    } finally {
+      delete AGENTS[REMIELLE]
+    }
+  })
+
   it('adds up stun multiplier bonuses from different teammates (Nangong Yu\'s Misstep, Norma\'s Tech Divide)', () => {
     const NANGONG = '1511'
     const NORMA = '1571'

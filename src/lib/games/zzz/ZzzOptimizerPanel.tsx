@@ -58,6 +58,7 @@ import {
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { resolveZzzCombat } from 'lib/games/zzz/damage/combatEffects'
 import {
+  addAnomalyBonuses,
   agentHits,
   type DamageSetup,
   DEFAULT_ENEMY,
@@ -320,6 +321,8 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   }
   const kit = resolveZzzCombat(agent.id, builds.find((b) => b.agentId === agent.id)?.mindscapeLevel ?? 0, combatSettings, combatGear, enemy.stunned)
   // The agent's kit and gear plus what teammates give some hits only (Pulchra's Aftershock DMG)
+  // The kit's anomaly bonuses plus the squad's (Remielle's Refringe)
+  const anomalyBonus = addAnomalyBonuses(addAnomalyBonuses({}, kit.anomalyBonus), teamResult.anomalyBonus)
   const kindBonus = { ...kit.kindBonus }
   for (const [kind, value] of Object.entries(teamResult.kindBonus) as [keyof typeof kindBonus, number][]) {
     kindBonus[kind] = (kindBonus[kind] ?? 0) + value
@@ -339,7 +342,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     critRateFromCritDmg: kit.critRateFromCritDmg,
     sheerDmg: kit.sheerDmg + teamResult.sheerDmg,
     sharpDmg: kit.sharpDmg,
-    ...rotationAnomaly(agent.id, agent.element, lines, teamElements, kit.anomalyBonus),
+    ...rotationAnomaly(agent.id, agent.element, lines, teamElements, anomalyBonus),
     agentLevel: agent.level,
     enemy: {
       ...enemy,

@@ -57,7 +57,8 @@ export const DEBUFF_LABELS: Record<EnemyDebuffKey, string> = {
 
 // DMG Bonus for some hits only, counted in rotation damage (damage/damage.ts KindBonus)
 // Sheer DMG Bonus (its own multiplier on Rupture agents' hits) too
-export type HitBonusKey = 'aftershockDmg' | 'sheerDmg'
+// anomalyBuff: a multiplier of its own on the receiver's attribute anomalies (Remielle's Refringe), in percent
+export type HitBonusKey = 'aftershockDmg' | 'sheerDmg' | 'anomalyBuff'
 
 export type ZzzTeamBuff = {
   id: string,
@@ -92,6 +93,10 @@ const needsMindscape = (level: number) => (context: ZzzBuffContext) =>
   context.giver.mindscape < level ? `Needs ${context.giver.name} at Mindscape ${level}` : undefined
 
 const switchOn = (context: ZzzBuffContext) => context.setting !== false
+
+// Remielle's Additional Ability: another Anomaly agent, or someone of her faction, in the squad
+const remielleQualifies = (c: ZzzBuffContext) =>
+  c.squad.some((m) => m !== c.giver && (m.specialty === 'Anomaly' || (c.giver.faction !== undefined && m.faction === c.giver.faction)))
 
 // By agent id
 export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
@@ -318,6 +323,36 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
       toggle: { kind: 'switch', label: 'En-Nah Barrage' },
       value: (c) => (switchOn(c) ? 20 : 0),
       confidence: 'confirmed',
+    },
+  ],
+  // Remielle: in-game text at Core Skill level 7 (the user's screenshots); GO's sheet is a placeholder. Her Additional
+  // Ability needs another Anomaly agent or a Covenant of Dayat member in the squad
+  '1581': [
+    {
+      id: 'remielle-squad-atk',
+      label: 'Additional Ability: ATK from her initial ATK, 6% / 12% / 40% with 1 / 2 / 3 Anomaly agents in the squad (up to 1,600)',
+      stat: ZzzStats.ATK,
+      toggle: { kind: 'switch', label: 'Entered the battlefield' },
+      value: (c) => {
+        if (!switchOn(c) || !remielleQualifies(c)) return 0
+        const anomaly = c.squad.filter((m) => m.specialty === 'Anomaly').length
+        return Math.min(1600, c.giverStats.atk * ([0, 0.06, 0.12, 0.4][Math.min(3, anomaly)] ?? 0))
+      },
+      blockedBy: (c) => (remielleQualifies(c) ? undefined : 'Needs another Anomaly agent or Covenant of Dayat member in the squad'),
+      confidence: 'confirmed',
+    },
+    {
+      id: 'remielle-refringe',
+      label:
+        'Core Skill: Refringe, attribute anomalies on an enemy with her Lumiflux Buildup get stronger by her Refringe Coefficient (0.02% of her Anomaly Proficiency, +10% with 3 Anomaly agents)',
+      stat: 'anomalyBuff',
+      toggle: { kind: 'switch', label: 'Enemy has Lumiflux Buildup' },
+      value: (c) => {
+        if (!switchOn(c)) return 0
+        const three = c.squad.filter((m) => m.specialty === 'Anomaly').length >= 3
+        return 0.02 * c.giverStats.anomalyProficiency + (three ? 10 : 0)
+      },
+      confidence: 'sourced',
     },
   ],
   // Seth

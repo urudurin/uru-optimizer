@@ -420,6 +420,20 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       confidence: 'confirmed',
     },
   ],
+  // Remielle: in-game text at Core Skill level 7 (the user's screenshots, Oct 30 2026); GO's sheet is a placeholder. Her
+  // Refringe strengthens teammates' anomalies (team/buffs.ts); her own Luminize damage depends on their stored anomalies'
+  // strength, which isn't modelled
+  '1581': [{
+    id: 'remielle-squad-atk',
+    label: 'Additional Ability: ATK +6% / 12% / 40% of her initial ATK with 1 / 2 / 3 Anomaly agents in the squad (up to 1,600)',
+    toggle: { kind: 'stacks', label: 'Anomaly agents in the squad', max: 3 },
+    stats: ({ setting }) => [{
+      stat: ZzzStats.ATK,
+      value: 0,
+      fromStat: { stat: 'atk', above: 0, per: [0, 0.06, 0.12, 0.4][Math.min(3, Number(setting))] ?? 0, max: 1600 },
+    }],
+    confidence: 'confirmed',
+  }],
   // Claret
   '1611': [
     {

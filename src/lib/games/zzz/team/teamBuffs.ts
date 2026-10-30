@@ -1,4 +1,5 @@
 import {
+  type AnomalyBonuses,
   type EnemyDebuffs,
   type KindBonus,
   NO_DEBUFFS,
@@ -56,12 +57,14 @@ export type ZzzTeamResult = {
   kindBonus: KindBonus,
   // Sheer DMG Bonus from the squad (Yunkui Tales), in percent
   sheerDmg: number,
+  // Bonuses to the receiver's anomalies (Remielle's Refringe)
+  anomalyBonus: AnomalyBonuses,
   applied: ZzzAppliedBuff[],
   // Teammates whose stat screen couldn't be worked out (no saved build, or no data for them)
   missing: string[],
 }
 
-export const NO_TEAM: ZzzTeamResult = { effects: [], debuffs: NO_DEBUFFS, kindBonus: {}, sheerDmg: 0, applied: [], missing: [] }
+export const NO_TEAM: ZzzTeamResult = { effects: [], debuffs: NO_DEBUFFS, kindBonus: {}, sheerDmg: 0, anomalyBonus: {}, applied: [], missing: [] }
 
 export function settingKey(buff: ZzzTeamBuff, giverId: string): string {
   return `${giverId}:${buff.id}`
@@ -84,7 +87,7 @@ export function isDebuff(stat: string): stat is EnemyDebuffKey {
 }
 
 function isHitBonus(stat: string): stat is HitBonusKey {
-  return stat === 'aftershockDmg' || stat === 'sheerDmg'
+  return stat === 'aftershockDmg' || stat === 'sheerDmg' || stat === 'anomalyBuff'
 }
 
 function fourPieceSets(discs: Disc[]): string[] {
@@ -179,5 +182,7 @@ export function zzzTeamBuffsFor(
     source: `${a.sourceName}: ${a.buff.label}`,
     confidence: a.buff.confidence,
   }]))
-  return { effects, debuffs, kindBonus, sheerDmg, applied, missing }
+  const anomalyBuff = applied.filter((a) => a.counted && a.buff.stat === 'anomalyBuff').reduce((sum, a) => sum + a.value, 0)
+  const anomalyBonus: AnomalyBonuses = anomalyBuff > 0 ? { anomaly: { buff: anomalyBuff } } : {}
+  return { effects, debuffs, kindBonus, sheerDmg, anomalyBonus, applied, missing }
 }
