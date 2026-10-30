@@ -26,7 +26,7 @@ import {
 //   - sheerDmg / sharpDmg: Sheer or Sharp DMG Bonus, a multiplier of its own on Rupture or Armorer skill hits
 //   - anomalies: bonuses to some anomalies only (Shock DMG, Disorder multiplier, Assault CRIT)
 // Only the optimizer counts them, and only when ranking by rotation damage. Agents whose sheet in genshin-optimizer is
-// still a placeholder (Aria, Velina, Nangong Yu, Norma, Pyrois, Remielle) have nothing here yet.
+// still a placeholder (Aria, Velina, Nangong Yu, Norma, Pyrois, Remielle) have kits from the user's in-game screenshots.
 // Personal, non-commercial use.
 
 export type ZzzEffectToggle = { kind: 'switch', label: string } | { kind: 'stacks', label: string, max: number }
@@ -62,6 +62,8 @@ export type ZzzCombatEffect = {
   stunBonus?: (context: ZzzCombatContext) => number,
   // DEF ignore for some kinds of hits only, in percent (damage.ts rotationSkills)
   kindDefIgnore?: (context: ZzzCombatContext) => Partial<Record<HitKind, number>>,
+  // CRIT DMG for some kinds of hits only, in percent (damage.ts rotationSkills)
+  kindCritDmg?: (context: ZzzCombatContext) => Partial<Record<HitKind, number>>,
   // Ether Veil vulnerability cap in percent (DamageSetup.veilVulnerabilityCap); the largest one counts
   veilVulnerabilityCap?: (context: ZzzCombatContext) => number,
   sheerDmg?: (context: ZzzCombatContext) => number,
@@ -420,6 +422,40 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       confidence: 'confirmed',
     },
   ],
+  // Pyrois: in-game text at Core Skill level 7 and Mindscapes 1-4 (the user's screenshots, Oct 30 2026); GO's sheet is
+  // a placeholder, its skill multipliers are used. Her Contaminated and Totalize hits are rotation lines (damage.ts
+  // EXTRA_SKILLS). Not counted: Solar Prominence, Decibels, Energy, shields, Daze, Mindscape 3's skill levels (set the
+  // Rotation card's skill level)
+  '1551': [
+    {
+      id: 'pyrois-core-mirage',
+      label: 'Core Skill: Mirage (after Total Annihilation), Ultimate CRIT DMG +40% against a stunned enemy (the Enemy card\'s Stunned switch)',
+      toggle: { kind: 'switch', label: 'Mirage' },
+      kindCritDmg: ({ enemyStunned }) => (enemyStunned ? { ult: 40 } : {}),
+      confidence: 'confirmed',
+    },
+    {
+      id: 'pyrois-core-sunflare',
+      label: 'Core Skill: Sunflare (after Triumphant Return), DMG +40%',
+      toggle: { kind: 'switch', label: 'Sunflare' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 40 }],
+      confidence: 'confirmed',
+    },
+    {
+      id: 'pyrois-ability-crit-dmg',
+      label: 'Additional Ability: CRIT DMG +40% with a Stun or Support agent in the squad',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 40 }],
+      confidence: 'confirmed',
+    },
+    {
+      id: 'pyrois-m1-crit-rate',
+      label: 'Mindscape 1: CRIT Rate +8%',
+      minMindscape: 1,
+      stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 8 }],
+      confidence: 'confirmed',
+    },
+  ],
   // Remielle: in-game text at Core Skill level 7 (the user's screenshots, Oct 30 2026); GO's sheet is a placeholder. Her
   // Refringe strengthens teammates' anomalies (team/buffs.ts); her own Luminize damage depends on their stored anomalies'
   // strength, which isn't modelled
@@ -495,6 +531,7 @@ export type ZzzResolvedCombat = {
   defIgnore: number,
   stunBonus: number,
   kindDefIgnore: Partial<Record<HitKind, number>>,
+  kindCritDmg: Partial<Record<HitKind, number>>,
   veilVulnerabilityCap: number,
   sheerDmg: number,
   sharpDmg: number,
@@ -550,6 +587,7 @@ export function resolveZzzCombat(
     defIgnore: 0,
     stunBonus: 0,
     kindDefIgnore: {},
+    kindCritDmg: {},
     veilVulnerabilityCap: 0,
     sheerDmg: 0,
     sharpDmg: 0,
@@ -588,6 +626,9 @@ export function resolveZzzCombat(
     resolved.stunBonus += effect.stunBonus?.(context) ?? 0
     for (const [kind, value] of Object.entries(effect.kindDefIgnore?.(context) ?? {}) as [HitKind, number][]) {
       resolved.kindDefIgnore[kind] = (resolved.kindDefIgnore[kind] ?? 0) + value
+    }
+    for (const [kind, value] of Object.entries(effect.kindCritDmg?.(context) ?? {}) as [HitKind, number][]) {
+      resolved.kindCritDmg[kind] = (resolved.kindCritDmg[kind] ?? 0) + value
     }
     resolved.veilVulnerabilityCap = Math.max(resolved.veilVulnerabilityCap, effect.veilVulnerabilityCap?.(context) ?? 0)
     resolved.sheerDmg += effect.sheerDmg?.(context) ?? 0

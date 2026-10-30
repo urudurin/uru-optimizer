@@ -475,16 +475,52 @@ describe('ZZZ damage', () => {
     const skills = rotationSkills(YE, rotation, {}, {}, undefined, kit(2).kindDefIgnore)
     const hit = (key: string) => hitMultiplier(agentHits(YE).find((h) => hitKey(h) === key)!, 12)
     expect(skills.multiplier).toBeCloseTo(2 * hit('BasicAttackSwiftedge:0'), 6)
-    expect(skills.defIgnoreGroups).toEqual([{
+    expect(skills.hitGroups).toEqual([{
       multiplier: expect.closeTo(hit('EXSpecialAttackGaleSuppression:0') + hit('UltimateChasingStorms:0'), 6),
       bonusMultiplier: 0,
       defIgnore: 40,
+      critDmg: 0,
     }])
     const total = rotationDamage(stats, { ...base, ...skills })
     const unignored = rotationDamage(stats, { ...base, ...rotationSkills(YE, rotation, {}, {}) })
     expect(total).toBeGreaterThan(unignored)
     const def = (ignore: number) => 794 / (794 + Math.max(0, 635 * (1 - ignore) * (1 - stats.penRatio / 100) - stats.pen))
     const oneHit = stats.atk * (1 + stats.elementDmg / 100) * (1 + (Math.min(100, stats.critRate) / 100) * (stats.critDmg / 100)) / 100
-    expect(total).toBeCloseTo(oneHit * (skills.multiplier * def(0) + skills.defIgnoreGroups![0].multiplier * def(0.4)), 4)
+    expect(total).toBeCloseTo(oneHit * (skills.multiplier * def(0) + skills.hitGroups![0].multiplier * def(0.4)), 4)
+  })
+  it('Pyrois: Mirage Ultimate CRIT DMG on a stunned enemy, Sunflare, her squad CRIT DMG, M1, and her extra Ultimate hits', () => {
+    const PYROIS = '1551'
+    expect(resolveZzzCombat(PYROIS, 0, {}).kindCritDmg).toEqual({})
+    const kit = resolveZzzCombat(PYROIS, 0, {}, undefined, true)
+    expect(kit.kindCritDmg).toEqual({ ult: 40 })
+    expect(kit.statEffects.map((e) => [e.stat, e.value])).toEqual([[ZzzStats.ELEMENT_DMG, 40], [ZzzStats.CRIT_DMG, 40]])
+    expect(resolveZzzCombat(PYROIS, 1, {}).statEffects.map((e) => e.stat)).toContain(ZzzStats.CRIT_RATE)
+
+    // Contaminated and Totalize hits: fixed 900% / 2250%, Ultimate hits, not in the default rotation
+    const hit = (key: string) => agentHits(PYROIS).find((h) => hitKey(h) === key)!
+    expect(hitMultiplier(hit('UltimateUnboundSwordstormContaminated:0'), 12)).toBe(900)
+    expect(hitMultiplier(hit('UltimateEternalImprisonmentTotalize:0'), 16)).toBe(2250)
+    expect(hit('UltimateEternalImprisonmentTotalize:0').kind).toBe('ult')
+    expect(defaultRotation(PYROIS).counts['UltimateEternalImprisonmentTotalize:0']).toBeUndefined()
+    expect(defaultRotation(PYROIS).counts['UltimateEternalImprisonment:0']).toBe(1)
+
+    // Ultimate hits get a group with +40% CRIT DMG; the Chain Attack stays shared
+    const rotation: Rotation = {
+      counts: { 'ChainAttackCeremonialMarch:0': 1, 'UltimateEternalImprisonment:0': 1, 'UltimateEternalImprisonmentTotalize:0': 1 },
+      skillLevel: 12,
+    }
+    const skills = rotationSkills(PYROIS, rotation, {}, {}, undefined, {}, kit.kindCritDmg)
+    expect(skills.multiplier).toBeCloseTo(hitMultiplier(hit('ChainAttackCeremonialMarch:0'), 12), 6)
+    expect(skills.hitGroups).toEqual([{
+      multiplier: expect.closeTo(hitMultiplier(hit('UltimateEternalImprisonment:0'), 12) + 2250, 6),
+      bonusMultiplier: 0,
+      defIgnore: 0,
+      critDmg: 40,
+    }])
+    const base = { agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS }
+    const cr = Math.min(100, stats.critRate) / 100
+    const ratio = rotationDamage(stats, { ...base, ...skills, multiplier: 0 })
+      / rotationDamage(stats, { ...base, multiplier: skills.hitGroups![0].multiplier })
+    expect(ratio).toBeCloseTo((1 + cr * (stats.critDmg + 40) / 100) / (1 + cr * stats.critDmg / 100), 6)
   })
 })

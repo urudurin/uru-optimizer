@@ -332,10 +332,18 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const teamElements = [agent.element, ...teammates.map((id) => AGENTS[id]?.element ?? '')]
   // The rotation and enemy, for ranking by damage; the team's shred counts here
   const setupFor = (lines: Rotation): DamageSetup => ({
-    ...rotationSkills(agent.id, lines, kindBonus, kit.skillBonus, {
-      critDmgFromCritDmg: kit.aftershockCritDmg,
-      defIgnore: kit.aftershockDefIgnore,
-    }, kit.kindDefIgnore),
+    ...rotationSkills(
+      agent.id,
+      lines,
+      kindBonus,
+      kit.skillBonus,
+      {
+        critDmgFromCritDmg: kit.aftershockCritDmg,
+        defIgnore: kit.aftershockDefIgnore,
+      },
+      kit.kindDefIgnore,
+      kit.kindCritDmg,
+    ),
     ...(kit.veilVulnerabilityCap > 0 ? { veilVulnerabilityCap: kit.veilVulnerabilityCap } : {}),
     scaling: agent.specialty === 'Rupture' ? 'sheer' : agent.specialty === 'Armorer' ? 'sharp' : 'atk',
     lacerationDmg: 150 + kit.lacerationBonus,
