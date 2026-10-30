@@ -367,4 +367,36 @@ describe('ZZZ damage', () => {
     expect(parts.reduce((sum, p) => sum + p.damage, 0)).toBeCloseTo(rotationDamage(stats, setupFor(rotation)), 4)
     expect(parts.find((p) => p.key === 'anomaly:shatter')?.group).toBe('Attribute Anomaly')
   })
+
+  it('Ye Shunguang: Ether Veil vulnerability, Mindscape 1 DEF ignore and Mindscape 2 EX Special / Ultimate DEF ignore', () => {
+    const YE = '1431'
+    const base = { multiplier: 100, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS }
+    const plain = rotationDamage(stats, base)
+    // The stun multiplier counts without a stun, up to 100% + the cap (GO's veilVulnerabilityCap_)
+    expect(rotationDamage(stats, { ...base, veilVulnerabilityCap: 110 })).toBeCloseTo(plain * 1.5, 6)
+    expect(rotationDamage(stats, { ...base, veilVulnerabilityCap: 110, enemy: { ...DEFAULT_ENEMY, stunMultiplier: 250 } })).toBeCloseTo(plain * 2.1, 6)
+
+    const kit = (mindscape: number) => resolveZzzCombat(YE, mindscape, {})
+    expect(kit(0)).toMatchObject({ veilVulnerabilityCap: 110, defIgnore: 0, kindDefIgnore: {} })
+    expect(kit(1)).toMatchObject({ defIgnore: 20 })
+    expect(kit(4)).toMatchObject({ veilVulnerabilityCap: 200, kindDefIgnore: { exSpecial: 40, ult: 40 } })
+    expect(resolveZzzCombat(YE, 0, { 'ye-core-vulnerability': false }).veilVulnerabilityCap).toBe(0)
+
+    // EX Special and Ultimate hits get a group of their own with 40% DEF ignore; the Basic Attack stays shared
+    const rotation: Rotation = { counts: { 'BasicAttackSwiftedge:0': 2, 'EXSpecialAttackGaleSuppression:0': 1, 'UltimateChasingStorms:0': 1 }, skillLevel: 12 }
+    const skills = rotationSkills(YE, rotation, {}, {}, undefined, kit(2).kindDefIgnore)
+    const hit = (key: string) => hitMultiplier(agentHits(YE).find((h) => hitKey(h) === key)!, 12)
+    expect(skills.multiplier).toBeCloseTo(2 * hit('BasicAttackSwiftedge:0'), 6)
+    expect(skills.defIgnoreGroups).toEqual([{
+      multiplier: expect.closeTo(hit('EXSpecialAttackGaleSuppression:0') + hit('UltimateChasingStorms:0'), 6),
+      bonusMultiplier: 0,
+      defIgnore: 40,
+    }])
+    const total = rotationDamage(stats, { ...base, ...skills })
+    const unignored = rotationDamage(stats, { ...base, ...rotationSkills(YE, rotation, {}, {}) })
+    expect(total).toBeGreaterThan(unignored)
+    const def = (ignore: number) => 794 / (794 + Math.max(0, 635 * (1 - ignore) * (1 - stats.penRatio / 100) - stats.pen))
+    const oneHit = stats.atk * (1 + stats.elementDmg / 100) * (1 + (Math.min(100, stats.critRate) / 100) * (stats.critDmg / 100)) / 100
+    expect(total).toBeCloseTo(oneHit * (skills.multiplier * def(0) + skills.defIgnoreGroups![0].multiplier * def(0.4)), 4)
+  })
 })

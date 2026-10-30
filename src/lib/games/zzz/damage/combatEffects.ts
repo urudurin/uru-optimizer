@@ -1,6 +1,7 @@
 import {
   addAnomalyBonuses,
   type AnomalyBonuses,
+  type HitKind,
   type KindBonus,
 } from 'lib/games/zzz/damage/damage'
 import {
@@ -55,6 +56,10 @@ export type ZzzCombatEffect = {
   anomalies?: (context: ZzzCombatContext) => AnomalyBonuses,
   resIgnore?: (context: ZzzCombatContext) => number,
   defIgnore?: (context: ZzzCombatContext) => number,
+  // DEF ignore for some kinds of hits only, in percent (damage.ts rotationSkills)
+  kindDefIgnore?: (context: ZzzCombatContext) => Partial<Record<HitKind, number>>,
+  // Ether Veil vulnerability cap in percent (DamageSetup.veilVulnerabilityCap); the largest one counts
+  veilVulnerabilityCap?: (context: ZzzCombatContext) => number,
   sheerDmg?: (context: ZzzCombatContext) => number,
   sharpDmg?: (context: ZzzCombatContext) => number,
   // Gear effects for agents of one specialty or attribute only
@@ -91,12 +96,37 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
     },
   ],
   // Ye Shunguang: the Core Skill CRIT Rate is in data/agents.ts already
-  '1431': [{
-    id: 'ye-core-dmg',
-    label: 'Core Skill: DMG +25%',
-    stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 25 }],
-    confidence: 'sourced',
-  }],
+  // GO's sheet was a placeholder until its 2.5 update (Oct 25, 2026); the rest is from that full sheet
+  '1431': [
+    {
+      id: 'ye-core-dmg',
+      label: 'Core Skill: DMG +25%',
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 25 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'ye-core-vulnerability',
+      label: 'Core Skill: in the Ether Veil, hits count the enemy\'s stun multiplier even when it isn\'t stunned, up to 210% (310% at Mindscape 4)',
+      toggle: { kind: 'switch', label: 'Ether Veil' },
+      veilVulnerabilityCap: ({ mindscape }) => (mindscape >= 4 ? 200 : 110),
+      confidence: 'sourced',
+    },
+    {
+      id: 'ye-m1',
+      label: 'Mindscape 1: DMG +10% and 20% of the enemy\'s DEF ignored',
+      minMindscape: 1,
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 10 }],
+      defIgnore: () => 20,
+      confidence: 'sourced',
+    },
+    {
+      id: 'ye-m2',
+      label: 'Mindscape 2: EX Special Attack and Ultimate ignore 40% of the enemy\'s DEF',
+      minMindscape: 2,
+      kindDefIgnore: () => ({ exSpecial: 40, ult: 40 }),
+      confidence: 'sourced',
+    },
+  ],
   // Yixuan: Meditation's CRIT DMG is in data/agents.ts already
   '1371': [
     {
@@ -339,6 +369,8 @@ export type ZzzResolvedCombat = {
   // RES and DEF ignore for every hit, Sheer and Sharp DMG Bonus, in percent
   resIgnore: number,
   defIgnore: number,
+  kindDefIgnore: Partial<Record<HitKind, number>>,
+  veilVulnerabilityCap: number,
   sheerDmg: number,
   sharpDmg: number,
 }
@@ -390,6 +422,8 @@ export function resolveZzzCombat(
     anomalyBonus: {},
     resIgnore: 0,
     defIgnore: 0,
+    kindDefIgnore: {},
+    veilVulnerabilityCap: 0,
     sheerDmg: 0,
     sharpDmg: 0,
   }
@@ -424,6 +458,10 @@ export function resolveZzzCombat(
     addAnomalyBonuses(resolved.anomalyBonus, effect.anomalies?.(context) ?? {})
     resolved.resIgnore += effect.resIgnore?.(context) ?? 0
     resolved.defIgnore += effect.defIgnore?.(context) ?? 0
+    for (const [kind, value] of Object.entries(effect.kindDefIgnore?.(context) ?? {}) as [HitKind, number][]) {
+      resolved.kindDefIgnore[kind] = (resolved.kindDefIgnore[kind] ?? 0) + value
+    }
+    resolved.veilVulnerabilityCap = Math.max(resolved.veilVulnerabilityCap, effect.veilVulnerabilityCap?.(context) ?? 0)
     resolved.sheerDmg += effect.sheerDmg?.(context) ?? 0
     resolved.sharpDmg += effect.sharpDmg?.(context) ?? 0
     for (const [skill, value] of Object.entries(effect.skills?.(context) ?? {})) {

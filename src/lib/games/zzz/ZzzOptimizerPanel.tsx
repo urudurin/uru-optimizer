@@ -332,7 +332,8 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     ...rotationSkills(agent.id, lines, kindBonus, kit.skillBonus, {
       critDmgFromCritDmg: kit.aftershockCritDmg,
       defIgnore: kit.aftershockDefIgnore,
-    }),
+    }, kit.kindDefIgnore),
+    ...(kit.veilVulnerabilityCap > 0 ? { veilVulnerabilityCap: kit.veilVulnerabilityCap } : {}),
     scaling: agent.specialty === 'Rupture' ? 'sheer' : agent.specialty === 'Armorer' ? 'sharp' : 'atk',
     lacerationDmg: 150 + kit.lacerationBonus,
     critRateFromCritDmg: kit.critRateFromCritDmg,

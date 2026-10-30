@@ -148,6 +148,12 @@ export type DamageSetup = {
   // Aftershock hits, when kits give them CRIT DMG (a fraction of the agent's CRIT DMG) or DEF ignore (percent) of their
   // own; these hits are left out of multiplier and bonusMultiplier then
   aftershock?: { multiplier: number, bonusMultiplier: number, critDmgFromCritDmg: number, defIgnore: number },
+  // Hits of some kinds with DEF ignore of their own (Ye Shunguang's Mindscape 2: EX Special and Ultimate), one group per
+  // value; these hits are left out of multiplier and bonusMultiplier too
+  defIgnoreGroups?: { multiplier: number, bonusMultiplier: number, defIgnore: number }[],
+  // Ether Veil vulnerability (Ye Shunguang), in percent: the stun multiplier applies whether or not the enemy is stunned,
+  // up to 100% + this (GO dmg.ts stunned_mult_ with veilVulnerabilityCap_)
+  veilVulnerabilityCap?: number,
   // Anomaly-specific bonuses: count x multiplier x the anomaly's own extra DMG Bonus (a fraction), and the anomalies
   // that can CRIT, as extra damage on top of anomalyMultiplier (CRIT Rate in percent, plus per point of Anomaly
   // Proficiency; CRIT DMG in percent)
@@ -185,7 +191,11 @@ export function damageFactors(stats: FinalStats, setup: Omit<DamageSetup, 'multi
     direct: setup.enemy.windswept ? 1.1 : 1,
     res: 1 - setup.enemy.res / 100 + setup.debuffs.resShred / 100,
     dmgTaken: 1 + setup.debuffs.dmgTaken / 100,
-    stun: setup.enemy.stunned ? setup.enemy.stunMultiplier / 100 : 1,
+    stun: setup.veilVulnerabilityCap
+      ? Math.min(1 + setup.veilVulnerabilityCap / 100, setup.enemy.stunMultiplier / 100)
+      : setup.enemy.stunned
+      ? setup.enemy.stunMultiplier / 100
+      : 1,
   }
 }
 
@@ -231,6 +241,10 @@ export function rotationDamage(stats: FinalStats, setup: DamageSetup): number {
     + (aftershock
       ? skillDamage(stats, setup, f, aftershock.multiplier, aftershock.bonusMultiplier, aftershock.critDmgFromCritDmg, aftershock.defIgnore)
       : 0)
+    + (setup.defIgnoreGroups ?? []).reduce(
+      (sum, group) => sum + skillDamage(stats, setup, f, group.multiplier, group.bonusMultiplier, 0, group.defIgnore),
+      0,
+    )
   let anomalyHits = (setup.anomalyMultiplier ?? 0) * f.dmgBonus + (setup.anomalyBonusMultiplier ?? 0)
   for (const crit of setup.anomalyCrits ?? []) {
     const rate = Math.min(1, Math.max(0, crit.critRate + crit.critRatePerAp * stats.anomalyProficiency) / 100)
@@ -604,20 +618,39 @@ export function rotationSkills(
   kindBonus: KindBonus,
   skillBonus: Record<string, number>,
   aftershock: { critDmgFromCritDmg: number, defIgnore: number } = { critDmgFromCritDmg: 0, defIgnore: 0 },
-): Pick<DamageSetup, 'multiplier' | 'bonusMultiplier' | 'aftershock'> {
-  if (!aftershock.critDmgFromCritDmg && !aftershock.defIgnore) {
-    return { multiplier: rotationMultiplier(agentId, rotation), bonusMultiplier: rotationBonusMultiplier(agentId, rotation, kindBonus, skillBonus) }
-  }
-  const isAftershock: HitFilter = (hit) => hit.aftershock
-  const notAftershock: HitFilter = (hit) => !hit.aftershock
+  // DEF ignore for some kinds of hits only, in percent (Ye Shunguang's Mindscape 2)
+  kindDefIgnore: Partial<Record<HitKind, number>> = {},
+): Pick<DamageSetup, 'multiplier' | 'bonusMultiplier' | 'aftershock' | 'defIgnoreGroups'> {
+  const ownAftershock = !!aftershock.critDmgFromCritDmg || !!aftershock.defIgnore
+  const inAftershock: HitFilter = (hit) => ownAftershock && hit.aftershock
+  // Hits in the Aftershock group keep its DEF ignore; the rest go by their kind's
+  const ignoreOf = (hit: SkillHit) => (inAftershock(hit) ? 0 : kindDefIgnore[hit.kind] ?? 0)
+  const ignores = [...new Set(agentHits(agentId).map(ignoreOf).filter((value) => value > 0))]
+  const plain: HitFilter = (hit) => !inAftershock(hit) && ignoreOf(hit) === 0
   return {
-    multiplier: rotationMultiplier(agentId, rotation, notAftershock),
-    bonusMultiplier: rotationBonusMultiplier(agentId, rotation, kindBonus, skillBonus, notAftershock),
-    aftershock: {
-      multiplier: rotationMultiplier(agentId, rotation, isAftershock),
-      bonusMultiplier: rotationBonusMultiplier(agentId, rotation, kindBonus, skillBonus, isAftershock),
-      ...aftershock,
-    },
+    multiplier: rotationMultiplier(agentId, rotation, plain),
+    bonusMultiplier: rotationBonusMultiplier(agentId, rotation, kindBonus, skillBonus, plain),
+    ...(ownAftershock
+      ? {
+        aftershock: {
+          multiplier: rotationMultiplier(agentId, rotation, inAftershock),
+          bonusMultiplier: rotationBonusMultiplier(agentId, rotation, kindBonus, skillBonus, inAftershock),
+          ...aftershock,
+        },
+      }
+      : {}),
+    ...(ignores.length > 0
+      ? {
+        defIgnoreGroups: ignores.map((defIgnore) => {
+          const inGroup: HitFilter = (hit) => ignoreOf(hit) === defIgnore
+          return {
+            multiplier: rotationMultiplier(agentId, rotation, inGroup),
+            bonusMultiplier: rotationBonusMultiplier(agentId, rotation, kindBonus, skillBonus, inGroup),
+            defIgnore,
+          }
+        }),
+      }
+      : {}),
   }
 }
 
