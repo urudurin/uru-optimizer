@@ -4,13 +4,11 @@ import {
   IconUpload,
   IconUser,
 } from '@tabler/icons-react'
-import { BackupReminder } from 'lib/games/shared/ui/BackupReminder'
 import {
   GameLayout,
   type GameNavGroup,
   useStoredPage,
 } from 'lib/games/shared/ui/GameLayout'
-import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import { WuwaCharactersPage } from 'lib/games/wuwa/WuwaCharactersPage'
 import { WuwaDataPage } from 'lib/games/wuwa/WuwaDataPage'
 import { WuwaEchoesPage } from 'lib/games/wuwa/WuwaEchoesPage'
@@ -36,18 +34,10 @@ const GROUPS: GameNavGroup<WuwaPage>[] = [
 
 export function WuwaApp() {
   const [page, setPage] = useStoredPage<WuwaPage>('wuwa-page', PAGES, 'optimizer')
-  const hasData = useWuwaStore((s) => s.echoes.length > 0 || s.characters.length > 0)
   const goToImport = () => setPage('data')
 
   return (
-    <GameLayout
-      gameName='Wuthering Waves'
-      tagline='Echo stats and optimizer'
-      groups={GROUPS}
-      active={page}
-      onNavigate={setPage}
-      notice={page !== 'data' && <BackupReminder game='wuwa' hasData={hasData} onSave={() => setPage('data')} />}
-    >
+    <GameLayout gameName='Wuthering Waves' tagline='Echo stats and optimizer' groups={GROUPS} active={page} onNavigate={setPage}>
       {page === 'characters' && <WuwaCharactersPage onImport={goToImport} />}
       {page === 'optimizer' && <WuwaOptimizerPage onImport={goToImport} />}
       {page === 'echoes' && <WuwaEchoesPage onImport={goToImport} />}
