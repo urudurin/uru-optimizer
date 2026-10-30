@@ -15,6 +15,7 @@ import type { ZzzAppliedEffect } from 'lib/games/zzz/damage/combatEffects'
 import {
   abloomPerAp,
   abloomScalesWithMastery,
+  abloomShareMultiplier,
   agentHits,
   type AnomalyHit,
   anomalyHits,
@@ -38,6 +39,7 @@ import {
 // An anomaly line's multiplier as the card shows it; Abloom's grows with Anomaly Proficiency (Anomaly Mastery for Aria),
 // Polarity Disorder's with Anomaly Proficiency
 function anomalyText(agentId: string, element: string, hit: AnomalyHit, rotation: Rotation): string {
+  if (hit.share) return `${abloomShareMultiplier(hit).toFixed(1)}%`
   if (hit.kind === 'abloom') {
     return abloomScalesWithMastery(agentId)
       ? `${(ariaAbloomPerAm(hit.attribute ?? element) * 10).toFixed(2)}% / 10 AM`

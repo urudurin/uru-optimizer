@@ -286,7 +286,7 @@ const ANOMALY_HIT: Record<AttributeAnomaly, { label: string, perHit: number, tic
   shatter: { label: 'Shatter', perHit: 500, ticks: 1 },
   shock: { label: 'Shock (10s, 10 ticks of 125%)', perHit: 125, ticks: 10 },
   corruption: { label: 'Corruption (10s, 20 ticks of 62.5%)', perHit: 62.5, ticks: 20 },
-  wind: { label: 'Wind anomaly', perHit: 1250, ticks: 1 },
+  wind: { label: 'Windswept', perHit: 1250, ticks: 1 },
 }
 
 // Disorder: base + per tick x whole ticks left of the anomaly it ends, floor((duration - time passed) x ticks per
@@ -318,6 +318,7 @@ const MIYABI_ID = '1091'
 const VIVIAN_ID = '1331'
 const YANAGI_ID = '1221'
 const ARIA_ID = '1501'
+const VELINA_ID = '1561'
 
 // Vivian's Abloom (GO's Vivian sheet and util.ts abloomDmgInst): an anomaly's single-hit multiplier (GO's
 // anomalyMultipliers) times her Core Skill's per-attribute rate per 10 Anomaly Proficiency, at Core Skill F. Its
@@ -371,7 +372,22 @@ export function polarityFlatPerAp(skillLevel: number): number {
 }
 
 // attribute: the anomaly a Vortex comes from
-export type AnomalyHit = { key: string, kind: AnomalyKind, label: string, attribute?: string }
+// share: an Abloom worth a fixed share of the attribute's anomaly (Velina's)
+export type AnomalyHit = { key: string, kind: AnomalyKind, label: string, attribute?: string, share?: number }
+
+// Velina's Abloom (in-game text at Core Skill level 7, the user's screenshots): a fixed share of a Windswept, 1250% of
+// ATK. Condensed and Sweeping Cyclone explosions on an enemy with Windswept (Core Skill), and her Ultimate's heavy
+// attack (Additional Ability, with an Anomaly or Wind agent in the squad)
+const VELINA_ABLOOM: AnomalyHit[] = [
+  { key: 'anomaly:abloom:condensed', kind: 'abloom', label: 'Abloom (Condensed Cyclone, 145%)', attribute: 'Wind', share: 1.45 },
+  { key: 'anomaly:abloom:sweeping', kind: 'abloom', label: 'Abloom (Sweeping Cyclone, 255%)', attribute: 'Wind', share: 2.55 },
+  { key: 'anomaly:abloom:ultimate', kind: 'abloom', label: 'Abloom (Ultimate heavy attack, 680%)', attribute: 'Wind', share: 6.8 },
+]
+
+// A fixed-share Abloom's multiplier in percent of ATK
+export function abloomShareMultiplier(hit: AnomalyHit): number {
+  return (hit.share ?? 0) * ANOMALY_HIT.wind.perHit * ANOMALY_HIT.wind.ticks
+}
 
 // The anomalies an agent of this attribute triggers, as rotation lines. A Wind agent can set off Vortex from every other
 // anomaly; others only their own, and only with a Wind agent in the squad
@@ -389,6 +405,7 @@ export function anomalyHits(agentId: string, element: string, teamElements: stri
     { key: 'anomaly:disorder', kind: 'disorder', label: agentId === MIYABI_ID ? 'Disorder (Frostbite)' : 'Disorder' },
     ...(agentId === YANAGI_ID ? [{ key: 'anomaly:polarity', kind: 'polarity', label: 'Polarity Disorder' } satisfies AnomalyHit] : []),
     ...vortex.map((attribute): AnomalyHit => ({ key: `anomaly:vortex:${attribute}`, kind: 'vortex', label: `Vortex (${attribute})`, attribute })),
+    ...(agentId === VELINA_ID ? VELINA_ABLOOM : []),
     ...(agentId === VIVIAN_ID || agentId === ARIA_ID
       ? Object.keys(ABLOOM).map((attribute): AnomalyHit => ({ key: `anomaly:abloom:${attribute}`, kind: 'abloom', label: `Abloom (${attribute})`, attribute }))
       : []),
@@ -468,13 +485,13 @@ export function rotationAnomaly(
     const bonus = bonusFor(hit.kind, bonuses)
     const buff = 1 + (bonus.buff ?? 0) / 100
     const add = (bonus.add ?? 0) + (hit.kind === 'disorder' || hit.kind === 'polarity' ? (bonus.addPerSecondLeft ?? 0) * secondsLeft : 0)
-    if (hit.kind === 'abloom' && agentId === ARIA_ID) {
+    if (hit.kind === 'abloom' && agentId === ARIA_ID && !hit.share) {
       const perPoint = count * ariaAbloomPerAm(hit.attribute ?? element) * buff
       perAm.atk += perPoint
       perAm.atkBonus += perPoint * (bonus.dmg ?? 0) / 100
       continue
     }
-    if (hit.kind === 'abloom') {
+    if (hit.kind === 'abloom' && !hit.share) {
       perAp.atk += count * abloomPerAp(hit.attribute ?? element) * buff
       perAp.atkBonus += count * abloomPerAp(hit.attribute ?? element) * buff * (bonus.dmg ?? 0) / 100
       continue
@@ -483,7 +500,7 @@ export function rotationAnomaly(
       perAp.flat += count * polarityFlatPerAp(rotation.skillLevel) * buff
       perAp.flatBonus += count * polarityFlatPerAp(rotation.skillLevel) * buff * (bonus.dmg ?? 0) / 100
     }
-    const total = count * (anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute)
+    const total = count * ((hit.share ? abloomShareMultiplier(hit) : anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute))
       + (hit.kind === 'polarity' ? POLARITY_SHARE : 1) * add)
       * buff
     multiplier += total

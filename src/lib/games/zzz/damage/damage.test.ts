@@ -7,6 +7,7 @@ import {
   singleLineRotation,
 } from 'lib/games/zzz/damage/damage'
 import {
+  abloomShareMultiplier,
   agentHits,
   anomalyHits,
   anomalyLevelMultiplier,
@@ -32,6 +33,7 @@ import { HAILSTORM_SHRINE } from 'lib/games/zzz/data/wEngines'
 import {
   computeStats,
   defaultConditions,
+  metThresholds,
 } from 'lib/games/zzz/stats/computeStats'
 import { ZzzStats } from 'lib/games/zzz/types'
 import {
@@ -391,6 +393,35 @@ describe('ZZZ damage', () => {
     const stunned = resolveZzzCombat(ARIA, 0, {}, undefined, true).anomalyBonus
     expect(rotationAnomaly(ARIA, 'Ether', rotation, [], stunned).anomalyPerAm?.atk).toBeCloseTo(2 * ariaAbloomPerAm('Ether') * 1.5, 9)
     expect(rotationAnomaly(ARIA, 'Ether', { counts: { 'anomaly:corruption': 1 }, skillLevel: 12 }, [], stunned).anomalyMultiplier).toBe(1250 + 375)
+  })
+
+  it('Velina: fixed-share Abloom, Energy Regen scaling up to its caps, Windbite and her squad bonus', () => {
+    const VELINA = '1561'
+    const abloom = anomalyHits(VELINA, 'Wind').filter((hit) => hit.kind === 'abloom')
+    expect(abloom.map((hit) => [hit.key, abloomShareMultiplier(hit)])).toEqual([
+      ['anomaly:abloom:condensed', 1.45 * 1250],
+      ['anomaly:abloom:sweeping', 2.55 * 1250],
+      ['anomaly:abloom:ultimate', 6.8 * 1250],
+    ])
+    const kit = resolveZzzCombat(VELINA, 0, {})
+    const rotation: Rotation = { counts: { 'anomaly:abloom:sweeping': 1, 'anomaly:wind': 1, 'anomaly:vortex:Fire': 1 }, skillLevel: 12 }
+    const anomaly = rotationAnomaly(VELINA, 'Wind', rotation, [], kit.anomalyBonus)
+    const vortex = anomalyMultiplier(VELINA, 'Wind', 'vortex', 0, 'Fire') + 50
+    expect(anomaly.anomalyMultiplier).toBeCloseTo(2.55 * 1250 + 1250 + vortex, 6)
+    // +10% DMG on Windswept and Vortex only, not the Abloom
+    expect(anomaly.anomalyBonusMultiplier).toBeCloseTo((1250 + vortex) * 0.1, 6)
+
+    // DMG +0.21% and Anomaly Mastery +0.5 per 0.01 Energy Regen above 1.2, worked out from the stats like minStat
+    const [dmg, mastery] = kit.statEffects
+    expect(metThresholds({ ...stats, energyRegen: 1.5 }, [dmg, mastery]).map((e) => e.value)).toEqual([
+      expect.closeTo(6.3, 6),
+      expect.closeTo(15, 6),
+    ])
+    expect(metThresholds({ ...stats, energyRegen: 3 }, [dmg, mastery]).map((e) => e.value)).toEqual([35, 84])
+    // Flat Anomaly Mastery goes on top of the percent from discs
+    const input = { agent: MIYABI, wEngine: HAILSTORM_SHRINE, wEngineRefinement: 1, coreSkillLevel: 6, discs: [], conditions: defaultConditions() }
+    const flat = computeStats({ ...input, teamEffects: [{ stat: ZzzStats.ANOMALY_MASTERY_FLAT, value: 84, source: 'test', confidence: 'sourced' }] })
+    expect(flat.stats.anomalyMastery - computeStats(input).stats.anomalyMastery).toBeCloseTo(84, 6)
   })
 
   it('Ye Shunguang: Ether Veil vulnerability, Mindscape 1 DEF ignore and Mindscape 2 EX Special / Ultimate DEF ignore', () => {

@@ -335,6 +335,33 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       confidence: 'confirmed',
     },
   ],
+  // Velina: in-game text at Core Skill level 7 (the user's screenshots, Oct 30 2026); GO's sheet is a placeholder. Her
+  // Abloom lines are in damage.ts (VELINA_ABLOOM), her cyclones' own hits in the skill data
+  '1561': [
+    {
+      id: 'velina-core-energy',
+      label: 'Core Skill: DMG +0.21% and Anomaly Mastery +0.5 per 0.01 Energy Regen above 1.2 (up to 35% and 84)',
+      stats: () => [
+        { stat: ZzzStats.ELEMENT_DMG, value: 0, fromStat: { stat: 'energyRegen', above: 1.2, per: 21, max: 35 } },
+        { stat: ZzzStats.ANOMALY_MASTERY_FLAT, value: 0, fromStat: { stat: 'energyRegen', above: 1.2, per: 50, max: 84 } },
+      ],
+      confidence: 'confirmed',
+    },
+    {
+      id: 'velina-core-windbite',
+      label: 'Core Skill: every third Vortex spends 2 Windbite for +150% Vortex multiplier (counted as +50% on each Vortex)',
+      toggle: { kind: 'switch', label: 'Windbite' },
+      anomalies: () => ({ vortex: { add: 50 } }),
+      confidence: 'confirmed',
+    },
+    {
+      id: 'velina-ability',
+      label: 'Additional Ability: Windswept and Vortex DMG +10%, and her Ultimate\'s Abloom, with an Anomaly or Wind agent in the squad',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      anomalies: () => ({ wind: { dmg: 10 }, vortex: { dmg: 10 } }),
+      confidence: 'confirmed',
+    },
+  ],
   // Claret
   '1611': [
     {

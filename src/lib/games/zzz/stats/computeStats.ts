@@ -221,7 +221,7 @@ export function finalizeStats(agent: AgentData, wEngine: WEngineData, totals: St
     atk,
     def: base.def * (1 + totals[I.DEF_P] / 100) + totals[I.DEF],
     impact: base.impact * (1 + totals[I.IMPACT] / 100),
-    anomalyMastery: base.anomalyMastery * (1 + totals[I.ANOMALY_MASTERY] / 100),
+    anomalyMastery: base.anomalyMastery * (1 + totals[I.ANOMALY_MASTERY] / 100) + totals[I.ANOMALY_MASTERY_FLAT],
     anomalyProficiency: base.anomalyProficiency + totals[I.ANOMALY_PROFICIENCY],
     critRate: base.critRate + totals[I.CRIT_RATE],
     critDmg: base.critDmg + totals[I.CRIT_DMG],

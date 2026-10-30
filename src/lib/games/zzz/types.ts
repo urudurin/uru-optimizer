@@ -15,6 +15,8 @@ export const ZzzStats = {
   PEN_RATIO: 'PEN Ratio',
   // The element is resolved from the agent at calculation time
   ELEMENT_DMG: 'Element DMG%',
+  // Flat Anomaly Mastery from kits and W-Engines (Velina's Core Skill); discs give it as a percent of base
+  ANOMALY_MASTERY_FLAT: 'Anomaly Mastery (flat)',
 } as const
 
 type ZzzStatsKeys = keyof typeof ZzzStats
