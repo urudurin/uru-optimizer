@@ -18,17 +18,15 @@ import classes from 'lib/layout/layout.module.css'
 import { Assets } from 'lib/rendering/assets'
 import { SaveState } from 'lib/state/saveState'
 import { useGlobalStore } from 'lib/stores/app/appStore'
-import {
-  AppPages,
-  BASE_PATH,
-} from 'lib/tabs/navigation/constants'
-import { navigateTo } from 'lib/tabs/navigation/utils'
+import { BASE_PATH } from 'lib/tabs/navigation/constants'
 
 export const HEADER_HEIGHT = 48
 
 export function LayoutHeader() {
   const { isOpen: isOpenMenuSidebar, toggle: toggleMenuSidebar } = useOpenClose(OpenCloseIDs.MENU_SIDEBAR)
   const activeGame = useGameStore((s) => s.activeGame)
+  const home = useGameStore((s) => s.home)
+  const goHome = useGameStore((s) => s.goHome)
 
   const handleToggleSidebar = () => {
     toggleMenuSidebar()
@@ -56,7 +54,8 @@ export function LayoutHeader() {
             onClick={(e) => {
               if (e.ctrlKey || e.metaKey || e.shiftKey) return
               e.preventDefault()
-              navigateTo(AppPages.HOME)
+              // The site's Home tab (lib/games/GamePicker.tsx); HSR's own home page stays in its sidebar
+              goHome()
             }}
           >
             <Flex align='center'>
@@ -70,7 +69,7 @@ export function LayoutHeader() {
         <Flex align='center' gap={6}>
           <GameSwitcher />
           {/* fribbels' Discord is for the HSR optimizer only, so it isn't shown for the other games */}
-          {activeGame === 'hsr' && (
+          {!home && activeGame === 'hsr' && (
             <a href='https://discord.gg/rDmB4Un7qg' target='_blank' rel='noreferrer'>
               <img src={Assets.getDiscord()} style={{ height: 32, borderRadius: 5, display: 'block' }} />
             </a>

@@ -48,7 +48,7 @@ const GameError = ({ error }: FallbackProps) => (
 export function App() {
   const seedColor = useThemeStore((s) => s.seedColor)
   const activeGame = useGameStore((s) => s.activeGame)
-  const chosen = useGameStore((s) => s.chosen)
+  const home = useGameStore((s) => s.home)
   const mantineTheme = useMemo(() => createMantineTheme(seedColor), [seedColor])
 
   useEffect(() => {
@@ -67,9 +67,9 @@ export function App() {
         <ConfirmModalProvider>
           <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
             <LayoutHeader />
-            {!chosen && <GamePicker />}
+            {home && <GamePicker />}
             {/* HSR stays mounted while another game is shown, so in-progress HSR state isn't lost */}
-            <div style={{ display: chosen && activeGame === 'hsr' ? 'flex' : 'none', flex: 1 }}>
+            <div style={{ display: !home && activeGame === 'hsr' ? 'flex' : 'none', flex: 1 }}>
               <LayoutSider />
               <div
                 style={{
@@ -87,17 +87,17 @@ export function App() {
             </div>
             {/* A game that breaks keeps the header, so switching games recovers */}
             <ErrorBoundary FallbackComponent={GameError} resetKeys={[activeGame]}>
-              {activeGame === 'zzz' && (
+              {!home && activeGame === 'zzz' && (
                 <Suspense fallback={null}>
                   <ZzzApp />
                 </Suspense>
               )}
-              {activeGame === 'wuwa' && (
+              {!home && activeGame === 'wuwa' && (
                 <Suspense fallback={null}>
                   <WuwaApp />
                 </Suspense>
               )}
-              {activeGame === 'genshin' && (
+              {!home && activeGame === 'genshin' && (
                 <Suspense fallback={null}>
                   <GenshinApp />
                 </Suspense>

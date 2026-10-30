@@ -12,8 +12,8 @@ import {
 } from 'lib/games/games'
 import { useGameStore } from 'lib/games/gameStore'
 
-// The first page a new visitor sees: pick a game. Shown until a game has been picked once (gameStore.chosen); after
-// that the site opens on the last game, and the header's switcher changes it
+// The Home tab: a card per game. New visitors start here; it's also the first entry of the header's game switcher and
+// where the site logo leads (gameStore.home). The site reopens on whatever was showing last, Home included
 
 const ABOUT: Record<GameId, string> = {
   hsr: 'fribbels\' Star Rail optimizer: relic optimizer and scorer, character showcase, benchmarks and warp planner.',
