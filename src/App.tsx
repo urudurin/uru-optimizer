@@ -1,6 +1,7 @@
 import { MantineProvider } from '@mantine/core'
 import { ModalsProvider } from '@mantine/modals'
 import { Notifications } from '@mantine/notifications'
+import { GamePicker } from 'lib/games/GamePicker'
 import { useGameStore } from 'lib/games/gameStore'
 import { ConfirmModalProvider } from 'lib/interactions/confirmModal'
 import { checkForUpdatesNotification } from 'lib/interactions/notifications'
@@ -47,6 +48,7 @@ const GameError = ({ error }: FallbackProps) => (
 export function App() {
   const seedColor = useThemeStore((s) => s.seedColor)
   const activeGame = useGameStore((s) => s.activeGame)
+  const chosen = useGameStore((s) => s.chosen)
   const mantineTheme = useMemo(() => createMantineTheme(seedColor), [seedColor])
 
   useEffect(() => {
@@ -65,8 +67,9 @@ export function App() {
         <ConfirmModalProvider>
           <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
             <LayoutHeader />
+            {!chosen && <GamePicker />}
             {/* HSR stays mounted while another game is shown, so in-progress HSR state isn't lost */}
-            <div style={{ display: activeGame === 'hsr' ? 'flex' : 'none', flex: 1 }}>
+            <div style={{ display: chosen && activeGame === 'hsr' ? 'flex' : 'none', flex: 1 }}>
               <LayoutSider />
               <div
                 style={{

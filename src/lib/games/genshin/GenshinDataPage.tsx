@@ -26,6 +26,7 @@ import {
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import {
   backupFileName,
+  recordBackup,
   downloadTextFile,
 } from 'lib/games/shared/backup'
 import { parseJsonOrUndefined } from 'lib/games/shared/enka'
@@ -89,6 +90,7 @@ export function GenshinDataPage() {
   function handleSave() {
     const savedAt = todayString(new Date())
     downloadTextFile(backupFileName('genshin', savedAt), createGenshinBackup({ artifacts, characters }, savedAt))
+    recordBackup('genshin', savedAt)
   }
 
   function handleClear() {

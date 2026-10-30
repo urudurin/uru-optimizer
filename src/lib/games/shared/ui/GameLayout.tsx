@@ -46,10 +46,12 @@ type GameLayoutProps<K extends string> = {
   groups: GameNavGroup<K>[],
   active: K,
   onNavigate: (key: K) => void,
+  // Shown above every page, e.g. the backup reminder
+  notice?: ReactNode,
   children: ReactNode,
 }
 
-export function GameLayout<K extends string>({ gameName, tagline, groups, active, onNavigate, children }: GameLayoutProps<K>) {
+export function GameLayout<K extends string>({ gameName, tagline, groups, active, onNavigate, notice, children }: GameLayoutProps<K>) {
   const items = groups.flatMap((group) => group.items)
 
   return (
@@ -97,6 +99,7 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
 
       <main className={classes.main}>
         <div className={classes.mainInner}>
+          {notice}
           {/* A page that breaks shows its error here, keeping the sidebar and game switcher; picking a page clears it */}
           <ErrorBoundary FallbackComponent={PageError} resetKeys={[active]}>
             {children}

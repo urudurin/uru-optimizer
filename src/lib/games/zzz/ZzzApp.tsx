@@ -4,11 +4,13 @@ import {
   IconUpload,
   IconUser,
 } from '@tabler/icons-react'
+import { BackupReminder } from 'lib/games/shared/ui/BackupReminder'
 import {
   GameLayout,
   type GameNavGroup,
   useStoredPage,
 } from 'lib/games/shared/ui/GameLayout'
+import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import { ZzzAgentsPage } from 'lib/games/zzz/ZzzAgentsPage'
 import { ZzzDataPage } from 'lib/games/zzz/ZzzDataPage'
 import { ZzzDiscsPage } from 'lib/games/zzz/ZzzDiscsPage'
@@ -34,10 +36,18 @@ const GROUPS: GameNavGroup<ZzzPage>[] = [
 
 export function ZzzApp() {
   const [page, setPage] = useStoredPage<ZzzPage>('zzz-page', PAGES, 'optimizer')
+  const hasData = useZzzStore((s) => s.discs.length > 0 || s.builds.length > 0)
   const goToImport = () => setPage('data')
 
   return (
-    <GameLayout gameName='Zenless Zone Zero' tagline='Disc stats and optimizer' groups={GROUPS} active={page} onNavigate={setPage}>
+    <GameLayout
+      gameName='Zenless Zone Zero'
+      tagline='Disc stats and optimizer'
+      groups={GROUPS}
+      active={page}
+      onNavigate={setPage}
+      notice={page !== 'data' && <BackupReminder game='zzz' hasData={hasData} onSave={() => setPage('data')} />}
+    >
       {page === 'agents' && <ZzzAgentsPage onImport={goToImport} />}
       {page === 'optimizer' && <ZzzOptimizerPanel onImport={goToImport} />}
       {page === 'discs' && <ZzzDiscsPage onImport={goToImport} />}

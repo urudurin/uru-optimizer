@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react'
 import {
   backupFileName,
+  recordBackup,
   downloadTextFile,
 } from 'lib/games/shared/backup'
 import { formatNumber } from 'lib/games/shared/format'
@@ -77,6 +78,7 @@ export function ZzzDataPage() {
   function handleSave() {
     const savedAt = todayString(new Date())
     downloadTextFile(backupFileName('zzz', savedAt), createZzzBackup({ discs, builds }, savedAt))
+    recordBackup('zzz', savedAt)
   }
 
   function handleClear() {

@@ -7,6 +7,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { SavedSessionKeys } from 'lib/constants/constantsSession'
+import { useGameStore } from 'lib/games/gameStore'
 import { GameSwitcher } from 'lib/games/GameSwitcher'
 import {
   OpenCloseIDs,
@@ -27,6 +28,7 @@ export const HEADER_HEIGHT = 48
 
 export function LayoutHeader() {
   const { isOpen: isOpenMenuSidebar, toggle: toggleMenuSidebar } = useOpenClose(OpenCloseIDs.MENU_SIDEBAR)
+  const activeGame = useGameStore((s) => s.activeGame)
 
   const handleToggleSidebar = () => {
     toggleMenuSidebar()
@@ -67,9 +69,12 @@ export function LayoutHeader() {
         </Flex>
         <Flex align='center' gap={6}>
           <GameSwitcher />
-          <a href='https://discord.gg/rDmB4Un7qg' target='_blank' rel='noreferrer'>
-            <img src={Assets.getDiscord()} style={{ height: 32, borderRadius: 5, display: 'block' }} />
-          </a>
+          {/* fribbels' Discord is for the HSR optimizer only, so it isn't shown for the other games */}
+          {activeGame === 'hsr' && (
+            <a href='https://discord.gg/rDmB4Un7qg' target='_blank' rel='noreferrer'>
+              <img src={Assets.getDiscord()} style={{ height: 32, borderRadius: 5, display: 'block' }} />
+            </a>
+          )}
           <LanguageSelector />
         </Flex>
       </Flex>

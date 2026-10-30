@@ -8,6 +8,8 @@ import { GenshinArtifactsPage } from 'lib/games/genshin/GenshinArtifactsPage'
 import { GenshinCharactersPage } from 'lib/games/genshin/GenshinCharactersPage'
 import { GenshinDataPage } from 'lib/games/genshin/GenshinDataPage'
 import { GenshinOptimizerPage } from 'lib/games/genshin/GenshinOptimizerPage'
+import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
+import { BackupReminder } from 'lib/games/shared/ui/BackupReminder'
 import {
   GameLayout,
   type GameNavGroup,
@@ -34,10 +36,18 @@ const GROUPS: GameNavGroup<GenshinPage>[] = [
 
 export function GenshinApp() {
   const [page, setPage] = useStoredPage<GenshinPage>('genshin-page', PAGES, 'optimizer')
+  const hasData = useGenshinStore((s) => s.artifacts.length > 0 || s.characters.length > 0)
   const goToImport = () => setPage('data')
 
   return (
-    <GameLayout gameName='Genshin Impact' tagline='Artifact stats and optimizer' groups={GROUPS} active={page} onNavigate={setPage}>
+    <GameLayout
+      gameName='Genshin Impact'
+      tagline='Artifact stats and optimizer'
+      groups={GROUPS}
+      active={page}
+      onNavigate={setPage}
+      notice={page !== 'data' && <BackupReminder game='genshin' hasData={hasData} onSave={() => setPage('data')} />}
+    >
       {page === 'optimizer' && <GenshinOptimizerPage onImport={goToImport} />}
       {page === 'characters' && <GenshinCharactersPage onImport={goToImport} />}
       {page === 'artifacts' && <GenshinArtifactsPage onImport={goToImport} />}
