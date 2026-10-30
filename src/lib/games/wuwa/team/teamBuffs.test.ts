@@ -40,6 +40,19 @@ describe('wuwaTeamBuffsFor', () => {
     expect(off.bonus).toEqual({})
   })
 
+  it('gives Outro DMG Amplified for every hit, an element or a kind of hit, and Fusion RES ignore', () => {
+    const team = { characters: [...data.characters, resonator('sanhua'), resonator('yinlin'), resonator('changli'), resonator('lupa')], echoes: [] }
+    // Verina amplifies everything, Sanhua Basic Attacks; Yinlin's Electro part counts for Hsin, Changli's Fusion part doesn't
+    expect(wuwaTeamBuffsFor(hsin, { teammates: ['verina', 'sanhua'], settings: {} }, team).amplify).toEqual({ all: 15, basic: 38 })
+    expect(wuwaTeamBuffsFor(hsin, { teammates: ['yinlin', 'changli'], settings: {} }, team).amplify).toEqual({ all: 20, liberation: 50 })
+    // Verina's ATK still goes to the stat calculator
+    expect(wuwaTeamBuffsFor(hsin, { teammates: ['verina'], settings: {} }, team).bonus).toEqual({ atkPct: 20 })
+    // Lupa's Glory only for Fusion Resonators
+    const changli = resonator('changli')
+    expect(wuwaTeamBuffsFor(changli, { teammates: ['lupa'], settings: {} }, team).resShred).toBe(15)
+    expect(wuwaTeamBuffsFor(hsin, { teammates: ['lupa'], settings: {} }, team).resShred).toBe(0)
+  })
+
   it('a team bonus raises the calculated stats', () => {
     const alone = computeWuwaStats(hsin, []).stats
     const buffed = computeWuwaStats(hsin, [], { critRate: 12.5 }).stats

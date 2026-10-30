@@ -45,9 +45,14 @@ const idByName = new Map(Object.values(data.echoes).map((echo) => [normalise(ech
 
 // What the main slot gives, from sentences like "The Resonator with this Echo equipped in the main slot gains {1} Fusion
 // DMG Bonus and {2} Resonance Skill DMG Bonus." Only the plain part counts: text after ", and additionally" (conditional
-// extras) is cut, and sentences that only apply to named Resonators ("When equipped in the main slot by Aemeath...") are
-// skipped. Keys are the stat calculator's, plus echoDmg (Echo Skill DMG Bonus, which only damage uses)
+// extras) is cut. Sentences that only apply to named Resonators ("When equipped in the main slot by Aemeath, it grants
+// {1} ...", "When Lucy or Rebecca has this Echo equipped in the main slot, their Crit. Rate is increased by 15%") go to
+// mainSlotFor by name. Keys are the stat calculator's, plus echoDmg and coordinatedDmg (Echo Skill and Coordinated
+// Attack DMG Bonus, which only damage uses)
 const MAIN_SLOT_STATS = [
+  [/Coordinated Attack DMG/, 'coordinatedDmg'],
+  [/Crit\.? Rate/, 'critRate'],
+  [/Crit\.? DMG/, 'critDmg'],
   [/Glacio DMG Bonus/, 'glacioDmg'],
   [/Fusion DMG Bonus/, 'fusionDmg'],
   [/Electro DMG Bonus/, 'electroDmg'],
@@ -63,19 +68,37 @@ const MAIN_SLOT_STATS = [
   [/Healing Bonus/, 'healingBonus'],
 ]
 
+// Each value ({1} or a written-out 15%) and its stat: the words after it, or before it when those name none ("has their
+// Coordinated Attack DMG increased by {1}")
+function sentenceStats(sentence, values, into) {
+  const plain = sentence.split(', and additionally')[0]
+  let before = 0
+  for (const match of plain.matchAll(/(?:\{(\d+)\}|(\d+(?:\.\d+)?)%)([^{%]*)/g)) {
+    const raw = match[1] !== undefined ? String(values[Number(match[1])] ?? '') : `${match[2]}%`
+    const value = /^([\d.]+)%$/.exec(raw)
+    const after = match[3]
+    const stat = MAIN_SLOT_STATS.find(([pattern]) => pattern.test(after))?.[1]
+      ?? MAIN_SLOT_STATS.find(([pattern]) => pattern.test(plain.slice(before, match.index)))?.[1]
+    before = match.index + match[0].length - after.length
+    if (value && stat) into[stat] = (into[stat] ?? 0) + Number(value[1])
+  }
+}
+
 function mainSlotBonus(description, values) {
   const bonus = {}
-  for (const sentence of description.split(/\n|(?<=\.)\s+/)) {
-    if (!/equipped in (the|their) main slot gains?/i.test(sentence) || sentence.trim().startsWith('When ')) continue
-    const plain = sentence.split(', and additionally')[0]
-    // "{1} Fusion DMG Bonus": each placeholder and the words after it, up to the next placeholder
-    for (const match of plain.matchAll(/\{(\d+)\}([^{]*)/g)) {
-      const value = /^([\d.]+)%$/.exec(String(values[Number(match[1])] ?? ''))
-      const stat = MAIN_SLOT_STATS.find(([pattern]) => pattern.test(match[2]))?.[1]
-      if (value && stat) bonus[stat] = (bonus[stat] ?? 0) + Number(value[1])
+  const byName = {}
+  // Sentences end at a full stop, but not the one in "Crit. Rate"
+  for (const sentence of description.split(/\n|(?<=\.)(?<!Crit\.)\s+/)) {
+    const named = /^When (?:equipped in the main slot by ([^,]+),|(.+?) has this Echo equipped in the main slot,)/.exec(sentence.trim())
+    if (named) {
+      for (const name of (named[1] ?? named[2]).split(/,? or |, /)) sentenceStats(sentence, values, byName[name.trim()] ??= {})
+      continue
     }
+    if (!/equipped in (the|their) main slot (gains?|has their)/i.test(sentence) || sentence.trim().startsWith('When ')) continue
+    sentenceStats(sentence, values, bonus)
   }
-  return bonus
+  for (const [name, stats] of Object.entries(byName)) if (Object.keys(stats).length === 0) delete byName[name]
+  return { bonus, byName }
 }
 
 const echoes = {}
@@ -108,9 +131,11 @@ for (const item of read('BinData/phantom/phantomitem.json')) {
     })
   })
   const description = text.get(skill.DescriptionEx) ?? ''
-  const mainSlot = mainSlotBonus(description, values)
-  if (hits.length === 0 && Object.keys(mainSlot).length === 0) continue
-  echoes[id] = { name, description, values, hits, ...(Object.keys(mainSlot).length > 0 ? { mainSlot } : {}) }
+  const { bonus: mainSlot, byName: mainSlotFor } = mainSlotBonus(description, values)
+  const hasMain = Object.keys(mainSlot).length > 0
+  const hasNamed = Object.keys(mainSlotFor).length > 0
+  if (hits.length === 0 && !hasMain && !hasNamed) continue
+  echoes[id] = { name, description, values, hits, ...(hasMain ? { mainSlot } : {}), ...(hasNamed ? { mainSlotFor } : {}) }
 }
 
 const output = {

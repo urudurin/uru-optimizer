@@ -12,6 +12,7 @@ import {
 } from '@tabler/icons-react'
 import {
   backupFileName,
+  recordBackup,
   downloadTextFile,
 } from 'lib/games/shared/backup'
 import { formatNumber } from 'lib/games/shared/format'
@@ -59,6 +60,7 @@ export function WuwaDataPage() {
   function handleSave() {
     const savedAt = todayString(new Date())
     downloadTextFile(backupFileName('wuwa', savedAt), createWuwaBackup({ echoes, characters, teams, priority }, savedAt))
+    recordBackup('wuwa', savedAt)
   }
 
   function handleClear() {

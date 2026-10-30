@@ -8,7 +8,7 @@
       "Textmaps/en/multi_text/MultiText.json"
     ],
     "extractedBy": "src/scripts/wuwa/extractEchoSkills.mjs",
-    "extractedOn": "2026-10-27",
+    "extractedOn": "2026-10-30",
     "note": "Echo Skill damage hits at the highest rank: multiplier (percent), scaling stat and element. Personal, non-commercial use."
   },
   "echoes": {
@@ -453,7 +453,8 @@
       "name": "Hecate",
       "description": "Summon 3 twirling Crescent Servants around you. Crescent Servants attack enemies with their spinning blades, dealing {0} Havoc DMG. Triggering a Counterattack with the Echo attacks resets the Crescent Servants' duration.\nThe Resonator with this Echo equipped in the main slot has their Coordinated Attack DMG increased by {1}.\nCD: {2}s.",
       "values": ["45.59%", "40.00%", "20"],
-      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 45.59, "stat": "atk", "element": "havoc" }]
+      "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 45.59, "stat": "atk", "element": "havoc" }],
+      "mainSlot": { "coordinatedDmg": 40 }
     },
     "hocus-pocus": {
       "name": "Hocus Pocus",
@@ -817,7 +818,7 @@
       "description": "Summon Nightmare: Lampylumen Myriad and attack surrounding enemies, dealing {0} Glacio DMG.\nThe Resonator with this Echo equipped in their main slot gains {1} Glacio DMG Bonus and deals {2} more Coordinated Attack DMG.\nCD: {3}s.",
       "values": ["273.60%", "12.00%", "30.00%", "20"],
       "hits": [{ "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "glacio" }],
-      "mainSlot": { "glacioDmg": 12 }
+      "mainSlot": { "glacioDmg": 12, "coordinatedDmg": 30 }
     },
     "nightmare-mourning-aix": {
       "name": "Nightmare: Mourning Aix",
@@ -1092,7 +1093,8 @@
       "hits": [
         { "label": "Hit {0}", "index": 0, "multiplier": 68.4, "stat": "atk", "element": "fusion" },
         { "label": "Hit {1}", "index": 1, "multiplier": 205.2, "stat": "atk", "element": "fusion" }
-      ]
+      ],
+      "mainSlotFor": { "Aemeath": { "libDmg": 25 } }
     },
     "phantom-skywatch-lancer": {
       "name": "Phantom: Skywatch Lancer",
@@ -1229,7 +1231,8 @@
         { "label": "Hit {0}", "index": 0, "multiplier": 273.6, "stat": "atk", "element": "spectro" },
         { "label": "Hit {1}", "index": 1, "multiplier": 17.1, "stat": "atk", "element": "electro" },
         { "label": "Hit {2}", "index": 2, "multiplier": 10.26, "stat": "atk", "element": null }
-      ]
+      ],
+      "mainSlotFor": { "Lucy": { "critRate": 15 }, "Rebecca": { "critRate": 15 } }
     },
     "reminiscence-suhsin-the-inevitable": {
       "name": "Reminiscence: Suhsin the Inevitable",
@@ -1320,7 +1323,8 @@
       "hits": [
         { "label": "Hit {0}", "index": 0, "multiplier": 68.4, "stat": "atk", "element": "fusion" },
         { "label": "Hit {1}", "index": 1, "multiplier": 205.2, "stat": "atk", "element": "fusion" }
-      ]
+      ],
+      "mainSlotFor": { "Aemeath": { "libDmg": 25 } }
     },
     "skywatch-lancer": {
       "name": "Skywatch Lancer",

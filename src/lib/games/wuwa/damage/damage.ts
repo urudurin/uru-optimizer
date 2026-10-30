@@ -1,3 +1,4 @@
+import { characterName } from 'lib/games/wuwa/data/gameData'
 import echoSkillData from 'lib/games/wuwa/data/generated/echoSkills.json'
 import skillData from 'lib/games/wuwa/data/generated/skills.json'
 import type { WuwaStats } from 'lib/games/wuwa/stats/computeStats'
@@ -16,8 +17,9 @@ import type { WuwaStats } from 'lib/games/wuwa/stats/computeStats'
 // echo's highest rank, and only take the element DMG Bonus when the echo's element is the Resonator's.
 // DMG Amplified adds up per hit: the enemy card's (for everything) plus the kit's, for everything or one kind of hit.
 // A rotation is a count of each damage line. Lines sum per type and scaling stat, so the rotation's damage is, per
-// group, the summed multipliers times the stat, times the rest. Not yet: Echo Skill damage, Resonators' own buffs from
-// their kit, and team DEF ignore or RES shred (set them on the enemy by hand). Personal, non-commercial use.
+// group, the summed multipliers times the stat, times the rest. Coordinated Attacks (lines named "... Coordinated
+// Attack ...": Verina's, Yuanwu's Thunder Wedge) keep their type and also take Coordinated Attack DMG Bonus
+// (DamageSetup.coordinatedDmg, from main echoes like Hecate). Personal, non-commercial use.
 
 export type ScalingStat = 'atk' | 'hp' | 'def'
 export type HitType = 'basic' | 'heavy' | 'skill' | 'liberation' | 'intro' | 'outro' | 'echo' | 'none'
@@ -79,6 +81,12 @@ export type DamageSetup = {
   typeBonus?: Partial<Record<HitType, number>>,
   // Raises the multiplier of some lines (Jinhsi's Intro +50%), by section or label start, as a fraction
   lineScale?: LineScale[],
+  // Coordinated Attack DMG Bonus, in percent, for lines named Coordinated Attack
+  coordinatedDmg?: number,
+}
+
+export function isCoordinatedAttack(hit: { label: string }): boolean {
+  return hit.label.includes('Coordinated Attack')
 }
 
 export type LineScale = { section?: Section, labelStart?: string, scale: number }
@@ -101,6 +109,8 @@ type EchoSkillFile = {
       description: string,
       values: string[],
       mainSlot?: Record<string, number>,
+      // Main-slot bonuses for named Resonators only (Aemeath's Sigillum), by Resonator name
+      mainSlotFor?: Record<string, Record<string, number>>,
       hits: { index: number, multiplier: number, stat: string, element: string | null }[],
     }
   >,
@@ -121,11 +131,18 @@ export function echoSkillText(echoId: string): string {
   return echo.description.replace(/\{(\d+)\}/g, (token, i: string) => echo.values[Number(i)] ?? token)
 }
 
-// What an echo gives in the main slot (stats for the calculator, and Echo Skill DMG Bonus for the damage), from the
-// "equipped in the main slot gains..." sentence of its skill text
-export function mainEchoBonus(echoId: string | undefined): { stats: Partial<Record<string, number>>, echoDmg: number } {
-  const { echoDmg = 0, ...stats } = (echoId ? ECHO_SKILLS[echoId]?.mainSlot : undefined) ?? {}
-  return { stats, echoDmg }
+// What an echo gives in the main slot (stats for the calculator, and Echo Skill and Coordinated Attack DMG Bonus for the
+// damage), from the "equipped in the main slot gains..." sentence of its skill text, plus what it gives this Resonator
+// by name ("When equipped in the main slot by Aemeath...")
+export function mainEchoBonus(
+  echoId: string | undefined,
+  charId?: string,
+): { stats: Partial<Record<string, number>>, echoDmg: number, coordinatedDmg: number } {
+  const echo = echoId ? ECHO_SKILLS[echoId] : undefined
+  const all: Record<string, number> = { ...echo?.mainSlot }
+  for (const [stat, value] of Object.entries((charId && echo?.mainSlotFor?.[characterName(charId)]) || {})) all[stat] = (all[stat] ?? 0) + value
+  const { echoDmg = 0, coordinatedDmg = 0, ...stats } = all
+  return { stats, echoDmg, coordinatedDmg }
 }
 
 export function hasEchoSkill(echoId: string): boolean {
@@ -228,10 +245,11 @@ function prepare(setup: DamageSetup): Prepared {
   for (const hit of characterHits(setup.charId)) {
     const count = rotation.counts[hit.key] ?? 0
     if (count <= 0) continue
+    const coordinated = isCoordinatedAttack(hit)
     for (const [type, stat, values] of hit.terms) {
-      const key = `${type}:${stat}`
-      const group = groups.get(key)
-        ?? { bonus: TYPE_BONUS[type], stat, multiplier: 0, elemental: true, extra: setup.typeBonus?.[type] ?? 0, amplify: amplifyFor(type) }
+      const key = `${type}:${stat}:${coordinated}`
+      const extra = (setup.typeBonus?.[type] ?? 0) + (coordinated ? setup.coordinatedDmg ?? 0 : 0)
+      const group = groups.get(key) ?? { bonus: TYPE_BONUS[type], stat, multiplier: 0, elemental: true, extra, amplify: amplifyFor(type) }
       group.multiplier += count * (values[levelIndex(rotation.skillLevel)] ?? 0) * lineScaleFor(hit, setup.lineScale)
       groups.set(key, group)
     }

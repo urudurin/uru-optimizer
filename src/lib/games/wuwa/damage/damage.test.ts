@@ -115,14 +115,43 @@ describe('WuWa damage', () => {
     expect(migrateRotationCounts('hsin', { 'normal:0': 3, 'skill:0': 1 })).toEqual({ 'normal:Basic Attack - Answering Form Stage 1 DMG': 3, 'skill:0': 1 })
   })
 
-  it('reads what an echo gives in the main slot, leaving out conditional and character-only parts', () => {
-    expect(mainEchoBonus('nightmare-inferno-rider')).toEqual({ stats: { fusionDmg: 12, skillDmg: 12 }, echoDmg: 0 })
-    expect(mainEchoBonus('corrosaurus')).toEqual({ stats: { fusionDmg: 12 }, echoDmg: 20 })
+  it('reads what an echo gives in the main slot, leaving out conditional parts, and named Resonators\' parts for them only', () => {
+    expect(mainEchoBonus('nightmare-inferno-rider')).toEqual({ stats: { fusionDmg: 12, skillDmg: 12 }, echoDmg: 0, coordinatedDmg: 0 })
+    expect(mainEchoBonus('corrosaurus')).toEqual({ stats: { fusionDmg: 12 }, echoDmg: 20, coordinatedDmg: 0 })
     // "additionally gains 10% ... when inflicting Tune Strain" is conditional
     expect(mainEchoBonus('calamity-effigy').stats).toEqual({ aeroDmg: 10 })
-    // Only for Aemeath
+    // Only for Aemeath; Adam Smasher's Crit Rate only for Lucy and Rebecca
     expect(mainEchoBonus('phantom-sigillum').stats).toEqual({})
-    expect(mainEchoBonus(undefined)).toEqual({ stats: {}, echoDmg: 0 })
+    expect(mainEchoBonus('phantom-sigillum', 'aemeath').stats).toEqual({ libDmg: 25 })
+    expect(mainEchoBonus('reminiscence-nightmare-adam-smasher', 'lucy').stats).toEqual({ critRate: 15 })
+    expect(mainEchoBonus('reminiscence-nightmare-adam-smasher', 'hsin').stats).toEqual({})
+    // Coordinated Attack DMG stays out of the stats
+    expect(mainEchoBonus('hecate')).toEqual({ stats: {}, echoDmg: 0, coordinatedDmg: 40 })
+    expect(mainEchoBonus(undefined)).toEqual({ stats: {}, echoDmg: 0, coordinatedDmg: 0 })
+  })
+
+  it('adds Coordinated Attack DMG to Coordinated Attack lines only', () => {
+    const coordinated = hit('verina', 'Coordinated Attack DMG')
+    const other = characterHits('verina').find((h) => h.section === 'liberation' && !h.label.includes('Coordinated'))!
+    const one = (key: string): DamageSetup => ({
+      charId: 'verina',
+      characterLevel: 90,
+      rotation: { counts: { [key]: 1 }, skillLevel: 10 },
+      enemy: DEFAULT_ENEMY,
+    })
+    const base = rotationDamage(stats, one(coordinated.key))
+    // Liberation DMG 20% + element 40%, then +40% Coordinated Attack DMG
+    expect(rotationDamage(stats, { ...one(coordinated.key), coordinatedDmg: 40 }) / base).toBeCloseTo((1 + 1) / (1 + 0.6), 6)
+    expect(rotationDamage(stats, { ...one(other.key), coordinatedDmg: 40 })).toBeCloseTo(rotationDamage(stats, one(other.key)), 6)
+  })
+
+  it('resolves the newer kits: amplify by kind, RES ignore and line boosts', () => {
+    expect(resolveWuwaCombat('galbrena', 0, {}).amplify).toMatchObject({ basic: 20, liberation: 20 })
+    expect(resolveWuwaCombat('galbrena', 0, {}).amplify.echo).toBeUndefined()
+    expect(resolveWuwaCombat('lupa', 0, {}).resShred).toBe(15)
+    expect(resolveWuwaCombat('lupa', 0, { 'lupa-glory': 1 }).resShred).toBe(6)
+    expect(resolveWuwaCombat('lingyang', 0, {}).lineScale).toEqual([{ section: 'intro', scale: 0.5 }])
+    expect(resolveWuwaCombat('xiangli-yao', 0, {}).bonus).toEqual({ electroDmg: 20 })
   })
 
   it('adds Echo Skill DMG Bonus to Echo Skill hits only, and raises some lines\' multipliers', () => {

@@ -285,7 +285,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const kit = resolveWuwaCombat(character.charId, character.sequence, combatSettings)
   // The main echo: the one the rotation picked, or the one worn now. Its main-slot buff counts like the kit's
   const wornEchoes = character.echoIds.flatMap((id) => echoes.find((e) => e.id === id) ?? [])
-  const mainEcho = mainEchoBonus(rotation.echo?.id ?? wornEchoes[0]?.defId)
+  const mainEcho = mainEchoBonus(rotation.echo?.id ?? wornEchoes[0]?.defId, character.charId)
   const combatBonus = { ...teamResult.bonus }
   if (byDamage) {
     for (const [stat, value] of [...Object.entries(kit.bonus), ...Object.entries(mainEcho.stats)] as [keyof typeof combatBonus, number][]) {
@@ -296,10 +296,17 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     charId: character.charId,
     characterLevel: character.level,
     rotation,
-    enemy: { ...enemy, defIgnore: enemy.defIgnore + kit.defIgnore },
+    enemy: { ...enemy, defIgnore: enemy.defIgnore + kit.defIgnore + teamResult.defIgnore, resShred: enemy.resShred + kit.resShred + teamResult.resShred },
     element: CHARACTER_INFO[character.charId]?.element ?? undefined,
-    amplify: kit.amplify,
+    // The kit's and the team's DMG Amplified add up per kind
+    amplify: Object.fromEntries(
+      [...new Set([...Object.keys(kit.amplify), ...Object.keys(teamResult.amplify)])].map((kind) => [
+        kind,
+        (kit.amplify[kind as keyof typeof kit.amplify] ?? 0) + (teamResult.amplify[kind as keyof typeof teamResult.amplify] ?? 0),
+      ]),
+    ),
     typeBonus: { echo: mainEcho.echoDmg },
+    coordinatedDmg: mainEcho.coordinatedDmg,
     lineScale: kit.lineScale,
   }
   const target: EchoTarget = byDamage ? { kind: 'damage', setup: damageSetup } : wuwaTarget(targetValue)

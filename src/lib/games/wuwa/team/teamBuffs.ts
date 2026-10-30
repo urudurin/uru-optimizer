@@ -1,3 +1,4 @@
+import type { HitType } from 'lib/games/wuwa/damage/damage'
 import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
 import { characterName } from 'lib/games/wuwa/data/gameData'
 import {
@@ -6,6 +7,7 @@ import {
   toDisplayStats,
 } from 'lib/games/wuwa/stats/computeStats'
 import {
+  OUTRO_BUFFS,
   RESONATOR_BUFFS,
   type WuwaBuffSetting,
   type WuwaTeamBuff,
@@ -36,15 +38,23 @@ export type WuwaAppliedBuff = {
   reason?: string,
 }
 
-export type WuwaTeamResult = { bonus: Bonus, applied: WuwaAppliedBuff[] }
+export type WuwaTeamResult = {
+  bonus: Bonus,
+  // DMG Amplified (for every hit or one kind), DEF ignore and RES shred, in percent, for rotation damage
+  amplify: Partial<Record<HitType | 'all', number>>,
+  defIgnore: number,
+  resShred: number,
+  applied: WuwaAppliedBuff[],
+}
 
-export const NO_WUWA_TEAM: WuwaTeamResult = { bonus: {}, applied: [] }
+export const NO_WUWA_TEAM: WuwaTeamResult = { bonus: {}, amplify: {}, defIgnore: 0, resShred: 0, applied: [] }
 
 export function settingKey(buff: WuwaTeamBuff, giverId: string): string {
   return `${giverId}:${buff.id}`
 }
 
 function defaultSetting(buff: WuwaTeamBuff): WuwaBuffSetting {
+  if (buff.offByDefault) return buff.toggle?.kind === 'stacks' ? 0 : false
   return buff.toggle?.kind === 'stacks' ? buff.toggle.max : true
 }
 
@@ -62,7 +72,7 @@ export function wuwaTeamBuffsFor(
     const worn = giver.echoIds.flatMap((echoId) => (echoId ? echoById.get(echoId) ?? [] : []))
     // As the overview screen shows them (Energy Regen 250 = 250%)
     const giverStats = toDisplayStats(computeWuwaStats(giver, worn).stats)
-    for (const buff of RESONATOR_BUFFS[id] ?? []) {
+    for (const buff of [...(RESONATOR_BUFFS[id] ?? []), ...(OUTRO_BUFFS[id] ?? [])]) {
       const key = settingKey(buff, id)
       const setting = setup.settings[key] ?? defaultSetting(buff)
       const base = { buff, key, sourceName: characterName(id), giver, setting }
@@ -78,7 +88,17 @@ export function wuwaTeamBuffsFor(
       applied.push(value > 0 ? { ...base, value, counted: true } : { ...base, value: 0, counted: false, reason: 'Doesn\'t apply' })
     }
   }
-  const bonus: Bonus = {}
-  for (const entry of applied) if (entry.counted) bonus[entry.buff.stat] = (bonus[entry.buff.stat] ?? 0) + entry.value
-  return { bonus, applied }
+  const result: WuwaTeamResult = { ...NO_WUWA_TEAM, bonus: {}, amplify: {}, applied }
+  for (const { buff, value, counted } of applied) {
+    if (!counted) continue
+    if (buff.stat === 'defIgnore' || buff.stat === 'resShred') result[buff.stat] += value
+    else if (buff.stat.startsWith('amplify:')) {
+      const kind = buff.stat.slice('amplify:'.length) as HitType | 'all'
+      result.amplify[kind] = (result.amplify[kind] ?? 0) + value
+    } else {
+      const stat = buff.stat as keyof Bonus
+      result.bonus[stat] = (result.bonus[stat] ?? 0) + value
+    }
+  }
+  return result
 }

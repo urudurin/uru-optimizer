@@ -10,9 +10,9 @@ import type { Bonus } from 'lib/games/wuwa/stats/computeStats'
 // Each effect gives
 //   - bonus: stat bonuses (ATK%, element DMG, Crit DMG...) for the stat calculator, like a team bonus
 //   - amplify: DMG Amplified for every hit ('all') or one kind (Liberation DMG Amplified...)
-//   - defIgnore: DEF ignored, added to the enemy card's
-// Only the optimizer counts them, and only when ranking by rotation damage. Phase 1: the Resonators in the user's save
-// and a few common damage dealers. Personal, non-commercial use.
+//   - defIgnore / resShred: DEF ignored and RES ignored, added to the enemy card's
+// Only the optimizer counts them, and only when ranking by rotation damage. The Resonators in the user's save and the
+// common damage dealers. Personal, non-commercial use.
 
 export type WuwaEffectToggle = { kind: 'switch', label: string } | { kind: 'stacks', label: string, max: number }
 
@@ -28,6 +28,7 @@ export type WuwaCombatEffect = {
   bonus?: (context: WuwaCombatContext) => Bonus,
   amplify?: (context: WuwaCombatContext) => Partial<Record<HitType | 'all', number>>,
   defIgnore?: number,
+  resShred?: (context: WuwaCombatContext) => number,
   // Raises some lines' multipliers (Jinhsi's Intro, Suoming's Unfurled Canopy)
   lineScale?: (context: WuwaCombatContext) => LineScale[],
   confidence: 'confirmed' | 'sourced' | 'unverified',
@@ -156,6 +157,139 @@ export const KIT_EFFECTS: Record<string, WuwaCombatEffect[]> = {
     },
     confidence: 'sourced',
   }],
+  'encore': [{
+    id: 'encore-woolies',
+    label: 'Woolies Cheer Dance: Fusion DMG +10% for 10s after Flaming Woolies or Cosmos - Rampage',
+    toggle: { kind: 'switch', label: 'After her Resonance Skill' },
+    bonus: () => ({ fusionDmg: 10 }),
+    confidence: 'sourced',
+  }],
+  'calcharo': [{
+    id: 'calcharo-bloodshed',
+    label: 'Bloodshed Awaken: Resonance Liberation DMG +10% for 15s after Heavy Attack Mercy',
+    toggle: { kind: 'switch', label: 'After Mercy' },
+    bonus: () => ({ libDmg: 10 }),
+    confidence: 'sourced',
+  }],
+  'yinlin': [
+    {
+      id: 'yinlin-pain-immersion',
+      label: 'Pain Immersion: Crit Rate +15% for 5s after Magnetic Roar',
+      toggle: { kind: 'switch', label: 'After Magnetic Roar' },
+      bonus: () => ({ critRate: 15 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'yinlin-deadly-focus',
+      label: 'Deadly Focus: ATK +10% for 4s after Lightning Execution hits a target with Sinner\'s Mark',
+      toggle: { kind: 'switch', label: 'After Lightning Execution' },
+      bonus: () => ({ atkPct: 10 }),
+      confidence: 'sourced',
+    },
+  ],
+  'xiangli-yao': [{
+    id: 'xiangli-yao-knowing',
+    label: 'Knowing: Electro DMG +5% per Resonance Skill cast, up to 4',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 4 },
+    bonus: ({ setting }) => ({ electroDmg: 5 * stacks(setting) }),
+    confidence: 'sourced',
+  }],
+  'zhezhi': [{
+    id: 'zhezhi-calligrapher',
+    label: 'Calligrapher\'s Touch: ATK +6% per Stroke of Genius or Creation\'s Zenith, up to 3',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 3 },
+    bonus: ({ setting }) => ({ atkPct: 6 * stacks(setting) }),
+    confidence: 'sourced',
+  }],
+  'roccia': [{
+    id: 'roccia-immersive',
+    label: 'Immersive Performance: ATK +20% for 12s after her Resonance Skill or Heavy Attack',
+    toggle: { kind: 'switch', label: 'After Skill or Heavy Attack' },
+    bonus: () => ({ atkPct: 20 }),
+    confidence: 'sourced',
+  }],
+  'brant': [{
+    id: 'brant-trial',
+    label: 'Trial by Fire and Tide: Fusion DMG +15%',
+    bonus: () => ({ fusionDmg: 15 }),
+    confidence: 'sourced',
+  }],
+  'cantarella': [{
+    id: 'cantarella-poison',
+    label: '"Poison": Havoc DMG +6% per Echo Skill cast, up to 2',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 2 },
+    bonus: ({ setting }) => ({ havocDmg: 6 * stacks(setting) }),
+    confidence: 'sourced',
+  }],
+  'phrolova': [{
+    id: 'phrolova-octet',
+    label: 'Octet: Crit DMG +2.5% per Aftersound stack (10 on entering battle), +1% per stack past the max, up to +100% more',
+    toggle: { kind: 'stacks', label: 'Stacks past 10 (0-100)', max: 100 },
+    bonus: ({ setting }) => ({ critDmg: 25 + stacks(setting) }),
+    confidence: 'sourced',
+  }],
+  'galbrena': [{
+    id: 'galbrena-fated-end',
+    label: 'Oathbound Hunt: DMG Amplified 5% per Fated End stack on the target, up to 4 (not Echo Skills)',
+    toggle: { kind: 'stacks', label: 'Fated End stacks', max: 4 },
+    amplify: ({ setting }) => {
+      const value = 5 * stacks(setting)
+      return { basic: value, heavy: value, skill: value, liberation: value, intro: value, outro: value }
+    },
+    confidence: 'sourced',
+  }],
+  'chisa': [{
+    id: 'chisa-all-ends-here',
+    label: 'All Ends Here: Havoc DMG +20% for 12s after her Intro Skill or Resonance Liberation',
+    toggle: { kind: 'switch', label: 'After Intro or Liberation' },
+    bonus: () => ({ havocDmg: 20 }),
+    confidence: 'sourced',
+  }],
+  'lingyang': [{
+    id: 'lingyang-lions-pride',
+    label: 'Lion\'s Pride: Intro Skill Lion Awakens DMG +50%',
+    lineScale: () => [{ section: 'intro', scale: 0.5 }],
+    confidence: 'sourced',
+  }],
+  'qiuyuan': [{
+    id: 'qiuyuan-flowing-panacea',
+    label: 'Drink Away Woes Age-Old: ATK +10% for 20s from Flowing Panacea',
+    toggle: { kind: 'switch', label: 'Flowing Panacea' },
+    bonus: () => ({ atkPct: 10 }),
+    confidence: 'sourced',
+  }],
+  'rebecca': [{
+    id: 'rebecca-tag',
+    label: 'Tag, You\'re It!: ATK +10% per stack, up to 2',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 2 },
+    bonus: ({ setting }) => ({ atkPct: 10 * stacks(setting) }),
+    confidence: 'sourced',
+  }],
+  'aemeath': [{
+    id: 'aemeath-between-the-stars',
+    label: 'Between the Stars: Crit DMG +20% per teammate inflicting Tune Rupture, up to 3 (Resonance Mode - Tune Rupture)',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 3 },
+    offByDefault: true,
+    bonus: ({ setting }) => ({ critDmg: 20 * stacks(setting) }),
+    confidence: 'sourced',
+  }],
+  'yangyang-xuanling': [{
+    id: 'xuanling-unbroken-vow',
+    label: 'Unbroken Vow: her DMG Amplified 10% per Havoc Bane stack up to 3 (30%), 12% per stack from 4 to 6 (36%)',
+    toggle: { kind: 'stacks', label: 'Havoc Bane stacks', max: 6 },
+    amplify: ({ setting }) => {
+      const n = stacks(setting)
+      return { all: n === 0 ? 0 : n <= 3 ? 10 * n : Math.min(36, 12 * n) }
+    },
+    confidence: 'sourced',
+  }],
+  'lupa': [{
+    id: 'lupa-glory',
+    label: 'Glory: Fusion RES ignored 3% +3% per other Fusion Resonator (9% max), and 6% more with 3 Fusion Resonators',
+    toggle: { kind: 'stacks', label: 'Other Fusion Resonators', max: 2 },
+    resShred: ({ setting }) => [3, 6, 15][stacks(setting)] ?? 0,
+    confidence: 'sourced',
+  }],
 }
 
 export type WuwaAppliedEffect = { effect: WuwaCombatEffect, setting: boolean | number, counted: boolean, reason?: string }
@@ -165,6 +299,7 @@ export type WuwaResolvedCombat = {
   bonus: Bonus,
   amplify: Partial<Record<HitType | 'all', number>>,
   defIgnore: number,
+  resShred: number,
   lineScale: LineScale[],
 }
 
@@ -174,7 +309,7 @@ export function defaultEffectSetting(effect: WuwaCombatEffect): boolean | number
 }
 
 export function resolveWuwaCombat(charId: string, sequence: number, settings: Record<string, boolean | number>): WuwaResolvedCombat {
-  const resolved: WuwaResolvedCombat = { applied: [], bonus: {}, amplify: {}, defIgnore: 0, lineScale: [] }
+  const resolved: WuwaResolvedCombat = { applied: [], bonus: {}, amplify: {}, defIgnore: 0, resShred: 0, lineScale: [] }
   for (const effect of KIT_EFFECTS[charId] ?? []) {
     const setting = settings[effect.id] ?? defaultEffectSetting(effect)
     if ((effect.minSequence ?? 0) > sequence) {
@@ -192,6 +327,7 @@ export function resolveWuwaCombat(charId: string, sequence: number, settings: Re
       resolved.amplify[kind] = (resolved.amplify[kind] ?? 0) + value
     }
     resolved.defIgnore += effect.defIgnore ?? 0
+    resolved.resShred += effect.resShred?.(context) ?? 0
     resolved.lineScale.push(...(effect.lineScale?.(context) ?? []))
   }
   return resolved

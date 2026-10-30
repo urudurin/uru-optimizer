@@ -139,23 +139,29 @@ export function RotationCard({ charId, rotation, mainEcho, damage, onChange }: {
             ))}
           </Stack>
         ))}
-        <EchoSkillLines rotation={rotation} mainEcho={mainEcho} onChange={onChange} />
+        <EchoSkillLines charId={charId} rotation={rotation} mainEcho={mainEcho} onChange={onChange} />
       </div>
     </FormCard>
   )
 }
 
 // The main echo's Echo Skill hits: assumes the picked echo is the one in the main slot of every loadout searched
-function EchoSkillLines({ rotation, mainEcho, onChange }: { rotation: Rotation, mainEcho?: string, onChange: (rotation: Rotation) => void }) {
+function EchoSkillLines({ charId, rotation, mainEcho, onChange }: {
+  charId: string,
+  rotation: Rotation,
+  mainEcho?: string,
+  onChange: (rotation: Rotation) => void,
+}) {
   const echoId = rotation.echo?.id ?? (mainEcho && hasEchoSkill(mainEcho) ? mainEcho : undefined)
   const counts = rotation.echo?.counts ?? {}
   const hits = echoId ? echoSkillHits(echoId) : []
   const text = echoId ? echoSkillText(echoId) : ''
   // What this echo gives in the main slot, counted when ranking by rotation damage
-  const main = mainEchoBonus(echoId)
+  const main = mainEchoBonus(echoId, charId)
   const mainSlot = [
     ...Object.entries(main.stats).map(([stat, value]) => `+${value}% ${statLabel(stat)}`),
     ...(main.echoDmg ? [`+${main.echoDmg}% Echo Skill DMG`] : []),
+    ...(main.coordinatedDmg ? [`+${main.coordinatedDmg}% Coordinated Attack DMG`] : []),
   ].join(', ')
   const setCount = (key: string, count: number) => {
     if (!echoId) return
