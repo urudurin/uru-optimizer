@@ -351,8 +351,8 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       ...teamResult.debuffs,
       defShred: teamResult.debuffs.defShred + kit.defIgnore,
       resShred: teamResult.debuffs.resShred + kit.resIgnore,
-      // The squad's stun multiplier bonuses don't stack with the agent's own (both are Misstep)
-      stunBonus: Math.max(teamResult.debuffs.stunBonus, kit.stunBonus),
+      // Stun multiplier bonuses from different agents add up (Nangong Yu's Misstep, Norma's Tech Divide)
+      stunBonus: teamResult.debuffs.stunBonus + kit.stunBonus,
     },
   })
   const damageSetup = setupFor(rotation)

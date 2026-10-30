@@ -351,7 +351,8 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
     },
     {
       id: 'velina-core-windbite',
-      label: 'Core Skill: every third Vortex spends 2 Windbite for +150% Vortex multiplier (counted as +50% on each Vortex)',
+      label:
+        'Core Skill: every third Vortex spends 2 Windbite for +150% Vortex multiplier (counted as +50% on each Vortex), and summons a Sweeping Cyclone instead of a Condensed one',
       toggle: { kind: 'switch', label: 'Windbite' },
       anomalies: () => ({ vortex: { add: 50 } }),
       confidence: 'confirmed',
@@ -392,6 +393,30 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       label: 'Additional Ability: Misstep, the enemy\'s stun multiplier +30% (after her Basic Attack\'s third hit or Ultimate)',
       toggle: { kind: 'switch', label: 'Misstep' },
       stunBonus: () => 30,
+      confidence: 'confirmed',
+    },
+  ],
+  // Norma: in-game text at Core Skill level 7 (the user's screenshots, Oct 30 2026); GO's sheet is a placeholder. Not
+  // counted: her ATK from Sheer Force (she's a Stun agent, our stats give her none), Daze and Preheated Chamber
+  '1571': [
+    {
+      id: 'norma-core-crit-dmg',
+      label: 'Core Skill: CRIT DMG +1.7% per 1% CRIT Rate above 50% (up to 85%)',
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 0, fromStat: { stat: 'critRate', above: 50, per: 1.7, max: 85 } }],
+      confidence: 'confirmed',
+    },
+    {
+      id: 'norma-ability-tech-divide',
+      label: 'Additional Ability: Tech Divide, the enemy\'s stun multiplier +3% per stack (up to 10)',
+      toggle: { kind: 'stacks', label: 'Tech Divide stacks', max: 10 },
+      stunBonus: ({ setting }) => 3 * Number(setting),
+      confidence: 'confirmed',
+    },
+    {
+      id: 'norma-ability-barrage',
+      label: 'Additional Ability: during En-Nah Barrage, ATK +870 (at level 60) and squad DMG +20%',
+      toggle: { kind: 'switch', label: 'En-Nah Barrage' },
+      stats: () => [{ stat: ZzzStats.ATK, value: 870 }, { stat: ZzzStats.ELEMENT_DMG, value: 20 }],
       confidence: 'confirmed',
     },
   ],

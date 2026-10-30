@@ -396,7 +396,9 @@ export type AnomalyHit = { key: string, kind: AnomalyKind, label: string, attrib
 
 // Velina's Abloom (in-game text at Core Skill level 7, the user's screenshots): a fixed share of a Windswept, 1250% of
 // ATK. Condensed and Sweeping Cyclone explosions on an enemy with Windswept (Core Skill), and her Ultimate's heavy
-// attack (Additional Ability, with an Anomaly or Wind agent in the squad)
+// attack (Additional Ability, with an Anomaly or Wind agent in the squad). Per the tooltips (user's screenshots): a Condensed Cyclone comes with each Vortex, a Sweeping Cyclone
+// with the Windbite Vortex (every third) and with EX Special Attack: Wind Shear - Eye of the Storm (fuelled by Windbloom), so
+// count the lines to match the rotation. Chromatic Tint turns a Sweeping Cyclone into another attribute's; not modelled
 const VELINA_ABLOOM: AnomalyHit[] = [
   { key: 'anomaly:abloom:condensed', kind: 'abloom', label: 'Abloom (Condensed Cyclone, 145%)', attribute: 'Wind', share: 1.45 },
   { key: 'anomaly:abloom:sweeping', kind: 'abloom', label: 'Abloom (Sweeping Cyclone, 255%)', attribute: 'Wind', share: 2.55 },

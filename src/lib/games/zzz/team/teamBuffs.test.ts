@@ -112,6 +112,23 @@ describe('zzzTeamBuffsFor', () => {
     expect(buffed.critDmg - alone.critDmg).toBe(25)
   })
 
+  it('adds up stun multiplier bonuses from different teammates (Nangong Yu\'s Misstep, Norma\'s Tech Divide)', () => {
+    const NANGONG = '1511'
+    const NORMA = '1571'
+    AGENTS[NANGONG] = { ...MIYABI, id: NANGONG, name: 'Nangong Yu', element: 'Ether', specialty: 'Stun' }
+    AGENTS[NORMA] = { ...MIYABI, id: NORMA, name: 'Norma', element: 'Fire', specialty: 'Stun' }
+    try {
+      const both = [...builds, build(NANGONG, 'Nangong Yu'), build(NORMA, 'Norma')]
+      const result = zzzTeamBuffsFor(MIYABI.id, { teammates: [NANGONG, NORMA], settings: {} }, { builds: both, discs })
+      expect(result.debuffs.stunBonus).toBe(60)
+      // Squad DMG from both: Nangong Yu +25%, Norma +20%
+      expect(result.effects.filter((e) => e.stat === ZzzStats.ELEMENT_DMG).map((e) => e.value).sort()).toEqual([20, 25])
+    } finally {
+      delete AGENTS[NANGONG]
+      delete AGENTS[NORMA]
+    }
+  })
+
   it('counts a teammate\'s W-Engine at their refinement and specialty, and Aftershock DMG for rotation damage only', () => {
     // Dreamlit Hearth (Support) and Pulchra stand-ins
     const DREAMLIT = '14145'

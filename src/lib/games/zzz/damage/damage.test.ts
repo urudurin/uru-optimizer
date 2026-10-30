@@ -445,6 +445,17 @@ describe('ZZZ damage', () => {
     expect(rotationDamage(stats, { ...awake, debuffs: { ...NO_DEBUFFS, stunBonus: 30 } })).toBeCloseTo(rotationDamage(stats, awake), 6)
   })
 
+  it('Norma: CRIT DMG from CRIT Rate above 50%, Tech Divide on the stun multiplier, En-Nah Barrage', () => {
+    const kit = resolveZzzCombat('1571', 0, {})
+    expect(kit.stunBonus).toBe(30)
+    expect(resolveZzzCombat('1571', 0, { 'norma-ability-tech-divide': 4 }).stunBonus).toBe(12)
+    const critDmg = kit.statEffects.find((e) => e.fromStat)!
+    expect(metThresholds({ ...stats, critRate: 70 }, [critDmg])[0].value).toBeCloseTo(34, 6)
+    expect(metThresholds({ ...stats, critRate: 100 }, [critDmg])[0].value).toBe(85)
+    expect(metThresholds({ ...stats, critRate: 40 }, [critDmg])[0].value).toBe(0)
+    expect(kit.statEffects.filter((e) => !e.fromStat).map((e) => [e.stat, e.value])).toEqual([[ZzzStats.ATK, 870], [ZzzStats.ELEMENT_DMG, 20]])
+  })
+
   it('Ye Shunguang: Ether Veil vulnerability, Mindscape 1 DEF ignore and Mindscape 2 EX Special / Ultimate DEF ignore', () => {
     const YE = '1431'
     const base = { multiplier: 100, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS }

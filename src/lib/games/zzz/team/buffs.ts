@@ -300,6 +300,26 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
       confidence: 'confirmed',
     },
   ],
+  // Norma: in-game text at Core Skill level 7 (the user's screenshots); GO's sheet is a placeholder. Her Additional
+  // Ability needs an Attack or Rupture agent or her faction in the squad
+  '1571': [
+    {
+      id: 'norma-tech-divide',
+      label: 'Additional Ability: Tech Divide, the enemy\'s stun multiplier +3% per stack (up to 10)',
+      stat: 'stunBonus',
+      toggle: { kind: 'stacks', label: 'Tech Divide stacks (max 10)', max: () => 10 },
+      value: (c) => (typeof c.setting === 'number' ? 3 * c.setting : 0),
+      confidence: 'confirmed',
+    },
+    {
+      id: 'norma-barrage-dmg',
+      label: 'Additional Ability: squad DMG +20% during her En-Nah Barrage',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: { kind: 'switch', label: 'En-Nah Barrage' },
+      value: (c) => (switchOn(c) ? 20 : 0),
+      confidence: 'confirmed',
+    },
+  ],
   // Seth
   '1271': [
     {
