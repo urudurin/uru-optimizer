@@ -84,6 +84,8 @@ export function genshinSampleData(): GenshinData & { warnings: string[] } {
             * (MAX_ROLL[stat] ?? 0)
           return { stat, value: FLAT.has(stat) ? Math.round(value) : Math.round(value * 10) / 10, rolls: rolls[i] }
         }),
+        // Xiangling wears the first artifact of each slot
+        ...(n === 0 ? { equippedBy: 'Xiangling' } : {}),
       }
     })
   )

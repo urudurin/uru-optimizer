@@ -28,6 +28,7 @@ describe('sample data', () => {
     const { stats, warnings } = computeStats({ ...resolved.build, coreSkillLevel: 6, conditions: statScreenConditions() })
     expect(warnings).toEqual([])
     expect(stats.atk).toBeGreaterThan(2000)
+    expect(sample.discs.filter((d) => d.equippedBy === '1091')).toHaveLength(6)
     expect(zzzSampleData()).toEqual(sample)
   })
 
@@ -46,6 +47,7 @@ describe('sample data', () => {
     expect(sample.artifacts).toHaveLength(25)
     const worn = sample.artifacts.filter((a) => Object.values(sample.characters[0].artifactIds).includes(a.id))
     expect(worn).toHaveLength(5)
+    expect(worn.every((a) => a.equippedBy === 'Xiangling')).toBe(true)
     const { stats } = computeGenshinStats(sample.characters[0], worn)
     expect(stats.atk).toBeGreaterThan(1000)
     expect(stats.critRate).toBeGreaterThan(5)

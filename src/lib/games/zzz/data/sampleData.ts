@@ -62,6 +62,8 @@ export function zzzSampleData(): ParsedZzzExport {
         main: { stat: main, value: sMainValue(main, LEVEL) ?? 0 },
         substats: subs.map((stat, i) => ({ stat, rolls: rolls[i] })),
         locked: false,
+        // Miyabi wears the first disc of each slot
+        ...(n === 0 ? { equippedBy: '1091' } : {}),
       })
     }
   }
