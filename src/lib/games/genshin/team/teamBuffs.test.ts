@@ -158,6 +158,24 @@ describe('team buffs', () => {
     expect(result.baseBonus.lunarcharged).toBeCloseTo(Math.min(14, ineffaAtk * 0.007), 6)
   })
 
+  it('gives Lunar kit bonuses: flat damage per hit from the giver\'s stats, one kind\'s CRIT and DMG, and Columbina\'s Lunar DMG', () => {
+    const flins = character('Flins', { element: 'Electro' })
+    const lauma = character('Lauma', { element: 'Dendro' })
+    const nahida = character('Nahida', { element: 'Dendro', constellation: 2 })
+    const columbina = character('Columbina', { element: 'Hydro' })
+    const team = [flins, lauma, nahida, columbina]
+    const result = teamBuffsFor(flins, setup(['Lauma', 'Nahida', 'Columbina']), { characters: team, artifacts: [] })
+    // Pale Hymn at burst level 9: 377.808% of Lauma's Elemental Mastery per Lunar-Bloom hit
+    const laumaEm = computeGenshinStats(lauma, []).stats.elementalMastery ?? 0
+    expect(result.specialFlat.lunarbloom).toBeCloseTo(3.77808 * laumaEm, 6)
+    // Nahida C2 and Lauma A1 CRIT for Lunar-Bloom
+    expect(result.specialCrit.lunarbloom).toEqual({ rate: 30, dmg: 50 })
+    // Columbina's domain: Lunar Reaction DMG at burst level 9 (Ascendant Gleam adds its own on top)
+    expect(result.applied.find((a) => a.buff.id === 'columbina-burst-lunar')).toMatchObject({ value: 37, counted: true })
+    // Teammates' stats for Stellar Swirl contribution
+    expect(result.members.map((m) => m.id)).toEqual(['Lauma', 'Nahida', 'Columbina'])
+  })
+
   it('adds elemental resonance for a team of 4', () => {
     const team = [bennett, kazuha, furina]
     const result = teamBuffsFor(xiangling, setup(['Bennett', 'KaedeharaKazuha', 'Furina']), { characters: [xiangling, ...team], artifacts: [] })

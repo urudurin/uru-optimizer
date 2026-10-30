@@ -12,6 +12,7 @@ import {
   type BuffStat,
   debuffLabel,
   isDebuff,
+  isSpecialStat,
 } from 'lib/games/genshin/team/buffs'
 import type {
   AppliedBuff,
@@ -40,6 +41,14 @@ const REACTION_NAMES: Record<string, string> = {
 function describeStat(stat: BuffStat, value: number): string {
   if (isDebuff(stat)) return `${value}% ${debuffLabel(stat)}`
   if (stat === 'lunarBonus') return `+${value.toFixed(1)}% Lunar Reaction DMG`
+  if (isSpecialStat(stat)) {
+    const [field, kind] = stat.split(':')
+    const name = REACTION_NAMES[kind] ?? kind
+    if (field === 'specialFlat') return `+${Math.round(value)} ${name} DMG per hit`
+    if (field === 'specialCritRate') return `+${value.toFixed(1)}% ${name} CRIT Rate`
+    if (field === 'specialCritDmg') return `+${value.toFixed(1)}% ${name} CRIT DMG`
+    return `+${value.toFixed(1)}% ${name} DMG`
+  }
   return `+${formatStatValue(stat, value)} ${statLabel(stat)}`
 }
 

@@ -17,6 +17,7 @@ import {
   type BuffStat,
   CHARACTER_BUFFS,
   isDebuff,
+  isSpecialStat,
   RESONANCE_BUFFS,
   SET_4PC_BUFFS,
   type TeamBuff,
@@ -68,6 +69,13 @@ export type TeamBuffResult = TeamBuffTotals & {
   // The party's Moonsign level, and the Lunar and Stellar Base DMG increase teammates' passives give, by kind
   moonsign: number,
   baseBonus: Partial<Record<SpecialKind, number>>,
+  // Per Lunar or Stellar kind: DMG Bonus, flat DMG added to each hit, and CRIT Rate / CRIT DMG for it, in percent (flat in
+  // damage)
+  specialBonus: Partial<Record<SpecialKind, number>>,
+  specialFlat: Partial<Record<SpecialKind, number>>,
+  specialCrit: Partial<Record<SpecialKind, { rate: number, dmg: number }>>,
+  // Each teammate's level, element and own stats (for Stellar Swirl contribution ranking)
+  members: { id: string, level: number, element?: Element, stats: Partial<Record<GenshinStatKey, number>> }[],
   applied: AppliedBuff[],
   resonance: Element[],
 }
@@ -191,10 +199,24 @@ export function teamBuffsFor(
   const totals: TeamBuffTotals = { premod: {}, total: {} }
   const debuffs: EnemyDebuffs = { defShred: 0, resShred: {} }
   let lunarBonus = 0
+  const specialBonus: Partial<Record<SpecialKind, number>> = {}
+  const specialFlat: Partial<Record<SpecialKind, number>> = {}
+  const specialCrit: Partial<Record<SpecialKind, { rate: number, dmg: number }>> = {}
   for (const entry of applied) {
     if (!entry.counted || !entry.stat) continue
     if (entry.stat === 'lunarBonus') {
       lunarBonus += entry.value
+      continue
+    }
+    if (isSpecialStat(entry.stat)) {
+      const [field, kind] = entry.stat.split(':') as [string, SpecialKind]
+      if (field === 'special') specialBonus[kind] = (specialBonus[kind] ?? 0) + entry.value
+      else if (field === 'specialFlat') specialFlat[kind] = (specialFlat[kind] ?? 0) + entry.value
+      else {
+        const crit = specialCrit[kind] ??= { rate: 0, dmg: 0 }
+        if (field === 'specialCritRate') crit.rate += entry.value
+        else crit.dmg += entry.value
+      }
       continue
     }
     if (isDebuff(entry.stat)) {
@@ -216,5 +238,6 @@ export function teamBuffsFor(
     const value = benedictionValue(benediction, giver.stats)
     for (const kind of benediction.kinds) baseBonus[kind] = (baseBonus[kind] ?? 0) + value
   }
-  return { ...totals, debuffs, lunarBonus, moonsign, baseBonus, applied, resonance }
+  const members = givers.map((g) => ({ id: g.character.id, level: g.character.level, element: g.character.element, stats: g.stats }))
+  return { ...totals, debuffs, lunarBonus, moonsign, baseBonus, specialBonus, specialFlat, specialCrit, members, applied, resonance }
 }

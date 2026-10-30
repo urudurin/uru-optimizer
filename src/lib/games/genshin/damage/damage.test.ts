@@ -12,6 +12,7 @@ import {
   reactionLevelMultiplier,
   reactionsFor,
   rotationDamage,
+  stellarContribution,
   teamReactions,
   transformativeLines,
 } from 'lib/games/genshin/damage/damage'
@@ -190,6 +191,42 @@ describe('Genshin damage', () => {
     // Stellar lines are found by name too
     const sandrone = hit('Sandrone', 'Prism Shot Stellar-Conduct DMG')
     expect(sandrone.special).toBe('stellarconduct')
+  })
+
+  it('adds teammates\' flat damage per Lunar hit and CRIT for one kind', () => {
+    const crit = 1 + 0.6 * 1.5
+    const em = 6 * 200 / 2200
+    const lunar: DamageSetup = {
+      ...setup(),
+      characterId: 'Flins',
+      element: 'Electro',
+      rotation: { counts: { 'reaction:lunarcharged': 2 }, infusion: false, reaction: 'none', reactionShare: 100 },
+    }
+    const base = rotationDamage(stats, lunar)
+    // 1,000 flat per hit: after the Base DMG increase, inside the EM bracket and CRIT, with RES
+    expect(rotationDamage(stats, { ...lunar, specialFlat: { lunarcharged: 1000 } }) - base).toBeCloseTo(2 * 1000 * (1 + em) * crit * 0.9, 3)
+    // Another kind's flat or CRIT doesn't reach it
+    expect(rotationDamage(stats, { ...lunar, specialFlat: { lunarbloom: 1000 } })).toBeCloseTo(base, 6)
+    const critUp = rotationDamage(stats, { ...lunar, specialCrit: { lunarcharged: { rate: 20, dmg: 30 } } })
+    expect(critUp / base).toBeCloseTo((1 + 0.8 * 1.8) / crit, 6)
+  })
+
+  it('counts the character\'s Stellar Swirl share by their contribution rank', () => {
+    const swirl: DamageSetup = {
+      ...setup(),
+      characterId: 'KaedeharaKazuha',
+      element: 'Anemo',
+      rotation: { counts: { 'reaction:stellarswirl': 1 }, infusion: false, reaction: 'none', reactionShare: 100 },
+    }
+    const alone = rotationDamage(stats, swirl)
+    const own = stellarContribution(90, stats)
+    // A weaker teammate leaves them first; one stronger makes them second (1/2); two stronger, third (1/12)
+    expect(rotationDamage(stats, { ...swirl, stellarContributors: [own / 2] })).toBeCloseTo(alone, 6)
+    expect(rotationDamage(stats, { ...swirl, stellarContributors: [own * 2] })).toBeCloseTo(alone / 2, 6)
+    expect(rotationDamage(stats, { ...swirl, stellarContributors: [own * 2, own * 3] })).toBeCloseTo(alone / 12, 6)
+    // Lunar-Charged isn't ranked this way
+    const lunar: DamageSetup = { ...swirl, characterId: 'Flins', element: 'Electro', rotation: { ...swirl.rotation, counts: { 'reaction:lunarcharged': 1 } } }
+    expect(rotationDamage(stats, { ...lunar, stellarContributors: [own * 9] })).toBeCloseTo(rotationDamage(stats, lunar), 6)
   })
 
   it('knows who enables Lunar and Stellar reactions', () => {

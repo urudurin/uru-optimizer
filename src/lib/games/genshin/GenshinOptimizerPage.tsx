@@ -23,6 +23,7 @@ import {
   type Rotation,
   rotationDamage,
   rotationTalents,
+  stellarContribution,
   teamReactions,
 } from 'lib/games/genshin/damage/damage'
 import {
@@ -325,10 +326,24 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
         kind,
         (resolvedCombat.reactions[kind] ?? 0) + teamResult.lunarBonus,
       ])),
+      // One kind's DMG Bonus from teammates (Baizhu, Mona, Ifa...)
+      ...Object.fromEntries(
+        Object.entries(teamResult.specialBonus).map(([kind, value]) => [
+          kind,
+          (resolvedCombat.reactions[kind as keyof typeof resolvedCombat.reactions] ?? 0)
+          + (kind.startsWith('lunar') ? teamResult.lunarBonus : 0) + value,
+        ]),
+      ),
     },
     hitBuffs: resolvedCombat.hitBuffs,
     teamReactions: reactionsInTeam,
     baseBonus: teamResult.baseBonus,
+    specialFlat: teamResult.specialFlat,
+    specialCrit: teamResult.specialCrit,
+    // Teammates who can trigger Stellar Swirl, ranked against for its contribution
+    stellarContributors: teamResult.members
+      .filter((member) => member.element === 'Anemo' || member.element === 'Cryo')
+      .map((member) => stellarContribution(member.level, member.stats)),
   }
   const byDamage = targetValue === DAMAGE_TARGET && hasTalentData(character.id)
   const target: OptimizerTarget = byDamage ? { kind: 'damage', setup: damageSetup } : genshinTarget(targetValue, character.element)
