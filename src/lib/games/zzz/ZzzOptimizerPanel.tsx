@@ -34,6 +34,10 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import {
+  BuildCompare,
+  usePinnedBuilds,
+} from 'lib/games/shared/ui/optimizer/BuildCompare'
 import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
 import {
   CharacterPortrait,
@@ -353,6 +357,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     .map(([value, label]) => ({ value, label }))
   const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
   const [selected, setSelected] = useState(0)
+  const pins = usePinnedBuilds(agent.id)
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [searchSeconds, setSearchSeconds] = useState(0)
@@ -868,19 +873,32 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
           {best && computeInput && (
             <BuildAnalysis
               buildLabel={`Build #${selected + 1}`}
-              rows={statRows.map((row) => ({
-                key: row.key,
-                label: row.label,
-                build: best.display[row.key],
-                current: currentDisplay?.[row.key],
-                format: (value: number) => formatStat(row, value),
-              }))}
+              rows={[
+                ...(byDamage
+                  ? [{
+                    key: 'damage',
+                    label: 'Rotation damage',
+                    build: best.damage ?? 0,
+                    current: currentDamage,
+                    format: (value: number) => formatNumber(Math.round(value)),
+                  }]
+                  : []),
+                ...statRows.map((row) => ({
+                  key: row.key,
+                  label: row.label,
+                  build: best.display[row.key],
+                  current: currentDisplay?.[row.key],
+                  format: (value: number) => formatStat(row, value),
+                })),
+              ]}
+              onPin={(cells) => pins.pin(`#${selected + 1} · ${rankText(best)}`, cells)}
               upgrades={zzzSubstatUpgrades({ ...computeInput, discs: best.discs }, sortBy, damageSetup)}
               breakdown={breakdown}
               scoreLabel={rankLabel}
               formatRoll={(upgrade) => /%|CRIT/.test(upgrade.stat) ? `${upgrade.roll}%` : String(upgrade.roll)}
             />
           )}
+          <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
         </Stack>
 
         <OptimizerSidebar

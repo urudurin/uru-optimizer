@@ -9,6 +9,7 @@ import {
 } from '@mantine/core'
 import { formatNumber } from 'lib/games/shared/format'
 import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
+import { SavedRotations } from 'lib/games/shared/ui/optimizer/SavedRotations'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 import type { WuwaAppliedEffect } from 'lib/games/wuwa/damage/combatEffects'
 import {
@@ -105,6 +106,7 @@ export function RotationCard({ charId, rotation, mainEcho, damage, onChange }: {
         />
         <Button size='xs' variant='light' onClick={() => onChange(defaultRotation(charId))}>Default</Button>
         <Button size='xs' variant='subtle' onClick={() => onChange({ ...rotation, counts: {} })}>Clear</Button>
+        <SavedRotations game='wuwa' characterId={charId} rotation={rotation} onLoad={onChange} />
         <Text size='xs' ml='auto'>
           {`${formatNumber(Math.round(total))}% in total${damage !== undefined ? ` · ${formatNumber(Math.round(damage))} damage now` : ''}`}
         </Text>

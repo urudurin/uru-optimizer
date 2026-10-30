@@ -1,4 +1,5 @@
 import {
+  Button,
   SimpleGrid,
   Table,
   Text,
@@ -11,6 +12,7 @@ import {
 import { formatNumber } from 'lib/games/shared/format'
 import { Panel } from 'lib/games/shared/ui/GameLayout'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import type { PinnedCell } from 'lib/games/shared/ui/optimizer/BuildCompare'
 
 // The analysis under an optimizer's picked build, after HSR's expanded data panel: its stats next to the current
 // build's, what one more roll of each substat would add to its score, and when ranking by damage, each rotation line's
@@ -77,7 +79,7 @@ function formatPercent(share: number): string {
   return `${(share * 100).toFixed(1)}%`
 }
 
-export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRoll, breakdown }: {
+export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRoll, breakdown, onPin }: {
   // e.g. 'Build #2'
   buildLabel: string,
   rows: StatDiffRow[],
@@ -87,13 +89,27 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
   formatRoll: (upgrade: SubstatUpgrade) => string,
   // The rotation's lines and their damage on this build (shared/damageBreakdown.ts), when ranking by damage
   breakdown?: DamagePart[],
+  // Pins this build for comparing (shared/ui/optimizer/BuildCompare.tsx) with a snapshot of its rows
+  onPin?: (cells: PinnedCell[]) => void,
 }) {
   const helpful = upgrades.filter((u) => u.gain > 1e-9).slice(0, SHOWN_UPGRADES)
   const best = helpful[0]?.gain ?? 0
   const hasCurrent = rows.some((row) => row.current !== undefined)
 
   return (
-    <Panel title='Build analysis' description={`${buildLabel}, compared with the current build and what would improve it next.`}>
+    <Panel
+      title='Build analysis'
+      description={`${buildLabel}, compared with the current build and what would improve it next.`}
+      actions={onPin && (
+        <Button
+          size='xs'
+          variant='light'
+          onClick={() => onPin(rows.map((row) => ({ key: row.key, label: row.label, value: row.build, text: row.format(row.build) })))}
+        >
+          Pin to compare
+        </Button>
+      )}
+    >
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing='lg'>
         <div>
           <Text size='sm' fw={600} mb={6}>Compared with current</Text>

@@ -32,6 +32,7 @@ import type {
 } from 'lib/games/genshin/types'
 import { formatNumber } from 'lib/games/shared/format'
 import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
+import { SavedRotations } from 'lib/games/shared/ui/optimizer/SavedRotations'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 
 // The Damage row of the Genshin optimizer, like ZZZ's (zzz/damage/DamageCards.tsx): the enemy, and how many times each
@@ -115,6 +116,7 @@ export function RotationCard({ character, rotation, talents, damage, team, onCha
         ))}
         <Button size='xs' variant='light' onClick={() => onChange(defaultRotation(character.id))}>Default</Button>
         <Button size='xs' variant='subtle' onClick={() => onChange({ ...rotation, counts: {} })}>Clear</Button>
+        <SavedRotations game='genshin' characterId={character.id} rotation={rotation} onLoad={onChange} />
       </Group>
       <Text size='xs' c='dimmed'>
         {rotation.talents

@@ -9,6 +9,7 @@ import {
 } from '@mantine/core'
 import { formatNumber } from 'lib/games/shared/format'
 import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
+import { SavedRotations } from 'lib/games/shared/ui/optimizer/SavedRotations'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 import type { ZzzAppliedEffect } from 'lib/games/zzz/damage/combatEffects'
 import {
@@ -141,6 +142,7 @@ export function RotationCard({ agentId, element, teamElements = [], scaling = 'A
         />
         <Button size='xs' variant='light' onClick={() => onChange(defaultRotation(agentId))}>Default</Button>
         <Button size='xs' variant='subtle' onClick={() => onChange({ ...rotation, counts: {} })}>Clear</Button>
+        <SavedRotations game='zzz' characterId={agentId} rotation={rotation} onLoad={onChange} />
         <Text size='xs' ml='auto'>
           {`${formatNumber(Math.round(total))}% of ${scaling}${anomalyTotal ? ` + ${formatNumber(Math.round(anomalyTotal))}% anomaly` : ''} in total${
             damage !== undefined ? ` · ${formatNumber(Math.round(damage))} damage now` : ''

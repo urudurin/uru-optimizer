@@ -116,6 +116,10 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import {
+  BuildCompare,
+  usePinnedBuilds,
+} from 'lib/games/shared/ui/optimizer/BuildCompare'
 import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
 import {
   CharacterPortrait,
@@ -280,6 +284,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget } | undefined>()
   const [selected, setSelected] = useState(0)
+  const pins = usePinnedBuilds(character?.id ?? '')
 
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
   const equip = useGenshinStore((s) => s.equip)
@@ -764,9 +769,11 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
               upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs, result.target.kind === 'damage' ? combat : undefined)}
               breakdown={result.target.kind === 'damage' ? genshinBreakdown(result.target.setup, build.stats) : undefined}
               scoreLabel={targetLabel(result.target)}
+              onPin={(cells) => pins.pin(`#${selected + 1} · ${formatScore(result.target, build.score)}`, cells)}
               formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
             />
           )}
+          <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
         </Stack>
 
         <OptimizerSidebar

@@ -31,6 +31,10 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
+import {
+  BuildCompare,
+  usePinnedBuilds,
+} from 'lib/games/shared/ui/optimizer/BuildCompare'
 import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
 import {
   CharacterPortrait,
@@ -272,6 +276,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: EchoOutcome, ms: number, target: EchoTarget } | undefined>()
   const [selected, setSelected] = useState(0)
+  const pins = usePinnedBuilds(character?.charId ?? '')
 
   const ownerOf = useMemo(() => {
     const owners = new Map<string, string>()
@@ -708,9 +713,11 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
               upgrades={wuwaSubstatUpgrades(character, build.echoes, result.target, result.target.kind === 'damage' ? combatBonus : teamResult.bonus)}
               breakdown={result.target.kind === 'damage' ? wuwaBreakdown(result.target.setup, build.stats) : undefined}
               scoreLabel={targetLabel(result.target)}
+              onPin={(cells) => pins.pin(`#${selected + 1} · ${formatScore(result.target, build.score)}`, cells)}
               formatRoll={(upgrade) => upgrade.stat.endsWith('Flat') ? String(Math.round(upgrade.roll)) : `${upgrade.roll.toFixed(1)}%`}
             />
           )}
+          <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
         </Stack>
 
         <OptimizerSidebar
