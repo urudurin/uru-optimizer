@@ -1,10 +1,16 @@
 import {
+  Alert,
   Badge,
+  Button,
+  Code,
   Stack,
   Text,
   UnstyledButton,
 } from '@mantine/core'
-import { IconInfoCircle } from '@tabler/icons-react'
+import {
+  IconAlertTriangle,
+  IconInfoCircle,
+} from '@tabler/icons-react'
 import {
   readStorage,
   writeStorage,
@@ -14,6 +20,10 @@ import {
   type ReactNode,
   useState,
 } from 'react'
+import {
+  ErrorBoundary,
+  type FallbackProps,
+} from 'react-error-boundary'
 
 // Page shell, page header and building blocks shared by the ZZZ and WuWa pages, styled after HSR's sidebar and panels
 
@@ -86,9 +96,28 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
       </nav>
 
       <main className={classes.main}>
-        <div className={classes.mainInner}>{children}</div>
+        <div className={classes.mainInner}>
+          {/* A page that breaks shows its error here, keeping the sidebar and game switcher; picking a page clears it */}
+          <ErrorBoundary FallbackComponent={PageError} resetKeys={[active]}>
+            {children}
+          </ErrorBoundary>
+        </div>
       </main>
     </div>
+  )
+}
+
+function PageError({ error, resetErrorBoundary }: FallbackProps) {
+  return (
+    <Alert color='red' variant='light' icon={<IconAlertTriangle size={18} />} title='This page ran into a problem'>
+      <Stack gap='sm' align='flex-start'>
+        <Text size='sm'>
+          Your saved data is untouched. Try again, or pick another page from the sidebar. If it keeps happening, the message below helps find the cause.
+        </Text>
+        <Code block>{error instanceof Error ? error.message : String(error)}</Code>
+        <Button size='xs' variant='light' onClick={resetErrorBoundary}>Try again</Button>
+      </Stack>
+    </Alert>
   )
 }
 

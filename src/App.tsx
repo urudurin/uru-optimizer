@@ -22,6 +22,10 @@ import {
   useEffect,
   useMemo,
 } from 'react'
+import {
+  ErrorBoundary,
+  type FallbackProps,
+} from 'react-error-boundary'
 
 // Loaded on first use so HSR-only users never download ZZZ code
 const ZzzApp = lazy(() => import('lib/games/zzz/ZzzApp').then((m) => ({ default: m.ZzzApp })))
@@ -33,6 +37,12 @@ const GenshinApp = lazy(() => import('lib/games/genshin/GenshinApp').then((m) =>
   const initTheme = createMantineTheme(useThemeStore.getState().seedColor)
   Gradient.setTheme(initTheme.colors!.dark![8], initTheme.colors!.primary![4])
 }
+
+const GameError = ({ error }: FallbackProps) => (
+  <div style={{ padding: 20 }}>
+    Something went wrong: {error instanceof Error ? error.message : String(error)}. Pick another game in the header, or reload the page.
+  </div>
+)
 
 export function App() {
   const seedColor = useThemeStore((s) => s.seedColor)
@@ -72,21 +82,24 @@ export function App() {
                 <Tabs />
               </div>
             </div>
-            {activeGame === 'zzz' && (
-              <Suspense fallback={null}>
-                <ZzzApp />
-              </Suspense>
-            )}
-            {activeGame === 'wuwa' && (
-              <Suspense fallback={null}>
-                <WuwaApp />
-              </Suspense>
-            )}
-            {activeGame === 'genshin' && (
-              <Suspense fallback={null}>
-                <GenshinApp />
-              </Suspense>
-            )}
+            {/* A game that breaks keeps the header, so switching games recovers */}
+            <ErrorBoundary FallbackComponent={GameError} resetKeys={[activeGame]}>
+              {activeGame === 'zzz' && (
+                <Suspense fallback={null}>
+                  <ZzzApp />
+                </Suspense>
+              )}
+              {activeGame === 'wuwa' && (
+                <Suspense fallback={null}>
+                  <WuwaApp />
+                </Suspense>
+              )}
+              {activeGame === 'genshin' && (
+                <Suspense fallback={null}>
+                  <GenshinApp />
+                </Suspense>
+              )}
+            </ErrorBoundary>
           </div>
           <GlobalModals />
         </ConfirmModalProvider>

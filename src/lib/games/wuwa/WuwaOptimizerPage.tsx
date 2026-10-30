@@ -101,7 +101,10 @@ import {
   wuwaEchoWeights,
 } from 'lib/games/wuwa/stats/echoScore'
 import type { WuwaBuffSetting } from 'lib/games/wuwa/team/buffs'
-import { wuwaTeamBuffsFor } from 'lib/games/wuwa/team/teamBuffs'
+import {
+  NO_WUWA_TEAM,
+  wuwaTeamBuffsFor,
+} from 'lib/games/wuwa/team/teamBuffs'
 import {
   wuwaTeamEntries,
   wuwaTeamSummary,
@@ -246,9 +249,9 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
-  // What the team gives this Resonator, the same for every loadout
-  const teamResult = wuwaTeamBuffsFor(character, { teammates, settings: teamSettings }, { characters, echoes })
-  const teammateOptions = characters.filter((c) => c.charId !== character.charId).map((c) => ({ value: c.charId, label: characterName(c.charId) }))
+  // What the team gives this Resonator, the same for every loadout (nothing before anything is imported)
+  const teamResult = character ? wuwaTeamBuffsFor(character, { teammates, settings: teamSettings }, { characters, echoes }) : NO_WUWA_TEAM
+  const teammateOptions = characters.filter((c) => c.charId !== character?.charId).map((c) => ({ value: c.charId, label: characterName(c.charId) }))
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [result, setResult] = useState<{ outcome: EchoOutcome, ms: number, target: EchoTarget } | undefined>()
