@@ -23,21 +23,13 @@ import {
   mainEchoBonus,
   MAX_SKILL_LEVEL,
   type Rotation,
+  SECTION_LABELS,
 } from 'lib/games/wuwa/damage/damage'
 import { ECHO_DEFINITIONS } from 'lib/games/wuwa/data/gameData'
 import { statLabel } from 'lib/games/wuwa/types'
 
 // The Damage row of the WuWa optimizer, like ZZZ's and Genshin's: the enemy, and how many times each skill's damage
 // lines land in a rotation.
-
-const SECTION_LABELS: Record<string, string> = {
-  normal: 'Normal Attack',
-  skill: 'Resonance Skill',
-  liberation: 'Resonance Liberation',
-  intro: 'Intro Skill',
-  forte: 'Forte Circuit',
-  outro: 'Outro Skill',
-}
 
 export function EnemyCard({ enemy, onChange }: { enemy: EnemySettings, onChange: (enemy: EnemySettings) => void }) {
   const set = (changes: Partial<EnemySettings>) => onChange({ ...enemy, ...changes })

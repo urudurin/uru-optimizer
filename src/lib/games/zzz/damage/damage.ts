@@ -1,3 +1,4 @@
+import type { DamageLine } from 'lib/games/shared/damageBreakdown'
 import skillData from 'lib/games/zzz/data/generated/skills.json'
 import type { FinalStats } from 'lib/games/zzz/stats/computeStats'
 
@@ -618,4 +619,36 @@ export function rotationSkills(
       ...aftershock,
     },
   }
+}
+
+// What a hit's skill category is called, for the Rotation card and the damage breakdown
+export const HIT_CATEGORY_LABELS: Record<string, string> = {
+  basic: 'Basic Attack',
+  dodge: 'Dodge',
+  special: 'Special Attack',
+  chain: 'Chain Attack & Ultimate',
+  assist: 'Assist',
+}
+
+// The rotation's counted lines, for the damage breakdown (shared/damageBreakdown.ts)
+export function rotationLines(agentId: string, element: string, rotation: Rotation, teamElements: string[] = []): DamageLine[] {
+  return [
+    ...agentHits(agentId).map((hit) => ({
+      key: hitKey(hit),
+      label: hit.label,
+      group: HIT_CATEGORY_LABELS[hit.category] ?? hit.category,
+      count: rotation.counts[hitKey(hit)] ?? 0,
+    })),
+    ...anomalyHits(agentId, element, teamElements).map((hit) => ({
+      key: hit.key,
+      label: hit.label,
+      group: 'Attribute Anomaly',
+      count: rotation.counts[hit.key] ?? 0,
+    })),
+  ]
+}
+
+// The rotation with only one line in it
+export function singleLineRotation(rotation: Rotation, line: DamageLine): Rotation {
+  return { ...rotation, counts: { [line.key]: line.count } }
 }

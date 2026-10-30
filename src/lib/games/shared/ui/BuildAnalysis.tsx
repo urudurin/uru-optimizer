@@ -4,12 +4,17 @@ import {
   Text,
 } from '@mantine/core'
 import type { SubstatUpgrade } from 'lib/games/shared/analysis'
+import {
+  damageByGroup,
+  type DamagePart,
+} from 'lib/games/shared/damageBreakdown'
+import { formatNumber } from 'lib/games/shared/format'
 import { Panel } from 'lib/games/shared/ui/GameLayout'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
 
 // The analysis under an optimizer's picked build, after HSR's expanded data panel: its stats next to the current
-// build's, and what one more roll of each substat would add to its score. Shared by the ZZZ, Genshin and WuWa pages.
-// HSR's damage splits aren't here, none of these games has a damage calculation yet.
+// build's, what one more roll of each substat would add to its score, and when ranking by damage, each rotation line's
+// share of it (after HSR's damage splits). Shared by the ZZZ, Genshin and WuWa pages.
 
 export type StatDiffRow = {
   key: string,
@@ -29,7 +34,50 @@ function Change({ row }: { row: StatDiffRow }) {
   return <Text size='xs' c={diff > 0 ? 'teal' : 'red'}>{`${diff > 0 ? '+' : '-'}${row.format(Math.abs(diff))}`}</Text>
 }
 
-export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRoll }: {
+const SHOWN_PARTS = 10
+
+// Each rotation line's share of the build's damage, largest first, with the rest folded into one row
+function DamageBreakdown({ parts }: { parts: DamagePart[] }) {
+  const total = parts.reduce((sum, part) => sum + part.damage, 0)
+  if (total <= 0) return null
+  const shown = parts.slice(0, SHOWN_PARTS)
+  const rest = parts.slice(SHOWN_PARTS)
+  const rows = rest.length > 0
+    ? [...shown, { key: 'rest', label: `${rest.length} more lines`, group: '', count: 0, damage: rest.reduce((sum, p) => sum + p.damage, 0) }]
+    : shown
+  const largest = shown[0]?.damage ?? 0
+  const groups = damageByGroup(parts)
+
+  return (
+    <div>
+      <Text size='sm' fw={600}>Where the damage comes from</Text>
+      <Text size='xs' c='dimmed' mb={8}>
+        {groups.map((g) => `${g.group} ${formatPercent(g.damage / total)}`).join(' · ')}
+      </Text>
+      <div className={classes.upgradeList}>
+        {rows.map((part) => (
+          <div key={part.key} className={classes.upgradeRow}>
+            <Text size='xs' className={classes.upgradeLabel} title={part.group ? `${part.group}: ${part.label}` : part.label}>
+              {part.count > 1 ? `${part.label} ×${part.count}` : part.label}
+            </Text>
+            <div className={classes.upgradeTrack}>
+              <div className={classes.upgradeBar} style={{ width: `${largest > 0 ? Math.min(100, (part.damage / largest) * 100) : 0}%` }} />
+            </div>
+            <Text size='xs' fw={600} className={classes.upgradeValue} title={formatNumber(Math.round(part.damage))}>
+              {formatPercent(part.damage / total)}
+            </Text>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function formatPercent(share: number): string {
+  return `${(share * 100).toFixed(1)}%`
+}
+
+export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRoll, breakdown }: {
   // e.g. 'Build #2'
   buildLabel: string,
   rows: StatDiffRow[],
@@ -37,6 +85,8 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
   // What the build is ranked by, e.g. 'Average ATK hit'
   scoreLabel: string,
   formatRoll: (upgrade: SubstatUpgrade) => string,
+  // The rotation's lines and their damage on this build (shared/damageBreakdown.ts), when ranking by damage
+  breakdown?: DamagePart[],
 }) {
   const helpful = upgrades.filter((u) => u.gain > 1e-9).slice(0, SHOWN_UPGRADES)
   const best = helpful[0]?.gain ?? 0
@@ -97,6 +147,7 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
               </div>
             )}
         </div>
+        {breakdown && breakdown.length > 0 && <DamageBreakdown parts={breakdown} />}
       </SimpleGrid>
     </Panel>
   )

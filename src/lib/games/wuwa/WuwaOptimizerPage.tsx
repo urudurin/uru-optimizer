@@ -9,6 +9,10 @@ import {
   Text,
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
+import {
+  type DamagePart,
+  splitDamage,
+} from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
 import {
   fieldSetter,
@@ -47,6 +51,7 @@ import {
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { resolveWuwaCombat } from 'lib/games/wuwa/damage/combatEffects'
 import {
+  type DamageSetup,
   DEFAULT_ENEMY,
   defaultRotation,
   type EnemySettings,
@@ -55,6 +60,8 @@ import {
   migrateRotationCounts,
   type Rotation,
   rotationDamage,
+  rotationLines,
+  singleLineRotation,
 } from 'lib/games/wuwa/damage/damage'
 import {
   EnemyCard,
@@ -67,6 +74,7 @@ import {
   SONATA_SETS,
   WEAPONS,
 } from 'lib/games/wuwa/data/gameData'
+import { wuwaSampleData } from 'lib/games/wuwa/data/sampleData'
 import { useUserArt } from 'lib/games/wuwa/data/userArt'
 import { MAIN_STAT_MAX } from 'lib/games/wuwa/echoStats'
 import { wuwaSubstatUpgrades } from 'lib/games/wuwa/optimizer/analysis'
@@ -209,6 +217,14 @@ function migrateSaves() {
   })
 }
 
+// Each rotation line's share of a loadout's damage, for the build analysis
+function wuwaBreakdown(setup: DamageSetup, stats: WuwaStats): DamagePart[] {
+  return splitDamage(
+    rotationLines(setup.charId, setup.rotation),
+    (line) => rotationDamage(stats, { ...setup, rotation: singleLineRotation(setup.rotation, line) }),
+  )
+}
+
 export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   useState(migrateSaves)
   const echoes = useWuwaStore((s) => s.echoes)
@@ -272,7 +288,16 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
       <Stack gap='lg'>
         <PageHeader title='Optimizer' />
         <Panel>
-          <EmptyState icon={<IconTrendingUp size={24} />} title='Import your echoes first' action={<Button onClick={onImport}>Import data</Button>}>
+          <EmptyState
+            icon={<IconTrendingUp size={24} />}
+            title='Import your echoes first'
+            action={
+              <Group gap='xs'>
+                <Button onClick={onImport}>Import data</Button>
+                <Button variant='light' onClick={() => useWuwaStore.getState().importParsed(wuwaSampleData(), 'replace')}>Try with sample data</Button>
+              </Group>
+            }
+          >
             Import your WuwaEchoScorer save, then search your echoes for the best loadout under the 12-cost limit.
           </EmptyState>
         </Panel>
@@ -681,6 +706,7 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                 })),
               ]}
               upgrades={wuwaSubstatUpgrades(character, build.echoes, result.target, result.target.kind === 'damage' ? combatBonus : teamResult.bonus)}
+              breakdown={result.target.kind === 'damage' ? wuwaBreakdown(result.target.setup, build.stats) : undefined}
               scoreLabel={targetLabel(result.target)}
               formatRoll={(upgrade) => upgrade.stat.endsWith('Flat') ? String(Math.round(upgrade.roll)) : `${upgrade.roll.toFixed(1)}%`}
             />

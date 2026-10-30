@@ -20,6 +20,7 @@ import {
   defaultRotation,
   type EnemyDebuffs,
   type EnemySettings,
+  HIT_CATEGORY_LABELS,
   hitKey,
   hitMultiplier,
   polarityFlatPerAp,
@@ -30,14 +31,6 @@ import {
 
 // The Damage row of the ZZZ optimizer, after HSR's enemy settings and combo drawer: who the enemy is, and how many times
 // each skill hit lands in a rotation. The optimizer can then rank builds by the rotation's damage (damage/damage.ts).
-
-const CATEGORY_LABELS: Record<string, string> = {
-  basic: 'Basic Attack',
-  dodge: 'Dodge',
-  special: 'Special Attack',
-  chain: 'Chain Attack & Ultimate',
-  assist: 'Assist',
-}
 
 // An anomaly line's multiplier as the card shows it; Abloom's and Polarity Disorder's grow with Anomaly Proficiency
 function anomalyText(agentId: string, element: string, hit: AnomalyHit, rotation: Rotation): string {
@@ -157,7 +150,7 @@ export function RotationCard({ agentId, element, teamElements = [], scaling = 'A
       <div className={classes.hitList}>
         {categories.map((category) => (
           <Stack key={category} gap={4}>
-            <Text size='xs' fw={600}>{CATEGORY_LABELS[category] ?? category}</Text>
+            <Text size='xs' fw={600}>{HIT_CATEGORY_LABELS[category] ?? category}</Text>
             {hits.filter((hit) => hit.category === category).map((hit) => (
               <div key={hitKey(hit)} className={classes.hitRow}>
                 <Text size='xs' className={classes.hitLabel} title={hit.label}>{hit.aftershock ? `${hit.label} (Aftershock)` : hit.label}</Text>

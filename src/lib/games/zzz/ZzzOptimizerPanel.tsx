@@ -12,6 +12,9 @@ import {
   Text,
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
+import {
+  splitDamage,
+} from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
 import { scoreBuild } from 'lib/games/shared/gearScore'
 import {
@@ -59,7 +62,9 @@ import {
   type Rotation,
   rotationAnomaly,
   rotationDamage,
+  rotationLines,
   rotationSkills,
+  singleLineRotation,
 } from 'lib/games/zzz/damage/damage'
 import {
   EnemyCard,
@@ -82,6 +87,7 @@ import {
   REVIEW_INTERVAL_DAYS,
   type SetChoice,
 } from 'lib/games/zzz/data/presets'
+import { zzzSampleData } from 'lib/games/zzz/data/sampleData'
 import { SETS } from 'lib/games/zzz/data/sets'
 import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
@@ -318,8 +324,8 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   // The squad's attributes: Vortex lines, Windswept and Frostbite need a Wind or Ice agent
   const teamElements = [agent.element, ...teammates.map((id) => AGENTS[id]?.element ?? '')]
   // The rotation and enemy, for ranking by damage; the team's shred counts here
-  const damageSetup: DamageSetup = {
-    ...rotationSkills(agent.id, rotation, kindBonus, kit.skillBonus, {
+  const setupFor = (lines: Rotation): DamageSetup => ({
+    ...rotationSkills(agent.id, lines, kindBonus, kit.skillBonus, {
       critDmgFromCritDmg: kit.aftershockCritDmg,
       defIgnore: kit.aftershockDefIgnore,
     }),
@@ -328,7 +334,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     critRateFromCritDmg: kit.critRateFromCritDmg,
     sheerDmg: kit.sheerDmg + teamResult.sheerDmg,
     sharpDmg: kit.sharpDmg,
-    ...rotationAnomaly(agent.id, agent.element, rotation, teamElements, kit.anomalyBonus),
+    ...rotationAnomaly(agent.id, agent.element, lines, teamElements, kit.anomalyBonus),
     agentLevel: agent.level,
     enemy: {
       ...enemy,
@@ -341,7 +347,8 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       defShred: teamResult.debuffs.defShred + kit.defIgnore,
       resShred: teamResult.debuffs.resShred + kit.resIgnore,
     },
-  }
+  })
+  const damageSetup = setupFor(rotation)
   const teammateOptions = [...new Map(builds.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
     .map(([value, label]) => ({ value, label }))
   const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
@@ -455,7 +462,16 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       <Stack gap='lg'>
         <PageHeader title='Optimizer' />
         <Panel>
-          <EmptyState icon={<IconTrendingUp size={24} />} title='Import your discs first' action={<Button onClick={onImport}>Import discs</Button>}>
+          <EmptyState
+            icon={<IconTrendingUp size={24} />}
+            title='Import your discs first'
+            action={
+              <Group gap='xs'>
+                <Button onClick={onImport}>Import discs</Button>
+                <Button variant='light' onClick={() => useZzzStore.getState().importParsed(zzzSampleData(), 'replace')}>Try with sample data</Button>
+              </Group>
+            }
+          >
             The optimizer searches every combination of the discs you own for the best build.
           </EmptyState>
         </Panel>
@@ -481,6 +497,14 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const currentStats = computeInput && currentDiscs.length > 0 ? computeStats({ ...computeInput, discs: currentDiscs }).stats : undefined
   const currentDisplay = currentStats && toDisplayStats(currentStats)
   const currentDamage = currentStats && rotationDamage(currentStats, damageSetup)
+  // Each rotation line's share of the picked build's damage, for the build analysis
+  const bestStats = best && computeInput ? computeStats({ ...computeInput, discs: best.discs }).stats : undefined
+  const breakdown = bestStats && byDamage
+    ? splitDamage(
+      rotationLines(agent.id, agent.element, rotation, teamElements),
+      (line) => rotationDamage(bestStats, setupFor(singleLineRotation(rotation, line))),
+    )
+    : undefined
   const rankRow = statRows.find((row) => row.key === sortBy) ?? statRows[0]
   const rankLabel = byDamage ? 'Rotation damage' : rankRow.label
   const rankText = (
@@ -513,7 +537,7 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
     <Stack gap='lg'>
       <PageHeader
         title='Optimizer'
-        description='Searches every combination of your discs and ranks them by the stat you pick. There is no damage calculation yet, so set minimums for the stats you also need.'
+        description='Searches every combination of your discs and ranks them by rotation damage or the stat you pick. Rotation damage uses the Damage row; set minimums (such as Energy Regen) for anything else the agent needs.'
       />
 
       <div className={classes.optimizerLayout}>
@@ -852,6 +876,7 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                 format: (value: number) => formatStat(row, value),
               }))}
               upgrades={zzzSubstatUpgrades({ ...computeInput, discs: best.discs }, sortBy, damageSetup)}
+              breakdown={breakdown}
               scoreLabel={rankLabel}
               formatRoll={(upgrade) => /%|CRIT/.test(upgrade.stat) ? `${upgrade.roll}%` : String(upgrade.roll)}
             />

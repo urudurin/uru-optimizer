@@ -6,6 +6,7 @@ import {
   type GenshinCharacter,
   type GenshinStatKey,
 } from 'lib/games/genshin/types'
+import type { DamageLine } from 'lib/games/shared/damageBreakdown'
 
 // Genshin damage, after genshin-optimizer's formula (https://github.com/frzyc/genshin-optimizer, MIT, Copyright (c) 2020
 // frzyc). One hit is
@@ -748,4 +749,31 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
 
 export function rotationDamage(stats: Partial<Record<GenshinStatKey, number>>, setup: DamageSetup): number {
   return preparedDamage(prepareDamage(setup), (stat) => stats[stat] ?? 0)
+}
+
+// What a hit's attack category is called, for the Rotation card and the damage breakdown
+export const HIT_CATEGORY_LABELS: Record<string, string> = {
+  normal: 'Normal Attack',
+  charged: 'Charged Attack',
+  plunging: 'Plunging Attack',
+  skill: 'Elemental Skill',
+  burst: 'Elemental Burst',
+}
+
+// The rotation's counted lines, talent hits and reactions, for the damage breakdown (shared/damageBreakdown.ts)
+export function rotationLines(characterId: string, element: Element | undefined, rotation: Rotation, team?: SpecialKind[]): DamageLine[] {
+  return [
+    ...characterHits(characterId).map((hit) => ({
+      key: hit.key,
+      label: hit.label,
+      group: HIT_CATEGORY_LABELS[hit.category] ?? hit.category,
+      count: rotation.counts[hit.key] ?? 0,
+    })),
+    ...transformativeLines(element, team).map((line) => ({ key: line.key, label: line.label, group: 'Reactions', count: rotation.counts[line.key] ?? 0 })),
+  ]
+}
+
+// The rotation with only one line in it
+export function singleLineRotation(rotation: Rotation, line: DamageLine): Rotation {
+  return { ...rotation, counts: { [line.key]: line.count } }
 }

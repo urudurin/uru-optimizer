@@ -1,4 +1,11 @@
+import { splitDamage } from 'lib/games/shared/damageBreakdown'
 import { resolveZzzCombat } from 'lib/games/zzz/damage/combatEffects'
+import {
+  hitKey,
+  type Rotation,
+  rotationLines,
+  singleLineRotation,
+} from 'lib/games/zzz/damage/damage'
 import {
   agentHits,
   anomalyHits,
@@ -343,5 +350,21 @@ describe('ZZZ damage', () => {
     const polarity = rotationAnomaly('1221', 'Electric', { counts: { 'anomaly:polarity': 1 }, skillLevel: 12 })
     expect(polarity.anomalyMultiplier).toBeCloseTo(0.15 * anomalyMultiplier('1221', 'Electric', 'disorder', 0), 6)
     expect(polarity.anomalyPerAp?.flat).toBe(32)
+  })
+
+  it('splits rotation damage by line, the parts adding up to the whole', () => {
+    const hits = agentHits(MIYABI.id)
+    const rotation: Rotation = { counts: { [hitKey(hits[0])]: 3, [hitKey(hits[5])]: 1, 'anomaly:shatter': 2, 'anomaly:disorder': 1 }, skillLevel: 12 }
+    const setupFor = (r: Rotation) => ({
+      ...rotationSkills(MIYABI.id, r, { ult: 30 }, {}),
+      ...rotationAnomaly(MIYABI.id, 'Ice', r),
+      agentLevel: 60,
+      enemy: DEFAULT_ENEMY,
+      debuffs: NO_DEBUFFS,
+    })
+    const parts = splitDamage(rotationLines(MIYABI.id, 'Ice', rotation), (line) => rotationDamage(stats, setupFor(singleLineRotation(rotation, line))))
+    expect(parts.map((p) => p.key).sort()).toEqual(Object.keys(rotation.counts).sort())
+    expect(parts.reduce((sum, p) => sum + p.damage, 0)).toBeCloseTo(rotationDamage(stats, setupFor(rotation)), 4)
+    expect(parts.find((p) => p.key === 'anomaly:shatter')?.group).toBe('Attribute Anomaly')
   })
 })

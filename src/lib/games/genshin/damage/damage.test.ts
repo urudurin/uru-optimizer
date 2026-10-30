@@ -1,4 +1,9 @@
 import {
+  characterHits as talentHitsOf,
+  rotationLines,
+  singleLineRotation,
+} from 'lib/games/genshin/damage/damage'
+import {
   boostedTalents,
   characterHits,
   type DamageSetup,
@@ -20,6 +25,7 @@ import type {
   GenshinCharacter,
   GenshinStatKey,
 } from 'lib/games/genshin/types'
+import { splitDamage } from 'lib/games/shared/damageBreakdown'
 import {
   describe,
   expect,
@@ -278,5 +284,24 @@ describe('Genshin damage', () => {
       'burst:Musou no Hitotachi Base DMG': 2,
       'reaction:overloaded': 3,
     })
+  })
+
+  it('splits rotation damage by line, the parts adding up to the whole', () => {
+    const hits = characterHits('Xiangling')
+    const full = setup({
+      rotation: {
+        counts: { [hits[0].key]: 4, [hits[hits.length - 1].key]: 2, 'reaction:overloaded': 1 },
+        infusion: false,
+        reaction: 'none',
+        reactionShare: 100,
+      },
+    })
+    const parts = splitDamage(
+      rotationLines(full.characterId, full.element, full.rotation),
+      (line) => rotationDamage(stats, { ...full, rotation: singleLineRotation(full.rotation, line) }),
+    )
+    expect(parts).toHaveLength(3)
+    expect(parts.reduce((sum, p) => sum + p.damage, 0)).toBeCloseTo(rotationDamage(stats, full), 4)
+    expect(parts.find((p) => p.key === 'reaction:overloaded')?.group).toBe('Reactions')
   })
 })

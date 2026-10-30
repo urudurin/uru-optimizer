@@ -14,6 +14,7 @@ import {
   describeMultiplier,
   type EnemyDebuffs,
   type EnemySettings,
+  HIT_CATEGORY_LABELS,
   hitMultiplier,
   type Reaction,
   reactionsFor,
@@ -35,14 +36,6 @@ import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 
 // The Damage row of the Genshin optimizer, like ZZZ's (zzz/damage/DamageCards.tsx): the enemy, and how many times each
 // talent hit lands in a rotation, with talent levels, an infusion switch and an amplifying reaction.
-
-const CATEGORY_LABELS: Record<string, string> = {
-  normal: 'Normal Attack',
-  charged: 'Charged Attack',
-  plunging: 'Plunging Attack',
-  skill: 'Elemental Skill',
-  burst: 'Elemental Burst',
-}
 
 const TALENT_LABELS: Record<Talent, string> = { auto: 'Normal Attack', skill: 'Skill', burst: 'Burst' }
 
@@ -185,7 +178,7 @@ export function RotationCard({ character, rotation, talents, damage, team, onCha
       <div className={classes.hitList}>
         {categories.map((category) => (
           <Stack key={category} gap={4}>
-            <Text size='xs' fw={600}>{CATEGORY_LABELS[category] ?? category}</Text>
+            <Text size='xs' fw={600}>{HIT_CATEGORY_LABELS[category] ?? category}</Text>
             {hits.filter((hit) => hit.category === category).map((hit) => (
               <div key={hit.key} className={`${classes.hitRow} ${classes.hitRowWide}`}>
                 <Text

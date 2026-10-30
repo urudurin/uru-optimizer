@@ -1,3 +1,4 @@
+import type { DamageLine } from 'lib/games/shared/damageBreakdown'
 import { characterName } from 'lib/games/wuwa/data/gameData'
 import echoSkillData from 'lib/games/wuwa/data/generated/echoSkills.json'
 import skillData from 'lib/games/wuwa/data/generated/skills.json'
@@ -282,4 +283,46 @@ export function rotationDamage(stats: WuwaStats, setup: DamageSetup): number {
     total += group.multiplier / 100 * stats[group.stat] * (1 + dmgBonus / 100) * (1 + group.amplify / 100)
   }
   return total * crit * factor
+}
+
+// What a line's skill section is called, for the Rotation card and the damage breakdown
+export const SECTION_LABELS: Record<string, string> = {
+  normal: 'Normal Attack',
+  skill: 'Resonance Skill',
+  liberation: 'Resonance Liberation',
+  intro: 'Intro Skill',
+  forte: 'Forte Circuit',
+  outro: 'Outro Skill',
+}
+
+const ECHO_LINE = 'echo:'
+
+// The rotation's counted lines, skill lines and the main echo's Echo Skill hits (keyed echo:<index>), for the damage
+// breakdown (shared/damageBreakdown.ts)
+export function rotationLines(charId: string, rotation: Rotation): DamageLine[] {
+  const echo = rotation.echo
+  return [
+    ...characterHits(charId).map((hit) => ({
+      key: hit.key,
+      label: hit.label,
+      group: SECTION_LABELS[hit.section] ?? hit.section,
+      count: rotation.counts[hit.key] ?? 0,
+    })),
+    ...(echo
+      ? echoSkillHits(echo.id).map((hit) => ({
+        key: `${ECHO_LINE}${hit.key}`,
+        label: `Echo Skill hit {${hit.index}}`,
+        group: 'Echo Skill',
+        count: echo.counts[hit.key] ?? 0,
+      }))
+      : []),
+  ]
+}
+
+// The rotation with only one line in it
+export function singleLineRotation(rotation: Rotation, line: DamageLine): Rotation {
+  if (line.key.startsWith(ECHO_LINE) && rotation.echo) {
+    return { ...rotation, counts: {}, echo: { ...rotation.echo, counts: { [line.key.slice(ECHO_LINE.length)]: line.count } } }
+  }
+  return { ...rotation, counts: { [line.key]: line.count }, ...(rotation.echo ? { echo: { ...rotation.echo, counts: {} } } : {}) }
 }

@@ -12,8 +12,8 @@ import {
 } from '@tabler/icons-react'
 import {
   backupFileName,
-  recordBackup,
   downloadTextFile,
+  recordBackup,
 } from 'lib/games/shared/backup'
 import { formatNumber } from 'lib/games/shared/format'
 import { todayString } from 'lib/games/shared/importedPresets'

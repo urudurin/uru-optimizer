@@ -1,4 +1,9 @@
+import { splitDamage } from 'lib/games/shared/damageBreakdown'
 import { resolveWuwaCombat } from 'lib/games/wuwa/damage/combatEffects'
+import {
+  rotationLines,
+  singleLineRotation,
+} from 'lib/games/wuwa/damage/damage'
 import {
   characterHits,
   type DamageSetup,
@@ -183,5 +188,23 @@ describe('WuWa damage', () => {
     })
     expect(rotationDamage(stats, { ...one(stage1.key), lineScale: seal }) / rotationDamage(stats, one(stage1.key))).toBeCloseTo(2, 6)
     expect(rotationDamage(stats, { ...one(dodge.key), lineScale: seal })).toBeCloseTo(rotationDamage(stats, one(dodge.key)), 6)
+  })
+
+  it('splits rotation damage by line, Echo Skill hits included, the parts adding up to the whole', () => {
+    const hits = characterHits('changli')
+    const full: DamageSetup = {
+      charId: 'changli',
+      characterLevel: 90,
+      rotation: { counts: { [hits[0].key]: 2, [hits[3].key]: 1 }, skillLevel: 10, echo: { id: 'nightmare-inferno-rider', counts: { '0': 1, '3': 2 } } },
+      enemy: DEFAULT_ENEMY,
+      element: 'fusionDmg',
+    }
+    const parts = splitDamage(
+      rotationLines('changli', full.rotation),
+      (line) => rotationDamage(stats, { ...full, rotation: singleLineRotation(full.rotation, line) }),
+    )
+    expect(parts).toHaveLength(4)
+    expect(parts.filter((p) => p.group === 'Echo Skill')).toHaveLength(2)
+    expect(parts.reduce((sum, p) => sum + p.damage, 0)).toBeCloseTo(rotationDamage(stats, full), 4)
   })
 })

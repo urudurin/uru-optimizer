@@ -4,17 +4,20 @@ import {
   IconUpload,
   IconUser,
 } from '@tabler/icons-react'
+import { isSampleId } from 'lib/games/shared/sampleData'
 import { BackupReminder } from 'lib/games/shared/ui/BackupReminder'
 import {
   GameLayout,
   type GameNavGroup,
   useStoredPage,
 } from 'lib/games/shared/ui/GameLayout'
+import { SampleNotice } from 'lib/games/shared/ui/SampleNotice'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import { WuwaCharactersPage } from 'lib/games/wuwa/WuwaCharactersPage'
 import { WuwaDataPage } from 'lib/games/wuwa/WuwaDataPage'
 import { WuwaEchoesPage } from 'lib/games/wuwa/WuwaEchoesPage'
 import { WuwaOptimizerPage } from 'lib/games/wuwa/WuwaOptimizerPage'
+import { useShallow } from 'zustand/react/shallow'
 
 const PAGES = ['optimizer', 'characters', 'echoes', 'data'] as const
 type WuwaPage = (typeof PAGES)[number]
@@ -36,7 +39,10 @@ const GROUPS: GameNavGroup<WuwaPage>[] = [
 
 export function WuwaApp() {
   const [page, setPage] = useStoredPage<WuwaPage>('wuwa-page', PAGES, 'optimizer')
-  const hasData = useWuwaStore((s) => s.echoes.length > 0 || s.characters.length > 0)
+  // Gear ids in the save; the sample roster's start with sample- (shared/sampleData.ts)
+  const gearIds = useWuwaStore(useShallow((s) => s.echoes.map((x) => x.id)))
+  const sampleOnly = gearIds.length > 0 && gearIds.every(isSampleId)
+  const hasData = useWuwaStore((s) => s.characters.length > 0) || (gearIds.length > 0 && !sampleOnly)
   const goToImport = () => setPage('data')
 
   return (
@@ -46,7 +52,9 @@ export function WuwaApp() {
       groups={GROUPS}
       active={page}
       onNavigate={setPage}
-      notice={page !== 'data' && <BackupReminder game='wuwa' hasData={hasData} onSave={() => setPage('data')} />}
+      notice={sampleOnly
+        ? <SampleNotice onRemove={() => useWuwaStore.getState().clear()} onImport={() => setPage('data')} />
+        : page !== 'data' && <BackupReminder game='wuwa' hasData={hasData} onSave={() => setPage('data')} />}
     >
       {page === 'characters' && <WuwaCharactersPage onImport={goToImport} />}
       {page === 'optimizer' && <WuwaOptimizerPage onImport={goToImport} />}

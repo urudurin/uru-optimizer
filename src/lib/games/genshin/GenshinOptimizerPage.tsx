@@ -15,6 +15,7 @@ import {
   setCountsOf,
 } from 'lib/games/genshin/damage/combatEffects'
 import {
+  type DamageSetup,
   DEFAULT_ENEMY,
   defaultRotation,
   type EnemySettings,
@@ -22,7 +23,9 @@ import {
   migrateRotationCounts,
   type Rotation,
   rotationDamage,
+  rotationLines,
   rotationTalents,
+  singleLineRotation,
   stellarContribution,
   teamReactions,
 } from 'lib/games/genshin/damage/damage'
@@ -32,6 +35,7 @@ import {
   RotationCard,
 } from 'lib/games/genshin/damage/DamageCards'
 import { useGenshinImages } from 'lib/games/genshin/data/images'
+import { genshinSampleData } from 'lib/games/genshin/data/sampleData'
 import {
   GenshinTeamCards,
   teamSummary,
@@ -90,6 +94,10 @@ import {
   ELEMENT_ACCENTS,
   genshinStatRows,
 } from 'lib/games/genshin/ui/characterStats'
+import {
+  type DamagePart,
+  splitDamage,
+} from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
 import {
   fieldSetter,
@@ -220,6 +228,14 @@ function migrateSaves() {
   })
 }
 
+// Each rotation line's share of a build's damage, for the build analysis
+function genshinBreakdown(setup: DamageSetup, stats: Partial<Record<GenshinStatKey, number>>): DamagePart[] {
+  return splitDamage(
+    rotationLines(setup.characterId, setup.element, setup.rotation, setup.teamReactions),
+    (line) => rotationDamage(stats, { ...setup, rotation: singleLineRotation(setup.rotation, line) }),
+  )
+}
+
 export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   useState(migrateSaves)
   const artifacts = useGenshinStore((s) => s.artifacts)
@@ -286,7 +302,16 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
       <Stack gap='lg'>
         <PageHeader title='Optimizer' />
         <Panel>
-          <EmptyState icon={<IconTrendingUp size={24} />} title='Import your artifacts first' action={<Button onClick={onImport}>Import</Button>}>
+          <EmptyState
+            icon={<IconTrendingUp size={24} />}
+            title='Import your artifacts first'
+            action={
+              <Group gap='xs'>
+                <Button onClick={onImport}>Import</Button>
+                <Button variant='light' onClick={() => useGenshinStore.getState().importParsed(genshinSampleData(), 'replace')}>Try with sample data</Button>
+              </Group>
+            }
+          >
             A GOOD file from an artifact scanner brings in your whole inventory, which the optimizer searches for the best 5-piece builds.
           </EmptyState>
         </Panel>
@@ -737,6 +762,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                 })),
               ]}
               upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs, result.target.kind === 'damage' ? combat : undefined)}
+              breakdown={result.target.kind === 'damage' ? genshinBreakdown(result.target.setup, build.stats) : undefined}
               scoreLabel={targetLabel(result.target)}
               formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
             />

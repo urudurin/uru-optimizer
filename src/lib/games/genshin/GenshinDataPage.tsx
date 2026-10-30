@@ -26,8 +26,8 @@ import {
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import {
   backupFileName,
-  recordBackup,
   downloadTextFile,
+  recordBackup,
 } from 'lib/games/shared/backup'
 import { parseJsonOrUndefined } from 'lib/games/shared/enka'
 import { formatNumber } from 'lib/games/shared/format'

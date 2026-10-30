@@ -9,12 +9,15 @@ import { GenshinCharactersPage } from 'lib/games/genshin/GenshinCharactersPage'
 import { GenshinDataPage } from 'lib/games/genshin/GenshinDataPage'
 import { GenshinOptimizerPage } from 'lib/games/genshin/GenshinOptimizerPage'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
+import { isSampleId } from 'lib/games/shared/sampleData'
 import { BackupReminder } from 'lib/games/shared/ui/BackupReminder'
 import {
   GameLayout,
   type GameNavGroup,
   useStoredPage,
 } from 'lib/games/shared/ui/GameLayout'
+import { SampleNotice } from 'lib/games/shared/ui/SampleNotice'
+import { useShallow } from 'zustand/react/shallow'
 
 const PAGES = ['optimizer', 'characters', 'artifacts', 'data'] as const
 type GenshinPage = (typeof PAGES)[number]
@@ -36,7 +39,10 @@ const GROUPS: GameNavGroup<GenshinPage>[] = [
 
 export function GenshinApp() {
   const [page, setPage] = useStoredPage<GenshinPage>('genshin-page', PAGES, 'optimizer')
-  const hasData = useGenshinStore((s) => s.artifacts.length > 0 || s.characters.length > 0)
+  // Gear ids in the save; the sample roster's start with sample- (shared/sampleData.ts)
+  const gearIds = useGenshinStore(useShallow((s) => s.artifacts.map((x) => x.id)))
+  const sampleOnly = gearIds.length > 0 && gearIds.every(isSampleId)
+  const hasData = useGenshinStore((s) => s.characters.length > 0) || (gearIds.length > 0 && !sampleOnly)
   const goToImport = () => setPage('data')
 
   return (
@@ -46,7 +52,9 @@ export function GenshinApp() {
       groups={GROUPS}
       active={page}
       onNavigate={setPage}
-      notice={page !== 'data' && <BackupReminder game='genshin' hasData={hasData} onSave={() => setPage('data')} />}
+      notice={sampleOnly
+        ? <SampleNotice onRemove={() => useGenshinStore.getState().clear()} onImport={() => setPage('data')} />
+        : page !== 'data' && <BackupReminder game='genshin' hasData={hasData} onSave={() => setPage('data')} />}
     >
       {page === 'optimizer' && <GenshinOptimizerPage onImport={goToImport} />}
       {page === 'characters' && <GenshinCharactersPage onImport={goToImport} />}
