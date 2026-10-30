@@ -43,6 +43,12 @@ describe('ZZZ game data from Enka', () => {
     expect(miyabi).toMatchObject({ element: 'Ice', specialty: 'Anomaly', level: 60 })
   })
 
+  it('gives Banyue, Manato and Yidhari Sheer Force from HP, other Rupture agents none', () => {
+    const rupture = { ...MIYABI_ENTRY, ProfessionType: 'Rupture' }
+    expect(agentFromEnka('1471', rupture, 'Banyue').sheerForce).toEqual({ fromAtk: 0.3, fromHp: 0.1 })
+    expect(agentFromEnka('9999', rupture, 'Someone').sheerForce).toEqual({ fromAtk: 0.3, fromHp: 0 })
+  })
+
   it('gives Hailstorm Shrine its level 60 base ATK and CRIT Rate', () => {
     const engine = wEngineFromEnka(
       '14109',

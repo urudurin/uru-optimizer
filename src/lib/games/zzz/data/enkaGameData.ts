@@ -94,6 +94,8 @@ export function agentBaseStats(entry: AvatarEntry, level = AGENT_LEVEL): AgentBa
   }
 }
 
+const HP_SHEER_FORCE: Record<string, number> = { '1471': 0.1, '1441': 0.1, '1051': 0.1 }
+
 export function agentFromEnka(id: string, entry: AvatarEntry, name: string): AgentData {
   const specialty = (entry.ProfessionType ?? 'Attack') as Specialty
   return {
@@ -103,8 +105,9 @@ export function agentFromEnka(id: string, entry: AvatarEntry, name: string): Age
     specialty,
     level: AGENT_LEVEL,
     base: agentBaseStats(entry),
-    // Rupture agents' Sheer Force from HP is a Core Passive, not in the store
-    ...(specialty === 'Rupture' ? { sheerForce: { fromAtk: 0.3, fromHp: 0 } } : {}),
+    // Rupture agents' Sheer Force from HP is a Core Passive, not in the store: 0.1 per HP for Banyue, Manato and Yidhari
+    // (genshin-optimizer's core_hpSheerForce), none known for the rest
+    ...(specialty === 'Rupture' ? { sheerForce: { fromAtk: 0.3, fromHp: HP_SHEER_FORCE[id] ?? 0 } } : {}),
     coreEffects: Object.fromEntries([1, 2, 3, 4, 5, 6].map((level) => [level, []])),
   }
 }

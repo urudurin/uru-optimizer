@@ -472,7 +472,7 @@ describe('ZZZ damage', () => {
 
     // EX Special and Ultimate hits get a group of their own with 40% DEF ignore; the Basic Attack stays shared
     const rotation: Rotation = { counts: { 'BasicAttackSwiftedge:0': 2, 'EXSpecialAttackGaleSuppression:0': 1, 'UltimateChasingStorms:0': 1 }, skillLevel: 12 }
-    const skills = rotationSkills(YE, rotation, {}, {}, undefined, kit(2).kindDefIgnore)
+    const skills = rotationSkills(YE, rotation, {}, {}, undefined, { defIgnore: kit(2).kindDefIgnore })
     const hit = (key: string) => hitMultiplier(agentHits(YE).find((h) => hitKey(h) === key)!, 12)
     expect(skills.multiplier).toBeCloseTo(2 * hit('BasicAttackSwiftedge:0'), 6)
     expect(skills.hitGroups).toEqual([{
@@ -480,6 +480,7 @@ describe('ZZZ damage', () => {
       bonusMultiplier: 0,
       defIgnore: 40,
       critDmg: 0,
+      critRate: 0,
     }])
     const total = rotationDamage(stats, { ...base, ...skills })
     const unignored = rotationDamage(stats, { ...base, ...rotationSkills(YE, rotation, {}, {}) })
@@ -490,7 +491,7 @@ describe('ZZZ damage', () => {
   })
   it('Pyrois: Mirage Ultimate CRIT DMG on a stunned enemy, Sunflare, her squad CRIT DMG, M1, and her extra Ultimate hits', () => {
     const PYROIS = '1551'
-    expect(resolveZzzCombat(PYROIS, 0, {}).kindCritDmg).toEqual({})
+    expect(resolveZzzCombat(PYROIS, 0, {}).kindCritDmg).toEqual({ ult: 0 })
     const kit = resolveZzzCombat(PYROIS, 0, {}, undefined, true)
     expect(kit.kindCritDmg).toEqual({ ult: 40 })
     expect(kit.statEffects.map((e) => [e.stat, e.value])).toEqual([[ZzzStats.ELEMENT_DMG, 40], [ZzzStats.CRIT_DMG, 40]])
@@ -509,18 +510,45 @@ describe('ZZZ damage', () => {
       counts: { 'ChainAttackCeremonialMarch:0': 1, 'UltimateEternalImprisonment:0': 1, 'UltimateEternalImprisonmentTotalize:0': 1 },
       skillLevel: 12,
     }
-    const skills = rotationSkills(PYROIS, rotation, {}, {}, undefined, {}, kit.kindCritDmg)
+    const skills = rotationSkills(PYROIS, rotation, {}, {}, undefined, { critDmg: kit.kindCritDmg })
     expect(skills.multiplier).toBeCloseTo(hitMultiplier(hit('ChainAttackCeremonialMarch:0'), 12), 6)
     expect(skills.hitGroups).toEqual([{
       multiplier: expect.closeTo(hitMultiplier(hit('UltimateEternalImprisonment:0'), 12) + 2250, 6),
       bonusMultiplier: 0,
       defIgnore: 0,
       critDmg: 40,
+      critRate: 0,
     }])
     const base = { agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS }
     const cr = Math.min(100, stats.critRate) / 100
     const ratio = rotationDamage(stats, { ...base, ...skills, multiplier: 0 })
       / rotationDamage(stats, { ...base, multiplier: skills.hitGroups![0].multiplier })
     expect(ratio).toBeCloseTo((1 + cr * (stats.critDmg + 40) / 100) / (1 + cr * stats.critDmg / 100), 6)
+  })
+  it('genshin-optimizer kits: hit-key DMG (Billy), per-hit CRIT Rate (Harumasa), skill CRIT DMG (Ellen), DMG taken (Caesar)', () => {
+    const hit = (agent: string, key: string) => agentHits(agent).find((h) => hitKey(h) === key)!
+    // Billy: only Full Firepower's last two hits get +50%
+    const billy = resolveZzzCombat('1081', 0, {})
+    expect(billy.skillBonus).toMatchObject({ 'BasicAttackFullFirepower:2': 50, 'BasicAttackFullFirepower:3': 50 })
+    const firepower: Rotation = { counts: { 'BasicAttackFullFirepower:0': 1, 'BasicAttackFullFirepower:2': 1 }, skillLevel: 12 }
+    expect(rotationBonusMultiplier('1081', firepower, {}, billy.skillBonus)).toBeCloseTo(hitMultiplier(hit('1081', 'BasicAttackFullFirepower:2'), 12) * 0.5, 6)
+
+    // Harumasa: his Ultimate gets a group with +25% CRIT Rate and +72% CRIT DMG at 6 Gleaming Edge
+    const harumasa = resolveZzzCombat('1201', 0, {})
+    const ult = agentHits('1201').find((h) => h.kind === 'ult')!
+    const skills = rotationSkills('1201', { counts: { [hitKey(ult)]: 1 }, skillLevel: 12 }, {}, {}, undefined, {
+      critDmg: harumasa.kindCritDmg,
+      critRate: harumasa.kindCritRate,
+    })
+    expect(skills.hitGroups).toEqual([{ multiplier: expect.closeTo(hitMultiplier(ult, 12), 6), bonusMultiplier: 0, defIgnore: 0, critDmg: 72, critRate: 25 }])
+    const base = { agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS }
+    const low = { ...stats, critRate: 40 }
+    const ratio = rotationDamage(low, { ...base, ...skills }) / rotationDamage(low, { ...base, multiplier: skills.hitGroups![0].multiplier })
+    expect(ratio).toBeCloseTo((1 + 0.65 * (low.critDmg + 72) / 100) / (1 + 0.4 * low.critDmg / 100), 6)
+
+    // Ellen: CRIT DMG by skill key and by kind
+    expect(resolveZzzCombat('1191', 0, {}).kindCritDmg).toMatchObject({ DashAttackArcticAmbush: 100, chain: 100, ult: 100 })
+    // Caesar: the enemy takes 25% more DMG
+    expect(resolveZzzCombat('1071', 0, {}).dmgTaken).toBe(25)
   })
 })

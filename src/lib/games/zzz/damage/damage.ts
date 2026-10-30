@@ -149,10 +149,10 @@ export type DamageSetup = {
   // Aftershock hits, when kits give them CRIT DMG (a fraction of the agent's CRIT DMG) or DEF ignore (percent) of their
   // own; these hits are left out of multiplier and bonusMultiplier then
   aftershock?: { multiplier: number, bonusMultiplier: number, critDmgFromCritDmg: number, defIgnore: number },
-  // Hits of some kinds with DEF ignore (Ye Shunguang's Mindscape 2: EX Special and Ultimate) or CRIT DMG in percent
-  // (Pyrois' Mirage: Ultimate) of their own, one group per pair of values; these hits are left out of multiplier and
-  // bonusMultiplier too
-  hitGroups?: { multiplier: number, bonusMultiplier: number, defIgnore: number, critDmg: number }[],
+  // Hits with DEF ignore (Ye Shunguang's Mindscape 2: EX Special and Ultimate), CRIT DMG (Pyrois' Mirage: Ultimate) or
+  // CRIT Rate (Harumasa: Ultimate) of their own, in percent, one group per set of values; these hits are left out of
+  // multiplier and bonusMultiplier too
+  hitGroups?: { multiplier: number, bonusMultiplier: number, defIgnore: number, critDmg: number, critRate: number }[],
   // Ether Veil vulnerability (Ye Shunguang), in percent: the stun multiplier applies whether or not the enemy is stunned,
   // up to 100% + this (GO dmg.ts stunned_mult_ with veilVulnerabilityCap_)
   veilVulnerabilityCap?: number,
@@ -225,12 +225,14 @@ function skillDamage(
   bonusMultiplier: number,
   critDmgFromCritDmg = 0,
   defIgnore = 0,
-  // Flat CRIT DMG for these hits only, in percent
+  // Flat CRIT DMG and CRIT Rate for these hits only, in percent
   critDmg = 0,
+  critRate = 0,
 ): number {
   if (multiplier === 0 && bonusMultiplier === 0) return 0
   const hits = (multiplier * f.dmgBonus + bonusMultiplier) / 100
-  const crit = 1 + f.critRate * (f.critDmg + (critDmgFromCritDmg * stats.critDmg + critDmg) / 100)
+  const rate = critRate ? Math.min(100, Math.max(0, stats.critRate + critRate)) / 100 : f.critRate
+  const crit = 1 + rate * (f.critDmg + (critDmgFromCritDmg * stats.critDmg + critDmg) / 100)
   const def = defIgnore ? defMultiplier(stats, setup, defIgnore) : f.def
   // Rupture agents' skill hits are Sheer damage: Sheer Force instead of ATK, and no DEF multiplier
   if (setup.scaling === 'sheer') return stats.sheerForce * hits * crit * (1 + (setup.sheerDmg ?? 0) / 100)
@@ -253,7 +255,7 @@ export function rotationDamage(stats: FinalStats, setup: DamageSetup): number {
       ? skillDamage(stats, setup, f, aftershock.multiplier, aftershock.bonusMultiplier, aftershock.critDmgFromCritDmg, aftershock.defIgnore)
       : 0)
     + (setup.hitGroups ?? []).reduce(
-      (sum, group) => sum + skillDamage(stats, setup, f, group.multiplier, group.bonusMultiplier, 0, group.defIgnore, group.critDmg),
+      (sum, group) => sum + skillDamage(stats, setup, f, group.multiplier, group.bonusMultiplier, 0, group.defIgnore, group.critDmg, group.critRate),
       0,
     )
   let anomalyHits = (setup.anomalyMultiplier ?? 0) * f.dmgBonus + (setup.anomalyBonusMultiplier ?? 0)
@@ -693,9 +695,17 @@ export function defaultRotation(agentId: string): Rotation {
 // DMG Bonus by kind of hit; 'aftershock' goes on top of the hit's own kind
 export type KindBonus = Partial<Record<HitKind | 'aftershock', number>>
 
+// Values for some hits only, keyed by hit kind ('ult'), skill key ('DashAttackArcticAmbush') or hit key
+// ('BasicAttackFullFirepower:2'); a hit gets the sum of the three
+export type HitScoped = Record<string, number>
+
+export function scopedValue(values: HitScoped, hit: SkillHit): number {
+  return (values[hit.kind] ?? 0) + (values[hit.skill] ?? 0) + (values[hitKey(hit)] ?? 0)
+}
+
 type HitFilter = (hit: SkillHit) => boolean
 
-// Sum of count x hit multiplier x the hit's extra DMG Bonus (kind and skill bonuses, in percent), for DamageSetup
+// Sum of count x hit multiplier x the hit's extra DMG Bonus (kind and skill or hit key bonuses, in percent), for DamageSetup
 export function rotationBonusMultiplier(
   agentId: string,
   rotation: Rotation,
@@ -705,6 +715,7 @@ export function rotationBonusMultiplier(
 ): number {
   return agentHits(agentId).filter(only).reduce((sum, hit) => {
     const bonus = (kindBonus[hit.kind] ?? 0) + (hit.aftershock ? kindBonus.aftershock ?? 0 : 0) + (skillBonus[hit.skill] ?? 0)
+      + (skillBonus[hitKey(hit)] ?? 0)
     return sum + (rotation.counts[hitKey(hit)] ?? 0) * hitMultiplier(hit, rotation.skillLevel) * bonus / 100
   }, 0)
 }
@@ -714,28 +725,30 @@ export function rotationMultiplier(agentId: string, rotation: Rotation, only: Hi
 }
 
 // The rotation's skill hits for DamageSetup; Aftershock hits get their own group when a kit gives them CRIT DMG or DEF
-// ignore of their own, and so do kinds of hits with DEF ignore or CRIT DMG of their own
+// ignore of their own, and so do hits with DEF ignore, CRIT DMG or CRIT Rate of their own (HitScoped)
 export function rotationSkills(
   agentId: string,
   rotation: Rotation,
   kindBonus: KindBonus,
   skillBonus: Record<string, number>,
   aftershock: { critDmgFromCritDmg: number, defIgnore: number } = { critDmgFromCritDmg: 0, defIgnore: 0 },
-  // DEF ignore for some kinds of hits only, in percent (Ye Shunguang's Mindscape 2)
-  kindDefIgnore: Partial<Record<HitKind, number>> = {},
-  // CRIT DMG for some kinds of hits only, in percent (Pyrois' Mirage)
-  kindCritDmg: Partial<Record<HitKind, number>> = {},
+  // DEF ignore (Ye Shunguang's Mindscape 2), CRIT DMG (Pyrois' Mirage) and CRIT Rate for some hits only, in percent
+  scoped: { defIgnore?: HitScoped, critDmg?: HitScoped, critRate?: HitScoped } = {},
 ): Pick<DamageSetup, 'multiplier' | 'bonusMultiplier' | 'aftershock' | 'hitGroups'> {
   const ownAftershock = !!aftershock.critDmgFromCritDmg || !!aftershock.defIgnore
   const inAftershock: HitFilter = (hit) => ownAftershock && hit.aftershock
   // Hits in the Aftershock group keep its values; the rest go by their kind's
   const groupOf = (hit: SkillHit) =>
     inAftershock(hit)
-      ? { defIgnore: 0, critDmg: 0 }
-      : { defIgnore: kindDefIgnore[hit.kind] ?? 0, critDmg: kindCritDmg[hit.kind] ?? 0 }
+      ? { defIgnore: 0, critDmg: 0, critRate: 0 }
+      : {
+        defIgnore: scopedValue(scoped.defIgnore ?? {}, hit),
+        critDmg: scopedValue(scoped.critDmg ?? {}, hit),
+        critRate: scopedValue(scoped.critRate ?? {}, hit),
+      }
   const groupKey = (hit: SkillHit) => {
-    const { defIgnore, critDmg } = groupOf(hit)
-    return defIgnore > 0 || critDmg > 0 ? `${defIgnore}|${critDmg}` : ''
+    const { defIgnore, critDmg, critRate } = groupOf(hit)
+    return defIgnore > 0 || critDmg > 0 || critRate > 0 ? `${defIgnore}|${critDmg}|${critRate}` : ''
   }
   const groups = [...new Map(agentHits(agentId).filter((hit) => groupKey(hit) !== '').map((hit) => [groupKey(hit), hit])).entries()]
   const plain: HitFilter = (hit) => !inAftershock(hit) && groupKey(hit) === ''

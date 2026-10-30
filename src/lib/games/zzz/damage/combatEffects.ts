@@ -1,7 +1,7 @@
 import {
   addAnomalyBonuses,
   type AnomalyBonuses,
-  type HitKind,
+  type HitScoped,
   type KindBonus,
 } from 'lib/games/zzz/damage/damage'
 import {
@@ -61,9 +61,12 @@ export type ZzzCombatEffect = {
   // Points on the enemy's stun multiplier (Nangong Yu's Misstep), added to the team's
   stunBonus?: (context: ZzzCombatContext) => number,
   // DEF ignore for some kinds of hits only, in percent (damage.ts rotationSkills)
-  kindDefIgnore?: (context: ZzzCombatContext) => Partial<Record<HitKind, number>>,
-  // CRIT DMG for some kinds of hits only, in percent (damage.ts rotationSkills)
-  kindCritDmg?: (context: ZzzCombatContext) => Partial<Record<HitKind, number>>,
+  kindDefIgnore?: (context: ZzzCombatContext) => HitScoped,
+  // CRIT DMG and CRIT Rate for some hits only (by kind, skill key or hit key), in percent (damage.ts rotationSkills)
+  kindCritDmg?: (context: ZzzCombatContext) => HitScoped,
+  kindCritRate?: (context: ZzzCombatContext) => HitScoped,
+  // The enemy takes more DMG, in percent (added to the team's)
+  dmgTaken?: (context: ZzzCombatContext) => number,
   // Ether Veil vulnerability cap in percent (DamageSetup.veilVulnerabilityCap); the largest one counts
   veilVulnerabilityCap?: (context: ZzzCombatContext) => number,
   sheerDmg?: (context: ZzzCombatContext) => number,
@@ -431,7 +434,7 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       id: 'pyrois-core-mirage',
       label: 'Core Skill: Mirage (after Total Annihilation), Ultimate CRIT DMG +40% against a stunned enemy (the Enemy card\'s Stunned switch)',
       toggle: { kind: 'switch', label: 'Mirage' },
-      kindCritDmg: ({ enemyStunned }) => (enemyStunned ? { ult: 40 } : {}),
+      kindCritDmg: ({ enemyStunned }) => ({ ult: enemyStunned ? 40 : 0 }),
       confidence: 'confirmed',
     },
     {
@@ -470,6 +473,1014 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
     }],
     confidence: 'confirmed',
   }],
+  // From here to Claret: genshin-optimizer's ZZZ sheets (MIT, Oct 26 2026), Core Skill F, read by hand. Not counted:
+  // Daze, Anomaly Buildup, Energy, shields, flat additional DMG, multiplier increases (Hugo's Totalize, Evelyn's Chain
+  // Attacks), RES ignore for some hits only, and stacks GO counts per hit
+  // Anby
+  '1011': [
+    {
+      id: 'anby-m2-basic',
+      label: 'Mindscape 2: Basic Attack DMG +30% against a stunned enemy (the Enemy card\'s Stunned switch)',
+      minMindscape: 2,
+      kinds: ({ enemyStunned }) => ({ basic: enemyStunned ? 30 : 0 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'anby-m6-charge',
+      label: 'Mindscape 6: Basic Attack and EX Special DMG +45% after spending a charge',
+      minMindscape: 6,
+      toggle: { kind: 'switch', label: 'Charge spent' },
+      kinds: () => ({ basic: 45, exSpecial: 45 }),
+      confidence: 'sourced',
+    },
+  ],
+  // Anton
+  '1111': [
+    {
+      id: 'anton-core-piledriver',
+      label: 'Core Skill: Piledriver hits DMG +24%',
+      skills: () =>
+        Object.fromEntries(
+          [
+            'BasicAttackEnthusiasticDrills:3',
+            'BasicAttackEnthusiasticDrillsBurstMode:2',
+            'SpecialAttackSpinBro:0',
+            'EXSpecialAttackSmashTheHorizonBro:0',
+            'SpecialAttackExplosiveDrillBurstMode:0',
+            'ChainAttackGoGoGo:0',
+            'UltimateGoGoGoGoGo:0',
+          ].map((key) => [key, 24]),
+        ),
+      confidence: 'sourced',
+    },
+    {
+      id: 'anton-core-drill',
+      label: 'Core Skill: Drill hits DMG +40%',
+      skills: () =>
+        Object.fromEntries(
+          [
+            'BasicAttackEnthusiasticDrillsBurstMode:1',
+            'DodgeCounterOverloadDrillBurstMode:0',
+            'QuickAssistProtectiveDrillBurstMode:0',
+            'AssistFollowUpLimitBurst:0',
+          ].map((key) => [key, 40]),
+        ),
+      confidence: 'sourced',
+    },
+    {
+      id: 'anton-ability-shock',
+      label: 'Additional Ability: Shock +45% (a multiplier of its own) in Burst Mode, with 3 Electric or Belobog agents in the squad',
+      toggle: { kind: 'switch', label: 'Burst Mode, squad qualifies' },
+      anomalies: () => ({ shock: { buff: 45 } }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'anton-m4-crit',
+      label: 'Mindscape 4: CRIT Rate +10% for the squad after a Chain Attack or Ultimate',
+      minMindscape: 4,
+      toggle: { kind: 'switch', label: 'After a Chain Attack or Ultimate' },
+      stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 10 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'anton-m6-drill',
+      label: 'Mindscape 6: Burst Mode drill hits DMG +4% per Piledriver CRIT (up to 6)',
+      minMindscape: 6,
+      toggle: { kind: 'stacks', label: 'Piledriver CRITs', max: 6 },
+      skills: ({ setting }) =>
+        Object.fromEntries(
+          [
+            'BasicAttackEnthusiasticDrillsBurstMode:0',
+            'BasicAttackEnthusiasticDrillsBurstMode:1',
+            'BasicAttackEnthusiasticDrillsBurstMode:2',
+            'DodgeCounterOverloadDrillBurstMode:0',
+          ]
+            .map((key) => [key, 4 * Number(setting)]),
+        ),
+      confidence: 'sourced',
+    },
+  ],
+  // Astra Yao: Idyllic Cadenza counts for her too (her squad gets it from team/buffs.ts)
+  '1311': [{
+    id: 'astra-idyllic-cadenza',
+    label: 'Idyllic Cadenza: DMG +20%, CRIT DMG +25% (skill level 12) and ATK +35% of her initial ATK (up to 1,200)',
+    toggle: { kind: 'switch', label: 'Idyllic Cadenza' },
+    stats: () => [
+      { stat: ZzzStats.ELEMENT_DMG, value: 20 },
+      { stat: ZzzStats.CRIT_DMG, value: 25 },
+      { stat: ZzzStats.ATK, value: 0, fromStat: { stat: 'atk', above: 0, per: 0.35, max: 1200 } },
+    ],
+    confidence: 'sourced',
+  }],
+  // Banyue (her Sheer Force from HP is in data/enkaGameData.ts)
+  '1471': [
+    {
+      id: 'banyue-core',
+      label: 'Core Skill: Fire DMG +36% and CRIT DMG +36% after her EX Special follow-up (her +300 Sheer Force isn\'t counted)',
+      toggle: { kind: 'switch', label: 'After the EX Special follow-up' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 36 }, { stat: ZzzStats.CRIT_DMG, value: 36 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'banyue-ability',
+      label: 'Additional Ability: Fire DMG +5% per Vidyaraja stack (up to 3), with a Support or Stun agent in the squad',
+      toggle: { kind: 'stacks', label: 'Vidyaraja stacks', max: 3 },
+      stats: ({ setting, mindscape }) => [{ stat: ZzzStats.ELEMENT_DMG, value: (mindscape >= 6 ? 13 : 5) * Number(setting) }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'banyue-m1-res',
+      label: 'Mindscape 1: the enemy\'s Fire RES -10% (Tremor)',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'Tremor' },
+      resIgnore: () => 10,
+      confidence: 'sourced',
+    },
+    {
+      id: 'banyue-m2',
+      label: 'Mindscape 2: CRIT DMG +15% and Fire DMG +15% after her EX Special follow-up',
+      minMindscape: 2,
+      toggle: { kind: 'switch', label: 'After the EX Special follow-up' },
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 15 }, { stat: ZzzStats.ELEMENT_DMG, value: 15 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'banyue-m4',
+      label: 'Mindscape 4: Basic Attack and EX Special DMG +30%',
+      minMindscape: 4,
+      kinds: () => ({ basic: 30, exSpecial: 30 }),
+      confidence: 'sourced',
+    },
+  ],
+  // Ben
+  '1121': [
+    {
+      id: 'ben-core-atk',
+      label: 'Core Skill: ATK +80% of his DEF',
+      stats: () => [{ stat: ZzzStats.ATK, value: 0, fromStat: { stat: 'def', above: 0, per: 0.8, max: Number.POSITIVE_INFINITY } }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'ben-ability-crit',
+      label: 'Additional Ability: CRIT Rate +16% for the squad while shielded, with 3 Fire or Belobog agents in the squad',
+      toggle: { kind: 'switch', label: 'Shielded, squad qualifies' },
+      stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 16 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'ben-m4',
+      label: 'Mindscape 4: his counter hits DMG +30% after blocking',
+      minMindscape: 4,
+      toggle: { kind: 'switch', label: 'Blocked an attack' },
+      skills: () => ({ 'SpecialAttackFiscalFist:1': 30, 'EXSpecialAttackCashflowCounter:2': 30 }),
+      confidence: 'sourced',
+    },
+  ],
+  // Billy
+  '1081': [
+    {
+      id: 'billy-core',
+      label: 'Core Skill: Full Firepower\'s last two hits DMG +50%',
+      skills: () => ({ 'BasicAttackFullFirepower:2': 50, 'BasicAttackFullFirepower:3': 50 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'billy-ability',
+      label: 'Additional Ability: Ultimate DMG +50% per stack (up to 2), with 3 Physical or Cunning Hares agents in the squad',
+      toggle: { kind: 'stacks', label: 'Stacks', max: 2 },
+      kinds: ({ setting }) => ({ ult: 50 * Number(setting) }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'billy-m2',
+      label: 'Mindscape 2: Dodge Counter DMG +25%',
+      minMindscape: 2,
+      kinds: () => ({ dodgeCounter: 25 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'billy-m6',
+      label: 'Mindscape 6: DMG +6% per stack (up to 5)',
+      minMindscape: 6,
+      toggle: { kind: 'stacks', label: 'Stacks', max: 5 },
+      stats: ({ setting }) => [{ stat: ZzzStats.ELEMENT_DMG, value: 6 * Number(setting) }],
+      confidence: 'sourced',
+    },
+  ],
+  // Burnice
+  '1171': [{
+    id: 'burnice-m4',
+    label: 'Mindscape 4: EX Special and Assist CRIT Rate +30%',
+    minMindscape: 4,
+    kindCritRate: () => ({ exSpecial: 30, quickAssist: 30, assist: 30, assistFollowUp: 30 }),
+    confidence: 'sourced',
+  }],
+  // Caesar (her squad gets the ATK and DMG taken from team/buffs.ts)
+  '1071': [
+    {
+      id: 'caesar-core-atk',
+      label: 'Core Skill: Radiant Aegis, ATK +1,000 (+1,500 at Mindscape 2)',
+      toggle: { kind: 'switch', label: 'Radiant Aegis' },
+      stats: ({ mindscape }) => [{ stat: ZzzStats.ATK, value: mindscape >= 2 ? 1500 : 1000 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'caesar-ability',
+      label: 'Additional Ability: the enemy takes 25% more DMG (Debuff), with a Defensive Assist or Sons of Calydon member',
+      toggle: { kind: 'switch', label: 'Debuff, squad qualifies' },
+      dmgTaken: () => 25,
+      confidence: 'sourced',
+    },
+    {
+      id: 'caesar-m1',
+      label: 'Mindscape 1: the enemy\'s RES -15% during Radiant Aegis',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'Radiant Aegis' },
+      resIgnore: () => 15,
+      confidence: 'sourced',
+    },
+    {
+      id: 'caesar-m6',
+      label: 'Mindscape 6: Shield Bash and Aiding Blade DMG +50%; CRIT Rate +30% and CRIT DMG +60% after them',
+      minMindscape: 6,
+      toggle: { kind: 'switch', label: 'After Shield Bash or Aiding Blade' },
+      skills: () => ({ 'EXSpecialAttackOverpoweredShieldBash:0': 50, 'AssistFollowUpAidingBlade:0': 50 }),
+      stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 30 }, { stat: ZzzStats.CRIT_DMG, value: 60 }],
+      confidence: 'sourced',
+    },
+  ],
+  // Corin
+  '1061': [
+    {
+      id: 'corin-core',
+      label: 'Core Skill: extended hits DMG +37.5%',
+      skills: () =>
+        Object.fromEntries(
+          [
+            'BasicAttackWipeout:2',
+            'BasicAttackWipeout:4',
+            'DashAttackOopsyDaisy:0',
+            'DodgeCounterNope:1',
+            'SpecialAttackCleanSweep:1',
+            'EXSpecialAttackSkirtAlert:1',
+            'ChainAttackSorry:0',
+            'UltimateVeryVerySorry:0',
+            'QuickAssistEmergencyMeasures:1',
+            'AssistFollowUpQuickSweep:0',
+          ].map((key) => [key, 37.5]),
+        ),
+      confidence: 'sourced',
+    },
+    {
+      id: 'corin-ability',
+      label: 'Additional Ability: DMG +35% against a stunned enemy, with 3 Physical or Victoria Housekeeping agents in the squad',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      stats: ({ enemyStunned }) => [{ stat: ZzzStats.ELEMENT_DMG, value: enemyStunned ? 35 : 0 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'corin-m1',
+      label: 'Mindscape 1: DMG +12% after her Chain Attack or Ultimate hits',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'After a Chain Attack or Ultimate' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 12 }],
+      confidence: 'sourced',
+    },
+  ],
+  // Dialyn
+  '1481': [
+    {
+      id: 'dialyn-core-stun',
+      label: 'Core Skill: Malicious Complaint, the enemy\'s stun multiplier +30% (+50% at Mindscape 2)',
+      toggle: { kind: 'switch', label: 'Malicious Complaint' },
+      stunBonus: ({ mindscape }) => (mindscape >= 2 ? 50 : 30),
+      confidence: 'sourced',
+    },
+    {
+      id: 'dialyn-ability',
+      label: 'Additional Ability: CRIT DMG +50%, and squad DMG +40% with Overwhelmingly Positive',
+      toggle: { kind: 'switch', label: 'Squad qualifies, Overwhelmingly Positive' },
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 50 }, { stat: ZzzStats.ELEMENT_DMG, value: 40 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'dialyn-m1',
+      label: 'Mindscape 1: squad RES ignore 15% with Overwhelmingly Positive',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'Overwhelmingly Positive' },
+      resIgnore: () => 15,
+      confidence: 'sourced',
+    },
+    {
+      id: 'dialyn-m2',
+      label: 'Mindscape 2: squad DMG +15% with Malicious Complaint',
+      minMindscape: 2,
+      toggle: { kind: 'switch', label: 'Malicious Complaint' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 15 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'dialyn-m4',
+      label: 'Mindscape 4: ATK +500 with Overwhelmingly Positive',
+      minMindscape: 4,
+      toggle: { kind: 'switch', label: 'Overwhelmingly Positive' },
+      stats: () => [{ stat: ZzzStats.ATK, value: 500 }],
+      confidence: 'sourced',
+    },
+  ],
+  // Ellen
+  '1191': [
+    {
+      id: 'ellen-core',
+      label: 'Core Skill: CRIT DMG +100% for her Flash Freeze Basic Attacks, Arctic Ambush, Chain Attack and Ultimate',
+      kindCritDmg: () => ({
+        BasicAttackFlashFreezeTrimming: 100,
+        BasicAttackGlacialBladeWave: 100,
+        BasicAttackIcyBlade: 100,
+        DashAttackArcticAmbush: 100,
+        chain: 100,
+        ult: 100,
+      }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'ellen-ability',
+      label: 'Additional Ability: Ice DMG +3% per Ice attack (up to 10), with 3 Ice or Victoria Housekeeping agents in the squad',
+      toggle: { kind: 'stacks', label: 'Ice attacks', max: 10 },
+      stats: ({ setting }) => [{ stat: ZzzStats.ELEMENT_DMG, value: 3 * Number(setting) }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'ellen-m1',
+      label: 'Mindscape 1: CRIT Rate +2% per Flash Freeze charge spent (up to 6)',
+      minMindscape: 1,
+      toggle: { kind: 'stacks', label: 'Charges spent', max: 6 },
+      stats: ({ setting }) => [{ stat: ZzzStats.CRIT_RATE, value: 2 * Number(setting) }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'ellen-m2',
+      label: 'Mindscape 2: EX Special CRIT DMG +20% per Flash Freeze charge (up to 3)',
+      minMindscape: 2,
+      toggle: { kind: 'stacks', label: 'Flash Freeze charges', max: 3 },
+      kindCritDmg: ({ setting }) => ({ exSpecial: 20 * Number(setting) }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'ellen-m6',
+      label: 'Mindscape 6: PEN Ratio +20% after an EX Special, Chain Attack or quick charge',
+      minMindscape: 6,
+      toggle: { kind: 'switch', label: 'After an EX Special or Chain Attack' },
+      stats: () => [{ stat: ZzzStats.PEN_RATIO, value: 20 }],
+      confidence: 'sourced',
+    },
+  ],
+  // Evelyn
+  '1321': [
+    {
+      id: 'evelyn-core',
+      label: 'Core Skill: CRIT Rate +25% with Binding Seal',
+      toggle: { kind: 'switch', label: 'Binding Seal' },
+      stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 25 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'evelyn-ability',
+      label:
+        'Additional Ability: Chain Attack and Ultimate DMG +30%, with a Stun or Support agent in the squad (their +25% multiplier at 80% CRIT Rate isn\'t counted)',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      kinds: () => ({ chain: 30, ult: 30 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'evelyn-m1',
+      label: 'Mindscape 1: ignores 12% of a bound enemy\'s DEF',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'Enemy bound' },
+      defIgnore: () => 12,
+      confidence: 'sourced',
+    },
+    {
+      id: 'evelyn-m2',
+      label: 'Mindscape 2: ATK +15%',
+      minMindscape: 2,
+      stats: () => [{ stat: ZzzStats.ATK_P, value: 15 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'evelyn-m4',
+      label: 'Mindscape 4: CRIT DMG +40% while shielded',
+      minMindscape: 4,
+      toggle: { kind: 'switch', label: 'Shielded' },
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 40 }],
+      confidence: 'sourced',
+    },
+  ],
+  // Harumasa
+  '1201': [
+    {
+      id: 'harumasa-core-crit',
+      label: 'Core Skill: Hiten no Tsuru Slash and Ultimate CRIT Rate +25%',
+      kindCritRate: () => ({ DashAttackHitenNoTsuruSlash: 25, ult: 25 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'harumasa-core-crit-dmg',
+      label: 'Core Skill: Hiten no Tsuru Slash and Ultimate CRIT DMG +12% per Gleaming Edge (up to 6)',
+      toggle: { kind: 'stacks', label: 'Gleaming Edge', max: 6 },
+      kindCritDmg: ({ setting }) => ({ DashAttackHitenNoTsuruSlash: 12 * Number(setting), ult: 12 * Number(setting) }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'harumasa-ability',
+      label: 'Additional Ability: DMG +40% against a stunned or anomaly-afflicted enemy, with a Stun or Anomaly agent in the squad',
+      toggle: { kind: 'switch', label: 'Enemy stunned or afflicted, squad qualifies' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 40 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'harumasa-m2',
+      label: 'Mindscape 2: Hiten no Tsuru Slash DMG +50% with Electro Blitz',
+      minMindscape: 2,
+      toggle: { kind: 'switch', label: 'Electro Blitz' },
+      skills: () => ({ DashAttackHitenNoTsuruSlash: 50 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'harumasa-m6',
+      label: 'Mindscape 6: Electric RES ignore 15% with Ha-oto no Ya',
+      minMindscape: 6,
+      toggle: { kind: 'switch', label: 'Ha-oto no Ya' },
+      resIgnore: () => 15,
+      confidence: 'sourced',
+    },
+  ],
+  // Hugo
+  '1291': [
+    {
+      id: 'hugo-core',
+      label: 'Core Skill: CRIT Rate +12% and CRIT DMG +25% with Dark Abyss Reverb (Totalize\'s multiplier increase isn\'t counted)',
+      toggle: { kind: 'switch', label: 'Dark Abyss Reverb' },
+      stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 12 }, { stat: ZzzStats.CRIT_DMG, value: 25 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'hugo-core-atk',
+      label: 'Core Skill: ATK +300 with one Stun agent in the squad, +900 with two',
+      toggle: { kind: 'stacks', label: 'Stun agents in the squad', max: 2 },
+      stats: ({ setting }) => [{ stat: ZzzStats.ATK, value: [0, 300, 900][Number(setting)] ?? 900 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'hugo-ability',
+      label: 'Additional Ability: Chain Attack DMG +15% (+35% more against normal enemies); EX Special and Ultimate DMG +40% against a stunned enemy',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      kinds: ({ enemyStunned }) => ({ chain: 15, exSpecial: enemyStunned ? 40 : 0, ult: enemyStunned ? 40 : 0 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'hugo-m1',
+      label: 'Mindscape 1: EX Special and Ultimate CRIT Rate +12% and CRIT DMG +30% against a stunned enemy',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'Dark Abyss Reverb' },
+      kindCritRate: ({ enemyStunned }) => ({ exSpecial: enemyStunned ? 12 : 0, ult: enemyStunned ? 12 : 0 }),
+      kindCritDmg: ({ enemyStunned }) => ({ exSpecial: enemyStunned ? 30 : 0, ult: enemyStunned ? 30 : 0 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'hugo-m2',
+      label: 'Mindscape 2: EX Special and Ultimate ignore 15% of a stunned enemy\'s DEF',
+      minMindscape: 2,
+      kindDefIgnore: ({ enemyStunned }) => ({ exSpecial: enemyStunned ? 15 : 0, ult: enemyStunned ? 15 : 0 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'hugo-m4',
+      label: 'Mindscape 4: Ice RES ignore 12% after a charged shot hits',
+      minMindscape: 4,
+      toggle: { kind: 'switch', label: 'Charged shot hit' },
+      resIgnore: () => 12,
+      confidence: 'sourced',
+    },
+    {
+      id: 'hugo-m6',
+      label: 'Mindscape 6: EX Special and Ultimate DMG +60% against a stunned enemy',
+      minMindscape: 6,
+      kinds: ({ enemyStunned }) => ({ exSpecial: enemyStunned ? 60 : 0, ult: enemyStunned ? 60 : 0 }),
+      confidence: 'sourced',
+    },
+  ],
+  // Ju Fufu (her squad buffs count for her too)
+  '1391': [
+    {
+      id: 'jufufu-core',
+      label: 'Core Skill: Tiger\'s Roar, CRIT DMG +20% (+0.05% per ATK above 2,800, up to 30% more), Chain Attack DMG +20%, Ultimate DMG +40%',
+      toggle: { kind: 'switch', label: 'Tiger\'s Roar' },
+      stats: () => [
+        { stat: ZzzStats.CRIT_DMG, value: 20 },
+        { stat: ZzzStats.CRIT_DMG, value: 0, fromStat: { stat: 'atk', above: 2800, per: 0.05, max: 30 } },
+      ],
+      kinds: () => ({ chain: 20, ult: 40 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'jufufu-m1',
+      label: 'Mindscape 1: CRIT Rate +12%; the enemy\'s stun multiplier +35% after her Chain Attack hits',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'After her Chain Attack' },
+      stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 12 }],
+      stunBonus: () => 35,
+      confidence: 'sourced',
+    },
+    {
+      id: 'jufufu-m2',
+      label: 'Mindscape 2: CRIT DMG +22% (squad)',
+      minMindscape: 2,
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 22 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'jufufu-m4',
+      label: 'Mindscape 4: CRIT DMG +35%',
+      minMindscape: 4,
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 35 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'jufufu-m6',
+      label: 'Mindscape 6: Chain Attack DMG +30%',
+      minMindscape: 6,
+      kinds: () => ({ chain: 30 }),
+      confidence: 'sourced',
+    },
+  ],
+  // Koleda
+  '1101': [
+    {
+      id: 'koleda-ability',
+      label: 'Additional Ability: Chain Attack DMG +35% per EX Special debuff (up to 2) on a stunned enemy, with 3 Fire, Belobog, Rupture or Armorer agents',
+      toggle: { kind: 'stacks', label: 'EX Special debuffs', max: 2 },
+      kinds: ({ setting, enemyStunned }) => ({ chain: enemyStunned ? 35 * Number(setting) : 0 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'koleda-m4',
+      label: 'Mindscape 4: Chain Attack and Ultimate DMG +18% per charge (up to 2)',
+      minMindscape: 4,
+      toggle: { kind: 'stacks', label: 'Charges', max: 2 },
+      kinds: ({ setting }) => ({ chain: 18 * Number(setting), ult: 18 * Number(setting) }),
+      confidence: 'sourced',
+    },
+  ],
+  // Lighter
+  '1161': [
+    {
+      id: 'lighter-core-res',
+      label: 'Core Skill: the enemy\'s Fire and Ice RES -15% after Morale Burst hits',
+      toggle: { kind: 'switch', label: 'Morale Burst hit' },
+      resIgnore: () => 15,
+      confidence: 'sourced',
+    },
+    {
+      id: 'lighter-ability',
+      label:
+        'Additional Ability: Fire and Ice DMG +25% at 20 Elation stacks, +0.5% per Impact above 170 (up to 75% in all), with 2 Attack or Sons of Calydon agents',
+      toggle: { kind: 'switch', label: '20 Elation, squad qualifies' },
+      stats: ({ mindscape }) => [
+        { stat: ZzzStats.ELEMENT_DMG, value: mindscape >= 2 ? 31.25 : 25 },
+        { stat: ZzzStats.ELEMENT_DMG, value: 0, fromStat: { stat: 'impact', above: 170, per: mindscape >= 2 ? 0.625 : 0.5, max: mindscape >= 2 ? 62.5 : 50 } },
+      ],
+      confidence: 'sourced',
+    },
+    {
+      id: 'lighter-m1',
+      label: 'Mindscape 1: the enemy\'s Fire and Ice RES -10% more (Collapse); his finishing move DMG +30%',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'Collapse' },
+      resIgnore: () => 10,
+      skills: () => ({ 'BasicAttackLFormThunderingFist:15': 30 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'lighter-m2',
+      label: 'Mindscape 2: the enemy\'s stun multiplier +25% (Collapse)',
+      minMindscape: 2,
+      toggle: { kind: 'switch', label: 'Collapse' },
+      stunBonus: () => 25,
+      confidence: 'sourced',
+    },
+  ],
+  // Lucia (her squad buffs count for her too)
+  '1451': [
+    {
+      id: 'lucia-core',
+      label: 'Core Skill: Dreamer\'s Nursery Rhyme, DMG +20%',
+      toggle: { kind: 'switch', label: 'Dreamer\'s Nursery Rhyme' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 20 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'lucia-ability',
+      label: 'Additional Ability: CRIT DMG +30% with Darkbreaker, with a Rupture or Stun agent in the squad',
+      toggle: { kind: 'switch', label: 'Darkbreaker, squad qualifies' },
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 30 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'lucia-m1',
+      label: 'Mindscape 1: RES ignore 18% with Dreamer\'s Nursery Rhyme',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'Dreamer\'s Nursery Rhyme' },
+      resIgnore: () => 18,
+      confidence: 'sourced',
+    },
+  ],
+  // Lycaon
+  '1141': [
+    {
+      id: 'lycaon-core',
+      label: 'Core Skill: the enemy\'s Ice RES -25% after his EX Special or Assist Follow-Up hits',
+      toggle: { kind: 'switch', label: 'After his EX Special or Follow-Up' },
+      resIgnore: () => 25,
+      confidence: 'sourced',
+    },
+    {
+      id: 'lycaon-ability',
+      label: 'Additional Ability: the stunned enemy\'s stun multiplier +35%, with 3 Ice, Victoria Housekeeping or Anomaly agents',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      stunBonus: () => 35,
+      confidence: 'sourced',
+    },
+    {
+      id: 'lycaon-m6',
+      label: 'Mindscape 6: DMG +10% per charged hit (up to 3)',
+      minMindscape: 6,
+      toggle: { kind: 'stacks', label: 'Charged hits', max: 3 },
+      stats: ({ setting }) => [{ stat: ZzzStats.ELEMENT_DMG, value: 10 * Number(setting) }],
+      confidence: 'sourced',
+    },
+  ],
+  // Manato (his Sheer Force from HP is in data/enkaGameData.ts)
+  '1441': [
+    {
+      id: 'manato-core-strikes',
+      label: 'Core Skill: Blazing Wind Misty Slash and Assist Follow-Up CRIT DMG +50% while spending HP',
+      toggle: { kind: 'switch', label: 'Spending HP' },
+      kindCritDmg: () => ({ BasicAttackBlazingWindMistySlash: 50, assistFollowUp: 50 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'manato-core-molten-edge',
+      label: 'Core Skill: Molten Edge, CRIT Rate +10% and Fire DMG +20%',
+      toggle: { kind: 'switch', label: 'Molten Edge' },
+      stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 10 }, { stat: ZzzStats.ELEMENT_DMG, value: 20 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'manato-m2',
+      label: 'Mindscape 2: Fire RES ignore 8% with Molten Edge',
+      minMindscape: 2,
+      toggle: { kind: 'switch', label: 'Molten Edge' },
+      resIgnore: () => 8,
+      confidence: 'sourced',
+    },
+    {
+      id: 'manato-m4',
+      label: 'Mindscape 4: HP +8%',
+      minMindscape: 4,
+      stats: () => [{ stat: ZzzStats.HP_P, value: 8 }],
+      confidence: 'sourced',
+    },
+  ],
+  // Nekomata
+  '1021': [
+    {
+      id: 'nekomata-core',
+      label: 'Core Skill: DMG +60% after a Dodge Counter or Quick Assist hits',
+      toggle: { kind: 'switch', label: 'After a Dodge Counter or Quick Assist' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 60 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'nekomata-ability',
+      label: 'Additional Ability: EX Special DMG +35% per Assault inflicted (up to 2), with 3 Support, Physical or Cunning Hares agents',
+      toggle: { kind: 'stacks', label: 'Assaults inflicted', max: 2 },
+      kinds: ({ setting }) => ({ exSpecial: 35 * Number(setting) }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'nekomata-m1',
+      label: 'Mindscape 1: Physical RES ignore 16% attacking from behind',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'From behind' },
+      resIgnore: () => 16,
+      confidence: 'sourced',
+    },
+    {
+      id: 'nekomata-m4',
+      label: 'Mindscape 4: CRIT Rate +7% per EX Special used (up to 2)',
+      minMindscape: 4,
+      toggle: { kind: 'stacks', label: 'EX Specials used', max: 2 },
+      stats: ({ setting }) => [{ stat: ZzzStats.CRIT_RATE, value: 7 * Number(setting) }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'nekomata-m6',
+      label: 'Mindscape 6: CRIT DMG +18% per Chain Attack or Ultimate used (up to 3)',
+      minMindscape: 6,
+      toggle: { kind: 'stacks', label: 'Chain Attacks or Ultimates', max: 3 },
+      stats: ({ setting }) => [{ stat: ZzzStats.CRIT_DMG, value: 18 * Number(setting) }],
+      confidence: 'sourced',
+    },
+  ],
+  // Piper
+  '1281': [
+    {
+      id: 'piper-ability',
+      label: 'Additional Ability: squad DMG +18% at 20 Power, with 4 Anomaly, Physical or Sons of Calydon members counted',
+      toggle: { kind: 'switch', label: '20 Power, squad qualifies' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 18 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'piper-m2',
+      label: 'Mindscape 2: Physical DMG +10%, +1% per Power (up to 20, 30 at Mindscape 1)',
+      minMindscape: 2,
+      toggle: { kind: 'stacks', label: 'Power', max: 30 },
+      stats: ({ setting, mindscape }) => [{ stat: ZzzStats.ELEMENT_DMG, value: 10 + Math.min(Number(setting), mindscape >= 1 ? 30 : 20) }],
+      confidence: 'sourced',
+    },
+  ],
+  // Qingyi
+  '1251': [
+    {
+      id: 'qingyi-flash-connect',
+      label: 'Enchanted Moonlit Blossoms DMG +1% per Flash Connect Voltage spent (up to 25)',
+      toggle: { kind: 'stacks', label: 'Voltage spent', max: 25 },
+      skills: ({ setting }) => ({ BasicAttackEnchantedMoonlitBlossoms: Number(setting) }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'qingyi-core',
+      label: 'Core Skill: Subjugation, the enemy\'s stun multiplier +4% per stack (up to 20; x1.35 at Mindscape 2); her Chain Attack DMG +3% per stack',
+      toggle: { kind: 'stacks', label: 'Subjugation', max: 20 },
+      stunBonus: ({ setting, mindscape }) => 4 * Number(setting) * (mindscape >= 2 ? 1.35 : 1),
+      skills: ({ setting }) => ({ 'ChainAttackTranquilSerenade:0': 3 * Number(setting) }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'qingyi-ability',
+      label: 'Additional Ability: ATK +6 per Impact above 120 (up to 600)',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      stats: () => [{ stat: ZzzStats.ATK, value: 0, fromStat: { stat: 'impact', above: 120, per: 6, max: 600 } }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'qingyi-m1',
+      label: 'Mindscape 1: after spending 25 Voltage, ignores 15% of the enemy\'s DEF and CRIT Rate +20%',
+      minMindscape: 1,
+      toggle: { kind: 'switch', label: 'Spent 25 Voltage' },
+      defIgnore: () => 15,
+      stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 20 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'qingyi-m6',
+      label: 'Mindscape 6: the enemy\'s RES -20% after Moonlit Blossoms hit; Enchanted Moonlit Blossoms CRIT DMG +100%',
+      minMindscape: 6,
+      toggle: { kind: 'switch', label: 'Moonlit Blossoms hit' },
+      resIgnore: () => 20,
+      kindCritDmg: () => ({ BasicAttackEnchantedMoonlitBlossoms: 100 }),
+      confidence: 'sourced',
+    },
+  ],
+  // Roxy
+  '1621': [
+    {
+      id: 'roxy-core-atk',
+      label: 'Core Skill: ATK +5 per 0.01 Energy Regen above 1.2 (up to 960)',
+      stats: () => [{ stat: ZzzStats.ATK, value: 0, fromStat: { stat: 'energyRegen', above: 1.2, per: 500, max: 960 } }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'roxy-core-contamination',
+      label: 'Core Skill: Contamination, the squad\'s CRIT DMG +0.4% per 1% of her CRIT Rate (up to 40%)',
+      toggle: { kind: 'switch', label: 'Contamination' },
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 0, fromStat: { stat: 'critRate', above: 0, per: 0.4, max: 40 } }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'roxy-ability',
+      label: 'Additional Ability: DMG +80% (8% + 1.2% per level), and the enemy\'s stun multiplier +30%, with an Attack, Rupture or Armorer agent',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 80 }],
+      stunBonus: () => 30,
+      confidence: 'sourced',
+    },
+    {
+      id: 'roxy-m1',
+      label: 'Mindscape 1: CRIT DMG +40%; the enemy\'s RES -15%',
+      minMindscape: 1,
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 40 }],
+      resIgnore: () => 15,
+      confidence: 'sourced',
+    },
+    {
+      id: 'roxy-m2',
+      label: 'Mindscape 2: the enemy\'s stun multiplier +30% more',
+      minMindscape: 2,
+      toggle: { kind: 'switch', label: 'Chill hits' },
+      stunBonus: () => 30,
+      confidence: 'sourced',
+    },
+    {
+      id: 'roxy-m4',
+      label: 'Mindscape 4: Ultimate DMG +20%',
+      minMindscape: 4,
+      kinds: () => ({ ult: 20 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'roxy-m6',
+      label: 'Mindscape 6: Wind RES ignore 15%',
+      minMindscape: 6,
+      resIgnore: () => 15,
+      confidence: 'sourced',
+    },
+  ],
+  // Seed
+  '1461': [
+    {
+      id: 'seed-core-onslaught',
+      label: 'Core Skill: Onslaught, ATK +1,000 and CRIT DMG +30%',
+      toggle: { kind: 'switch', label: 'Onslaught' },
+      stats: () => [{ stat: ZzzStats.ATK, value: 1000 }, { stat: ZzzStats.CRIT_DMG, value: 30 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'seed-core-besiege',
+      label: 'Core Skill: Besiege, DMG +25%',
+      toggle: { kind: 'switch', label: 'Besiege' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 25 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'seed-ability',
+      label: 'Additional Ability: Falling Petals Basic Attacks and Ultimate DMG +30% (their Electric RES ignore isn\'t counted)',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      skills: () => ({
+        BasicAttackFallingPetalsDownfallFirstForm: 30,
+        BasicAttackFallingPetalsDownfallSecondForm: 30,
+        BasicAttackFallingPetalsSlaughter: 30,
+      }),
+      kinds: () => ({ ult: 30 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'seed-m1',
+      label: 'Mindscape 1: Falling Petals Downfall CRIT DMG +30%',
+      minMindscape: 1,
+      kindCritDmg: () => ({ BasicAttackFallingPetalsDownfallFirstForm: 30, BasicAttackFallingPetalsDownfallSecondForm: 30 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'seed-m2',
+      label: 'Mindscape 2: ignores 20% of the enemy\'s DEF with Besiege',
+      minMindscape: 2,
+      toggle: { kind: 'switch', label: 'Besiege' },
+      defIgnore: () => 20,
+      confidence: 'sourced',
+    },
+    {
+      id: 'seed-m4',
+      label: 'Mindscape 4: Ultimate DMG +20% with Besiege',
+      minMindscape: 4,
+      toggle: { kind: 'switch', label: 'Besiege' },
+      kinds: () => ({ ult: 20 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'seed-m6',
+      label: 'Mindscape 6: CRIT DMG +50%',
+      minMindscape: 6,
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 50 }],
+      confidence: 'sourced',
+    },
+  ],
+  // Soldier 11
+  '1041': [
+    {
+      id: 'soldier11-core',
+      label: 'Core Skill: Fire Suppression Basic and Dash Attack DMG +70%',
+      skills: () => ({ BasicAttackFireSuppression: 70, DashAttackFireSuppression: 70 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'soldier11-ability',
+      label: 'Additional Ability: Fire DMG +10% (+22.5% more against a stunned enemy), with 3 Fire or Defense Force agents',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      stats: ({ enemyStunned }) => [{ stat: ZzzStats.ELEMENT_DMG, value: enemyStunned ? 32.5 : 10 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'soldier11-m2',
+      label: 'Mindscape 2: Fire Suppression DMG +3% per stack (up to 12)',
+      minMindscape: 2,
+      toggle: { kind: 'stacks', label: 'Stacks', max: 12 },
+      skills: ({ setting }) => ({ BasicAttackFireSuppression: 3 * Number(setting), DashAttackFireSuppression: 3 * Number(setting) }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'soldier11-m6',
+      label: 'Mindscape 6: Fire RES ignore 25% after spending a charge',
+      minMindscape: 6,
+      toggle: { kind: 'switch', label: 'Charge spent' },
+      resIgnore: () => 25,
+      confidence: 'sourced',
+    },
+  ],
+  // Trigger (her squad gets her other buffs from team/buffs.ts)
+  '1361': [
+    {
+      id: 'trigger-core-stun',
+      label: 'Core Skill: the stunned enemy\'s stun multiplier +35% after her Aftershocks hit',
+      toggle: { kind: 'switch', label: 'Aftershock hit' },
+      stunBonus: () => 35,
+      confidence: 'sourced',
+    },
+    {
+      id: 'trigger-m2',
+      label: 'Mindscape 2: squad CRIT DMG +6% per Hunter\'s Gaze (up to 4)',
+      minMindscape: 2,
+      toggle: { kind: 'stacks', label: 'Hunter\'s Gaze', max: 4 },
+      stats: ({ setting }) => [{ stat: ZzzStats.CRIT_DMG, value: 6 * Number(setting) }],
+      confidence: 'sourced',
+    },
+  ],
+  // Yidhari (her Sheer Force from HP is in data/enkaGameData.ts)
+  '1051': [
+    {
+      id: 'yidhari-core',
+      label: 'Core Skill: DMG +2% per 1% of HP missing (up to 50%)',
+      toggle: { kind: 'stacks', label: 'HP missing (%)', max: 50 },
+      stats: ({ setting }) => [{ stat: ZzzStats.ELEMENT_DMG, value: 2 * Number(setting) }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'yidhari-ability',
+      label: 'Additional Ability: CRIT DMG +30% at 50% HP missing, with a Stun or Support agent in the squad',
+      toggle: { kind: 'switch', label: '50% HP missing, squad qualifies' },
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 30 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'yidhari-m2',
+      label: 'Mindscape 2: CRIT DMG +40%',
+      minMindscape: 2,
+      stats: () => [{ stat: ZzzStats.CRIT_DMG, value: 40 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'yidhari-m6',
+      label: 'Mindscape 6: Sheer DMG +25% with Erudition',
+      minMindscape: 6,
+      toggle: { kind: 'switch', label: 'Erudition' },
+      sheerDmg: () => 25,
+      confidence: 'sourced',
+    },
+  ],
+  // Zhu Yuan
+  '1241': [
+    {
+      id: 'zhuyuan-core',
+      label: 'Core Skill: Enhanced Shotshell hits DMG +40% (+40% more against a stunned enemy)',
+      skills: ({ enemyStunned }) =>
+        Object.fromEntries(
+          ['BasicAttackPleaseDoNotResist:3', 'BasicAttackPleaseDoNotResist:4', 'BasicAttackPleaseDoNotResist:5', 'DashAttackOverwhelmingFirepower:1']
+            .map((key) => [key, enemyStunned ? 80 : 40]),
+        ),
+      confidence: 'sourced',
+    },
+    {
+      id: 'zhuyuan-ability',
+      label: 'Additional Ability: CRIT Rate +30% after an EX Special, Chain Attack or Ultimate, with 2 Support or Criminal Investigation agents',
+      toggle: { kind: 'switch', label: 'Squad qualifies' },
+      stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 30 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'zhuyuan-m2',
+      label: 'Mindscape 2: Enhanced Shotshell DMG +10% per Shotshell hit (up to 5)',
+      minMindscape: 2,
+      toggle: { kind: 'stacks', label: 'Shotshell hits', max: 5 },
+      skills: ({ setting }) =>
+        Object.fromEntries(
+          ['BasicAttackPleaseDoNotResist:3', 'BasicAttackPleaseDoNotResist:4', 'BasicAttackPleaseDoNotResist:5', 'DashAttackOverwhelmingFirepower:1']
+            .map((key) => [key, 10 * Number(setting)]),
+        ),
+      confidence: 'sourced',
+    },
+  ],
   // Claret
   '1611': [
     {
@@ -530,8 +1541,10 @@ export type ZzzResolvedCombat = {
   resIgnore: number,
   defIgnore: number,
   stunBonus: number,
-  kindDefIgnore: Partial<Record<HitKind, number>>,
-  kindCritDmg: Partial<Record<HitKind, number>>,
+  kindDefIgnore: HitScoped,
+  kindCritDmg: HitScoped,
+  kindCritRate: HitScoped,
+  dmgTaken: number,
   veilVulnerabilityCap: number,
   sheerDmg: number,
   sharpDmg: number,
@@ -566,6 +1579,10 @@ function effectSources(agentId: string, gear: ZzzCombatGear | undefined): { effe
   ]
 }
 
+function addScoped(into: HitScoped, from: HitScoped | undefined) {
+  for (const [key, value] of Object.entries(from ?? {})) into[key] = (into[key] ?? 0) + value
+}
+
 export function resolveZzzCombat(
   agentId: string,
   mindscape: number,
@@ -588,6 +1605,8 @@ export function resolveZzzCombat(
     stunBonus: 0,
     kindDefIgnore: {},
     kindCritDmg: {},
+    kindCritRate: {},
+    dmgTaken: 0,
     veilVulnerabilityCap: 0,
     sheerDmg: 0,
     sharpDmg: 0,
@@ -624,12 +1643,10 @@ export function resolveZzzCombat(
     resolved.resIgnore += effect.resIgnore?.(context) ?? 0
     resolved.defIgnore += effect.defIgnore?.(context) ?? 0
     resolved.stunBonus += effect.stunBonus?.(context) ?? 0
-    for (const [kind, value] of Object.entries(effect.kindDefIgnore?.(context) ?? {}) as [HitKind, number][]) {
-      resolved.kindDefIgnore[kind] = (resolved.kindDefIgnore[kind] ?? 0) + value
-    }
-    for (const [kind, value] of Object.entries(effect.kindCritDmg?.(context) ?? {}) as [HitKind, number][]) {
-      resolved.kindCritDmg[kind] = (resolved.kindCritDmg[kind] ?? 0) + value
-    }
+    addScoped(resolved.kindDefIgnore, effect.kindDefIgnore?.(context))
+    addScoped(resolved.kindCritDmg, effect.kindCritDmg?.(context))
+    addScoped(resolved.kindCritRate, effect.kindCritRate?.(context))
+    resolved.dmgTaken += effect.dmgTaken?.(context) ?? 0
     resolved.veilVulnerabilityCap = Math.max(resolved.veilVulnerabilityCap, effect.veilVulnerabilityCap?.(context) ?? 0)
     resolved.sheerDmg += effect.sheerDmg?.(context) ?? 0
     resolved.sharpDmg += effect.sharpDmg?.(context) ?? 0

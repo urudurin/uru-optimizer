@@ -341,8 +341,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
         critDmgFromCritDmg: kit.aftershockCritDmg,
         defIgnore: kit.aftershockDefIgnore,
       },
-      kit.kindDefIgnore,
-      kit.kindCritDmg,
+      { defIgnore: kit.kindDefIgnore, critDmg: kit.kindCritDmg, critRate: kit.kindCritRate },
     ),
     ...(kit.veilVulnerabilityCap > 0 ? { veilVulnerabilityCap: kit.veilVulnerabilityCap } : {}),
     scaling: agent.specialty === 'Rupture' ? 'sheer' : agent.specialty === 'Armorer' ? 'sharp' : 'atk',
@@ -362,6 +361,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       ...teamResult.debuffs,
       defShred: teamResult.debuffs.defShred + kit.defIgnore,
       resShred: teamResult.debuffs.resShred + kit.resIgnore,
+      dmgTaken: teamResult.debuffs.dmgTaken + kit.dmgTaken,
       // Stun multiplier bonuses from different agents add up (Nangong Yu's Misstep, Norma's Tech Divide)
       stunBonus: teamResult.debuffs.stunBonus + kit.stunBonus,
     },
