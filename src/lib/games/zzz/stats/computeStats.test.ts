@@ -223,3 +223,10 @@ describe('computeStats for Ye Shunguang', () => {
     expect(result.warnings).toEqual(['Disc 1: no roll value known for A-rank ATK%, substat left out'])
   })
 })
+
+describe('toDisplayStats', () => {
+  it('rounds down like the stat screen (Aria: Anomaly Mastery 151 x 1.68 = 253.68 shows as 253)', () => {
+    const stats = toDisplayStats({ ...computeStats(makeInput()).stats, anomalyMastery: 253.68, critRate: 57.8, energyRegen: 2.808, hp: 10974.69 })
+    expect([stats.anomalyMastery, stats.critRate, stats.energyRegen, stats.hp]).toEqual([253, 57.8, 2.8, 10974])
+  })
+})

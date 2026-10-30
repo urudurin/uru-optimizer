@@ -29,9 +29,10 @@ export const YE_SHUNGUANG: AgentData = {
   specialty: 'Attack',
   level: 60,
   // HP, Impact, Anomaly Mastery and Anomaly Proficiency (with discs) matched the in-game screen and a user export.
-  // ATK, DEF and CRIT come from the same community source, CRIT Rate 19.4 includes the 14.4 Core Skill bonus
+  // ATK, DEF and CRIT come from the same community source, CRIT Rate 19.4 includes the 14.4 Core Skill bonus. HP keeps
+  // its fraction (Enka's 7673.7042), which the stat screen rounds down
   base: {
-    hp: 7673,
+    hp: 7673.7042,
     atk: 938,
     def: 606,
     impact: 83,
@@ -57,9 +58,9 @@ export const MIYABI: AgentData = {
   specialty: 'Anomaly',
   level: 60,
   // From Gachabase, includes the Core Skill ATK +75 and Anomaly Proficiency +90.
-  // Every value matched the in-game stat screen (screenshot of a real build)
+  // Every value matched the in-game stat screen (screenshot of a real build); HP with its fraction from Enka
   base: {
-    hp: 7673,
+    hp: 7673.7042,
     atk: 880,
     def: 606,
     impact: 86,
@@ -80,9 +81,10 @@ export const YIXUAN: AgentData = {
   specialty: 'Rupture',
   level: 60,
   // From Gachabase, includes the Core Skill CRIT Rate +14.4 and HP +420. Gachabase's HP 8373 is rounded and came out one
-  // point off on the stat screen, a screenshot of a real build needs HP in [8373.17, 8373.62). Every value then matches
+  // point off on the stat screen; with the stat screen rounding down, a screenshot of a real build needs HP in
+  // [8373.40, 8373.85) (Enka's 8373.87 is just above). Every value then matches
   base: {
-    hp: 8373.4,
+    hp: 8373.6,
     atk: 872,
     def: 441,
     impact: 93,
@@ -114,12 +116,12 @@ export const SOLDIER_0_ANBY: AgentData = {
   level: 60,
   // From Gachabase, includes the Core Skill CRIT Rate +14.4 and ATK +75. Gachabase's 7673/929/612 are rounded and came
   // out one point off on the stat screen. The game's base stats are fractional, so HP, ATK and DEF are fitted to a
-  // screenshot of a real build: ATK must be in [928.12, 928.72) with the 713 W-Engine, HP in [7673.6, 7674.4),
-  // DEF in [610.9, 611.7). Every value then matches the screen
+  // screenshot of a real build, with the stat screen rounding down: HP in [7674.0, 7674.8) (Enka's 7673.70 is just
+  // below), ATK and DEF Enka's rounded down (929, 612). Every value then matches the screen
   base: {
-    hp: 7674,
-    atk: 928.4,
-    def: 611,
+    hp: 7674.2,
+    atk: 929,
+    def: 612,
     impact: 93,
     critRate: 19.4,
     critDmg: 50,

@@ -74,13 +74,14 @@ const SECONDARY_STATS: Record<number, { stat: ZzzStatsValues, scale: number }> =
   31402: { stat: ZzzStats.ANOMALY_MASTERY, scale: 100 },
 }
 
-// Base Total = BaseProps + Growth x (level - 1) / 10000 + Promotion + Core Enhancement, rounded down as Enka advises
+// Base Total = BaseProps + Growth x (level - 1) / 10000 + Promotion + Core Enhancement, rounded down as Enka advises,
+// except HP: the game keeps its fraction (10 of the user's stat screens, Oct 30 2026, match only that way)
 export function agentBaseStats(entry: AvatarEntry, level = AGENT_LEVEL): AgentBaseStats {
   const promotion = entry.PromotionProps?.[PROMOTION] ?? {}
   const core = entry.CoreEnhancementProps?.[CORE_SKILL] ?? {}
   const total = (id: string) => (entry.BaseProps?.[id] ?? 0) + ((entry.GrowthProps?.[id] ?? 0) * (level - 1)) / 10000 + (promotion[id] ?? 0) + (core[id] ?? 0)
   return {
-    hp: Math.floor(total('11101')),
+    hp: total('11101'),
     atk: Math.floor(total('12101')),
     def: Math.floor(total('13101')),
     impact: Math.floor(total('12201')),

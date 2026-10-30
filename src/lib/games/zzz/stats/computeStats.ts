@@ -1,4 +1,4 @@
-import { roundHalfUp } from 'lib/games/shared/format'
+import { roundDown } from 'lib/games/shared/format'
 import type {
   ActiveConditions,
   AgentData,
@@ -75,19 +75,19 @@ export function statScreenConditions(): ActiveConditions {
 // Rounds the way the stat screen shows values
 export function toDisplayStats(stats: FinalStats): FinalStats {
   return {
-    hp: roundHalfUp(stats.hp),
-    atk: roundHalfUp(stats.atk),
-    def: roundHalfUp(stats.def),
-    impact: roundHalfUp(stats.impact),
-    anomalyMastery: roundHalfUp(stats.anomalyMastery),
-    anomalyProficiency: roundHalfUp(stats.anomalyProficiency),
-    critRate: roundHalfUp(stats.critRate, 1),
-    critDmg: roundHalfUp(stats.critDmg, 1),
-    penRatio: roundHalfUp(stats.penRatio, 1),
-    pen: roundHalfUp(stats.pen),
-    energyRegen: roundHalfUp(stats.energyRegen, 2),
-    elementDmg: roundHalfUp(stats.elementDmg, 1),
-    sheerForce: roundHalfUp(stats.sheerForce),
+    hp: roundDown(stats.hp),
+    atk: roundDown(stats.atk),
+    def: roundDown(stats.def),
+    impact: roundDown(stats.impact),
+    anomalyMastery: roundDown(stats.anomalyMastery),
+    anomalyProficiency: roundDown(stats.anomalyProficiency),
+    critRate: roundDown(stats.critRate, 1),
+    critDmg: roundDown(stats.critDmg, 1),
+    penRatio: roundDown(stats.penRatio, 1),
+    pen: roundDown(stats.pen),
+    energyRegen: roundDown(stats.energyRegen, 2),
+    elementDmg: roundDown(stats.elementDmg, 1),
+    sheerForce: roundDown(stats.sheerForce),
   }
 }
 
