@@ -21,6 +21,9 @@ export type StatEffect = {
   element?: string,
   // Only applies when this final stat (before any effects like this one) reaches the value, e.g. 115 Anomaly Mastery
   minStat?: { stat: keyof FinalStats, atLeast: number },
+  // Grows with a final stat (before effects like this one): value + per x (stat - above), at most max. Orphie's ATK
+  // from Energy Regen above 1.6
+  fromStat?: { stat: keyof FinalStats, above: number, per: number, max: number },
   source: string,
   confidence: Confidence,
 }

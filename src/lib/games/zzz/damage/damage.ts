@@ -140,6 +140,10 @@ export type DamageSetup = {
   // Sharp damage: Laceration DMG in percent (150 to start), and CRIT Rate per point of CRIT DMG (Claret's Core Skill)
   lacerationDmg?: number,
   critRateFromCritDmg?: number,
+  // Sheer or Sharp DMG Bonus in percent: a multiplier of its own on Sheer (Rupture) or Sharp (Armorer) skill hits (GO's
+  // sheer_mult_ / sharp_mult_)
+  sheerDmg?: number,
+  sharpDmg?: number,
   // Aftershock hits, when kits give them CRIT DMG (a fraction of the agent's CRIT DMG) or DEF ignore (percent) of their
   // own; these hits are left out of multiplier and bonusMultiplier then
   aftershock?: { multiplier: number, bonusMultiplier: number, critDmgFromCritDmg: number, defIgnore: number },
@@ -148,6 +152,9 @@ export type DamageSetup = {
   // Proficiency; CRIT DMG in percent)
   anomalyBonusMultiplier?: number,
   anomalyCrits?: AnomalyCrit[],
+  // Anomaly damage that grows with Anomaly Proficiency, per point of it: atk in percent of ATK (Vivian's Abloom), flat as
+  // damage (Yanagi's Polarity Disorder); the Bonus parts are their anomaly-only DMG Bonus like anomalyBonusMultiplier
+  anomalyPerAp?: { atk: number, atkBonus: number, flat: number, flatBonus: number },
   agentLevel: number,
   enemy: EnemySettings,
   debuffs: EnemyDebuffs,
@@ -204,11 +211,12 @@ function skillDamage(
   const crit = 1 + f.critRate * (f.critDmg + critDmgFromCritDmg * stats.critDmg / 100)
   const def = defIgnore ? defMultiplier(stats, setup, defIgnore) : f.def
   // Rupture agents' skill hits are Sheer damage: Sheer Force instead of ATK, and no DEF multiplier
-  if (setup.scaling === 'sheer') return stats.sheerForce * hits * crit
+  if (setup.scaling === 'sheer') return stats.sheerForce * hits * crit * (1 + (setup.sheerDmg ?? 0) / 100)
   if (setup.scaling === 'sharp') {
     const critRate = Math.max(0, stats.critRate + (setup.critRateFromCritDmg ?? 0) * stats.critDmg) / 100
     const laceration = (setup.lacerationDmg ?? 150) / 100
     return stats.def * def * hits * (1 + Math.min(critRate, 1) * laceration) * (1 + Math.max(critRate - 1, 0) * laceration)
+      * (1 + (setup.sharpDmg ?? 0) / 100)
   }
   return stats.atk * def * hits * crit
 }
@@ -227,16 +235,20 @@ export function rotationDamage(stats: FinalStats, setup: DamageSetup): number {
     const rate = Math.min(1, Math.max(0, crit.critRate + crit.critRatePerAp * stats.anomalyProficiency) / 100)
     anomalyHits += (crit.multiplier * f.dmgBonus + crit.bonusMultiplier) * rate * crit.critDmg / 100
   }
-  const anomaly = anomalyHits === 0
+  const ap = stats.anomalyProficiency
+  const perAp = setup.anomalyPerAp
+  if (perAp) anomalyHits += (perAp.atk * f.dmgBonus + perAp.atkBonus) * ap
+  const flat = perAp ? (perAp.flat * f.dmgBonus + perAp.flatBonus) * ap : 0
+  const anomaly = anomalyHits === 0 && flat === 0
     ? 0
-    : stats.atk * f.def * (anomalyHits / 100) * (stats.anomalyProficiency / 100) * anomalyLevelMultiplier(setup.agentLevel)
+    : (stats.atk * anomalyHits / 100 + flat) * f.def * (ap / 100) * anomalyLevelMultiplier(setup.agentLevel)
   return shared * (standard * f.direct + anomaly)
 }
 
 // Attribute Anomaly
 
-export type AnomalyKind = 'assault' | 'burn' | 'shatter' | 'shock' | 'corruption' | 'wind' | 'disorder' | 'vortex'
-type AttributeAnomaly = Exclude<AnomalyKind, 'disorder' | 'vortex'>
+export type AnomalyKind = 'assault' | 'burn' | 'shatter' | 'shock' | 'corruption' | 'wind' | 'disorder' | 'vortex' | 'abloom' | 'polarity'
+type AttributeAnomaly = Exclude<AnomalyKind, 'disorder' | 'vortex' | 'abloom' | 'polarity'>
 
 // What the agent's attribute triggers
 const ATTRIBUTE_ANOMALY: Record<string, AttributeAnomaly> = {
@@ -284,6 +296,35 @@ const VORTEX: Record<string, { base: number, perSecond: number }> = {
 const VORTEX_SECONDS = 30
 
 const MIYABI_ID = '1091'
+const VIVIAN_ID = '1331'
+const YANAGI_ID = '1221'
+
+// Vivian's Abloom (GO's Vivian sheet and util.ts abloomDmgInst): an anomaly's single-hit multiplier (GO's
+// anomalyMultipliers) times her Core Skill's per-attribute rate per 10 Anomaly Proficiency, at Core Skill F. Its
+// multiplier grows with Anomaly Proficiency, so the rotation keeps it per point of AP (DamageSetup.anomalyPerAp)
+const ABLOOM: Record<string, { perHit: number, per10Ap: number }> = {
+  Physical: { perHit: 713, per10Ap: 0.0075 },
+  Fire: { perHit: 50, per10Ap: 0.08 },
+  Ice: { perHit: 500, per10Ap: 0.0108 },
+  Electric: { perHit: 125, per10Ap: 0.032 },
+  Ether: { perHit: 62.5, per10Ap: 0.0615 },
+  Wind: { perHit: 1250, per10Ap: 0.0032 },
+}
+
+// Abloom multiplier in percent of ATK per point of Anomaly Proficiency
+export function abloomPerAp(attribute: string): number {
+  const abloom = ABLOOM[attribute]
+  return abloom ? abloom.perHit * abloom.per10Ap / 10 : 0
+}
+
+// Yanagi's Polarity Disorder (GO's Yanagi sheet): 15% of her Disorder (anom_base_ -85%) plus (500% + 225% per level of
+// the skill that sets it off) of Anomaly Proficiency as flat damage, which also gets the Anomaly Proficiency and level
+// multipliers (GO prep.ts anom_flat_dmg). Taken at the rotation's skill level, before Mindscape 2
+export const POLARITY_SHARE = 0.15
+
+export function polarityFlatPerAp(skillLevel: number): number {
+  return 5 + 2.25 * skillLevel
+}
 
 // attribute: the anomaly a Vortex comes from
 export type AnomalyHit = { key: string, kind: AnomalyKind, label: string, attribute?: string }
@@ -302,12 +343,19 @@ export function anomalyHits(agentId: string, element: string, teamElements: stri
   return [
     { key: `anomaly:${kind}`, kind, label: ANOMALY_HIT[kind].label },
     { key: 'anomaly:disorder', kind: 'disorder', label: agentId === MIYABI_ID ? 'Disorder (Frostbite)' : 'Disorder' },
+    ...(agentId === YANAGI_ID ? [{ key: 'anomaly:polarity', kind: 'polarity', label: 'Polarity Disorder' } satisfies AnomalyHit] : []),
     ...vortex.map((attribute): AnomalyHit => ({ key: `anomaly:vortex:${attribute}`, kind: 'vortex', label: `Vortex (${attribute})`, attribute })),
+    ...(agentId === VIVIAN_ID
+      ? Object.keys(ABLOOM).map((attribute): AnomalyHit => ({ key: `anomaly:abloom:${attribute}`, kind: 'abloom', label: `Abloom (${attribute})`, attribute }))
+      : []),
   ]
 }
 
 // One anomaly's multiplier in percent of ATK; Disorder and Vortex with the seconds that had passed of the anomaly they end
 export function anomalyMultiplier(agentId: string, element: string, kind: AnomalyKind, disorderAfter = 0, attribute?: string): number {
+  // Abloom's grows with Anomaly Proficiency (abloomPerAp); Polarity Disorder's ATK part is a share of Disorder's
+  if (kind === 'abloom') return 0
+  if (kind === 'polarity') return POLARITY_SHARE * anomalyMultiplier(agentId, element, 'disorder', disorderAfter)
   if (kind === 'vortex') {
     const vortex = VORTEX[attribute ?? element]
     return vortex ? vortex.base + vortex.perSecond * Math.max(0, VORTEX_SECONDS - disorderAfter) : 0
@@ -320,8 +368,17 @@ export function anomalyMultiplier(agentId: string, element: string, kind: Anomal
 
 // Bonuses to some anomalies only, in percent: dmg adds to DMG Bonus, buff is a multiplier of its own (1 + buff), add
 // goes on the multiplier (Disorder's, which Vortex gets too), and an anomaly that can CRIT has a CRIT Rate (plus per
-// point of Anomaly Proficiency) and CRIT DMG. 'anomaly' is every attribute anomaly (not Disorder or Vortex)
-export type AnomalyBonus = { dmg?: number, buff?: number, add?: number, critRate?: number, critRatePerAp?: number, critDmg?: number }
+// point of Anomaly Proficiency) and CRIT DMG. addPerSecondLeft adds to Disorder's multiplier per second the anomaly
+// had left of 10 (Alice). 'anomaly' is every attribute anomaly and Abloom (not Disorder, Polarity Disorder or Vortex)
+export type AnomalyBonus = {
+  dmg?: number,
+  buff?: number,
+  add?: number,
+  addPerSecondLeft?: number,
+  critRate?: number,
+  critRatePerAp?: number,
+  critDmg?: number,
+}
 export type AnomalyBonuses = Partial<Record<AnomalyKind | 'anomaly', AnomalyBonus>>
 
 export function addAnomalyBonuses(into: AnomalyBonuses, from: AnomalyBonuses): AnomalyBonuses {
@@ -334,6 +391,8 @@ export function addAnomalyBonuses(into: AnomalyBonuses, from: AnomalyBonuses): A
 }
 
 function bonusFor(kind: AnomalyKind, bonuses: AnomalyBonuses): AnomalyBonus {
+  // Polarity Disorder is a Disorder
+  if (kind === 'polarity') return bonusFor('disorder', bonuses)
   const parts = [bonuses[kind], kind === 'disorder' || kind === 'vortex' ? undefined : bonuses.anomaly]
   const total: AnomalyBonus = {}
   for (const part of parts) {
@@ -352,16 +411,30 @@ export function rotationAnomaly(
   rotation: Rotation,
   teamElements: string[] = [],
   bonuses: AnomalyBonuses = {},
-): Pick<DamageSetup, 'anomalyMultiplier' | 'anomalyBonusMultiplier' | 'anomalyCrits'> {
+): Pick<DamageSetup, 'anomalyMultiplier' | 'anomalyBonusMultiplier' | 'anomalyCrits' | 'anomalyPerAp'> {
   let multiplier = 0
   let bonusMultiplier = 0
   const crits: AnomalyCrit[] = []
+  const perAp = { atk: 0, atkBonus: 0, flat: 0, flatBonus: 0 }
+  const secondsLeft = Math.max(0, 10 - (rotation.disorderAfter ?? 0))
   for (const hit of anomalyHits(agentId, element, teamElements)) {
     const count = rotation.counts[hit.key] ?? 0
     if (!count) continue
     const bonus = bonusFor(hit.kind, bonuses)
-    const total = count * (anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute) + (bonus.add ?? 0))
-      * (1 + (bonus.buff ?? 0) / 100)
+    const buff = 1 + (bonus.buff ?? 0) / 100
+    const add = (bonus.add ?? 0) + (hit.kind === 'disorder' || hit.kind === 'polarity' ? (bonus.addPerSecondLeft ?? 0) * secondsLeft : 0)
+    if (hit.kind === 'abloom') {
+      perAp.atk += count * abloomPerAp(hit.attribute ?? element) * buff
+      perAp.atkBonus += count * abloomPerAp(hit.attribute ?? element) * buff * (bonus.dmg ?? 0) / 100
+      continue
+    }
+    if (hit.kind === 'polarity') {
+      perAp.flat += count * polarityFlatPerAp(rotation.skillLevel) * buff
+      perAp.flatBonus += count * polarityFlatPerAp(rotation.skillLevel) * buff * (bonus.dmg ?? 0) / 100
+    }
+    const total = count * (anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute)
+      + (hit.kind === 'polarity' ? POLARITY_SHARE : 1) * add)
+      * buff
     multiplier += total
     bonusMultiplier += total * (bonus.dmg ?? 0) / 100
     if (bonus.critDmg) {
@@ -374,7 +447,8 @@ export function rotationAnomaly(
       })
     }
   }
-  return { anomalyMultiplier: multiplier, anomalyBonusMultiplier: bonusMultiplier, anomalyCrits: crits }
+  const anyPerAp = perAp.atk !== 0 || perAp.flat !== 0
+  return { anomalyMultiplier: multiplier, anomalyBonusMultiplier: bonusMultiplier, anomalyCrits: crits, ...(anyPerAp ? { anomalyPerAp: perAp } : {}) }
 }
 
 export function rotationAnomalyMultiplier(agentId: string, element: string, rotation: Rotation, teamElements: string[] = []): number {

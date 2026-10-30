@@ -21,6 +21,8 @@ import {
 //   - kinds: DMG Bonus for one kind of hit (Ultimate DMG, EX Special Attack DMG...)
 //   - skills: DMG Bonus for one skill's hits only, by skill key (Miyabi's Shimotsuki)
 //   - aftershockCritDmg / aftershockDefIgnore: CRIT DMG and DEF ignore for Aftershock hits only
+//   - resIgnore / defIgnore: RES and DEF ignore for the whole rotation, in percent (added to the team's shred)
+//   - sheerDmg / sharpDmg: Sheer or Sharp DMG Bonus, a multiplier of its own on Rupture or Armorer skill hits
 //   - anomalies: bonuses to some anomalies only (Shock DMG, Disorder multiplier, Assault CRIT)
 // Only the optimizer counts them, and only when ranking by rotation damage. Agents whose sheet in genshin-optimizer is
 // still a placeholder (Aria, Velina, Nangong Yu, Norma, Pyrois, Remielle) have nothing here yet.
@@ -40,7 +42,7 @@ export type ZzzCombatEffect = {
   toggle?: ZzzEffectToggle,
   // Mindscape it needs
   minMindscape?: number,
-  stats?: (context: ZzzCombatContext) => { stat: ZzzStatsValues, value: number }[],
+  stats?: (context: ZzzCombatContext) => Pick<StatEffect, 'stat' | 'value' | 'fromStat'>[],
   kinds?: (context: ZzzCombatContext) => KindBonus,
   skills?: (context: ZzzCombatContext) => Record<string, number>,
   // Sharp damage (Armorer agents): Laceration DMG in percent, and CRIT Rate per point of CRIT DMG
@@ -51,6 +53,10 @@ export type ZzzCombatEffect = {
   aftershockDefIgnore?: number,
   // Bonuses to some anomalies only (damage.ts AnomalyBonuses)
   anomalies?: (context: ZzzCombatContext) => AnomalyBonuses,
+  resIgnore?: (context: ZzzCombatContext) => number,
+  defIgnore?: (context: ZzzCombatContext) => number,
+  sheerDmg?: (context: ZzzCombatContext) => number,
+  sharpDmg?: (context: ZzzCombatContext) => number,
   // Gear effects for agents of one specialty or attribute only
   specialty?: string,
   element?: string,
@@ -138,6 +144,13 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       kinds: () => ({ aftershock: 25 }),
       confidence: 'sourced',
     },
+    {
+      id: 'anby0-m4-res-ignore',
+      label: 'Mindscape 4: ignores 12% of the enemy\'s Electric RES',
+      minMindscape: 4,
+      resIgnore: () => 12,
+      confidence: 'sourced',
+    },
   ],
   // Orphie & Magus
   '1301': [
@@ -149,9 +162,9 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
     },
     {
       id: 'orphie-zeroed-in',
-      label: 'Core Skill: Zeroed In: ATK +280 for the squad (more from Energy Regen above 1.6, not counted, at most 700)',
+      label: 'Core Skill: Zeroed In: ATK +280 for the squad, +20 per 0.1 Energy Regen above 1.6, at most 700',
       toggle: { kind: 'switch', label: 'Zeroed In' },
-      stats: () => [{ stat: ZzzStats.ATK, value: 280 }],
+      stats: () => [{ stat: ZzzStats.ATK, value: 280, fromStat: { stat: 'energyRegen', above: 1.6, per: 200, max: 700 } }],
       confidence: 'sourced',
     },
     {
@@ -165,6 +178,13 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       label: 'Additional Ability: Aftershock ignores 25% of the enemy\'s DEF while Zeroed In',
       toggle: { kind: 'switch', label: 'Zeroed In' },
       aftershockDefIgnore: 25,
+      confidence: 'sourced',
+    },
+    {
+      id: 'orphie-m1-res-ignore',
+      label: 'Mindscape 1: ignores 15% of the enemy\'s Fire RES',
+      minMindscape: 1,
+      resIgnore: () => 15,
       confidence: 'sourced',
     },
   ],
@@ -191,6 +211,29 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       minMindscape: 2,
       toggle: { kind: 'switch', label: 'Gnawed' },
       anomalies: () => ({ assault: { critDmg: 50 } }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'jane-m2-def-ignore',
+      label: 'Mindscape 2: ignores 15% of the enemy\'s DEF',
+      minMindscape: 2,
+      defIgnore: () => 15,
+      confidence: 'sourced',
+    },
+  ],
+  // Alice
+  '1401': [
+    {
+      id: 'alice-core-disorder',
+      label: 'Core Skill: Physical Disorder multiplier +18% per second the Assault had left',
+      anomalies: () => ({ disorder: { addPerSecondLeft: 18 } }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'alice-m4-res-ignore',
+      label: 'Mindscape 4: ignores 10% of the enemy\'s Physical RES',
+      minMindscape: 4,
+      resIgnore: () => 10,
       confidence: 'sourced',
     },
   ],
@@ -293,6 +336,11 @@ export type ZzzResolvedCombat = {
   aftershockCritDmg: number,
   aftershockDefIgnore: number,
   anomalyBonus: AnomalyBonuses,
+  // RES and DEF ignore for every hit, Sheer and Sharp DMG Bonus, in percent
+  resIgnore: number,
+  defIgnore: number,
+  sheerDmg: number,
+  sharpDmg: number,
 }
 
 export function defaultEffectSetting(effect: ZzzCombatEffect): boolean | number {
@@ -340,6 +388,10 @@ export function resolveZzzCombat(
     aftershockCritDmg: 0,
     aftershockDefIgnore: 0,
     anomalyBonus: {},
+    resIgnore: 0,
+    defIgnore: 0,
+    sheerDmg: 0,
+    sharpDmg: 0,
   }
   for (const { effect, source } of effectSources(agentId, gear)) {
     const setting = settings[effect.id] ?? defaultEffectSetting(effect)
@@ -359,8 +411,8 @@ export function resolveZzzCombat(
     resolved.applied.push({ effect, setting, counted, reason: counted ? undefined : 'Turned off' })
     if (!counted) continue
     const context = { mindscape, setting }
-    for (const { stat, value } of effect.stats?.(context) ?? []) {
-      resolved.statEffects.push({ stat, value, source: `${source}: ${effect.label}`, confidence: effect.confidence })
+    for (const { stat, value, fromStat } of effect.stats?.(context) ?? []) {
+      resolved.statEffects.push({ stat, value, ...(fromStat ? { fromStat } : {}), source: `${source}: ${effect.label}`, confidence: effect.confidence })
     }
     for (const [kind, value] of Object.entries(effect.kinds?.(context) ?? {}) as [keyof KindBonus, number][]) {
       resolved.kindBonus[kind] = (resolved.kindBonus[kind] ?? 0) + value
@@ -370,6 +422,10 @@ export function resolveZzzCombat(
     resolved.aftershockCritDmg += effect.aftershockCritDmg ?? 0
     resolved.aftershockDefIgnore += effect.aftershockDefIgnore ?? 0
     addAnomalyBonuses(resolved.anomalyBonus, effect.anomalies?.(context) ?? {})
+    resolved.resIgnore += effect.resIgnore?.(context) ?? 0
+    resolved.defIgnore += effect.defIgnore?.(context) ?? 0
+    resolved.sheerDmg += effect.sheerDmg?.(context) ?? 0
+    resolved.sharpDmg += effect.sharpDmg?.(context) ?? 0
     for (const [skill, value] of Object.entries(effect.skills?.(context) ?? {})) {
       resolved.skillBonus[skill] = (resolved.skillBonus[skill] ?? 0) + value
     }

@@ -283,4 +283,65 @@ describe('ZZZ damage', () => {
     const rate = Math.min(1, (40 + 0.16 * stats.anomalyProficiency) / 100)
     expect(rotationDamage(stats, { ...setup, ...assault }) / rotationDamage(stats, { ...setup, anomalyMultiplier: 713 })).toBeCloseTo(1 + rate * 0.5, 6)
   })
+
+  it('has passives for the other W-Engines, gated by specialty and attribute', () => {
+    expect(Object.keys(W_ENGINE_PASSIVES).length).toBeGreaterThan(70)
+    expect(W_ENGINE_PASSIVES['14129'](1)).toMatchObject([{ stat: ZzzStats.CRIT_DMG, value: 45, specialty: 'Attack' }])
+    expect(W_ENGINE_PASSIVES['14126'](1)[0]).toMatchObject({ value: 36, element: 'Physical' })
+
+    // Chief Sidekick ignores Fire RES for Fire agents only; Jane's Mindscape 2 ignores DEF
+    const gear = { wEngineId: '14157', refinement: 1, sets: [], specialty: 'Stun', element: 'Fire' }
+    expect(resolveZzzCombat(MIYABI.id, 0, {}, gear).resIgnore).toBe(15)
+    expect(resolveZzzCombat(MIYABI.id, 0, {}, { ...gear, element: 'Ice' }).resIgnore).toBe(0)
+    expect(resolveZzzCombat('1261', 2, {}).defIgnore).toBe(15)
+    expect(resolveZzzCombat('1261', 1, {}).defIgnore).toBe(0)
+    // Timeweaver's Disorder multiplier and Crimson Thirst's Sharp DMG
+    const timeweaver = resolveZzzCombat(MIYABI.id, 0, {}, { ...gear, wEngineId: '14122', specialty: 'Anomaly' })
+    expect(timeweaver.anomalyBonus.disorder).toEqual({ buff: 25 })
+    expect(resolveZzzCombat(MIYABI.id, 0, {}, { ...gear, wEngineId: '14161', specialty: 'Armorer', element: 'Electric' }).sharpDmg).toBe(10)
+  })
+
+  it('applies Sheer and Sharp DMG as multipliers of their own', () => {
+    const sheer = { multiplier: 100, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS, scaling: 'sheer' as const }
+    const rupture = { ...stats, sheerForce: 3000 }
+    expect(rotationDamage(rupture, { ...sheer, sheerDmg: 10 }) / rotationDamage(rupture, sheer)).toBeCloseTo(1.1, 6)
+    const sharp = { ...sheer, scaling: 'sharp' as const }
+    expect(rotationDamage(stats, { ...sharp, sharpDmg: 20 }) / rotationDamage(stats, sharp)).toBeCloseTo(1.2, 6)
+    // Sheer DMG doesn't touch ATK-scaling agents
+    expect(rotationDamage(stats, { ...sheer, scaling: 'atk', sheerDmg: 10 })).toBeCloseTo(rotationDamage(stats, { ...sheer, scaling: 'atk' }), 6)
+  })
+
+  it('works out stat-based effects per build (Orphie\'s ATK from Energy Regen)', () => {
+    const input = { agent: MIYABI, wEngine: HAILSTORM_SHRINE, wEngineRefinement: 1, coreSkillLevel: 6, discs: [], conditions: defaultConditions() }
+    const zeroedIn = resolveZzzCombat('1301', 0, {}).statEffects.find((e) => e.fromStat)!
+    const plain = computeStats(input).stats
+    const withEffect = computeStats({ ...input, teamEffects: [zeroedIn] }).stats
+    const expected = Math.min(700, 280 + 200 * Math.max(0, plain.energyRegen - 1.6))
+    expect(withEffect.atk - plain.atk).toBeCloseTo(expected, 0)
+    // Enough Energy Regen reaches the cap
+    expect(
+      computeStats({ ...input, teamEffects: [zeroedIn, { stat: ZzzStats.ENERGY_REGEN, value: 500, source: 't', confidence: 'sourced' }] }).stats.atk
+        - computeStats({ ...input, teamEffects: [{ stat: ZzzStats.ENERGY_REGEN, value: 500, source: 't', confidence: 'sourced' }] }).stats.atk,
+    )
+      .toBeCloseTo(700, 0)
+  })
+
+  it('adds Alice\'s Disorder bonus per second left, Vivian\'s Abloom and Yanagi\'s Polarity Disorder', () => {
+    const disorder = { counts: { 'anomaly:disorder': 1 }, skillLevel: 12, disorderAfter: 4 }
+    const alice = rotationAnomaly('1401', 'Physical', disorder, [], resolveZzzCombat('1401', 0, {}).anomalyBonus)
+    expect(alice.anomalyMultiplier).toBeCloseTo(anomalyMultiplier('1401', 'Physical', 'disorder', 4) + 18 * 6, 6)
+
+    // Abloom grows with Anomaly Proficiency: its damage goes with AP squared
+    const abloom = rotationAnomaly('1331', 'Ether', { counts: { 'anomaly:abloom:Ether': 1 }, skillLevel: 12 })
+    expect(abloom.anomalyPerAp?.atk).toBeCloseTo(62.5 * 0.0615 / 10, 9)
+    const setup = { multiplier: 0, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS, ...abloom }
+    const doubled = { ...stats, anomalyProficiency: stats.anomalyProficiency * 2 }
+    expect(rotationDamage(doubled, setup) / rotationDamage(stats, setup)).toBeCloseTo(4, 6)
+
+    // Polarity Disorder: 15% of Disorder plus (5 + 2.25 x skill level) x AP of flat damage
+    expect(anomalyHits('1221', 'Electric').some((hit) => hit.key === 'anomaly:polarity')).toBe(true)
+    const polarity = rotationAnomaly('1221', 'Electric', { counts: { 'anomaly:polarity': 1 }, skillLevel: 12 })
+    expect(polarity.anomalyMultiplier).toBeCloseTo(0.15 * anomalyMultiplier('1221', 'Electric', 'disorder', 0), 6)
+    expect(polarity.anomalyPerAp?.flat).toBe(32)
+  })
 })

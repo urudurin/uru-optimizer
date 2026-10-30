@@ -108,7 +108,7 @@ export function computeStats(input: ComputeInput): ComputeResult {
   const addEffects = (effects: StatEffect[]) => {
     for (const effect of effects) {
       if (!effectApplies(effect, agent, input.conditions)) continue
-      if (effect.minStat) {
+      if (isThreshold(effect)) {
         thresholdEffects.push(effect)
         continue
       }
@@ -177,10 +177,20 @@ export function computeStats(input: ComputeInput): ComputeResult {
   return { stats: reached.length > 0 ? finalizeStats(agent, wEngine, totals) : before, contributions, warnings }
 }
 
-// The threshold effects (minStat) whose stat reaches its value. Checked against the stats without any of them, so the
+// The threshold effects (minStat) whose stat reaches its value, and fromStat effects with their value worked out. Checked against the stats without any of them, so the
 // order they're listed in never matters
 export function metThresholds(stats: FinalStats, effects: StatEffect[]): StatEffect[] {
-  return effects.filter((effect) => effect.minStat && stats[effect.minStat.stat] >= effect.minStat.atLeast)
+  return effects.flatMap((effect) => {
+    if (effect.minStat && stats[effect.minStat.stat] < effect.minStat.atLeast) return []
+    const from = effect.fromStat
+    if (!from) return effect.minStat ? [effect] : []
+    return [{ ...effect, value: Math.min(from.max, effect.value + from.per * Math.max(0, stats[from.stat] - from.above)) }]
+  })
+}
+
+// Effects that wait for the other stats: a minimum (minStat) or a value from a final stat (fromStat)
+export function isThreshold(effect: StatEffect): boolean {
+  return effect.minStat !== undefined || effect.fromStat !== undefined
 }
 
 // Summed bonus points per stat before they are applied to the base stats, indexed by STAT_INDEX.

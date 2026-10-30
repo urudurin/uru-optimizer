@@ -54,12 +54,14 @@ export type ZzzTeamResult = {
   debuffs: EnemyDebuffs,
   // DMG Bonus for some hits only (Pulchra's Aftershock DMG), for rotation damage
   kindBonus: KindBonus,
+  // Sheer DMG Bonus from the squad (Yunkui Tales), in percent
+  sheerDmg: number,
   applied: ZzzAppliedBuff[],
   // Teammates whose stat screen couldn't be worked out (no saved build, or no data for them)
   missing: string[],
 }
 
-export const NO_TEAM: ZzzTeamResult = { effects: [], debuffs: NO_DEBUFFS, kindBonus: {}, applied: [], missing: [] }
+export const NO_TEAM: ZzzTeamResult = { effects: [], debuffs: NO_DEBUFFS, kindBonus: {}, sheerDmg: 0, applied: [], missing: [] }
 
 export function settingKey(buff: ZzzTeamBuff, giverId: string): string {
   return `${giverId}:${buff.id}`
@@ -82,7 +84,7 @@ export function isDebuff(stat: string): stat is EnemyDebuffKey {
 }
 
 function isHitBonus(stat: string): stat is HitBonusKey {
-  return stat === 'aftershockDmg'
+  return stat === 'aftershockDmg' || stat === 'sheerDmg'
 }
 
 function fourPieceSets(discs: Disc[]): string[] {
@@ -95,6 +97,8 @@ export function zzzTeamBuffsFor(
   receiverId: string,
   setup: ZzzTeamSetup,
   data: { builds: ImportedBuild[], discs: Disc[] },
+  // The receiver's own 4-piece (the set filter's): a teammate's copy of the same squad set doesn't stack with it
+  ownFourPiece?: string,
 ): ZzzTeamResult {
   const receiverBuild = data.builds.find((b) => b.agentId === receiverId)
   const receiver = squadMember(receiverId, receiverBuild?.mindscapeLevel ?? 0)
@@ -117,17 +121,21 @@ export function zzzTeamBuffsFor(
 
   const applied: ZzzAppliedBuff[] = []
   for (const giver of givers) {
-    const sources: { buff: ZzzTeamBuff, sourceName: string }[] = [
+    const sources: { buff: ZzzTeamBuff, sourceName: string, setId?: string }[] = [
       ...(AGENT_BUFFS[giver.member.agentId] ?? []).map((buff) => ({ buff, sourceName: giver.member.name })),
       ...fourPieceSets(giver.discs).flatMap((setId) =>
-        (SET_4PC_BUFFS[setId] ?? []).map((buff) => ({ buff, sourceName: `${giver.member.name}'s 4-piece set` }))
+        (SET_4PC_BUFFS[setId] ?? []).map((buff) => ({ buff, sourceName: `${giver.member.name}'s 4-piece set`, setId }))
       ),
       ...(giver.wEngineId ? W_ENGINE_TEAM_BUFFS[giver.wEngineId] ?? [] : []).map((buff) => ({ buff, sourceName: `${giver.member.name}'s W-Engine` })),
     ]
-    for (const { buff, sourceName } of sources) {
+    for (const { buff, sourceName, setId } of sources) {
       const key = settingKey(buff, giver.member.agentId)
       const setting = setup.settings[key] ?? defaultSetting(buff, giver.member)
       const base = { buff, key, sourceName, giver: giver.member, setting }
+      if (setId && setId === ownFourPiece) {
+        applied.push({ ...base, value: 0, counted: false, reason: 'Doesn\'t stack with the same set on this agent' })
+        continue
+      }
       if (setting === false) {
         applied.push({ ...base, value: 0, counted: false, reason: 'Turned off' })
         continue
@@ -164,11 +172,12 @@ export function zzzTeamBuffsFor(
   for (const a of applied) if (a.counted && isDebuff(a.buff.stat)) debuffs[a.buff.stat] += a.value
   const kindBonus: KindBonus = {}
   for (const a of applied) if (a.counted && a.buff.stat === 'aftershockDmg') kindBonus.aftershock = (kindBonus.aftershock ?? 0) + a.value
+  const sheerDmg = applied.filter((a) => a.counted && a.buff.stat === 'sheerDmg').reduce((sum, a) => sum + a.value, 0)
   const effects: StatEffect[] = applied.filter((a) => a.counted).flatMap((a) => (isDebuff(a.buff.stat) || isHitBonus(a.buff.stat) ? [] : [{
     stat: a.buff.stat,
     value: a.value,
     source: `${a.sourceName}: ${a.buff.label}`,
     confidence: a.buff.confidence,
   }]))
-  return { effects, debuffs, kindBonus, applied, missing }
+  return { effects, debuffs, kindBonus, sheerDmg, applied, missing }
 }

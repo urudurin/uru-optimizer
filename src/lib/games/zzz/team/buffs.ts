@@ -51,7 +51,8 @@ export type EnemyDebuffKey = 'defShred' | 'resShred' | 'dmgTaken'
 export const DEBUFF_LABELS: Record<EnemyDebuffKey, string> = { defShred: 'enemy DEF shred', resShred: 'enemy RES shred', dmgTaken: 'enemy DMG taken' }
 
 // DMG Bonus for some hits only, counted in rotation damage (damage/damage.ts KindBonus)
-export type HitBonusKey = 'aftershockDmg'
+// Sheer DMG Bonus (its own multiplier on Rupture agents' hits) too
+export type HitBonusKey = 'aftershockDmg' | 'sheerDmg'
 
 export type ZzzTeamBuff = {
   id: string,
@@ -328,6 +329,15 @@ export const SET_4PC_BUFFS: Record<string, ZzzTeamBuff[]> = {
     nonStacking: 'king-of-the-summit',
     confidence: 'sourced',
   }],
+  'yunkui-tales': [{
+    id: 'yunkui-tales-sheer',
+    label: 'Yunkui Tales 4-piece: Sheer DMG at 3 stacks',
+    stat: 'sheerDmg',
+    toggle: { kind: 'switch', label: '3 stacks' },
+    value: (c) => (switchOn(c) ? 10 : 0),
+    nonStacking: 'yunkui-tales',
+    confidence: 'sourced',
+  }],
   'bunny-in-wonderland': [{
     id: 'bunny-in-wonderland',
     label: 'Bunny in Wonderland 4-piece: DMG Bonus per Defense agent\'s EX Special or Assist (3 stacks)',
@@ -501,6 +511,15 @@ export const W_ENGINE_TEAM_BUFFS: Record<string, ZzzTeamBuff[]> = {
   ]),
   '14158': engineBuffs('Ode of Resurrected Wings', 'Anomaly', [
     { id: 'dmg', label: 'DMG Bonus after Refringe', stat: ZzzStats.ELEMENT_DMG, toggle: after('After Refringe'), values: [30, 34.5, 39, 43.5, 48] },
+  ]),
+  '14136': engineBuffs('Spectral Gaze', 'Stun', [
+    {
+      id: 'def-shred',
+      label: 'enemy DEF shred after an Electric Aftershock',
+      stat: 'defShred',
+      toggle: after('After an Electric Aftershock'),
+      values: [25, 28.75, 32.5, 36.25, 40],
+    },
   ]),
   '14162': engineBuffs('Crimson Moon Casket', 'Stun', [
     {

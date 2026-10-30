@@ -12,7 +12,9 @@ import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 import type { ZzzAppliedEffect } from 'lib/games/zzz/damage/combatEffects'
 import {
+  abloomPerAp,
   agentHits,
+  type AnomalyHit,
   anomalyHits,
   anomalyMultiplier,
   defaultRotation,
@@ -20,6 +22,7 @@ import {
   type EnemySettings,
   hitKey,
   hitMultiplier,
+  polarityFlatPerAp,
   type Rotation,
   rotationAnomalyMultiplier,
   rotationMultiplier,
@@ -34,6 +37,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   special: 'Special Attack',
   chain: 'Chain Attack & Ultimate',
   assist: 'Assist',
+}
+
+// An anomaly line's multiplier as the card shows it; Abloom's and Polarity Disorder's grow with Anomaly Proficiency
+function anomalyText(agentId: string, element: string, hit: AnomalyHit, rotation: Rotation): string {
+  if (hit.kind === 'abloom') return `${(abloomPerAp(hit.attribute ?? element) * 10).toFixed(2)}% / 10 AP`
+  const multiplier = `${anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute).toFixed(1)}%`
+  return hit.kind === 'polarity' ? `${multiplier} + ${polarityFlatPerAp(rotation.skillLevel)} x AP` : multiplier
 }
 
 export function EnemyCard({ enemy, debuffs, teamElements = [], onChange }: {
@@ -173,7 +183,7 @@ export function RotationCard({ agentId, element, teamElements = [], scaling = 'A
               <div key={hit.key} className={classes.hitRow}>
                 <Text size='xs' className={classes.hitLabel} title={hit.label}>{hit.label}</Text>
                 <Text size='xs' c='dimmed' ta='right'>
-                  {`${anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute).toFixed(1)}%`}
+                  {anomalyText(agentId, element, hit, rotation)}
                 </Text>
                 <NumberInput
                   size='xs'

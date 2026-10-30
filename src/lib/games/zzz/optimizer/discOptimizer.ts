@@ -28,6 +28,7 @@ import {
   effectApplies,
   finalizeStats,
   type FinalStats,
+  isThreshold,
   metThresholds,
   STAT_INDEX,
   toDisplayStats,
@@ -129,13 +130,13 @@ function addToVector(vector: Float64Array, stat: ZzzStatsValues, value: number) 
 function effectsVector(effects: StatEffect[], agent: AgentData, conditions: ActiveConditions): Float64Array {
   const vector = new Float64Array(STAT_COUNT)
   for (const effect of effects) {
-    if (!effect.minStat && effectApplies(effect, agent, conditions)) addToVector(vector, effect.stat, effect.value)
+    if (!isThreshold(effect) && effectApplies(effect, agent, conditions)) addToVector(vector, effect.stat, effect.value)
   }
   return vector
 }
 
 function thresholdEffects(effects: StatEffect[], agent: AgentData, conditions: ActiveConditions): StatEffect[] {
-  return effects.filter((effect) => effect.minStat && effectApplies(effect, agent, conditions))
+  return effects.filter((effect) => isThreshold(effect) && effectApplies(effect, agent, conditions))
 }
 
 function discVector(disc: Disc): Float64Array {
@@ -172,7 +173,11 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
   const passiveVector = effectsVector(passive, agent, conditions)
   const coreVector = effectsVector(core, agent, conditions)
   const teamVector = effectsVector(request.teamEffects ?? [], agent, conditions)
-  const baseThresholds = [...thresholdEffects(passive, agent, conditions), ...thresholdEffects(core, agent, conditions)]
+  const baseThresholds = [
+    ...thresholdEffects(passive, agent, conditions),
+    ...thresholdEffects(core, agent, conditions),
+    ...thresholdEffects(request.teamEffects ?? [], agent, conditions),
+  ]
   for (let i = 0; i < STAT_COUNT; i++) base[i] += passiveVector[i] + coreVector[i] + teamVector[i]
 
   // Sets are numbered so counting pieces is an array lookup

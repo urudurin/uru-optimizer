@@ -98,6 +98,13 @@ describe('zzzTeamBuffsFor', () => {
     expect(off.applied.find((a) => a.buff.id === 'idyllic-crit-dmg')).toMatchObject({ counted: false, reason: 'Turned off' })
   })
 
+  it('leaves out a teammate\'s squad set when the agent wears the same 4-piece', () => {
+    const same = zzzTeamBuffsFor(MIYABI.id, { teammates: [ASTRA], settings: {} }, { builds, discs }, 'swing-jazz')
+    expect(same.applied.find((a) => a.buff.id === 'swing-jazz')).toMatchObject({ counted: false, reason: 'Doesn\'t stack with the same set on this agent' })
+    const other = zzzTeamBuffsFor(MIYABI.id, { teammates: [ASTRA], settings: {} }, { builds, discs }, 'woodpecker-electro')
+    expect(other.applied.find((a) => a.buff.id === 'swing-jazz')?.counted).toBe(true)
+  })
+
   it('adds team effects to the stat calculator', () => {
     const input = { agent: MIYABI, wEngine: HAILSTORM_SHRINE, wEngineRefinement: 1, coreSkillLevel: 6, discs: [], conditions: statScreenConditions() }
     const alone = computeStats(input).stats

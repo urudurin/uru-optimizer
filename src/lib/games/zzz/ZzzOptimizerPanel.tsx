@@ -294,7 +294,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
   // What the squad gives this agent, the same for every build
   const team = { teammates, settings: teamSettings }
-  const teamResult = zzzTeamBuffsFor(agent.id, team, { builds, discs })
+  const teamResult = zzzTeamBuffsFor(agent.id, team, { builds, discs }, fourPieceSet ?? undefined)
   // The agent's own kit effects, counted only when ranking by rotation damage
   const byDamage = sortBy === 'damage'
   // Gear effects on some hits only: the W-Engine picked for the search and the sets the set filters pick
@@ -326,6 +326,8 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     scaling: agent.specialty === 'Rupture' ? 'sheer' : agent.specialty === 'Armorer' ? 'sharp' : 'atk',
     lacerationDmg: 150 + kit.lacerationBonus,
     critRateFromCritDmg: kit.critRateFromCritDmg,
+    sheerDmg: kit.sheerDmg + teamResult.sheerDmg,
+    sharpDmg: kit.sharpDmg,
     ...rotationAnomaly(agent.id, agent.element, rotation, teamElements, kit.anomalyBonus),
     agentLevel: agent.level,
     enemy: {
@@ -333,7 +335,12 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       windswept: !!enemy.windswept && teamElements.includes('Wind'),
       frostbite: !!enemy.frostbite && teamElements.includes('Ice'),
     },
-    debuffs: teamResult.debuffs,
+    // The kit and gear's own RES and DEF ignore add to the team's shred
+    debuffs: {
+      ...teamResult.debuffs,
+      defShred: teamResult.debuffs.defShred + kit.defIgnore,
+      resShred: teamResult.debuffs.resShred + kit.resIgnore,
+    },
   }
   const teammateOptions = [...new Map(builds.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
     .map(([value, label]) => ({ value, label }))
