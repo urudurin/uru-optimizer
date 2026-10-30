@@ -58,6 +58,8 @@ export type ZzzCombatEffect = {
   anomalies?: (context: ZzzCombatContext) => AnomalyBonuses,
   resIgnore?: (context: ZzzCombatContext) => number,
   defIgnore?: (context: ZzzCombatContext) => number,
+  // Points on the enemy's stun multiplier (Nangong Yu's Misstep), added to the team's
+  stunBonus?: (context: ZzzCombatContext) => number,
   // DEF ignore for some kinds of hits only, in percent (damage.ts rotationSkills)
   kindDefIgnore?: (context: ZzzCombatContext) => Partial<Record<HitKind, number>>,
   // Ether Veil vulnerability cap in percent (DamageSetup.veilVulnerabilityCap); the largest one counts
@@ -362,6 +364,37 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       confidence: 'confirmed',
     },
   ],
+  // Nangong Yu: in-game text at Core Skill level 7 (the user's screenshots, Oct 30 2026); GO's sheet is a placeholder.
+  // Her Vibrato Abloom and Polarity Disorder lines are in damage.ts; what she gives the squad is in team/buffs.ts too
+  '1511': [
+    {
+      id: 'nangong-core-ap',
+      label: 'Core Skill: Anomaly Proficiency +120',
+      stats: () => [{ stat: ZzzStats.ANOMALY_PROFICIENCY, value: 120 }],
+      confidence: 'confirmed',
+    },
+    {
+      id: 'nangong-core-squad-dmg',
+      label: 'Core Skill: squad DMG +25% for 30s after her Basic Attack: Adorable Explosive Impact or EX Special hits',
+      toggle: { kind: 'switch', label: 'After her Basic or EX Special' },
+      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 25 }],
+      confidence: 'confirmed',
+    },
+    {
+      id: 'nangong-core-vibrato',
+      label: 'Core Skill: Vibrato Abloom ratio +25% per Vibrato stack on the enemy when it clears (a multiplier of its own)',
+      toggle: { kind: 'stacks', label: 'Vibrato stacks', max: 4 },
+      anomalies: ({ setting }) => ({ abloom: { buff: 25 * Number(setting) } }),
+      confidence: 'confirmed',
+    },
+    {
+      id: 'nangong-misstep',
+      label: 'Additional Ability: Misstep, the enemy\'s stun multiplier +30% (after her Basic Attack\'s third hit or Ultimate)',
+      toggle: { kind: 'switch', label: 'Misstep' },
+      stunBonus: () => 30,
+      confidence: 'confirmed',
+    },
+  ],
   // Claret
   '1611': [
     {
@@ -421,6 +454,7 @@ export type ZzzResolvedCombat = {
   // RES and DEF ignore for every hit, Sheer and Sharp DMG Bonus, in percent
   resIgnore: number,
   defIgnore: number,
+  stunBonus: number,
   kindDefIgnore: Partial<Record<HitKind, number>>,
   veilVulnerabilityCap: number,
   sheerDmg: number,
@@ -475,6 +509,7 @@ export function resolveZzzCombat(
     anomalyBonus: {},
     resIgnore: 0,
     defIgnore: 0,
+    stunBonus: 0,
     kindDefIgnore: {},
     veilVulnerabilityCap: 0,
     sheerDmg: 0,
@@ -511,6 +546,7 @@ export function resolveZzzCombat(
     addAnomalyBonuses(resolved.anomalyBonus, effect.anomalies?.(context) ?? {})
     resolved.resIgnore += effect.resIgnore?.(context) ?? 0
     resolved.defIgnore += effect.defIgnore?.(context) ?? 0
+    resolved.stunBonus += effect.stunBonus?.(context) ?? 0
     for (const [kind, value] of Object.entries(effect.kindDefIgnore?.(context) ?? {}) as [HitKind, number][]) {
       resolved.kindDefIgnore[kind] = (resolved.kindDefIgnore[kind] ?? 0) + value
     }

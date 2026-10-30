@@ -124,9 +124,10 @@ export type EnemySettings = {
 export const DEFAULT_ENEMY: EnemySettings = { def: 635, res: 0, stunned: false, stunMultiplier: 150 }
 
 // What the team does to the enemy (team/teamBuffs.ts), in percent
-export type EnemyDebuffs = { defShred: number, resShred: number, dmgTaken: number }
+// stunBonus: points on the enemy's stun multiplier (Nangong Yu's Misstep: 150% -> 180%)
+export type EnemyDebuffs = { defShred: number, resShred: number, dmgTaken: number, stunBonus: number }
 
-export const NO_DEBUFFS: EnemyDebuffs = { defShred: 0, resShred: 0, dmgTaken: 0 }
+export const NO_DEBUFFS: EnemyDebuffs = { defShred: 0, resShred: 0, dmgTaken: 0, stunBonus: 0 }
 
 export type DamageSetup = {
   // Sum over the rotation of count x hit multiplier, in percent of ATK
@@ -179,6 +180,11 @@ function defMultiplier(stats: FinalStats, setup: Omit<DamageSetup, 'multiplier'>
   return factor / (factor + effectiveDef)
 }
 
+// The enemy's stun multiplier with the squad's bonus to it, as a fraction
+function stunMultiplier(setup: Omit<DamageSetup, 'multiplier'>): number {
+  return (setup.enemy.stunMultiplier + (setup.debuffs.stunBonus ?? 0)) / 100
+}
+
 // Each multiplier, for showing where the damage comes from
 export function damageFactors(stats: FinalStats, setup: Omit<DamageSetup, 'multiplier'>) {
   const critRate = Math.min(100, Math.max(0, stats.critRate)) / 100
@@ -194,9 +200,9 @@ export function damageFactors(stats: FinalStats, setup: Omit<DamageSetup, 'multi
     res: 1 - setup.enemy.res / 100 + setup.debuffs.resShred / 100,
     dmgTaken: 1 + setup.debuffs.dmgTaken / 100,
     stun: setup.veilVulnerabilityCap
-      ? Math.min(1 + setup.veilVulnerabilityCap / 100, setup.enemy.stunMultiplier / 100)
+      ? Math.min(1 + setup.veilVulnerabilityCap / 100, stunMultiplier(setup))
       : setup.enemy.stunned
-      ? setup.enemy.stunMultiplier / 100
+      ? stunMultiplier(setup)
       : 1,
   }
 }
@@ -362,10 +368,23 @@ export function abloomPerAp(attribute: string): number {
   return abloom ? abloom.perHit * abloom.per10Ap / 10 : 0
 }
 
-// Yanagi's Polarity Disorder (GO's Yanagi sheet): 15% of her Disorder (anom_base_ -85%) plus (500% + 225% per level of
-// the skill that sets it off) of Anomaly Proficiency as flat damage, which also gets the Anomaly Proficiency and level
-// multipliers (GO prep.ts anom_flat_dmg). Taken at the rotation's skill level, before Mindscape 2
-export const POLARITY_SHARE = 0.15
+// Polarity Disorder, a share of the agent's own Disorder. Yanagi's (GO's Yanagi sheet): 15% (anom_base_ -85%) plus (500% +
+// 225% per level of the skill that sets it off) of Anomaly Proficiency as flat damage, which also gets the Anomaly
+// Proficiency and level multipliers (GO prep.ts anom_flat_dmg), taken at the rotation's skill level, before Mindscape 2.
+// Nangong Yu's (her Additional Ability, in-game text, the user's screenshot): 25% of the Disorder, nothing flat
+const NANGONG_YU_ID = '1511'
+const POLARITY: Record<string, { share: number, flat: boolean }> = {
+  [YANAGI_ID]: { share: 0.15, flat: true },
+  [NANGONG_YU_ID]: { share: 0.25, flat: false },
+}
+
+export function polarityShare(agentId: string): number {
+  return POLARITY[agentId]?.share ?? 0
+}
+
+export function polarityHasFlat(agentId: string): boolean {
+  return POLARITY[agentId]?.flat ?? false
+}
 
 export function polarityFlatPerAp(skillLevel: number): number {
   return 5 + 2.25 * skillLevel
@@ -384,9 +403,16 @@ const VELINA_ABLOOM: AnomalyHit[] = [
   { key: 'anomaly:abloom:ultimate', kind: 'abloom', label: 'Abloom (Ultimate heavy attack, 680%)', attribute: 'Wind', share: 6.8 },
 ]
 
-// A fixed-share Abloom's multiplier in percent of ATK
+// Nangong Yu's Vibrato Abloom (her Core Skill at level 7, the user's screenshots): when 4 Vibrato are cleared from a
+// stunned enemy with an attribute anomaly, a share of that anomaly's single hit, 450% of ATK for every attribute; each
+// Vibrato stack adds 25% to the ratio (her kit effect)
+const NANGONG_ABLOOM: AnomalyHit[] = (
+  [['Physical', 0.63], ['Fire', 9], ['Ice', 0.9], ['Electric', 3.6], ['Ether', 7.2], ['Wind', 0.36]] as const
+).map(([attribute, share]) => ({ key: `anomaly:abloom:vibrato:${attribute}`, kind: 'abloom', label: `Abloom (Vibrato, ${attribute})`, attribute, share }))
+
+// A fixed-share Abloom's multiplier in percent of ATK: the share times that attribute's single-hit anomaly multiplier
 export function abloomShareMultiplier(hit: AnomalyHit): number {
-  return (hit.share ?? 0) * ANOMALY_HIT.wind.perHit * ANOMALY_HIT.wind.ticks
+  return (hit.share ?? 0) * (ABLOOM[hit.attribute ?? 'Wind']?.perHit ?? 0)
 }
 
 // The anomalies an agent of this attribute triggers, as rotation lines. A Wind agent can set off Vortex from every other
@@ -403,7 +429,8 @@ export function anomalyHits(agentId: string, element: string, teamElements: stri
   return [
     { key: `anomaly:${kind}`, kind, label: ANOMALY_HIT[kind].label },
     { key: 'anomaly:disorder', kind: 'disorder', label: agentId === MIYABI_ID ? 'Disorder (Frostbite)' : 'Disorder' },
-    ...(agentId === YANAGI_ID ? [{ key: 'anomaly:polarity', kind: 'polarity', label: 'Polarity Disorder' } satisfies AnomalyHit] : []),
+    ...(POLARITY[agentId] ? [{ key: 'anomaly:polarity', kind: 'polarity', label: 'Polarity Disorder' } satisfies AnomalyHit] : []),
+    ...(agentId === NANGONG_YU_ID ? NANGONG_ABLOOM : []),
     ...vortex.map((attribute): AnomalyHit => ({ key: `anomaly:vortex:${attribute}`, kind: 'vortex', label: `Vortex (${attribute})`, attribute })),
     ...(agentId === VELINA_ID ? VELINA_ABLOOM : []),
     ...(agentId === VIVIAN_ID || agentId === ARIA_ID
@@ -416,7 +443,7 @@ export function anomalyHits(agentId: string, element: string, teamElements: stri
 export function anomalyMultiplier(agentId: string, element: string, kind: AnomalyKind, disorderAfter = 0, attribute?: string): number {
   // Abloom's grows with Anomaly Proficiency (abloomPerAp); Polarity Disorder's ATK part is a share of Disorder's
   if (kind === 'abloom') return 0
-  if (kind === 'polarity') return POLARITY_SHARE * anomalyMultiplier(agentId, element, 'disorder', disorderAfter)
+  if (kind === 'polarity') return polarityShare(agentId) * anomalyMultiplier(agentId, element, 'disorder', disorderAfter)
   if (kind === 'vortex') {
     const vortex = VORTEX[attribute ?? element]
     return vortex ? vortex.base + vortex.perSecond * Math.max(0, VORTEX_SECONDS - disorderAfter) : 0
@@ -496,12 +523,12 @@ export function rotationAnomaly(
       perAp.atkBonus += count * abloomPerAp(hit.attribute ?? element) * buff * (bonus.dmg ?? 0) / 100
       continue
     }
-    if (hit.kind === 'polarity') {
+    if (hit.kind === 'polarity' && polarityHasFlat(agentId)) {
       perAp.flat += count * polarityFlatPerAp(rotation.skillLevel) * buff
       perAp.flatBonus += count * polarityFlatPerAp(rotation.skillLevel) * buff * (bonus.dmg ?? 0) / 100
     }
     const total = count * ((hit.share ? abloomShareMultiplier(hit) : anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute))
-      + (hit.kind === 'polarity' ? POLARITY_SHARE : 1) * add)
+      + (hit.kind === 'polarity' ? polarityShare(agentId) : 1) * add)
       * buff
     multiplier += total
     bonusMultiplier += total * (bonus.dmg ?? 0) / 100

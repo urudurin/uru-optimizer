@@ -80,7 +80,7 @@ export function squadMember(agentId: string, mindscape: number): SquadMember | u
 }
 
 export function isDebuff(stat: string): stat is EnemyDebuffKey {
-  return stat === 'defShred' || stat === 'resShred' || stat === 'dmgTaken'
+  return stat === 'defShred' || stat === 'resShred' || stat === 'dmgTaken' || stat === 'stunBonus'
 }
 
 function isHitBonus(stat: string): stat is HitBonusKey {

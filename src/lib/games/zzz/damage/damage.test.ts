@@ -424,6 +424,27 @@ describe('ZZZ damage', () => {
     expect(flat.stats.anomalyMastery - computeStats(input).stats.anomalyMastery).toBeCloseTo(84, 6)
   })
 
+  it('Nangong Yu: Vibrato Abloom, 25% Polarity Disorder and Misstep on the stun multiplier', () => {
+    const NANGONG = '1511'
+    const vibrato = anomalyHits(NANGONG, 'Ether').filter((hit) => hit.kind === 'abloom')
+    // Every attribute's share comes to 450% of ATK (of its single-hit anomaly multiplier)
+    expect(vibrato.map((hit) => Math.round(abloomShareMultiplier(hit)))).toEqual([449, 450, 450, 450, 450, 450])
+    const kit = resolveZzzCombat(NANGONG, 0, {})
+    const rotation: Rotation = { counts: { 'anomaly:abloom:vibrato:Ether': 1, 'anomaly:polarity': 2 }, skillLevel: 12 }
+    const anomaly = rotationAnomaly(NANGONG, 'Ether', rotation, [], kit.anomalyBonus)
+    // 4 Vibrato stacks: +100% on the Abloom; Polarity Disorder is 25% of her Disorder with nothing flat
+    expect(anomaly.anomalyMultiplier).toBeCloseTo(450 * 2 + 2 * 0.25 * anomalyMultiplier(NANGONG, 'Ether', 'disorder'), 6)
+    expect(anomaly.anomalyPerAp).toBeUndefined()
+
+    // Misstep: +30 points on the stun multiplier while stunned
+    expect(kit.stunBonus).toBe(30)
+    const base = { multiplier: 100, agentLevel: 60, enemy: { ...DEFAULT_ENEMY, stunned: true }, debuffs: NO_DEBUFFS }
+    expect(rotationDamage(stats, { ...base, debuffs: { ...NO_DEBUFFS, stunBonus: 30 } }) / rotationDamage(stats, base)).toBeCloseTo(1.8 / 1.5, 6)
+    // Not stunned: no stun multiplier at all
+    const awake = { ...base, enemy: DEFAULT_ENEMY }
+    expect(rotationDamage(stats, { ...awake, debuffs: { ...NO_DEBUFFS, stunBonus: 30 } })).toBeCloseTo(rotationDamage(stats, awake), 6)
+  })
+
   it('Ye Shunguang: Ether Veil vulnerability, Mindscape 1 DEF ignore and Mindscape 2 EX Special / Ultimate DEF ignore', () => {
     const YE = '1431'
     const base = { multiplier: 100, agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS }

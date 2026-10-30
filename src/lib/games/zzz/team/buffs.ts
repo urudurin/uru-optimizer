@@ -46,9 +46,14 @@ export type ZzzBuffContext = {
 }
 
 // Effects on the enemy rather than the agent, in percent (damage/damage.ts EnemyDebuffs)
-export type EnemyDebuffKey = 'defShred' | 'resShred' | 'dmgTaken'
+export type EnemyDebuffKey = 'defShred' | 'resShred' | 'dmgTaken' | 'stunBonus'
 
-export const DEBUFF_LABELS: Record<EnemyDebuffKey, string> = { defShred: 'enemy DEF shred', resShred: 'enemy RES shred', dmgTaken: 'enemy DMG taken' }
+export const DEBUFF_LABELS: Record<EnemyDebuffKey, string> = {
+  defShred: 'enemy DEF shred',
+  resShred: 'enemy RES shred',
+  dmgTaken: 'enemy DMG taken',
+  stunBonus: 'enemy stun multiplier',
+}
 
 // DMG Bonus for some hits only, counted in rotation damage (damage/damage.ts KindBonus)
 // Sheer DMG Bonus (its own multiplier on Rupture agents' hits) too
@@ -274,6 +279,25 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
       toggle: { kind: 'switch', label: 'Binding Trap' },
       value: (c) => (switchOn(c) ? 30 : 0),
       confidence: 'sourced',
+    },
+  ],
+  // Nangong Yu: in-game text at Core Skill level 7 (the user's screenshots); GO's sheet is a placeholder
+  '1511': [
+    {
+      id: 'nangong-squad-dmg',
+      label: 'Core Skill: squad DMG +25% for 30s after her Basic Attack: Adorable Explosive Impact or EX Special hits',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: { kind: 'switch', label: 'After her Basic or EX Special' },
+      value: (c) => (switchOn(c) ? 25 : 0),
+      confidence: 'confirmed',
+    },
+    {
+      id: 'nangong-misstep',
+      label: 'Additional Ability: Misstep, the enemy\'s stun multiplier +30% (after her Basic Attack\'s third hit or Ultimate)',
+      stat: 'stunBonus',
+      toggle: { kind: 'switch', label: 'Misstep' },
+      value: (c) => (switchOn(c) ? 30 : 0),
+      confidence: 'confirmed',
     },
   ],
   // Seth

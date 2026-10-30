@@ -28,6 +28,7 @@ import {
   hitKey,
   hitMultiplier,
   polarityFlatPerAp,
+  polarityHasFlat,
   type Rotation,
   rotationAnomalyMultiplier,
   rotationMultiplier,
@@ -46,7 +47,7 @@ function anomalyText(agentId: string, element: string, hit: AnomalyHit, rotation
       : `${(abloomPerAp(hit.attribute ?? element) * 10).toFixed(2)}% / 10 AP`
   }
   const multiplier = `${anomalyMultiplier(agentId, element, hit.kind, rotation.disorderAfter, hit.attribute).toFixed(1)}%`
-  return hit.kind === 'polarity' ? `${multiplier} + ${polarityFlatPerAp(rotation.skillLevel)} x AP` : multiplier
+  return hit.kind === 'polarity' && polarityHasFlat(agentId) ? `${multiplier} + ${polarityFlatPerAp(rotation.skillLevel)} x AP` : multiplier
 }
 
 export function EnemyCard({ enemy, debuffs, teamElements = [], onChange }: {
@@ -61,6 +62,7 @@ export function EnemyCard({ enemy, debuffs, teamElements = [], onChange }: {
     debuffs.defShred ? `${debuffs.defShred}% DEF shred` : '',
     debuffs.resShred ? `${debuffs.resShred}% RES shred` : '',
     debuffs.dmgTaken ? `${debuffs.dmgTaken}% more DMG taken` : '',
+    debuffs.stunBonus ? `stun multiplier +${debuffs.stunBonus}%` : '',
   ].filter(Boolean)
   return (
     <FormCard title='Enemy' size='narrow' description='DEF and RES of the enemy you fight. The team row adds its shred on top.'>
