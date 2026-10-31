@@ -4,18 +4,20 @@ import {
   Text,
 } from '@mantine/core'
 import type { SubstatUpgrade } from 'lib/games/shared/analysis'
-import {
-  damageByGroup,
-  type DamagePart,
-} from 'lib/games/shared/damageBreakdown'
+import type { DamagePart } from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
 import { Panel } from 'lib/games/shared/ui/GameLayout'
-import classes from 'lib/games/shared/ui/Optimizer.module.css'
 import type { PinnedCell } from 'lib/games/shared/ui/optimizer/BuildCompare'
+import {
+  ComboBreakdown,
+  ComboDistribution,
+} from 'lib/games/shared/ui/optimizer/DamageCharts'
+import tableClasses from 'lib/tabs/tabOptimizer/analysis/UpgradeTable.module.css'
 
 // The analysis under an optimizer's picked build, after HSR's expanded data panel: its stats next to the current
-// build's, what one more roll of each substat would add to its score, and when ranking by damage, each rotation line's
-// share of it (after HSR's damage splits). Shared by the ZZZ, Genshin and WuWa pages.
+// build's, HSR's substat upgrades table (what one more roll of each substat adds to its score, and as a percent), and
+// when ranking by damage, HSR's Combo Breakdown and Combo Distribution charts (shared/ui/optimizer/DamageCharts.tsx).
+// Shared by the ZZZ, Genshin and WuWa pages.
 
 export type StatDiffRow = {
   key: string,
@@ -26,8 +28,6 @@ export type StatDiffRow = {
   format: (value: number) => string,
 }
 
-const SHOWN_UPGRADES = 6
-
 function Change({ row }: { row: StatDiffRow }) {
   if (row.current === undefined) return <Text size='xs' c='dimmed'>-</Text>
   const diff = row.build - row.current
@@ -35,47 +35,10 @@ function Change({ row }: { row: StatDiffRow }) {
   return <Text size='xs' c={diff > 0 ? 'teal' : 'red'}>{`${diff > 0 ? '+' : '-'}${row.format(Math.abs(diff))}`}</Text>
 }
 
-const SHOWN_PARTS = 10
-
-// Each rotation line's share of the build's damage, largest first, with the rest folded into one row
-function DamageBreakdown({ parts }: { parts: DamagePart[] }) {
-  const total = parts.reduce((sum, part) => sum + part.damage, 0)
-  if (total <= 0) return null
-  const shown = parts.slice(0, SHOWN_PARTS)
-  const rest = parts.slice(SHOWN_PARTS)
-  const rows = rest.length > 0
-    ? [...shown, { key: 'rest', label: `${rest.length} more lines`, group: '', count: 0, damage: rest.reduce((sum, p) => sum + p.damage, 0) }]
-    : shown
-  const largest = shown[0]?.damage ?? 0
-  const groups = damageByGroup(parts)
-
-  return (
-    <div>
-      <Text size='sm' fw={600}>Where the damage comes from</Text>
-      <Text size='xs' c='dimmed' mb={8}>
-        {groups.map((g) => `${g.group} ${formatPercent(g.damage / total)}`).join(' · ')}
-      </Text>
-      <div className={classes.upgradeList}>
-        {rows.map((part) => (
-          <div key={part.key} className={classes.upgradeRow}>
-            <Text size='xs' className={classes.upgradeLabel} title={part.group ? `${part.group}: ${part.label}` : part.label}>
-              {part.count > 1 ? `${part.label} ×${part.count}` : part.label}
-            </Text>
-            <div className={classes.upgradeTrack}>
-              <div className={classes.upgradeBar} style={{ width: `${largest > 0 ? Math.min(100, (part.damage / largest) * 100) : 0}%` }} />
-            </div>
-            <Text size='xs' fw={600} className={classes.upgradeValue} title={formatNumber(Math.round(part.damage))}>
-              {formatPercent(part.damage / total)}
-            </Text>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function formatPercent(share: number): string {
-  return `${(share * 100).toFixed(1)}%`
+// What a roll adds to the score: whole numbers for damage-sized scores, decimals for small ones (Crit Value, a stat)
+function formatGain(gain: number): string {
+  if (gain >= 100) return formatNumber(Math.round(gain))
+  return gain.toFixed(gain >= 10 ? 1 : 2)
 }
 
 // A snapshot of the rows for Pin build in the sidebar (shared/ui/optimizer/BuildCompare.tsx)
@@ -94,8 +57,7 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
   // The rotation's lines and their damage on this build (shared/damageBreakdown.ts), when ranking by damage
   breakdown?: DamagePart[],
 }) {
-  const helpful = upgrades.filter((u) => u.gain > 1e-9).slice(0, SHOWN_UPGRADES)
-  const best = helpful[0]?.gain ?? 0
+  const helpful = upgrades.filter((u) => u.gain > 1e-9)
   const hasCurrent = rows.some((row) => row.current !== undefined)
 
   return (
@@ -138,26 +100,45 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
         </div>
 
         <div>
-          <Text size='sm' fw={600}>Next substat roll</Text>
+          <Text size='sm' fw={600}>Substat upgrades</Text>
           <Text size='xs' c='dimmed' mb={8}>{`One more average roll of each substat on this build, and how much it raises ${scoreLabel}.`}</Text>
           {helpful.length === 0
             ? <Text size='xs' c='dimmed'>{`No substat raises ${scoreLabel}.`}</Text>
             : (
-              <div className={classes.upgradeList}>
-                {helpful.map((upgrade) => (
-                  <div key={upgrade.stat} className={classes.upgradeRow}>
-                    <Text size='xs' className={classes.upgradeLabel}>{`${upgrade.label} +${formatRoll(upgrade)}`}</Text>
-                    <div className={classes.upgradeTrack}>
-                      <div className={classes.upgradeBar} style={{ width: `${best > 0 ? (upgrade.gain / best) * 100 : 0}%` }} />
-                    </div>
-                    <Text size='xs' fw={600} className={classes.upgradeValue}>{`+${upgrade.percent.toFixed(2)}%`}</Text>
-                  </div>
-                ))}
-              </div>
+              <Table className={tableClasses.upgradeTable} verticalSpacing={4}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th className={tableClasses.substatHeader}>Substat</Table.Th>
+                    <Table.Th className={tableClasses.columnHeader}>Δ %</Table.Th>
+                    <Table.Th className={tableClasses.columnHeader} title={scoreLabel}>Δ</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {helpful.map((upgrade) => (
+                    <Table.Tr key={upgrade.stat}>
+                      <Table.Td className={tableClasses.centeredCell}>
+                        <Text size='xs' span>{upgrade.label}</Text>
+                        <Text size='xs' span c='dimmed'>{` +${formatRoll(upgrade)}`}</Text>
+                      </Table.Td>
+                      <Table.Td className={tableClasses.centeredCell}>
+                        <Text size='xs'>{`${upgrade.percent.toFixed(2)}%`}</Text>
+                      </Table.Td>
+                      <Table.Td className={tableClasses.centeredCell}>
+                        <Text size='xs'>{formatGain(upgrade.gain)}</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
             )}
         </div>
-        {breakdown && breakdown.length > 0 && <DamageBreakdown parts={breakdown} />}
       </SimpleGrid>
+      {breakdown && breakdown.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 'var(--mantine-spacing-lg)', alignItems: 'flex-start' }}>
+          <ComboBreakdown parts={breakdown} />
+          <ComboDistribution parts={breakdown} />
+        </div>
+      )}
     </Panel>
   )
 }
