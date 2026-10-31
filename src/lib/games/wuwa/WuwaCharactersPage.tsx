@@ -5,11 +5,18 @@ import {
   Stack,
   Text,
 } from '@mantine/core'
+import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import { BuildRating } from 'lib/games/shared/ui/BuildRating'
+import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
 import {
   Notices,
   PageHeader,
 } from 'lib/games/shared/ui/GameLayout'
+import {
+  describeSavedPieces,
+  useSavedBuilds,
+} from 'lib/games/shared/ui/optimizer/SavedBuilds'
+import { openScoringModal } from 'lib/games/shared/ui/ScoringModal'
 import {
   Roster,
   RosterLayout,
@@ -20,6 +27,7 @@ import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
 import {
   characterName,
   CHARACTERS,
+  SONATA_SETS,
   WEAPONS,
 } from 'lib/games/wuwa/data/gameData'
 import {
@@ -27,12 +35,14 @@ import {
   useUserArt,
 } from 'lib/games/wuwa/data/userArt'
 import { validateLoadout } from 'lib/games/wuwa/echoRules'
+import { SUBSTAT_KEYS } from 'lib/games/wuwa/echoStats'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import {
   computeWuwaStats,
   toDisplayStats,
 } from 'lib/games/wuwa/stats/computeStats'
 import {
+  defaultEchoWeights,
   scoreEcho,
   wuwaBuildScore,
   wuwaEchoWeights,
@@ -41,6 +51,7 @@ import {
   type CharacterState,
   type ElementDmgKey,
   MAX_LOADOUT_COST,
+  statLabel,
 } from 'lib/games/wuwa/types'
 import {
   EchoCard,
@@ -130,6 +141,12 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
   const echoes = useWuwaStore((s) => s.echoes)
   const saveCharacter = useWuwaStore((s) => s.saveCharacter)
   const [editing, setEditing] = useState(false)
+  // The Character menu (after HSR's): every other saved Resonator to switch with, and saved builds
+  const characters = useWuwaStore((s) => s.characters)
+  const { unequipCharacter, switchGear, deleteCharacter, equip } = useWuwaStore.getState()
+  const builds = useSavedBuilds('wuwa', character.charId)
+  // Re-render when scoring weights are saved
+  useScoreWeightsVersion()
 
   const echoById = useMemo(() => new Map(echoes.map((echo) => [echo.id, echo])), [echoes])
   const loadout = character.echoIds.flatMap((id) => {
@@ -159,7 +176,41 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
           <div>
             <Group justify='space-between' wrap='nowrap'>
               <Text size='xl' fw={700}>{name}</Text>
-              {!editing && <Button size='compact-xs' variant='subtle' onClick={() => setEditing(true)}>Edit</Button>}
+              {!editing && (
+                <CharacterMenu
+                  name={name}
+                  gearNoun='echoes'
+                  others={characters.filter((c) => c.charId !== character.charId).map((c) => ({ value: c.charId, label: characterName(c.charId) }))}
+                  onEdit={() => setEditing(true)}
+                  onSwitch={(other) => switchGear(character.charId, other)}
+                  onUnequip={() => unequipCharacter(character.charId)}
+                  onDelete={() => deleteCharacter(character.charId)}
+                  onSaveBuild={loadout.length > 0 ? () => builds.save(loadout.map((e) => e.id)) : undefined}
+                  onViewBuilds={() =>
+                    builds.view({
+                      name,
+                      describe: (b) =>
+                        describeSavedPieces(
+                          b.pieceIds.flatMap((id) => {
+                            const echo = echoById.get(id)
+                            return echo ? [SONATA_SETS[echo.setId]?.name ?? echo.setId] : []
+                          }),
+                          b.pieceIds.length,
+                        ),
+                      equip: (b) => equip(character.charId, b.pieceIds.flatMap((id) => echoById.get(id) ?? [])),
+                    })}
+                  savedCount={builds.saved.length}
+                  onScoring={() =>
+                    openScoringModal({
+                      game: 'wuwa',
+                      characterId: character.charId,
+                      name,
+                      stats: SUBSTAT_KEYS.map((stat) => ({ value: stat, label: statLabel(stat) })),
+                      current: wuwaEchoWeights(character),
+                      defaults: defaultEchoWeights(character),
+                    })}
+                />
+              )}
             </Group>
             <Group gap={6} mt={4}>
               {element && <Badge size='sm' variant='light' color={elementColor(element)}>{elementName(element)}</Badge>}

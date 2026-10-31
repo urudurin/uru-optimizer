@@ -52,7 +52,9 @@ export function wrapBackup(kind: BackupKind, savedAt: string, saveText: string, 
 // stay out (third-party guide data, see CLAUDE.md)
 export type BackupSettings = Record<string, unknown>
 
-const settingsKeys = (game: string) => [`${game}-optimizer-settings`, `${game}-saved-rotations`, `${game}-saved-builds`, `${game}-settings`]
+const settingsKeys = (
+  game: string,
+) => [`${game}-optimizer-settings`, `${game}-saved-rotations`, `${game}-saved-builds`, `${game}-settings`, `${game}-score-weights`]
 
 export function backupSettings(game: string): BackupSettings {
   const settings: BackupSettings = {}

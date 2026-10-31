@@ -113,6 +113,35 @@ export function equipWuwaEchoes(data: WuwaData, charId: string, echoes: Echo[], 
 // HSR's relic editor (lib/overlays/modals/relicModal). Taking it from someone works like the optimizer's Equip
 // WuWa has no slots, so room is made under the 5-echo, 12-cost limits: an echo of the same cost comes off first, then
 // the costliest ones
+// The Characters page's Character menu, after HSR's (Unequip character, Switch relics with, Delete character)
+// Takes off all of a Resonator's echoes
+export function unequipWuwaCharacter(data: WuwaData, charId: string): WuwaData {
+  return {
+    ...data,
+    characters: data.characters.map((c) => (c.charId === charId ? { ...c, echoIds: Array.from({ length: MAX_LOADOUT_ECHOES }, () => null) } : c)),
+  }
+}
+
+// Swaps two Resonators' echoes
+export function switchWuwaEchoes(data: WuwaData, a: string, b: string): WuwaData {
+  const first = data.characters.find((c) => c.charId === a)
+  const second = data.characters.find((c) => c.charId === b)
+  if (!first || !second || a === b) return data
+  return {
+    ...data,
+    characters: data.characters.map((c) => {
+      if (c.charId === a) return { ...c, echoIds: [...second.echoIds] }
+      if (c.charId === b) return { ...c, echoIds: [...first.echoIds] }
+      return c
+    }),
+  }
+}
+
+// Removes a Resonator from the save (and the priority list); their echoes stay, unequipped
+export function deleteWuwaCharacter(data: WuwaData, charId: string): WuwaData {
+  return { ...data, characters: data.characters.filter((c) => c.charId !== charId), priority: data.priority.filter((id) => id !== charId) }
+}
+
 export function assignWuwaEcho(data: WuwaData, echoId: string, charId: string | null, swap = false): WuwaData {
   const echo = data.echoes.find((e) => e.id === echoId)
   if (!echo) return data

@@ -6,8 +6,20 @@ import {
   TextInput,
 } from '@mantine/core'
 import { modals } from '@mantine/modals'
-import type { SavedBuild } from 'lib/games/shared/savedBuilds'
-import { useState } from 'react'
+import { todayString } from 'lib/games/shared/importedPresets'
+import {
+  deleteSavedBuild,
+  saveBuild,
+  type SavedBuild,
+  savedBuilds,
+} from 'lib/games/shared/savedBuilds'
+import { confirmAction } from 'lib/games/shared/ui/confirm'
+import { Message } from 'lib/interactions/message'
+import {
+  useMemo,
+  useReducer,
+  useState,
+} from 'react'
 
 // The dialogs behind the sidebar's Builds group, after HSR's SaveBuildModal (name the picked build) and BuildsModal
 // (the character's saved builds, to equip or delete). Opened imperatively through Mantine modals, like HSR's.
@@ -104,4 +116,47 @@ function SavedBuildsList({ initial, describe, onEquip, onDelete }: {
       ))}
     </Stack>
   )
+}
+
+// A character's saved builds with Save and View wired up, for the Characters pages' Character menu
+export function useSavedBuilds(game: string, characterId: string) {
+  const [version, bump] = useReducer((n: number) => n + 1, 0)
+  const saved = useMemo(() => (version >= 0 ? savedBuilds(game, characterId) : []), [game, characterId, version])
+  return {
+    saved,
+    save: (pieceIds: string[]) =>
+      openSaveBuildModal({
+        defaultName: `Build ${saved.length + 1}`,
+        onSave: (name) => {
+          saveBuild(game, characterId, name, pieceIds, todayString(new Date()))
+          bump()
+          Message.success(`Saved build ${name}`)
+        },
+      }),
+    view: ({ name, describe, equip }: { name: string, describe: (build: SavedBuild) => string, equip: (build: SavedBuild) => void }) =>
+      openSavedBuildsModal({
+        name,
+        builds: saved,
+        describe,
+        onEquip: async (build) => {
+          if (!await confirmAction('Equip saved build', `Equip ${build.name} on ${name} in this browser's save?`, { confirmLabel: 'Equip' })) return
+          equip(build)
+          Message.success('Equipped')
+        },
+        onDelete: (build) => {
+          const left = deleteSavedBuild(game, characterId, build.name)
+          bump()
+          return left
+        },
+      }),
+  }
+}
+
+// A saved build in a line: its pieces by set ('2 Gladiator's Finale + 2 …'), and how many are no longer in the save
+export function describeSavedPieces(setNames: string[], saved: number): string {
+  const counts = new Map<string, number>()
+  for (const set of setNames) counts.set(set, (counts.get(set) ?? 0) + 1)
+  const sets = [...counts].sort((a, b) => b[1] - a[1]).map(([set, n]) => `${n} ${set}`).join(' + ')
+  const missing = saved - setNames.length
+  return `${sets || 'No pieces'}${missing > 0 ? ` · ${missing} no longer in the save` : ''}`
 }

@@ -147,6 +147,42 @@ function withoutOwner(disc: Disc): Disc {
 
 // Puts one disc on an agent with a saved build or, with null, takes it off whoever wears it: the gear editor's "Equipped by", after
 // HSR's relic editor (lib/overlays/modals/relicModal). Taking it from someone works like the optimizer's Equip
+// The Characters page's Character menu, after HSR's (Unequip character, Switch relics with, Delete character)
+// ZZZ works on one saved build (an agent can have several). Takes off all of a build's discs
+export function unequipZzzBuild(data: ZzzData, buildId: string): ZzzData {
+  const build = data.builds.find((b) => b.id === buildId)
+  if (!build) return data
+  const worn = new Set(Object.values(build.discIds).filter((x): x is string => !!x))
+  return {
+    discs: data.discs.map((d) => (worn.has(d.id) && d.equippedBy === build.agentId ? withoutOwner(d) : d)),
+    builds: data.builds.map((b) => (b.id === buildId ? { ...b, discIds: {} } : b)),
+  }
+}
+
+// Swaps two builds' discs
+export function switchZzzDiscs(data: ZzzData, a: string, b: string): ZzzData {
+  const first = data.builds.find((x) => x.id === a)
+  const second = data.builds.find((x) => x.id === b)
+  if (!first || !second || a === b) return data
+  const owner = new Map<string, string>()
+  for (const id of Object.values(first.discIds)) if (id) owner.set(id, second.agentId)
+  for (const id of Object.values(second.discIds)) if (id) owner.set(id, first.agentId)
+  return {
+    discs: data.discs.map((d) => (owner.has(d.id) ? { ...d, equippedBy: owner.get(d.id) } : d)),
+    builds: data.builds.map((x) => {
+      if (x.id === a) return { ...x, discIds: { ...second.discIds } }
+      if (x.id === b) return { ...x, discIds: { ...first.discIds } }
+      return x
+    }),
+  }
+}
+
+// Removes a build from the save; its discs stay, unequipped
+export function deleteZzzBuild(data: ZzzData, buildId: string): ZzzData {
+  const unequipped = unequipZzzBuild(data, buildId)
+  return { ...unequipped, builds: unequipped.builds.filter((b) => b.id !== buildId) }
+}
+
 export function assignZzzDisc(data: ZzzData, discId: string, agentId: string | null, swap = true): ZzzData {
   const disc = data.discs.find((d) => d.id === discId)
   if (!disc) return data

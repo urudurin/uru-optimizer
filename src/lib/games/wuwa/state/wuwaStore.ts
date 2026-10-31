@@ -7,6 +7,7 @@ import {
 import type { ParsedWuwaData } from 'lib/games/wuwa/importer/userDataParser'
 import {
   assignWuwaEcho,
+  deleteWuwaCharacter,
   deleteWuwaEchoes,
   deserializeWuwaData,
   EMPTY_WUWA_DATA,
@@ -15,6 +16,8 @@ import {
   saveWuwaCharacter,
   saveWuwaEcho,
   serializeWuwaData,
+  switchWuwaEchoes,
+  unequipWuwaCharacter,
   WUWA_STATE_KEY,
   type WuwaData,
 } from 'lib/games/wuwa/state/wuwaState'
@@ -38,6 +41,10 @@ type WuwaStore = WuwaData & {
   equip: (charId: string, echoes: Echo[]) => void,
   // Adds a Resonator by hand or changes their level, sequence and weapon, see saveWuwaCharacter
   saveCharacter: (details: Omit<CharacterState, 'echoIds'>) => void,
+  // The Resonators page's Character menu: unequipWuwaCharacter / switchWuwaEchoes / deleteWuwaCharacter
+  unequipCharacter: (charId: string) => void,
+  switchGear: (a: string, b: string) => void,
+  deleteCharacter: (charId: string) => void,
   // Adds or edits an echo by hand, or deletes echoes, see saveWuwaEcho / deleteWuwaEchoes
   // owner (the editor's Equipped by): a Resonator id puts it on them, null takes it off, undefined leaves it
   saveEcho: (echo: Echo, owner?: string | null) => void,
@@ -64,6 +71,27 @@ export const useWuwaStore = create<WuwaStore>()((set, get) => ({
   equip: (charId, echoes) => {
     const { echoes: saved, characters, teams, priority } = get()
     const data = equipWuwaEchoes({ echoes: saved, characters, teams, priority }, charId, echoes, swapsOnEquip('wuwa'))
+    save(data)
+    set(data)
+  },
+
+  unequipCharacter: (charId) => {
+    const { echoes, characters, teams, priority } = get()
+    const data = unequipWuwaCharacter({ echoes, characters, teams, priority }, charId)
+    save(data)
+    set(data)
+  },
+
+  switchGear: (a, b) => {
+    const { echoes, characters, teams, priority } = get()
+    const data = switchWuwaEchoes({ echoes, characters, teams, priority }, a, b)
+    save(data)
+    set(data)
+  },
+
+  deleteCharacter: (charId) => {
+    const { echoes, characters, teams, priority } = get()
+    const data = deleteWuwaCharacter({ echoes, characters, teams, priority }, charId)
     save(data)
     set(data)
   },

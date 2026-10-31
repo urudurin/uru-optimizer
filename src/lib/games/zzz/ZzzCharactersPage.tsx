@@ -11,11 +11,18 @@ import {
   Text,
 } from '@mantine/core'
 import { scoreBuild } from 'lib/games/shared/gearScore'
+import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import { BuildRating } from 'lib/games/shared/ui/BuildRating'
+import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
 import {
   Notices,
   PageHeader,
 } from 'lib/games/shared/ui/GameLayout'
+import {
+  describeSavedPieces,
+  useSavedBuilds,
+} from 'lib/games/shared/ui/optimizer/SavedBuilds'
+import { openScoringModal } from 'lib/games/shared/ui/ScoringModal'
 import {
   Roster,
   RosterLayout,
@@ -33,6 +40,7 @@ import {
   type ZzzImages,
 } from 'lib/games/zzz/data/images'
 import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
+import { SUBSTAT_STATS } from 'lib/games/zzz/discStats'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
@@ -46,6 +54,7 @@ import {
   toDisplayStats,
 } from 'lib/games/zzz/stats/computeStats'
 import {
+  defaultDiscWeights,
   scoreDisc,
   zzzDiscWeights,
 } from 'lib/games/zzz/stats/discScore'
@@ -157,6 +166,12 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
   const [coreSkill, setCoreSkill] = useState('6')
   const [conditions, setConditions] = useState<ActiveConditions>(statScreenConditions())
   const [editing, setEditing] = useState(false)
+  // The Character menu (after HSR's), on the build shown: other saved builds to switch with, and saved builds
+  const allBuilds = useZzzStore((s) => s.builds)
+  const { unequipBuild, switchGear, deleteBuild, equip } = useZzzStore.getState()
+  const savedBuilds = useSavedBuilds('zzz', entry.agentId)
+  // Re-render when scoring weights are saved
+  useScoreWeightsVersion()
 
   const build = entry.builds[Math.min(buildIndex, entry.builds.length - 1)]
   const resolved = useMemo(() => resolveBuild(build, discs), [build, discs])
@@ -205,7 +220,39 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
               <div>
                 <Group justify='space-between' wrap='nowrap'>
                   <Text size='xl' fw={700}>{agent.name}</Text>
-                  {!editing && <Button size='compact-xs' variant='subtle' onClick={() => setEditing(true)}>Edit</Button>}
+                  {!editing && (
+                    <CharacterMenu
+                      name={agent.name}
+                      gearNoun='discs'
+                      others={allBuilds.filter((b) => b.id !== build.id).map((b) => ({ value: b.id, label: b.name }))}
+                      onEdit={() => setEditing(true)}
+                      onSwitch={(other) => switchGear(build.id, other)}
+                      onUnequip={() => unequipBuild(build.id)}
+                      onDelete={() => deleteBuild(build.id)}
+                      onSaveBuild={worn.length > 0 ? () => savedBuilds.save(worn.map((d) => d.id)) : undefined}
+                      onViewBuilds={() =>
+                        savedBuilds.view({
+                          name: agent.name,
+                          describe: (b) => describeSavedPieces(b.pieceIds.flatMap((id) => discs.find((d) => d.id === id)?.setName ?? []), b.pieceIds.length),
+                          equip: (b) =>
+                            equip(
+                              agent,
+                              { id: build.wEngineId ?? '', refinement: build.wEngineRefinement },
+                              b.pieceIds.flatMap((id) => discs.find((d) => d.id === id) ?? []),
+                            ),
+                        })}
+                      savedCount={savedBuilds.saved.length}
+                      onScoring={() =>
+                        openScoringModal({
+                          game: 'zzz',
+                          characterId: agent.id,
+                          name: agent.name,
+                          stats: SUBSTAT_STATS.map((stat) => ({ value: stat, label: stat })),
+                          current: zzzDiscWeights(agent),
+                          defaults: defaultDiscWeights(agent),
+                        })}
+                    />
+                  )}
                 </Group>
                 <Group gap={6} mt={4}>
                   <Badge size='sm' variant='light' color={elementColor(agent.element)}>{agent.element}</Badge>

@@ -16,6 +16,7 @@ import {
   scoreBuild,
   scoreGear,
 } from 'lib/games/shared/gearScore'
+import { withWeightOverrides } from 'lib/games/shared/scoreWeights'
 
 // Artifact scores (shared/gearScore.ts) for one character, with fixed weights per character like Fribbels' HSR relic
 // scores: CRIT Rate and CRIT DMG 1 when crits matter, the stat they scale on 0.75 (1 without crits), its flat version a
@@ -54,8 +55,14 @@ export function weightsFromPriority(priority: StatPriority): Record<string, numb
   return weights
 }
 
-export function genshinArtifactWeights(character: GenshinCharacter): Record<string, number> {
+// The table's weights, before the user's own (the Scoring weights modal resets to these)
+export function defaultArtifactWeights(character: GenshinCharacter): Record<string, number> {
   return weightsFromPriority(statPriority(character.id))
+}
+
+export function genshinArtifactWeights(character: GenshinCharacter): Record<string, number> {
+  // The user's own weights for this character win (shared/scoreWeights.ts)
+  return withWeightOverrides('genshin', character.id, defaultArtifactWeights(character))
 }
 
 export function scoreArtifact(artifact: Artifact, weights: Record<string, number>): GearScore | undefined {

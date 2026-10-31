@@ -1,7 +1,10 @@
 import {
   assignGenshinArtifact,
   deleteGenshinArtifacts,
+  deleteGenshinCharacter,
   saveGenshinArtifact,
+  switchGenshinArtifacts,
+  unequipGenshinCharacter,
 } from 'lib/games/genshin/state/genshinState'
 import type {
   Artifact,
@@ -9,8 +12,11 @@ import type {
 } from 'lib/games/genshin/types'
 import {
   assignWuwaEcho,
+  deleteWuwaCharacter,
   deleteWuwaEchoes,
   saveWuwaEcho,
+  switchWuwaEchoes,
+  unequipWuwaCharacter,
 } from 'lib/games/wuwa/state/wuwaState'
 import type {
   CharacterState,
@@ -20,8 +26,11 @@ import { wuwaEchoKind } from 'lib/games/wuwa/ui/echoKind'
 import type { ZzzImages } from 'lib/games/zzz/data/images'
 import {
   assignZzzDisc,
+  deleteZzzBuild,
   deleteZzzDiscs,
   saveZzzDisc,
+  switchZzzDiscs,
+  unequipZzzBuild,
 } from 'lib/games/zzz/state/zzzState'
 import type { Disc } from 'lib/games/zzz/types'
 import {
@@ -91,6 +100,18 @@ describe('ZZZ discs', () => {
     expect(assignZzzDisc(data, 'd1', '1091')).toBe(data)
   })
 
+  it('Character menu: unequips, switches discs between builds and deletes a build', () => {
+    const other = { ...build, id: 'b2', agentId: '1191', name: 'Ellen', discIds: { 1: 'd2' } }
+    const data = { discs: [disc('d1', 1, '1091'), disc('d2', 1, '1191')], builds: [build, other] }
+    const switched = switchZzzDiscs(data, 'b', 'b2')
+    expect(switched.builds.map((b) => b.discIds[1])).toEqual(['d2', 'd1'])
+    expect(switched.discs.map((d) => d.equippedBy)).toEqual(['1191', '1091'])
+    expect(unequipZzzBuild(data, 'b').builds[0].discIds).toEqual({})
+    const deleted = deleteZzzBuild(data, 'b')
+    expect(deleted.builds.map((b) => b.id)).toEqual(['b2'])
+    expect(deleted.discs[0].equippedBy).toBeUndefined()
+  })
+
   it('works out S-rank main stats like the game', () => {
     expect(sMainValue('HP', 15)).toBe(2200)
     expect(sMainValue('ATK%', 15)).toBe(30)
@@ -147,6 +168,20 @@ describe('Genshin artifacts', () => {
     expect(off.artifacts[0].equippedBy).toBeUndefined()
   })
 
+  it('Character menu: unequips, switches artifacts with another character and deletes, leaving the artifacts in the save', () => {
+    const other: GenshinCharacter = { ...character, id: 'd', name: 'D', artifactIds: { flower: 'a2' } }
+    const data = { artifacts: [artifact('a1', 'flower', 'c'), artifact('a2', 'flower', 'd')], characters: [character, other] }
+    const switched = switchGenshinArtifacts(data, 'c', 'd')
+    expect(switched.characters.map((c) => c.artifactIds.flower)).toEqual(['a2', 'a1'])
+    expect(switched.artifacts.map((a) => a.equippedBy)).toEqual(['d', 'c'])
+    const off = unequipGenshinCharacter(data, 'c')
+    expect(off.characters[0]).toMatchObject({ artifactIds: {}, stats: {} })
+    expect(off.artifacts[0].equippedBy).toBeUndefined()
+    const deleted = deleteGenshinCharacter(data, 'c')
+    expect(deleted.characters.map((c) => c.id)).toEqual(['d'])
+    expect(deleted.artifacts).toHaveLength(2)
+  })
+
   it('editing a worn artifact clears its owner\'s Enka stats; deleting takes it off them', () => {
     const data = { artifacts: [artifact('a1', 'flower', 'c')], characters: [character] }
     const edited = saveGenshinArtifact(data, { ...artifact('a1', 'flower', 'c'), level: 16 })
@@ -198,6 +233,14 @@ describe('WuWa echoes', () => {
     const swapped = assignWuwaEcho(data, 'x4', 'hsin', true)
     expect(swapped.characters[0].echoIds).toContain('x4')
     expect(swapped.characters[1].echoIds[0]).toBe('e1')
+  })
+
+  it('Character menu: unequips, switches echoes with another Resonator and deletes', () => {
+    const other: CharacterState = { ...hsin, charId: 'suoming', echoIds: ['e2', null, null, null, null] }
+    const data = { echoes: [echo('e1', 4), echo('e2', 4)], characters: [hsin, other], teams: [], priority: ['hsin', 'suoming'] }
+    expect(switchWuwaEchoes(data, 'hsin', 'suoming').characters.map((c) => c.echoIds[0])).toEqual(['e2', 'e1'])
+    expect(unequipWuwaCharacter(data, 'hsin').characters[0].echoIds).toEqual([null, null, null, null, null])
+    expect(deleteWuwaCharacter(data, 'hsin')).toMatchObject({ characters: [{ charId: 'suoming' }], priority: ['suoming'] })
   })
 
   it('needs an echo that drops at that cost in that set, and real roll tiers', () => {

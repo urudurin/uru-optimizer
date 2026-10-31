@@ -2,6 +2,7 @@ import {
   Button,
   Stack,
 } from '@mantine/core'
+import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import { PageHeader } from 'lib/games/shared/ui/GameLayout'
 import { GearCleanup } from 'lib/games/shared/ui/gear/GearCleanup'
 import { GearInventory } from 'lib/games/shared/ui/gear/GearInventory'
@@ -33,7 +34,9 @@ export function ZzzDiscsPage({ onImport }: { onImport: () => void }) {
   const gameData = useZzzGameData()
 
   // gameData: scores need every agent's data, which arrives from Enka after the first render
-  const kind = useMemo(() => zzzDiscKind({ builds, images, discs }), [builds, images, discs, gameData])
+  // Saved scoring weights change the Score column
+  const weightsVersion = useScoreWeightsVersion()
+  const kind = useMemo(() => zzzDiscKind({ builds, images, discs }), [builds, images, discs, gameData, weightsVersion])
 
   // Clean-up: every saved agent with data, each disc scored with that agent's substat weights
   const candidates = useMemo(

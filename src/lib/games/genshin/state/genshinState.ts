@@ -169,6 +169,42 @@ function withoutOwner(artifact: Artifact): Artifact {
 
 // Puts one artifact on a character or, with null, takes it off whoever wears it: the gear editor's "Equipped by", after
 // HSR's relic editor (lib/overlays/modals/relicModal). Taking it from someone works like the optimizer's Equip
+// The Characters page's Character menu, after HSR's (Unequip character, Switch relics with, Delete character)
+// Takes off all of a character's artifacts; they lose their Enka stats, which no longer match
+export function unequipGenshinCharacter(data: GenshinData, id: string): GenshinData {
+  const character = data.characters.find((c) => c.id === id)
+  if (!character) return data
+  const worn = new Set(Object.values(character.artifactIds).filter((x): x is string => !!x))
+  return {
+    artifacts: data.artifacts.map((a) => (worn.has(a.id) ? withoutOwner(a) : a)),
+    characters: data.characters.map((c) => (c.id === id ? { ...c, artifactIds: {}, stats: {} } : c)),
+  }
+}
+
+// Swaps two characters' artifacts
+export function switchGenshinArtifacts(data: GenshinData, a: string, b: string): GenshinData {
+  const first = data.characters.find((c) => c.id === a)
+  const second = data.characters.find((c) => c.id === b)
+  if (!first || !second || a === b) return data
+  const owner = new Map<string, string>()
+  for (const id of Object.values(first.artifactIds)) if (id) owner.set(id, b)
+  for (const id of Object.values(second.artifactIds)) if (id) owner.set(id, a)
+  return {
+    artifacts: data.artifacts.map((artifact) => (owner.has(artifact.id) ? { ...artifact, equippedBy: owner.get(artifact.id) } : artifact)),
+    characters: data.characters.map((c) => {
+      if (c.id === a) return { ...c, artifactIds: { ...second.artifactIds }, stats: {} }
+      if (c.id === b) return { ...c, artifactIds: { ...first.artifactIds }, stats: {} }
+      return c
+    }),
+  }
+}
+
+// Removes a character from the save; their artifacts stay, unequipped
+export function deleteGenshinCharacter(data: GenshinData, id: string): GenshinData {
+  const unequipped = unequipGenshinCharacter(data, id)
+  return { ...unequipped, characters: unequipped.characters.filter((c) => c.id !== id) }
+}
+
 export function assignGenshinArtifact(data: GenshinData, artifactId: string, characterId: string | null, swap = true): GenshinData {
   const artifact = data.artifacts.find((a) => a.id === artifactId)
   if (!artifact || (artifact.equippedBy ?? null) === characterId) return data

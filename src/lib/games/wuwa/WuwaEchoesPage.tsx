@@ -2,6 +2,7 @@ import {
   Button,
   Stack,
 } from '@mantine/core'
+import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import { PageHeader } from 'lib/games/shared/ui/GameLayout'
 import { GearCleanup } from 'lib/games/shared/ui/gear/GearCleanup'
 import { GearInventory } from 'lib/games/shared/ui/gear/GearInventory'
@@ -27,7 +28,9 @@ export function WuwaEchoesPage({ onImport }: { onImport: () => void }) {
   const saveEcho = useWuwaStore((s) => s.saveEcho)
   const deleteEchoes = useWuwaStore((s) => s.deleteEchoes)
 
-  const kind = useMemo(() => wuwaEchoKind({ characters }), [characters])
+  // Saved scoring weights change the Score column
+  const weightsVersion = useScoreWeightsVersion()
+  const kind = useMemo(() => wuwaEchoKind({ characters }), [characters, weightsVersion])
   // Clean-up: every saved Resonator, each echo scored with that Resonator's substat weights
   const candidates = useMemo(() => characters.map((c) => ({ id: c.charId, name: characterName(c.charId) })), [characters])
   const scoreAs = useMemo(() => {

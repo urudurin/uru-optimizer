@@ -12,6 +12,7 @@ import {
 } from 'lib/games/genshin/stats/artifactScore'
 import type { Artifact } from 'lib/games/genshin/types'
 import { genshinArtifactKind } from 'lib/games/genshin/ui/artifactKind'
+import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import { PageHeader } from 'lib/games/shared/ui/GameLayout'
 import { GearCleanup } from 'lib/games/shared/ui/gear/GearCleanup'
 import { GearInventory } from 'lib/games/shared/ui/gear/GearInventory'
@@ -44,7 +45,9 @@ export function GenshinArtifactsPage({ onImport }: { onImport: () => void }) {
     }
   }, [])
 
-  const kind = useMemo(() => genshinArtifactKind({ characters, images, store, artifacts }), [characters, images, store, artifacts])
+  // Saved scoring weights change the Score column
+  const weightsVersion = useScoreWeightsVersion()
+  const kind = useMemo(() => genshinArtifactKind({ characters, images, store, artifacts }), [characters, images, store, artifacts, weightsVersion])
   // Clean-up: every saved character, each artifact scored with that character's substat weights
   const candidates = useMemo(() => characters.map((c) => ({ id: c.id, name: c.name })), [characters])
   const scoreAs = useMemo(() => {

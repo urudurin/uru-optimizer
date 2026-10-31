@@ -4,6 +4,7 @@ import {
   scoreBuild,
   scoreGear,
 } from 'lib/games/shared/gearScore'
+import { withWeightOverrides } from 'lib/games/shared/scoreWeights'
 import {
   type StatPriority,
   statPriority,
@@ -53,8 +54,14 @@ export function weightsFromPriority(priority: StatPriority): Record<string, numb
   return weights
 }
 
-export function wuwaEchoWeights(character: CharacterState): Record<string, number> {
+// The table's weights, before the user's own (the Scoring weights modal resets to these)
+export function defaultEchoWeights(character: CharacterState): Record<string, number> {
   return weightsFromPriority(statPriority(character.charId))
+}
+
+export function wuwaEchoWeights(character: CharacterState): Record<string, number> {
+  // The user's own weights for this Resonator win (shared/scoreWeights.ts)
+  return withWeightOverrides('wuwa', character.charId, defaultEchoWeights(character))
 }
 
 export function scoreEcho(echo: Echo, weights: Record<string, number>): GearScore | undefined {

@@ -4,6 +4,7 @@ import {
   scoreGear,
   weightsFromPriority,
 } from 'lib/games/shared/gearScore'
+import { withWeightOverrides } from 'lib/games/shared/scoreWeights'
 import type { AgentData } from 'lib/games/zzz/data/dataTypes'
 import { getPreset } from 'lib/games/zzz/data/presets'
 import type { Disc } from 'lib/games/zzz/types'
@@ -14,8 +15,14 @@ import type { Disc } from 'lib/games/zzz/types'
 // 4 substats, then 5 upgrades by +15; a substat is never the main stat
 export const DISC_RULES: PieceRules = { substats: 4, upgrades: 5, substatCanMatchMain: false }
 
-export function zzzDiscWeights(agent: AgentData): Record<string, number> {
+// The preset's weights, before the user's own (the Scoring weights modal resets to these)
+export function defaultDiscWeights(agent: AgentData): Record<string, number> {
   return weightsFromPriority(getPreset(agent).substatPriority)
+}
+
+export function zzzDiscWeights(agent: AgentData): Record<string, number> {
+  // The user's own weights for this agent win (shared/scoreWeights.ts)
+  return withWeightOverrides('zzz', agent.id, defaultDiscWeights(agent))
 }
 
 export function scoreDisc(disc: Disc, weights: Record<string, number>): GearScore | undefined {

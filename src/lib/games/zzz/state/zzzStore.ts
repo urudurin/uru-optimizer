@@ -12,12 +12,15 @@ import type {
 } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
   assignZzzDisc,
+  deleteZzzBuild,
   deleteZzzDiscs,
   deserializeZzzData,
   equipZzzDiscs,
   saveZzzBuild,
   saveZzzDisc,
   serializeZzzData,
+  switchZzzDiscs,
+  unequipZzzBuild,
   ZZZ_STATE_KEY,
 } from 'lib/games/zzz/state/zzzState'
 import type { Disc } from 'lib/games/zzz/types'
@@ -39,6 +42,10 @@ type ZzzStore = {
   equip: (...args: Parameters<typeof equipZzzDiscs> extends [unknown, ...infer Rest] ? Rest : never) => void,
   // Adds an agent by hand or changes a saved build's Mindscape and W-Engine, see saveZzzBuild
   saveBuild: (build: ImportedBuild) => void,
+  // The Agents page's Character menu, by build id: unequipZzzBuild / switchZzzDiscs / deleteZzzBuild
+  unequipBuild: (buildId: string) => void,
+  switchGear: (a: string, b: string) => void,
+  deleteBuild: (buildId: string) => void,
   // Adds or edits a disc by hand, or deletes discs, see saveZzzDisc / deleteZzzDiscs
   // owner (the editor's Equipped by): an agent id puts it on them, null takes it off, undefined leaves it
   saveDisc: (disc: Disc, owner?: string | null) => void,
@@ -70,6 +77,27 @@ export const useZzzStore = create<ZzzStore>()((set, get) => ({
   equip: (agent, wEngine, discs) => {
     const state = get()
     const data = equipZzzDiscs({ discs: state.discs, builds: state.builds }, agent, wEngine, discs, swapsOnEquip('zzz'))
+    save(data.discs, data.builds)
+    set(data)
+  },
+
+  unequipBuild: (buildId) => {
+    const state = get()
+    const data = unequipZzzBuild({ discs: state.discs, builds: state.builds }, buildId)
+    save(data.discs, data.builds)
+    set(data)
+  },
+
+  switchGear: (a, b) => {
+    const state = get()
+    const data = switchZzzDiscs({ discs: state.discs, builds: state.builds }, a, b)
+    save(data.discs, data.builds)
+    set(data)
+  },
+
+  deleteBuild: (buildId) => {
+    const state = get()
+    const data = deleteZzzBuild({ discs: state.discs, builds: state.builds }, buildId)
     save(data.discs, data.builds)
     set(data)
   },

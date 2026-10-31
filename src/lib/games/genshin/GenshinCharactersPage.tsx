@@ -11,8 +11,10 @@ import {
   useGenshinImages,
 } from 'lib/games/genshin/data/images'
 import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
+import { SUBSTAT_STATS } from 'lib/games/genshin/goodKeys'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import {
+  defaultArtifactWeights,
   genshinArtifactWeights,
   genshinBuildScore,
   scoreArtifact,
@@ -34,8 +36,15 @@ import {
   ELEMENT_ACCENTS,
   genshinStatRows,
 } from 'lib/games/genshin/ui/characterStats'
+import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import { BuildRating } from 'lib/games/shared/ui/BuildRating'
+import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
 import { PageHeader } from 'lib/games/shared/ui/GameLayout'
+import {
+  describeSavedPieces,
+  useSavedBuilds,
+} from 'lib/games/shared/ui/optimizer/SavedBuilds'
+import { openScoringModal } from 'lib/games/shared/ui/ScoringModal'
 import {
   Roster,
   RosterLayout,
@@ -114,6 +123,12 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
   const artifacts = useGenshinStore((s) => s.artifacts)
   const saveCharacter = useGenshinStore((s) => s.saveCharacter)
   const [editing, setEditing] = useState(false)
+  // The Character menu (after HSR's): every other saved character to switch with, and saved builds
+  const characters = useGenshinStore((s) => s.characters)
+  const { unequipCharacter, switchGear, deleteCharacter, equip } = useGenshinStore.getState()
+  const builds = useSavedBuilds('genshin', character.id)
+  // Re-render when scoring weights are saved
+  useScoreWeightsVersion()
 
   const artifactById = useMemo(() => new Map(artifacts.map((a) => [a.id, a])), [artifacts])
   const worn = ARTIFACT_SLOTS.flatMap((slot) => {
@@ -150,7 +165,34 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
           <div>
             <Group justify='space-between' wrap='nowrap'>
               <Text size='xl' fw={700}>{character.name}</Text>
-              {!editing && <Button size='compact-xs' variant='subtle' onClick={() => setEditing(true)}>Edit</Button>}
+              {!editing && (
+                <CharacterMenu
+                  name={character.name}
+                  gearNoun='artifacts'
+                  others={characters.filter((c) => c.id !== character.id).map((c) => ({ value: c.id, label: c.name }))}
+                  onEdit={() => setEditing(true)}
+                  onSwitch={(other) => switchGear(character.id, other)}
+                  onUnequip={() => unequipCharacter(character.id)}
+                  onDelete={() => deleteCharacter(character.id)}
+                  onSaveBuild={worn.length > 0 ? () => builds.save(worn.map((a) => a.id)) : undefined}
+                  onViewBuilds={() =>
+                    builds.view({
+                      name: character.name,
+                      describe: (b) => describeSavedPieces(b.pieceIds.flatMap((id) => artifactById.get(id)?.setName ?? []), b.pieceIds.length),
+                      equip: (b) => equip(character.id, b.pieceIds.flatMap((id) => artifactById.get(id) ?? [])),
+                    })}
+                  savedCount={builds.saved.length}
+                  onScoring={() =>
+                    openScoringModal({
+                      game: 'genshin',
+                      characterId: character.id,
+                      name: character.name,
+                      stats: SUBSTAT_STATS.map((stat) => ({ value: stat, label: statLabel(stat) })),
+                      current: genshinArtifactWeights(character),
+                      defaults: defaultArtifactWeights(character),
+                    })}
+                />
+              )}
             </Group>
             <Group gap={6} mt={4}>
               {character.element && <Badge size='sm' variant='light' color={elementColor(character.element)}>{character.element}</Badge>}
