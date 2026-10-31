@@ -46,7 +46,6 @@ import {
 } from 'lib/games/shared/ui/optimizer/SavedBuilds'
 import { openScoringModal } from 'lib/games/shared/ui/ScoringModal'
 import {
-  Roster,
   RosterLayout,
   ShowcaseCard,
   StatList,
@@ -81,32 +80,23 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
 
   return (
     <Stack gap='lg'>
-      <PageHeader
-        title='Characters'
-        description='Stats as your in-game character screen shows them: taken from the game through Enka.Network for showcased characters, calculated from base stats, weapon and artifacts for the rest (within display rounding of the game).'
-      />
-
       <RosterLayout
-        roster={
-          <Roster
-            active={activeId}
-            onPick={setPicked}
-            groupColor={(group) => elementColor(group as Element)}
-            entries={rosterIds.map((id) => {
-              const c = characters.find((saved) => saved.id === id)
-              return {
-                key: id,
-                name: c?.name ?? nameOf(id, images),
-                meta: c ? `Lv ${c.level} · C${c.constellation} · ${c.weapon ? `${c.weapon.name} R${c.weapon.refinement}` : 'No weapon'}` : 'Not added',
-                group: c?.element ?? infoOf(id, images)?.element ?? 'Unknown',
-                subgroup: infoOf(id, images)?.weaponType,
-                portrait: images.characters[id]?.icon,
-                circle: images.characters[id]?.icon,
-                dimmed: !c,
-              }
-            })}
-          />
-        }
+        active={activeId}
+        onPick={setPicked}
+        groupColor={(group) => elementColor(group as Element)}
+        entries={rosterIds.map((id) => {
+          const c = characters.find((saved) => saved.id === id)
+          return {
+            key: id,
+            name: c?.name ?? nameOf(id, images),
+            meta: c ? `Lv ${c.level} · C${c.constellation} · ${c.weapon ? `${c.weapon.name} R${c.weapon.refinement}` : 'No weapon'}` : 'Not added',
+            group: c?.element ?? infoOf(id, images)?.element ?? 'Unknown',
+            subgroup: infoOf(id, images)?.weaponType,
+            portrait: images.characters[id]?.icon,
+            circle: images.characters[id]?.icon,
+            dimmed: !c,
+          }
+        })}
       >
         {character
           ? <SavedCharacter key={character.id} character={character} images={images} />
@@ -148,6 +138,7 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
 
   return (
     <ShowcaseCard
+      sidePanel
       name={character.name}
       accent={character.element ? ELEMENT_ACCENTS[character.element] : undefined}
       portrait={art?.portrait}
@@ -247,6 +238,7 @@ function NewCharacter({ id, images, onImport }: { id: string, images: GenshinIma
 
   return (
     <ShowcaseCard
+      sidePanel
       name={name}
       accent={info?.element ? ELEMENT_ACCENTS[info.element] : undefined}
       portrait={images.characters[id]?.portrait}

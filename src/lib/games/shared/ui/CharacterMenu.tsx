@@ -15,9 +15,11 @@ import {
   IconPlugConnectedX,
   IconScale,
   IconTrash,
+  IconUser,
 } from '@tabler/icons-react'
 import type { GearOption } from 'lib/games/shared/gear/gearKind'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
+import { CharacterMenuSlot } from 'lib/games/shared/ui/Showcase'
 import { Message } from 'lib/interactions/message'
 import { useState } from 'react'
 
@@ -41,65 +43,68 @@ export function CharacterMenu({ name, gearNoun, others, onEdit, onSwitch, onUneq
   onScoring?: () => void,
 }) {
   return (
-    <Menu position='bottom-end' withinPortal>
-      <Menu.Target>
-        <Button size='compact-xs' variant='light' rightSection={<IconChevronDown size={12} />}>Character menu</Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Label>Character</Menu.Label>
-        <Menu.Item leftSection={<IconEdit size={14} />} onClick={onEdit}>Edit character</Menu.Item>
-        <Menu.Item
-          leftSection={<IconArrowsExchange size={14} />}
-          disabled={others.length === 0}
-          onClick={() => openSwitchModal({ name, gearNoun, others, onSwitch })}
-        >
-          {`Switch ${gearNoun} with`}
-        </Menu.Item>
-        <Menu.Item
-          leftSection={<IconPlugConnectedX size={14} />}
-          onClick={async () => {
-            if (
-              !await confirmAction('Unequip character', `Are you sure you want to unequip ${name}? Their ${gearNoun} stay in the save, unequipped.`, {
-                confirmLabel: 'Unequip',
-              })
-            ) return
-            onUnequip()
-            Message.success(`Unequipped ${name}`)
-          }}
-        >
-          Unequip character
-        </Menu.Item>
-        <Menu.Item
-          color='red'
-          leftSection={<IconTrash size={14} />}
-          onClick={async () => {
-            if (
-              !await confirmAction('Delete character', `Are you sure you want to delete ${name}? Their ${gearNoun} stay in the save, unequipped.`, {
-                danger: true,
-                confirmLabel: 'Delete',
-              })
-            ) return
-            onDelete()
-            Message.success(`Deleted ${name}`)
-          }}
-        >
-          Delete character
-        </Menu.Item>
+    // At the top of the roster column, like HSR's (shared/ui/Showcase.tsx CharacterMenuSlot)
+    <CharacterMenuSlot>
+      <Menu position='bottom-start' withinPortal width={260}>
+        <Menu.Target>
+          <Button fullWidth variant='default' leftSection={<IconUser size={16} />} rightSection={<IconChevronDown size={14} />}>Character menu</Button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Label>Character</Menu.Label>
+          <Menu.Item leftSection={<IconEdit size={14} />} onClick={onEdit}>Edit character</Menu.Item>
+          <Menu.Item
+            leftSection={<IconArrowsExchange size={14} />}
+            disabled={others.length === 0}
+            onClick={() => openSwitchModal({ name, gearNoun, others, onSwitch })}
+          >
+            {`Switch ${gearNoun} with`}
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<IconPlugConnectedX size={14} />}
+            onClick={async () => {
+              if (
+                !await confirmAction('Unequip character', `Are you sure you want to unequip ${name}? Their ${gearNoun} stay in the save, unequipped.`, {
+                  confirmLabel: 'Unequip',
+                })
+              ) return
+              onUnequip()
+              Message.success(`Unequipped ${name}`)
+            }}
+          >
+            Unequip character
+          </Menu.Item>
+          <Menu.Item
+            color='red'
+            leftSection={<IconTrash size={14} />}
+            onClick={async () => {
+              if (
+                !await confirmAction('Delete character', `Are you sure you want to delete ${name}? Their ${gearNoun} stay in the save, unequipped.`, {
+                  danger: true,
+                  confirmLabel: 'Delete',
+                })
+              ) return
+              onDelete()
+              Message.success(`Deleted ${name}`)
+            }}
+          >
+            Delete character
+          </Menu.Item>
 
-        <Menu.Label>Builds</Menu.Label>
-        <Menu.Item leftSection={<IconDeviceFloppy size={14} />} disabled={!onSaveBuild} onClick={onSaveBuild}>Save current build</Menu.Item>
-        <Menu.Item leftSection={<IconFolderOpen size={14} />} onClick={onViewBuilds}>
-          {savedCount ? `View saved builds (${savedCount})` : 'View saved builds'}
-        </Menu.Item>
+          <Menu.Label>Builds</Menu.Label>
+          <Menu.Item leftSection={<IconDeviceFloppy size={14} />} disabled={!onSaveBuild} onClick={onSaveBuild}>Save current build</Menu.Item>
+          <Menu.Item leftSection={<IconFolderOpen size={14} />} onClick={onViewBuilds}>
+            {savedCount ? `View saved builds (${savedCount})` : 'View saved builds'}
+          </Menu.Item>
 
-        {onScoring && (
-          <>
-            <Menu.Label>Scoring</Menu.Label>
-            <Menu.Item leftSection={<IconScale size={14} />} onClick={onScoring}>Scoring weights</Menu.Item>
-          </>
-        )}
-      </Menu.Dropdown>
-    </Menu>
+          {onScoring && (
+            <>
+              <Menu.Label>Scoring</Menu.Label>
+              <Menu.Item leftSection={<IconScale size={14} />} onClick={onScoring}>Scoring weights</Menu.Item>
+            </>
+          )}
+        </Menu.Dropdown>
+      </Menu>
+    </CharacterMenuSlot>
   )
 }
 

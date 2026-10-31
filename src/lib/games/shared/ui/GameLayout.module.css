@@ -362,3 +362,8 @@
   font-size: 13px;
   color: var(--text-muted);
 }
+
+/* Pages of a fixed width like HSR's (the Characters pages' showcase) may grow past the usual width */
+.mainInner:has([data-wide-page]) {
+  max-width: none;
+}

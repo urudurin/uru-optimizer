@@ -16,7 +16,6 @@ import { BuildRating } from 'lib/games/shared/ui/BuildRating'
 import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
 import {
   Notices,
-  PageHeader,
 } from 'lib/games/shared/ui/GameLayout'
 import {
   describeSavedPieces,
@@ -24,7 +23,6 @@ import {
 } from 'lib/games/shared/ui/optimizer/SavedBuilds'
 import { openScoringModal } from 'lib/games/shared/ui/ScoringModal'
 import {
-  Roster,
   RosterLayout,
   ShowcaseCard,
   StatList,
@@ -116,38 +114,29 @@ export function ZzzCharactersPage({ onImport }: { onImport: () => void }) {
 
   return (
     <Stack gap='lg'>
-      <PageHeader
-        title='Agents'
-        description='What the in-game stat screen shows for your saved builds, worked out from the discs, W-Engine and Core Skill.'
-      />
-
       <RosterLayout
-        roster={
-          <Roster
-            active={entry?.agentId}
-            onPick={setAgentId}
-            groupColor={elementColor}
-            entries={roster.map((agent) => {
-              const first = agent.builds[0]
-              const engine = first?.wEngineId ? W_ENGINES[first.wEngineId] : undefined
-              const meta = !first
-                ? AGENTS[agent.agentId] ? 'Not added' : 'Not added · no stat data yet'
-                : !AGENTS[agent.agentId]
-                ? `${agent.specialty} · no stat data yet`
-                : `${agent.specialty} · ${engine ? `${engine.name} R${first.wEngineRefinement}` : 'No W-Engine'}`
-              return {
-                key: agent.agentId,
-                name: agent.name,
-                meta,
-                group: agent.element,
-                subgroup: agent.specialty,
-                portrait: images.agents[agent.agentId]?.portrait,
-                circle: images.agents[agent.agentId]?.circle,
-                dimmed: !first,
-              }
-            })}
-          />
-        }
+        active={entry?.agentId}
+        onPick={setAgentId}
+        groupColor={elementColor}
+        entries={roster.map((agent) => {
+          const first = agent.builds[0]
+          const engine = first?.wEngineId ? W_ENGINES[first.wEngineId] : undefined
+          const meta = !first
+            ? AGENTS[agent.agentId] ? 'Not added' : 'Not added · no stat data yet'
+            : !AGENTS[agent.agentId]
+            ? `${agent.specialty} · no stat data yet`
+            : `${agent.specialty} · ${engine ? `${engine.name} R${first.wEngineRefinement}` : 'No W-Engine'}`
+          return {
+            key: agent.agentId,
+            name: agent.name,
+            meta,
+            group: agent.element,
+            subgroup: agent.specialty,
+            portrait: images.agents[agent.agentId]?.portrait,
+            circle: images.agents[agent.agentId]?.circle,
+            dimmed: !first,
+          }
+        })}
       >
         {entry && (AGENTS[entry.agentId]
           ? entry.builds.length > 0
@@ -211,6 +200,7 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
 
       {agent && display && (
         <ShowcaseCard
+          sidePanel
           name={agent.name}
           accent={art?.accent}
           portrait={art?.portrait}
@@ -374,6 +364,7 @@ function NewAgent({ entry, images, onImport }: { entry: RosterAgent, images: Zzz
 
   return (
     <ShowcaseCard
+      sidePanel
       name={agent.name}
       accent={art?.accent}
       portrait={art?.portrait}
@@ -395,6 +386,7 @@ function NoDataAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages 
   const art = images.agents[entry.agentId]
   return (
     <ShowcaseCard
+      sidePanel
       name={entry.name}
       accent={art?.accent}
       portrait={art?.portrait}

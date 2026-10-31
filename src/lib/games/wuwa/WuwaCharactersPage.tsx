@@ -10,7 +10,6 @@ import { BuildRating } from 'lib/games/shared/ui/BuildRating'
 import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
 import {
   Notices,
-  PageHeader,
 } from 'lib/games/shared/ui/GameLayout'
 import {
   describeSavedPieces,
@@ -18,7 +17,6 @@ import {
 } from 'lib/games/shared/ui/optimizer/SavedBuilds'
 import { openScoringModal } from 'lib/games/shared/ui/ScoringModal'
 import {
-  Roster,
   RosterLayout,
   ShowcaseCard,
   StatList,
@@ -100,34 +98,25 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
 
   return (
     <Stack gap='lg'>
-      <PageHeader
-        title='Resonators'
-        description='What the in-game overview screen shows, worked out from base stats, weapon, minor fortes and echoes. Matches the game to within 0.2%.'
-      />
-
       <RosterLayout
-        roster={
-          <Roster
-            active={activeId}
-            onPick={setPicked}
-            groupColor={(group) => elementColor(elementByName.get(group))}
-            entries={rosterIds.map((charId) => {
-              const c = characters.find((saved) => saved.charId === charId)
-              const info = CHARACTER_INFO[charId]
-              const w = c?.weaponId ? WEAPONS[c.weaponId] : undefined
-              return {
-                key: charId,
-                name: characterName(charId),
-                meta: c ? `Lv ${c.level} · S${c.sequence} · ${w ? `${w.name} R${c.refinement}` : 'No weapon'}` : 'Not added',
-                group: info ? elementName(info.element) : 'Unknown',
-                subgroup: w ? WEAPON_TYPES[w.weaponType] : undefined,
-                portrait: art[charId]?.portrait,
-                circle: art[charId]?.icon ?? art[charId]?.portrait,
-                dimmed: !c,
-              }
-            })}
-          />
-        }
+        active={activeId}
+        onPick={setPicked}
+        groupColor={(group) => elementColor(elementByName.get(group))}
+        entries={rosterIds.map((charId) => {
+          const c = characters.find((saved) => saved.charId === charId)
+          const info = CHARACTER_INFO[charId]
+          const w = c?.weaponId ? WEAPONS[c.weaponId] : undefined
+          return {
+            key: charId,
+            name: characterName(charId),
+            meta: c ? `Lv ${c.level} · S${c.sequence} · ${w ? `${w.name} R${c.refinement}` : 'No weapon'}` : 'Not added',
+            group: info ? elementName(info.element) : 'Unknown',
+            subgroup: w ? WEAPON_TYPES[w.weaponType] : undefined,
+            portrait: art[charId]?.portrait,
+            circle: art[charId]?.icon ?? art[charId]?.portrait,
+            dimmed: !c,
+          }
+        })}
       >
         {character
           ? <SavedResonator key={character.charId} character={character} art={art[character.charId]} />
@@ -166,6 +155,7 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
 
   return (
     <ShowcaseCard
+      sidePanel
       name={name}
       accent={accentOf(element)}
       portrait={art?.portrait}
@@ -249,6 +239,7 @@ function NewResonator({ charId, art, onImport }: { charId: string, art?: Resonat
 
   return (
     <ShowcaseCard
+      sidePanel
       name={name}
       accent={accentOf(element)}
       portrait={art?.portrait}
