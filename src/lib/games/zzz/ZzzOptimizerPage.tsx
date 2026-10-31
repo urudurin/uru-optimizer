@@ -17,6 +17,7 @@ import {
 } from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
 import { scoreBuild } from 'lib/games/shared/gearScore'
+import { todayString } from 'lib/games/shared/importedPresets'
 import {
   fieldSetter,
   migrateOptimizerSettings,
@@ -25,7 +26,17 @@ import {
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
-import { BuildAnalysis } from 'lib/games/shared/ui/BuildAnalysis'
+import {
+  deleteSavedBuild,
+  saveBuild,
+  type SavedBuild,
+  savedBuilds,
+} from 'lib/games/shared/savedBuilds'
+import {
+  BuildAnalysis,
+  pinnedCells,
+  type StatDiffRow,
+} from 'lib/games/shared/ui/BuildAnalysis'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   EmptyState,
@@ -51,6 +62,10 @@ import {
   ResultLimitSelect,
 } from 'lib/games/shared/ui/optimizer/ResultLimit'
 import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
+import {
+  openSaveBuildModal,
+  openSavedBuildsModal,
+} from 'lib/games/shared/ui/optimizer/SavedBuilds'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
   limitsSummary,
@@ -158,6 +173,7 @@ import { Message } from 'lib/interactions/message'
 import {
   useCallback,
   useMemo,
+  useReducer,
   useState,
 } from 'react'
 
@@ -386,6 +402,9 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
   const [selected, setSelected] = useState(0)
   const pins = usePinnedBuilds(agent.id)
+  // Saved builds of this character; bumped after a save or delete to read them again
+  const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
+  const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('zzz', agent.id) : []), [agent.id, buildsVersion])
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
   const [searchSeconds, setSearchSeconds] = useState(0)
@@ -567,6 +586,67 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
     if (!await confirmAction('Equip build', `Equip build #${selected + 1} on ${agent.name} in this browser's save?${swap}`, { confirmLabel: 'Equip' })) return
     equip(agent, { id: loadout.wEngineId, refinement: Number(loadout.refinement) }, best.discs)
     Message.success('Equipped')
+  }
+
+  // The picked build's analysis rows, for Build analysis and Pin build
+  const analysisRows: StatDiffRow[] = best
+    ? [
+      ...(byDamage
+        ? [{
+          key: 'damage',
+          label: 'Rotation damage',
+          build: best.damage ?? 0,
+          current: currentDamage,
+          format: (value: number) => formatNumber(Math.round(value)),
+        }]
+        : []),
+      ...statRows.map((row) => ({
+        key: row.key,
+        label: row.label,
+        build: best.display[row.key],
+        current: currentDisplay?.[row.key],
+        format: (value: number) => formatStat(row, value),
+      })),
+    ]
+    : []
+
+  // Saved builds (the sidebar's Builds group, after HSR's), by piece id
+  function saveBuildNow() {
+    if (!best) return
+    const pieceIds = best.discs.map((piece) => piece.id)
+    openSaveBuildModal({
+      defaultName: `Build ${savedList.length + 1}`,
+      onSave: (name) => {
+        saveBuild('zzz', agent.id, name, pieceIds, todayString(new Date()))
+        bumpBuilds()
+        Message.success(`Saved build ${name}`)
+      },
+    })
+  }
+  function loadBuilds() {
+    const piecesOf = (saved: SavedBuild) => saved.pieceIds.flatMap((id) => discs.find((piece) => piece.id === id) ?? [])
+    const equipPieces = (pieces: Disc[]) => equip(agent, { id: loadout.wEngineId, refinement: Number(loadout.refinement) }, pieces)
+    openSavedBuildsModal({
+      name: agent.name,
+      builds: savedList,
+      describe: (saved) => {
+        const pieces = piecesOf(saved)
+        const missing = saved.pieceIds.length - pieces.length
+        return `${describeSets(pieces)}${missing ? ` · ${missing} no longer in the save` : ''}`
+      },
+      onEquip: async (saved) => {
+        const pieces = piecesOf(saved)
+        if (pieces.length === 0) return
+        if (!await confirmAction('Equip saved build', `Equip ${saved.name} on ${agent.name} in this browser's save?`, { confirmLabel: 'Equip' })) return
+        equipPieces(pieces)
+        Message.success('Equipped')
+      },
+      onDelete: (saved) => {
+        const left = deleteSavedBuild('zzz', agent.id, saved.name)
+        bumpBuilds()
+        return left
+      },
+    })
   }
 
   return (
@@ -909,25 +989,7 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
           {best && computeInput && (
             <BuildAnalysis
               buildLabel={`Build #${selected + 1}`}
-              rows={[
-                ...(byDamage
-                  ? [{
-                    key: 'damage',
-                    label: 'Rotation damage',
-                    build: best.damage ?? 0,
-                    current: currentDamage,
-                    format: (value: number) => formatNumber(Math.round(value)),
-                  }]
-                  : []),
-                ...statRows.map((row) => ({
-                  key: row.key,
-                  label: row.label,
-                  build: best.display[row.key],
-                  current: currentDisplay?.[row.key],
-                  format: (value: number) => formatStat(row, value),
-                })),
-              ]}
-              onPin={(cells) => pins.pin(`#${selected + 1} · ${rankText(best)}`, cells)}
+              rows={analysisRows}
               upgrades={zzzSubstatUpgrades({ ...computeInput, discs: best.discs }, sortBy, damageSetup)}
               breakdown={breakdown}
               scoreLabel={rankLabel}
@@ -948,6 +1010,16 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
           onCancel={cancel}
           results={outcome?.ok ? { count: outcome.builds.length, seconds: searchSeconds } : undefined}
           equip={best ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+          onReset={() => {
+            updateSettings(defaultSettings(agent.id))
+            setOutcome(null)
+          }}
+          pins={{
+            onPin: best ? () => pins.pin(`#${selected + 1} · ${rankText(best)}`, pinnedCells(analysisRows)) : undefined,
+            count: pins.pinned.length,
+            onClear: pins.clear,
+          }}
+          builds={{ onSave: best ? saveBuildNow : undefined, onLoad: loadBuilds, count: savedList.length }}
         />
       </div>
     </Stack>

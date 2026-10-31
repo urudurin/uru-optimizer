@@ -1,5 +1,4 @@
 import {
-  Button,
   SimpleGrid,
   Table,
   Text,
@@ -79,7 +78,12 @@ function formatPercent(share: number): string {
   return `${(share * 100).toFixed(1)}%`
 }
 
-export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRoll, breakdown, onPin }: {
+// A snapshot of the rows for Pin build in the sidebar (shared/ui/optimizer/BuildCompare.tsx)
+export function pinnedCells(rows: StatDiffRow[]): PinnedCell[] {
+  return rows.map((row) => ({ key: row.key, label: row.label, value: row.build, text: row.format(row.build) }))
+}
+
+export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRoll, breakdown }: {
   // e.g. 'Build #2'
   buildLabel: string,
   rows: StatDiffRow[],
@@ -89,8 +93,6 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
   formatRoll: (upgrade: SubstatUpgrade) => string,
   // The rotation's lines and their damage on this build (shared/damageBreakdown.ts), when ranking by damage
   breakdown?: DamagePart[],
-  // Pins this build for comparing (shared/ui/optimizer/BuildCompare.tsx) with a snapshot of its rows
-  onPin?: (cells: PinnedCell[]) => void,
 }) {
   const helpful = upgrades.filter((u) => u.gain > 1e-9).slice(0, SHOWN_UPGRADES)
   const best = helpful[0]?.gain ?? 0
@@ -100,15 +102,6 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
     <Panel
       title='Build analysis'
       description={`${buildLabel}, compared with the current build and what would improve it next.`}
-      actions={onPin && (
-        <Button
-          size='xs'
-          variant='light'
-          onClick={() => onPin(rows.map((row) => ({ key: row.key, label: row.label, value: row.build, text: row.format(row.build) })))}
-        >
-          Pin to compare
-        </Button>
-      )}
     >
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing='lg'>
         <div>

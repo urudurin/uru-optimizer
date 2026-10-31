@@ -35,6 +35,8 @@ export function usePinnedBuilds(characterId: string) {
       })
     },
     unpin: (id: string) => setAll((current) => current.filter((b) => b.id !== id)),
+    // Clear pins: this character's only
+    clear: () => setAll((current) => current.filter((b) => b.characterId !== characterId)),
   }
 }
 

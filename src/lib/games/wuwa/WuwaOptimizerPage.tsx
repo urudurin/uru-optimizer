@@ -14,6 +14,7 @@ import {
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
+import { todayString } from 'lib/games/shared/importedPresets'
 import {
   fieldSetter,
   migrateOptimizerSettings,
@@ -22,7 +23,17 @@ import {
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
-import { BuildAnalysis } from 'lib/games/shared/ui/BuildAnalysis'
+import {
+  deleteSavedBuild,
+  saveBuild,
+  type SavedBuild,
+  savedBuilds,
+} from 'lib/games/shared/savedBuilds'
+import {
+  BuildAnalysis,
+  pinnedCells,
+  type StatDiffRow,
+} from 'lib/games/shared/ui/BuildAnalysis'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   EmptyState,
@@ -48,6 +59,10 @@ import {
   ResultLimitSelect,
 } from 'lib/games/shared/ui/optimizer/ResultLimit'
 import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
+import {
+  openSaveBuildModal,
+  openSavedBuildsModal,
+} from 'lib/games/shared/ui/optimizer/SavedBuilds'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
   limitsSummary,
@@ -151,6 +166,7 @@ import { wuwaStatRows } from 'lib/games/wuwa/ui/resonatorStats'
 import { Message } from 'lib/interactions/message'
 import {
   useMemo,
+  useReducer,
   useState,
 } from 'react'
 
@@ -300,6 +316,9 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const [result, setResult] = useState<{ outcome: EchoOutcome, ms: number, target: EchoTarget } | undefined>()
   const [selected, setSelected] = useState(0)
   const pins = usePinnedBuilds(character?.charId ?? '')
+  // Saved builds of this character; bumped after a save or delete to read them again
+  const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
+  const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('wuwa', character?.charId ?? '') : []), [character.charId, buildsVersion])
 
   const ownerOf = useMemo(() => {
     const owners = new Map<string, string>()
@@ -448,6 +467,70 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
     Message.success('Equipped')
     // The "Now" row is this loadout from here on
     if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
+  }
+
+  // The picked build's analysis rows, for Build analysis and Pin build
+  const analysisRows: StatDiffRow[] = build && result
+    ? [
+      {
+        key: 'score',
+        label: targetLabel(result.target),
+        build: build.score,
+        current: current?.score,
+        format: (value: number) => formatScore(result.target, value),
+      },
+      ...SHOWN_STATS.map((stat) => ({
+        key: stat,
+        label: wuwaStatLabel(stat),
+        // Rounded like the screen first, so the change matches the numbers shown
+        build: toDisplayStats(build.stats)[stat],
+        current: current ? toDisplayStats(current.stats)[stat] : undefined,
+        format: (value: number) => formatValue(stat, value),
+      })),
+    ]
+    : []
+
+  // Saved builds (the sidebar's Builds group, after HSR's), by piece id
+  function saveBuildNow() {
+    if (!build) return
+    const pieceIds = build.echoes.map((piece) => piece.id)
+    openSaveBuildModal({
+      defaultName: `Build ${savedList.length + 1}`,
+      onSave: (name) => {
+        saveBuild('wuwa', character.charId, name, pieceIds, todayString(new Date()))
+        bumpBuilds()
+        Message.success(`Saved build ${name}`)
+      },
+    })
+  }
+  function loadBuilds() {
+    const piecesOf = (saved: SavedBuild) => saved.pieceIds.flatMap((id) => echoes.find((piece) => piece.id === id) ?? [])
+    const equipPieces = (pieces: Echo[]) => equip(character.charId, pieces)
+    openSavedBuildsModal({
+      name: characterName(character.charId),
+      builds: savedList,
+      describe: (saved) => {
+        const pieces = piecesOf(saved)
+        const missing = saved.pieceIds.length - pieces.length
+        return `${describeSets(pieces)}${missing ? ` · ${missing} no longer in the save` : ''}`
+      },
+      onEquip: async (saved) => {
+        const pieces = piecesOf(saved)
+        if (pieces.length === 0) return
+        if (
+          !await confirmAction('Equip saved build', `Equip ${saved.name} on ${characterName(character.charId)} in this browser's save?`, {
+            confirmLabel: 'Equip',
+          })
+        ) return
+        equipPieces(pieces)
+        Message.success('Equipped')
+      },
+      onDelete: (saved) => {
+        const left = deleteSavedBuild('wuwa', character.charId, saved.name)
+        bumpBuilds()
+        return left
+      },
+    })
   }
 
   return (
@@ -744,23 +827,7 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
           {build && result && (
             <BuildAnalysis
               buildLabel={`Loadout #${selected + 1}`}
-              rows={[
-                {
-                  key: 'score',
-                  label: targetLabel(result.target),
-                  build: build.score,
-                  current: current?.score,
-                  format: (value: number) => formatScore(result.target, value),
-                },
-                ...SHOWN_STATS.map((stat) => ({
-                  key: stat,
-                  label: wuwaStatLabel(stat),
-                  // Rounded like the screen first, so the change matches the numbers shown
-                  build: toDisplayStats(build.stats)[stat],
-                  current: current ? toDisplayStats(current.stats)[stat] : undefined,
-                  format: (value: number) => formatValue(stat, value),
-                })),
-              ]}
+              rows={analysisRows}
               upgrades={wuwaSubstatUpgrades(
                 character,
                 build.echoes,
@@ -769,7 +836,6 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
               )}
               breakdown={result.target.kind === 'damage' ? wuwaBreakdown(result.target.setup, build.stats) : undefined}
               scoreLabel={targetLabel(result.target)}
-              onPin={(cells) => pins.pin(`#${selected + 1} · ${formatScore(result.target, build.score)}`, cells)}
               formatRoll={(upgrade) => upgrade.stat.endsWith('Flat') ? String(Math.round(upgrade.roll)) : `${upgrade.roll.toFixed(1)}%`}
             />
           )}
@@ -794,6 +860,16 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
             }
             : undefined}
           equip={build ? { label: `loadout #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+          onReset={() => {
+            updateSettings(defaultSettings(character.charId))
+            setResult(undefined)
+          }}
+          pins={{
+            onPin: build && result ? () => pins.pin(`#${selected + 1} · ${formatScore(result.target, build.score)}`, pinnedCells(analysisRows)) : undefined,
+            count: pins.pinned.length,
+            onClear: pins.clear,
+          }}
+          builds={{ onSave: build ? saveBuildNow : undefined, onLoad: loadBuilds, count: savedList.length }}
         />
       </div>
     </Stack>

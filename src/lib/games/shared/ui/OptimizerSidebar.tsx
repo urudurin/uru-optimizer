@@ -7,11 +7,17 @@ import {
 } from '@mantine/core'
 import {
   IconCheck,
+  IconDeviceFloppy,
+  IconFolderOpen,
+  IconPin,
+  IconPinnedOff,
   IconPlayerStop,
+  IconRefresh,
   IconSearch,
 } from '@tabler/icons-react'
 import { formatNumber } from 'lib/games/shared/format'
 import type { SearchProgress } from 'lib/games/shared/progress'
+import { confirmAction } from 'lib/games/shared/ui/confirm'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
 import {
   type ReactNode,
@@ -40,6 +46,12 @@ export type OptimizerSidebarProps = {
   results?: { count: number, seconds: number, note?: string },
   // The build picked in the results
   equip?: { label: string, onEquip: () => void, equipped: boolean },
+  // Puts the character's filters back to their defaults (after a confirmation, like HSR's Reset)
+  onReset?: () => void,
+  // Pin the picked build to compare (shared/ui/optimizer/BuildCompare.tsx), and clear this character's pins
+  pins?: { onPin?: () => void, count: number, onClear: () => void },
+  // Save the picked build by name, or load one of the character's saved builds (shared/savedBuilds.ts)
+  builds?: { onSave?: () => void, onLoad: () => void, count: number },
 }
 
 function SidebarSection({ title, children }: { title: string, children: ReactNode }) {
@@ -109,6 +121,22 @@ export function OptimizerSidebar(props: OptimizerSidebarProps) {
             </>
           )}
           {!running && props.hint && <Text size='xs' c={props.hint.warn ? 'yellow' : 'dimmed'}>{props.hint.text}</Text>}
+          {props.onReset && (
+            <Button
+              size='xs'
+              variant='subtle'
+              color='gray'
+              leftSection={<IconRefresh size={14} />}
+              disabled={running}
+              onClick={async () => {
+                if (await confirmAction('Reset all filters?', 'All filters will be reset to their default values.', { confirmLabel: 'Reset' })) {
+                  props.onReset?.()
+                }
+              }}
+            >
+              Reset
+            </Button>
+          )}
         </Stack>
       </SidebarSection>
 
@@ -116,6 +144,16 @@ export function OptimizerSidebar(props: OptimizerSidebarProps) {
         <SidebarSection title='Results'>
           <Text size='xs'>{`${results.count} found in ${results.seconds.toFixed(1)}s`}</Text>
           {results.note && <Text size='xs' c='yellow' mt={4}>{results.note}</Text>}
+          {props.pins && (
+            <Group gap={6} mt={6} grow>
+              <Button size='xs' variant='light' leftSection={<IconPin size={14} />} disabled={!props.pins.onPin} onClick={props.pins.onPin}>
+                Pin build
+              </Button>
+              <Button size='xs' variant='default' leftSection={<IconPinnedOff size={14} />} disabled={props.pins.count === 0} onClick={props.pins.onClear}>
+                Clear pins
+              </Button>
+            </Group>
+          )}
         </SidebarSection>
       )}
 
@@ -134,6 +172,19 @@ export function OptimizerSidebar(props: OptimizerSidebarProps) {
             </Button>
             <Text size='xs' c='dimmed'>Saves it as the current build in this browser. Your game doesn't change.</Text>
           </Stack>
+        </SidebarSection>
+      )}
+
+      {props.builds && (
+        <SidebarSection title='Builds'>
+          <Group gap={6} grow>
+            <Button size='xs' variant='light' leftSection={<IconDeviceFloppy size={14} />} disabled={!props.builds.onSave} onClick={props.builds.onSave}>
+              Save
+            </Button>
+            <Button size='xs' variant='default' leftSection={<IconFolderOpen size={14} />} onClick={props.builds.onLoad}>
+              {props.builds.count ? `Load (${props.builds.count})` : 'Load'}
+            </Button>
+          </Group>
         </SidebarSection>
       )}
     </aside>

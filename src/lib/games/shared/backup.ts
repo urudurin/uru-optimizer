@@ -47,11 +47,11 @@ export function wrapBackup(kind: BackupKind, savedAt: string, saveText: string, 
 }
 
 // The browser settings a backup carries next to the save, by storage key, like HSR's save file keeps each character's
-// optimizer form: per-character optimizer settings (teams, rotations, filters) and saved rotations. Imported presets
+// optimizer form: per-character optimizer settings (teams, rotations, filters), saved rotations and saved builds. Imported presets
 // stay out (third-party guide data, see CLAUDE.md)
 export type BackupSettings = Record<string, unknown>
 
-const settingsKeys = (game: string) => [`${game}-optimizer-settings`, `${game}-saved-rotations`]
+const settingsKeys = (game: string) => [`${game}-optimizer-settings`, `${game}-saved-rotations`, `${game}-saved-builds`]
 
 export function backupSettings(game: string): BackupSettings {
   const settings: BackupSettings = {}

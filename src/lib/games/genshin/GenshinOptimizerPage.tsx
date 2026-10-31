@@ -101,6 +101,7 @@ import {
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
+import { todayString } from 'lib/games/shared/importedPresets'
 import {
   fieldSetter,
   migrateOptimizerSettings,
@@ -109,7 +110,17 @@ import {
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
-import { BuildAnalysis } from 'lib/games/shared/ui/BuildAnalysis'
+import {
+  deleteSavedBuild,
+  saveBuild,
+  type SavedBuild,
+  savedBuilds,
+} from 'lib/games/shared/savedBuilds'
+import {
+  BuildAnalysis,
+  pinnedCells,
+  type StatDiffRow,
+} from 'lib/games/shared/ui/BuildAnalysis'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   EmptyState,
@@ -135,6 +146,10 @@ import {
   ResultLimitSelect,
 } from 'lib/games/shared/ui/optimizer/ResultLimit'
 import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
+import {
+  openSaveBuildModal,
+  openSavedBuildsModal,
+} from 'lib/games/shared/ui/optimizer/SavedBuilds'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
   limitsSummary,
@@ -149,6 +164,7 @@ import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { Message } from 'lib/interactions/message'
 import {
   useMemo,
+  useReducer,
   useState,
 } from 'react'
 
@@ -297,6 +313,9 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const [result, setResult] = useState<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget } | undefined>()
   const [selected, setSelected] = useState(0)
   const pins = usePinnedBuilds(character?.id ?? '')
+  // Saved builds of this character; bumped after a save or delete to read them again
+  const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
+  const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('genshin', character?.id ?? '') : []), [character.id, buildsVersion])
 
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
   const equip = useGenshinStore((s) => s.equip)
@@ -466,6 +485,66 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
     Message.success('Equipped')
     // The "Now" row is this build from here on
     if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
+  }
+
+  // The picked build's analysis rows, for Build analysis and Pin build
+  const analysisRows: StatDiffRow[] = build && result
+    ? [
+      {
+        key: 'score',
+        label: targetLabel(result.target),
+        build: build.score,
+        current: current?.score,
+        format: (value: number) => formatScore(result.target, value),
+      },
+      ...shown.map((stat) => ({
+        key: stat,
+        label: statLabel(stat),
+        // Rounded like the screen first, so the change matches the numbers shown
+        build: roundStat(stat, build.stats[stat] ?? 0),
+        current: current ? roundStat(stat, current.stats[stat] ?? 0) : undefined,
+        format: (value: number) => formatStatValue(stat, value),
+      })),
+    ]
+    : []
+
+  // Saved builds (the sidebar's Builds group, after HSR's), by piece id
+  function saveBuildNow() {
+    if (!build) return
+    const pieceIds = build.artifacts.map((piece) => piece.id)
+    openSaveBuildModal({
+      defaultName: `Build ${savedList.length + 1}`,
+      onSave: (name) => {
+        saveBuild('genshin', character.id, name, pieceIds, todayString(new Date()))
+        bumpBuilds()
+        Message.success(`Saved build ${name}`)
+      },
+    })
+  }
+  function loadBuilds() {
+    const piecesOf = (saved: SavedBuild) => saved.pieceIds.flatMap((id) => artifacts.find((piece) => piece.id === id) ?? [])
+    const equipPieces = (pieces: Artifact[]) => equip(character.id, pieces)
+    openSavedBuildsModal({
+      name: character.name,
+      builds: savedList,
+      describe: (saved) => {
+        const pieces = piecesOf(saved)
+        const missing = saved.pieceIds.length - pieces.length
+        return `${describeSets(pieces)}${missing ? ` · ${missing} no longer in the save` : ''}`
+      },
+      onEquip: async (saved) => {
+        const pieces = piecesOf(saved)
+        if (pieces.length === 0) return
+        if (!await confirmAction('Equip saved build', `Equip ${saved.name} on ${character.name} in this browser's save?`, { confirmLabel: 'Equip' })) return
+        equipPieces(pieces)
+        Message.success('Equipped')
+      },
+      onDelete: (saved) => {
+        const left = deleteSavedBuild('genshin', character.id, saved.name)
+        bumpBuilds()
+        return left
+      },
+    })
   }
 
   return (
@@ -779,27 +858,10 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
           {build && result && (
             <BuildAnalysis
               buildLabel={`Build #${selected + 1}`}
-              rows={[
-                {
-                  key: 'score',
-                  label: targetLabel(result.target),
-                  build: build.score,
-                  current: current?.score,
-                  format: (value: number) => formatScore(result.target, value),
-                },
-                ...shown.map((stat) => ({
-                  key: stat,
-                  label: statLabel(stat),
-                  // Rounded like the screen first, so the change matches the numbers shown
-                  build: roundStat(stat, build.stats[stat] ?? 0),
-                  current: current ? roundStat(stat, current.stats[stat] ?? 0) : undefined,
-                  format: (value: number) => formatStatValue(stat, value),
-                })),
-              ]}
+              rows={analysisRows}
               upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs, result.target.kind === 'damage' ? combat : undefined)}
               breakdown={result.target.kind === 'damage' ? genshinBreakdown(result.target.setup, build.stats) : undefined}
               scoreLabel={targetLabel(result.target)}
-              onPin={(cells) => pins.pin(`#${selected + 1} · ${formatScore(result.target, build.score)}`, cells)}
               formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
             />
           )}
@@ -825,6 +887,16 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
             }
             : undefined}
           equip={build ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+          onReset={() => {
+            updateSettings(defaultSettings(character.id))
+            setResult(undefined)
+          }}
+          pins={{
+            onPin: build && result ? () => pins.pin(`#${selected + 1} · ${formatScore(result.target, build.score)}`, pinnedCells(analysisRows)) : undefined,
+            count: pins.pinned.length,
+            onClear: pins.clear,
+          }}
+          builds={{ onSave: build ? saveBuildNow : undefined, onLoad: loadBuilds, count: savedList.length }}
         />
       </div>
     </Stack>
