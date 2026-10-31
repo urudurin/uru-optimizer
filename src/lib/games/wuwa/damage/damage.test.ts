@@ -159,6 +159,21 @@ describe('WuWa damage', () => {
     expect(resolveWuwaCombat('xiangli-yao', 0, {}).bonus).toEqual({ electroDmg: 20 })
   })
 
+  it('resolves the kits added from the datamine text, with line boosts landing on real lines', () => {
+    expect(resolveWuwaCombat('carlotta', 0, {}).defIgnore).toBe(18)
+    expect(resolveWuwaCombat('sigrika', 0, {}).bonus).toEqual({ aeroDmg: 48 })
+    expect(resolveWuwaCombat('sigrika', 0, { 'sigrika-blessing-of-runes': 5 }).bonus).toEqual({ aeroDmg: 15 })
+    expect(resolveWuwaCombat('lucy', 0, {}).amplify).toEqual({})
+    expect(resolveWuwaCombat('lucy', 0, { 'lucy-network-backdoor': 2 }).amplify).toEqual({ all: 25 })
+    // Every labelStart boost matches at least one of the Resonator's lines
+    for (const id of ['chixia', 'rover-spectro', 'sanhua', 'mortefi', 'yuanwu', 'ciaccona']) {
+      const labels = characterHits(id).map((hit) => hit.label)
+      for (const scale of resolveWuwaCombat(id, 0, {}).lineScale) {
+        if (scale.labelStart) expect(labels.some((label) => label.startsWith(scale.labelStart!)), `${id}: ${scale.labelStart}`).toBe(true)
+      }
+    }
+  })
+
   it('adds Echo Skill DMG Bonus to Echo Skill hits only, and raises some lines\' multipliers', () => {
     const echo = { id: 'nightmare-inferno-rider', counts: { '0': 1 } }
     const echoOnly: DamageSetup = {
