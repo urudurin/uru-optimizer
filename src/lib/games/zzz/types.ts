@@ -17,6 +17,8 @@ export const ZzzStats = {
   ELEMENT_DMG: 'Element DMG%',
   // Flat Anomaly Mastery from kits and W-Engines (Velina's Core Skill); discs give it as a percent of base
   ANOMALY_MASTERY_FLAT: 'Anomaly Mastery (flat)',
+  // Sheer Force given in combat (Pan Yinhu, Lucia, Banyue), added after the ATK and HP parts
+  SHEER_FORCE_FLAT: 'Sheer Force (flat)',
 } as const
 
 type ZzzStatsKeys = keyof typeof ZzzStats

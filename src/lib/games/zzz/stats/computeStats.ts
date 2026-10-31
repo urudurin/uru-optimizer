@@ -213,7 +213,7 @@ export function finalizeStats(agent: AgentData, wEngine: WEngineData, totals: St
   const atk = (base.atk + wEngine.baseAtk) * (1 + totals[I.ATK_P] / 100) + totals[I.ATK]
   // Each part is rounded down, without that a Yixuan screenshot comes out one point high
   const sheerForce = agent.sheerForce
-    ? Math.floor(atk * agent.sheerForce.fromAtk) + Math.floor(hp * agent.sheerForce.fromHp)
+    ? Math.floor(atk * agent.sheerForce.fromAtk) + Math.floor(hp * agent.sheerForce.fromHp) + totals[I.SHEER_FORCE_FLAT]
     : 0
 
   return {

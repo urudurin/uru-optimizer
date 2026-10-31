@@ -57,6 +57,8 @@ export type ZzzTeamResult = {
   kindBonus: KindBonus,
   // Sheer DMG Bonus from the squad (Yunkui Tales), in percent
   sheerDmg: number,
+  // Laceration DMG for Armorer agents (Roxy), in percent
+  lacerationDmg: number,
   // Bonuses to the receiver's anomalies (Remielle's Refringe)
   anomalyBonus: AnomalyBonuses,
   applied: ZzzAppliedBuff[],
@@ -64,7 +66,16 @@ export type ZzzTeamResult = {
   missing: string[],
 }
 
-export const NO_TEAM: ZzzTeamResult = { effects: [], debuffs: NO_DEBUFFS, kindBonus: {}, sheerDmg: 0, anomalyBonus: {}, applied: [], missing: [] }
+export const NO_TEAM: ZzzTeamResult = {
+  effects: [],
+  debuffs: NO_DEBUFFS,
+  kindBonus: {},
+  sheerDmg: 0,
+  lacerationDmg: 0,
+  anomalyBonus: {},
+  applied: [],
+  missing: [],
+}
 
 export function settingKey(buff: ZzzTeamBuff, giverId: string): string {
   return `${giverId}:${buff.id}`
@@ -87,7 +98,7 @@ export function isDebuff(stat: string): stat is EnemyDebuffKey {
 }
 
 function isHitBonus(stat: string): stat is HitBonusKey {
-  return stat === 'aftershockDmg' || stat === 'sheerDmg' || stat === 'anomalyBuff' || stat === 'chainDmg' || stat === 'ultDmg'
+  return stat === 'aftershockDmg' || stat === 'sheerDmg' || stat === 'anomalyBuff' || stat === 'chainDmg' || stat === 'ultDmg' || stat === 'lacerationDmg'
 }
 
 function fourPieceSets(discs: Disc[]): string[] {
@@ -178,6 +189,7 @@ export function zzzTeamBuffsFor(
   for (const a of applied) if (a.counted && a.buff.stat === 'chainDmg') kindBonus.chain = (kindBonus.chain ?? 0) + a.value
   for (const a of applied) if (a.counted && a.buff.stat === 'ultDmg') kindBonus.ult = (kindBonus.ult ?? 0) + a.value
   const sheerDmg = applied.filter((a) => a.counted && a.buff.stat === 'sheerDmg').reduce((sum, a) => sum + a.value, 0)
+  const lacerationDmg = applied.filter((a) => a.counted && a.buff.stat === 'lacerationDmg').reduce((sum, a) => sum + a.value, 0)
   const effects: StatEffect[] = applied.filter((a) => a.counted).flatMap((a) => (isDebuff(a.buff.stat) || isHitBonus(a.buff.stat) ? [] : [{
     stat: a.buff.stat,
     value: a.value,
@@ -186,5 +198,5 @@ export function zzzTeamBuffsFor(
   }]))
   const anomalyBuff = applied.filter((a) => a.counted && a.buff.stat === 'anomalyBuff').reduce((sum, a) => sum + a.value, 0)
   const anomalyBonus: AnomalyBonuses = anomalyBuff > 0 ? { anomaly: { buff: anomalyBuff } } : {}
-  return { effects, debuffs, kindBonus, sheerDmg, anomalyBonus, applied, missing }
+  return { effects, debuffs, kindBonus, sheerDmg, lacerationDmg, anomalyBonus, applied, missing }
 }

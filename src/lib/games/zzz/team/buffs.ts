@@ -59,7 +59,8 @@ export const DEBUFF_LABELS: Record<EnemyDebuffKey, string> = {
 // Sheer DMG Bonus (its own multiplier on Rupture agents' hits) too
 // anomalyBuff: a multiplier of its own on the receiver's attribute anomalies (Remielle's Refringe), in percent
 // chainDmg / ultDmg: Chain Attack and Ultimate DMG Bonus (Ju Fufu's Tiger's Roar)
-export type HitBonusKey = 'aftershockDmg' | 'sheerDmg' | 'anomalyBuff' | 'chainDmg' | 'ultDmg'
+// lacerationDmg: Laceration DMG for Armorer agents' Sharp hits (Roxy's Contamination)
+export type HitBonusKey = 'aftershockDmg' | 'sheerDmg' | 'anomalyBuff' | 'chainDmg' | 'ultDmg' | 'lacerationDmg'
 
 export const HIT_BONUS_LABELS: Record<HitBonusKey, string> = {
   aftershockDmg: 'Aftershock DMG',
@@ -67,6 +68,7 @@ export const HIT_BONUS_LABELS: Record<HitBonusKey, string> = {
   anomalyBuff: 'attribute anomaly multiplier',
   chainDmg: 'Chain Attack DMG',
   ultDmg: 'Ultimate DMG',
+  lacerationDmg: 'Laceration DMG',
 }
 
 export type ZzzTeamBuff = {
@@ -528,6 +530,14 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
   // Lucia
   '1451': [
     {
+      id: 'lucia-sheer-force',
+      label: 'EX Special: Darkbreaker, Sheer Force +12 + 3.7% of her HP (skill level 12, up to 900)',
+      stat: ZzzStats.SHEER_FORCE_FLAT,
+      toggle: { kind: 'switch', label: 'Darkbreaker' },
+      value: (c) => switchOn(c) ? Math.min(612 + 24 * ASSUMED_SKILL_LEVEL, 12 + c.giverStats.hp * 0.005 * (5 + 0.2 * ASSUMED_SKILL_LEVEL)) : 0,
+      confidence: 'sourced',
+    },
+    {
       id: 'lucia-dmg',
       label: 'Core Skill: Dreamer\'s Nursery Rhyme, DMG +20%',
       stat: ZzzStats.ELEMENT_DMG,
@@ -584,8 +594,19 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
       confidence: 'sourced',
     },
   ],
-  // Pan Yinhu (the Sheer Force he gives isn't counted)
+  // Pan Yinhu
   '1421': [{
+    id: 'panyinhu-sheer-force',
+    label: 'Core Skill: Meridian Flow, Sheer Force +18% of his ATK (up to 540; 24% and 720 at Mindscape 6)',
+    stat: ZzzStats.SHEER_FORCE_FLAT,
+    toggle: { kind: 'switch', label: 'Meridian Flow' },
+    value: (c) => {
+      if (!switchOn(c)) return 0
+      const m6 = c.giver.mindscape >= 6
+      return Math.min(m6 ? 720 : 540, c.giverStats.atk * (m6 ? 0.24 : 0.18))
+    },
+    confidence: 'sourced',
+  }, {
     id: 'panyinhu-dmg-taken',
     label: 'Additional Ability: the enemy takes 20% more DMG with Depleted Qi (+10% at Mindscape 1), with 2 Rupture or Yunkui Summit agents',
     stat: 'dmgTaken',
@@ -642,6 +663,15 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
       toggle: { kind: 'switch', label: 'Contamination' },
       value: (c) => (switchOn(c) && c.receiver.specialty !== 'Armorer' ? Math.min(40, 0.4 * c.giverStats.critRate) : 0),
       blockedBy: (c) => (c.receiver.specialty === 'Armorer' ? 'Armorer agents get Laceration DMG instead' : undefined),
+      confidence: 'sourced',
+    },
+    {
+      id: 'roxy-contamination-laceration',
+      label: 'Core Skill: Contamination, Armorer agents\' Laceration DMG +0.2% per 1% of her CRIT Rate (up to 20%)',
+      stat: 'lacerationDmg',
+      toggle: { kind: 'switch', label: 'Contamination' },
+      value: (c) => (switchOn(c) && c.receiver.specialty === 'Armorer' ? Math.min(20, 0.2 * c.giverStats.critRate) : 0),
+      blockedBy: (c) => (c.receiver.specialty === 'Armorer' ? undefined : 'Only for Armorer agents'),
       confidence: 'sourced',
     },
     {

@@ -23,6 +23,7 @@ import {
   rotationAnomalyMultiplier,
   rotationBonusMultiplier,
   rotationDamage,
+  rotationFlatHp,
   rotationMultiplier,
   rotationSkills,
 } from 'lib/games/zzz/damage/damage'
@@ -481,6 +482,7 @@ describe('ZZZ damage', () => {
       defIgnore: 40,
       critDmg: 0,
       critRate: 0,
+      resIgnore: 0,
     }])
     const total = rotationDamage(stats, { ...base, ...skills })
     const unignored = rotationDamage(stats, { ...base, ...rotationSkills(YE, rotation, {}, {}) })
@@ -518,6 +520,7 @@ describe('ZZZ damage', () => {
       defIgnore: 0,
       critDmg: 40,
       critRate: 0,
+      resIgnore: 0,
     }])
     const base = { agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS }
     const cr = Math.min(100, stats.critRate) / 100
@@ -540,7 +543,14 @@ describe('ZZZ damage', () => {
       critDmg: harumasa.kindCritDmg,
       critRate: harumasa.kindCritRate,
     })
-    expect(skills.hitGroups).toEqual([{ multiplier: expect.closeTo(hitMultiplier(ult, 12), 6), bonusMultiplier: 0, defIgnore: 0, critDmg: 72, critRate: 25 }])
+    expect(skills.hitGroups).toEqual([{
+      multiplier: expect.closeTo(hitMultiplier(ult, 12), 6),
+      bonusMultiplier: 0,
+      defIgnore: 0,
+      critDmg: 72,
+      critRate: 25,
+      resIgnore: 0,
+    }])
     const base = { agentLevel: 60, enemy: DEFAULT_ENEMY, debuffs: NO_DEBUFFS }
     const low = { ...stats, critRate: 40 }
     const ratio = rotationDamage(low, { ...base, ...skills }) / rotationDamage(low, { ...base, multiplier: skills.hitGroups![0].multiplier })
@@ -550,5 +560,35 @@ describe('ZZZ damage', () => {
     expect(resolveZzzCombat('1191', 0, {}).kindCritDmg).toMatchObject({ DashAttackArcticAmbush: 100, chain: 100, ult: 100 })
     // Caesar: the enemy takes 25% more DMG
     expect(resolveZzzCombat('1071', 0, {}).dmgTaken).toBe(25)
+  })
+  it('hit scale, RES ignore for some hits, flat DMG from HP and flat Sheer Force (Hugo, Seed, Zhao, Banyue)', () => {
+    // Hugo: Totalize scales his EX Special and Ultimate on a stunned enemy, 10 + 2.8 x 5 + 10 = 34 with 15s of stun left
+    const hugo = resolveZzzCombat('1291', 0, {}, undefined, true)
+    expect(hugo.hitScale).toEqual({ exSpecial: 34, ult: 34 })
+    expect(resolveZzzCombat('1291', 0, {}).hitScale).toEqual({})
+    const ex = agentHits('1291').find((h) => h.kind === 'exSpecial')!
+    const rotation: Rotation = { counts: { [hitKey(ex)]: 1 }, skillLevel: 12 }
+    expect(rotationSkills('1291', rotation, {}, {}, undefined, { scale: hugo.hitScale }).multiplier).toBeCloseTo(hitMultiplier(ex, 12) * 34, 6)
+
+    // Seed: her Ultimate gets 25% RES ignore of its own
+    const seed = resolveZzzCombat('1461', 0, {})
+    const ult = agentHits('1461').find((h) => h.kind === 'ult')!
+    const skills = rotationSkills('1461', { counts: { [hitKey(ult)]: 1 }, skillLevel: 12 }, {}, {}, undefined, { resIgnore: seed.kindResIgnore })
+    expect(skills.hitGroups?.[0].resIgnore).toBe(25)
+    const base = { agentLevel: 60, enemy: { ...DEFAULT_ENEMY, res: 20 }, debuffs: NO_DEBUFFS }
+    const ratio = rotationDamage(stats, { ...base, ...skills }) / rotationDamage(stats, { ...base, multiplier: skills.hitGroups![0].multiplier })
+    expect(ratio).toBeCloseTo(1.05 / 0.8, 6)
+
+    // Zhao: 24% of her HP per second charged on Basic Attacks, x5 seconds
+    const zhao = resolveZzzCombat('1341', 0, {})
+    const basic = agentHits('1341').find((h) => h.kind === 'basic')!
+    expect(rotationFlatHp('1341', { counts: { [hitKey(basic)]: 2 }, skillLevel: 12 }, zhao.flatHp)).toBeCloseTo(2 * 120, 6)
+    const flat = rotationDamage(stats, { ...base, multiplier: 0, flatHp: 100 })
+    const atk = rotationDamage({ ...stats, atk: stats.hp }, { ...base, multiplier: 100 })
+    expect(flat).toBeCloseTo(atk, 6)
+
+    // Banyue: +300 Sheer Force on top of her ATK and HP parts
+    const banyue = resolveZzzCombat('1471', 0, {})
+    expect(banyue.statEffects.find((e) => e.stat === ZzzStats.SHEER_FORCE_FLAT)?.value).toBe(300)
   })
 })

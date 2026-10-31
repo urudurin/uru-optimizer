@@ -1,6 +1,7 @@
 import {
   AGENTS,
   MIYABI,
+  YIXUAN,
 } from 'lib/games/zzz/data/agents'
 import {
   HAILSTORM_SHRINE,
@@ -208,6 +209,23 @@ describe('zzzTeamBuffsFor', () => {
       delete AGENTS[JUFUFU]
       delete AGENTS[LIGHTER]
       delete AGENTS[ROXY]
+    }
+  })
+  it('Pan Yinhu\'s Sheer Force reaches a Rupture agent\'s stat calculator', () => {
+    const PAN = '1421'
+    AGENTS[PAN] = { ...MIYABI, id: PAN, name: 'Pan Yinhu', element: 'Physical', specialty: 'Defense' }
+    try {
+      const squad = [...builds, build(PAN, 'Pan Yinhu'), build(YIXUAN.id, 'Yixuan')]
+      const giver =
+        computeStats({ agent: AGENTS[PAN], wEngine: HAILSTORM_SHRINE, wEngineRefinement: 1, coreSkillLevel: 6, discs: [], conditions: statScreenConditions() })
+          .stats
+      const result = zzzTeamBuffsFor(YIXUAN.id, { teammates: [PAN], settings: {} }, { builds: squad, discs })
+      const given = Math.min(540, giver.atk * 0.18)
+      expect(result.effects.find((e) => e.stat === ZzzStats.SHEER_FORCE_FLAT)?.value).toBeCloseTo(given, 6)
+      const input = { agent: YIXUAN, wEngine: HAILSTORM_SHRINE, wEngineRefinement: 1, coreSkillLevel: 6, discs: [], conditions: statScreenConditions() }
+      expect(computeStats({ ...input, teamEffects: result.effects }).stats.sheerForce - computeStats(input).stats.sheerForce).toBeCloseTo(given, 6)
+    } finally {
+      delete AGENTS[PAN]
     }
   })
 })

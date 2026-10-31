@@ -65,6 +65,11 @@ export type ZzzCombatEffect = {
   // CRIT DMG and CRIT Rate for some hits only (by kind, skill key or hit key), in percent (damage.ts rotationSkills)
   kindCritDmg?: (context: ZzzCombatContext) => HitScoped,
   kindCritRate?: (context: ZzzCombatContext) => HitScoped,
+  // RES ignore for some hits only, in percent; multiplier scale (GO mv_mult_, a factor: 2.5 = x2.5); flat additional DMG
+  // as percent of HP (GO flat_dmg)
+  kindResIgnore?: (context: ZzzCombatContext) => HitScoped,
+  hitScale?: (context: ZzzCombatContext) => HitScoped,
+  flatHp?: (context: ZzzCombatContext) => HitScoped,
   // The enemy takes more DMG, in percent (added to the team's)
   dmgTaken?: (context: ZzzCombatContext) => number,
   // Ether Veil vulnerability cap in percent (DamageSetup.veilVulnerabilityCap); the largest one counts
@@ -76,6 +81,28 @@ export type ZzzCombatEffect = {
   element?: string,
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
+
+// Astra Yao's Mindscape 6 hits and Lucia's Harmony hits (genshin-optimizer's sheets)
+const ASTRA_M6_HITS: Record<string, number> = {
+  BasicAttackInterlude: 2,
+  BasicAttackChorus: 2,
+  BasicAttackFinale: 2,
+  SpecialAttackWindchimesOaths: 2,
+  Chord: 2,
+}
+const LUCIA_HARMONY_HITS = [
+  'BasicAttackOrbitalCombo:5',
+  'BasicAttackOrbitalCombo:6',
+  'DodgeCounterStardustEcho:1',
+  'SpecialAttackSymphonyOfTheReaperStorm:1',
+  'SpecialAttackSymphonyOfTheReaperStorm:2',
+  'EXSpecialAttackSymphonyOfTheReaperDaybreak:0',
+  'QuickAssistCrushingMist:1',
+  'QuickAssistCrushingMist:2',
+  'AssistFollowUpHarmonyOfPaintedDreams:0',
+  'ChainAttackStageOfBrilliance:0',
+  'UltimateChargeGreatArmor:0',
+]
 
 // By agent id
 export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
@@ -474,8 +501,7 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
     confidence: 'confirmed',
   }],
   // From here to Claret: genshin-optimizer's ZZZ sheets (MIT, Oct 26 2026), Core Skill F, read by hand. Not counted:
-  // Daze, Anomaly Buildup, Energy, shields, flat additional DMG, multiplier increases (Hugo's Totalize, Evelyn's Chain
-  // Attacks), RES ignore for some hits only, and stacks GO counts per hit
+  // Daze, Anomaly Buildup, Energy, shields, Dialyn's additional DMG from a teammate's stats, and stacks GO counts per hit
   // Anby
   '1011': [
     {
@@ -571,14 +597,26 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       { stat: ZzzStats.ATK, value: 0, fromStat: { stat: 'atk', above: 0, per: 0.35, max: 1200 } },
     ],
     confidence: 'sourced',
+  }, {
+    id: 'astra-m6',
+    label: 'Mindscape 6: during Idyllic Cadenza, her Basic Attacks, Windchimes and Chords deal x2 and get CRIT Rate +80%',
+    minMindscape: 6,
+    toggle: { kind: 'switch', label: 'Idyllic Cadenza' },
+    hitScale: () => ASTRA_M6_HITS,
+    kindCritRate: () => Object.fromEntries(Object.keys(ASTRA_M6_HITS).map((key) => [key, 80])),
+    confidence: 'sourced',
   }],
   // Banyue (her Sheer Force from HP is in data/enkaGameData.ts)
   '1471': [
     {
       id: 'banyue-core',
-      label: 'Core Skill: Fire DMG +36% and CRIT DMG +36% after her EX Special follow-up (her +300 Sheer Force isn\'t counted)',
+      label: 'Core Skill: Sheer Force +300, Fire DMG +36% and CRIT DMG +36% after her EX Special follow-up',
       toggle: { kind: 'switch', label: 'After the EX Special follow-up' },
-      stats: () => [{ stat: ZzzStats.ELEMENT_DMG, value: 36 }, { stat: ZzzStats.CRIT_DMG, value: 36 }],
+      stats: () => [
+        { stat: ZzzStats.SHEER_FORCE_FLAT, value: 300 },
+        { stat: ZzzStats.ELEMENT_DMG, value: 36 },
+        { stat: ZzzStats.CRIT_DMG, value: 36 },
+      ],
       confidence: 'sourced',
     },
     {
@@ -834,6 +872,14 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       stats: () => [{ stat: ZzzStats.PEN_RATIO, value: 20 }],
       confidence: 'sourced',
     },
+    {
+      id: 'ellen-m6-arctic-ambush',
+      label: 'Mindscape 6: Arctic Ambush deals x2.5 when The Feast Begins',
+      minMindscape: 6,
+      toggle: { kind: 'switch', label: 'The Feast Begins' },
+      hitScale: () => ({ DashAttackArcticAmbush: 2.5 }),
+      confidence: 'sourced',
+    },
   ],
   // Evelyn
   '1321': [
@@ -846,10 +892,16 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
     },
     {
       id: 'evelyn-ability',
-      label:
-        'Additional Ability: Chain Attack and Ultimate DMG +30%, with a Stun or Support agent in the squad (their +25% multiplier at 80% CRIT Rate isn\'t counted)',
+      label: 'Additional Ability: Chain Attack and Ultimate DMG +30%, with a Stun or Support agent in the squad',
       toggle: { kind: 'switch', label: 'Squad qualifies' },
       kinds: () => ({ chain: 30, ult: 30 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'evelyn-ability-multiplier',
+      label: 'Additional Ability: Chain Attacks and Ultimates deal x1.25 at 80% CRIT Rate or more, with a Stun or Support agent',
+      toggle: { kind: 'switch', label: 'CRIT Rate 80%+, squad qualifies' },
+      hitScale: () => ({ chain: 1.25, ult: 1.25 }),
       confidence: 'sourced',
     },
     {
@@ -919,9 +971,22 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
   '1291': [
     {
       id: 'hugo-core',
-      label: 'Core Skill: CRIT Rate +12% and CRIT DMG +25% with Dark Abyss Reverb (Totalize\'s multiplier increase isn\'t counted)',
+      label: 'Core Skill: CRIT Rate +12% and CRIT DMG +25% with Dark Abyss Reverb',
       toggle: { kind: 'switch', label: 'Dark Abyss Reverb' },
       stats: () => [{ stat: ZzzStats.CRIT_RATE, value: 12 }, { stat: ZzzStats.CRIT_DMG, value: 25 }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'hugo-core-totalize',
+      label:
+        'Core Skill: Totalize, on a stunned enemy his EX Special and Ultimate deal x(10 + 2.8 per second of stun left up to 5, + 1 per second after that up to 15)',
+      toggle: { kind: 'stacks', label: 'Seconds of stun left', max: 15 },
+      hitScale: ({ setting, enemyStunned }): HitScoped => {
+        if (!enemyStunned) return {}
+        const left = Number(setting)
+        const scale = 10 + 2.8 * Math.min(left, 5) + Math.max(0, Math.min(left, 15) - 5)
+        return { exSpecial: scale, ult: scale }
+      },
       confidence: 'sourced',
     },
     {
@@ -967,6 +1032,13 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       label: 'Mindscape 6: EX Special and Ultimate DMG +60% against a stunned enemy',
       minMindscape: 6,
       kinds: ({ enemyStunned }) => ({ exSpecial: enemyStunned ? 60 : 0, ult: enemyStunned ? 60 : 0 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'hugo-m6-unstunned',
+      label: 'Mindscape 6: his EX Special deals x10 on an enemy that isn\'t stunned',
+      minMindscape: 6,
+      hitScale: ({ enemyStunned }): HitScoped => (enemyStunned ? {} : { exSpecial: 10 }),
       confidence: 'sourced',
     },
   ],
@@ -1072,6 +1144,29 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
   ],
   // Lucia (her squad buffs count for her too)
   '1451': [
+    {
+      id: 'lucia-harmony',
+      label: 'EX Special: her Harmony hits add 70% of her HP as DMG (skill level 12)',
+      flatHp: () => Object.fromEntries(LUCIA_HARMONY_HITS.map((key) => [key, 34 + 3 * 12])),
+      confidence: 'sourced',
+    },
+    {
+      id: 'lucia-m2-harmony',
+      label: 'Mindscape 2: Harmony hits DMG +15% in an Ether Veil',
+      minMindscape: 2,
+      toggle: { kind: 'switch', label: 'Ether Veil' },
+      skills: () => Object.fromEntries(LUCIA_HARMONY_HITS.map((key) => [key, 15])),
+      confidence: 'sourced',
+    },
+    {
+      id: 'lucia-m6-harmony',
+      label: 'Mindscape 6: Harmony hits CRIT Rate +100% and CRIT DMG +30% in an Ether Veil',
+      minMindscape: 6,
+      toggle: { kind: 'switch', label: 'Ether Veil' },
+      kindCritRate: () => Object.fromEntries(LUCIA_HARMONY_HITS.map((key) => [key, 100])),
+      kindCritDmg: () => Object.fromEntries(LUCIA_HARMONY_HITS.map((key) => [key, 30])),
+      confidence: 'sourced',
+    },
     {
       id: 'lucia-core',
       label: 'Core Skill: Dreamer\'s Nursery Rhyme, DMG +20%',
@@ -1302,9 +1397,10 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
     },
     {
       id: 'roxy-m6',
-      label: 'Mindscape 6: Wind RES ignore 15%',
+      label: 'Mindscape 6: Wind RES ignore 15%; her Special Attacks deal x2.5',
       minMindscape: 6,
       resIgnore: () => 15,
+      hitScale: () => ({ special: 2.5 }),
       confidence: 'sourced',
     },
   ],
@@ -1326,7 +1422,7 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
     },
     {
       id: 'seed-ability',
-      label: 'Additional Ability: Falling Petals Basic Attacks and Ultimate DMG +30% (their Electric RES ignore isn\'t counted)',
+      label: 'Additional Ability: Falling Petals Basic Attacks and Ultimate DMG +30% and Electric RES ignore 25%',
       toggle: { kind: 'switch', label: 'Squad qualifies' },
       skills: () => ({
         BasicAttackFallingPetalsDownfallFirstForm: 30,
@@ -1334,6 +1430,12 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
         BasicAttackFallingPetalsSlaughter: 30,
       }),
       kinds: () => ({ ult: 30 }),
+      kindResIgnore: () => ({
+        BasicAttackFallingPetalsDownfallFirstForm: 25,
+        BasicAttackFallingPetalsDownfallSecondForm: 25,
+        BasicAttackFallingPetalsSlaughter: 25,
+        ult: 25,
+      }),
       confidence: 'sourced',
     },
     {
@@ -1434,6 +1536,13 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
       confidence: 'sourced',
     },
     {
+      id: 'yidhari-m1',
+      label: 'Mindscape 1: Basic Attack and EX Special Ice RES ignore 20%',
+      minMindscape: 1,
+      kindResIgnore: () => ({ basic: 20, exSpecial: 20 }),
+      confidence: 'sourced',
+    },
+    {
       id: 'yidhari-m2',
       label: 'Mindscape 2: CRIT DMG +40%',
       minMindscape: 2,
@@ -1480,7 +1589,34 @@ export const KIT_EFFECTS: Record<string, ZzzCombatEffect[]> = {
         ),
       confidence: 'sourced',
     },
+    {
+      id: 'zhuyuan-m4',
+      label: 'Mindscape 4: Enhanced Shotshell Ether RES ignore 25%',
+      minMindscape: 4,
+      kindResIgnore: () =>
+        Object.fromEntries(
+          ['BasicAttackPleaseDoNotResist:3', 'BasicAttackPleaseDoNotResist:4', 'BasicAttackPleaseDoNotResist:5', 'DashAttackOverwhelmingFirepower:1']
+            .map((key) => [key, 25]),
+        ),
+      confidence: 'sourced',
+    },
   ],
+  // Zhao (her squad buffs are in team/buffs.ts)
+  '1341': [{
+    id: 'zhao-charge',
+    label: 'Basic Attack: her Basic Attacks, Chain Attack and Assist Follow-Up add 24% of her HP as DMG per second charged (up to 5; x1.4 at Mindscape 6)',
+    toggle: { kind: 'stacks', label: 'Seconds charged', max: 5 },
+    flatHp: ({ setting, mindscape }) => {
+      const share = 24 * Number(setting) * (mindscape >= 6 ? 1.4 : 1)
+      return { basic: share, chain: share, assistFollowUp: share }
+    },
+    confidence: 'sourced',
+  }, {
+    id: 'zhao-core-crit',
+    label: 'Core Skill: CRIT Rate +1.4% per 1,000 of her HP (x1.25 at Mindscape 6)',
+    stats: ({ mindscape }) => [{ stat: ZzzStats.CRIT_RATE, value: 0, fromStat: { stat: 'hp', above: 0, per: 0.0014 * (mindscape >= 6 ? 1.25 : 1), max: 100 } }],
+    confidence: 'sourced',
+  }],
   // Claret
   '1611': [
     {
@@ -1544,6 +1680,9 @@ export type ZzzResolvedCombat = {
   kindDefIgnore: HitScoped,
   kindCritDmg: HitScoped,
   kindCritRate: HitScoped,
+  kindResIgnore: HitScoped,
+  hitScale: HitScoped,
+  flatHp: HitScoped,
   dmgTaken: number,
   veilVulnerabilityCap: number,
   sheerDmg: number,
@@ -1606,6 +1745,9 @@ export function resolveZzzCombat(
     kindDefIgnore: {},
     kindCritDmg: {},
     kindCritRate: {},
+    kindResIgnore: {},
+    hitScale: {},
+    flatHp: {},
     dmgTaken: 0,
     veilVulnerabilityCap: 0,
     sheerDmg: 0,
@@ -1646,6 +1788,9 @@ export function resolveZzzCombat(
     addScoped(resolved.kindDefIgnore, effect.kindDefIgnore?.(context))
     addScoped(resolved.kindCritDmg, effect.kindCritDmg?.(context))
     addScoped(resolved.kindCritRate, effect.kindCritRate?.(context))
+    addScoped(resolved.kindResIgnore, effect.kindResIgnore?.(context))
+    addScoped(resolved.hitScale, effect.hitScale?.(context))
+    addScoped(resolved.flatHp, effect.flatHp?.(context))
     resolved.dmgTaken += effect.dmgTaken?.(context) ?? 0
     resolved.veilVulnerabilityCap = Math.max(resolved.veilVulnerabilityCap, effect.veilVulnerabilityCap?.(context) ?? 0)
     resolved.sheerDmg += effect.sheerDmg?.(context) ?? 0
