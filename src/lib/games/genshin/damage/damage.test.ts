@@ -197,6 +197,18 @@ describe('Genshin damage', () => {
     // Stellar lines are found by name too
     const sandrone = hit('Sandrone', 'Prism Shot Stellar-Conduct DMG')
     expect(sandrone.special).toBe('stellarconduct')
+
+    // Nefer's Shades deal Lunar-Bloom though their names don't say so; her own Phantasm hits stay Dendro
+    expect(hit('Nefer', 'Phantasm Performance 3-Hit DMG (Shades)').special).toBe('lunarbloom')
+    expect(hit('Nefer', 'Phantasm Performance 1-Hit DMG (Nefer)').special).toBeUndefined()
+    const shade = hit('Nefer', 'Phantasm Performance 1-Hit DMG (Shades)')
+    const shades: DamageSetup = { ...lunar, characterId: 'Nefer', element: 'Dendro', rotation: { ...lunar.rotation, counts: { [shade.key]: 1 } } }
+    const plain = rotationDamage(stats, shades)
+    expect(rotationDamage({ ...stats, dendroDmg: 99 }, shades)).toBeCloseTo(plain, 6)
+    expect(rotationDamage(stats, { ...shades, reactionBonus: { lunarbloom: 20 } })).toBeGreaterThan(plain)
+    // A multiplier scale on the line (her Veils) carries over
+    const scaled = { ...shades, hitBuffs: [{ labels: [shade.label], scale: 0.24 }] }
+    expect(rotationDamage(stats, scaled) / plain).toBeCloseTo(1.24, 6)
   })
 
   it('adds teammates\' flat damage per Lunar hit and CRIT for one kind', () => {

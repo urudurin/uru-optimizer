@@ -128,7 +128,19 @@ export function polestarDmgBonus(hits: number): number {
   return n === 0 ? 20 : 28 + n
 }
 
-function specialKind(label: string): SpecialKind | undefined {
+// Talent lines that deal Lunar or Stellar damage without saying so in their name, by character and label. Nefer's
+// Shades: "DMG dealt by the shades is considered Lunar-Bloom DMG" (the user's screenshot of Phantasm Performance)
+const SPECIAL_LINES: Record<string, Record<string, SpecialKind>> = {
+  Nefer: {
+    'Phantasm Performance 1-Hit DMG (Shades)': 'lunarbloom',
+    'Phantasm Performance 2-Hit DMG (Shades)': 'lunarbloom',
+    'Phantasm Performance 3-Hit DMG (Shades)': 'lunarbloom',
+  },
+}
+
+function specialKind(label: string, characterId?: string): SpecialKind | undefined {
+  const listed = characterId ? SPECIAL_LINES[characterId]?.[label] : undefined
+  if (listed) return listed
   return (Object.entries(SPECIAL) as [SpecialKind, (typeof SPECIAL)[SpecialKind]][]).find(([, info]) => info.pattern.test(label))?.[0]
 }
 
@@ -300,7 +312,7 @@ export function characterHits(characterId: string): TalentHit[] {
     terms: hit.terms as [ScalingStat, number[]][],
     physical: !!hit.physical && !data.catalyst,
     times: Number(/×(\d+)$/.exec(hit.label)?.[1] ?? 1),
-    special: specialKind(hit.label),
+    special: specialKind(hit.label, characterId),
   }))
 }
 
@@ -606,8 +618,10 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     if (count <= 0) continue
     if (hit.special) {
       const terms = special.get(hit.special) ?? new Map<ScalingStat, number>()
+      // Only multiplier scales carry over to Lunar and Stellar lines (Nefer's Veils on her Shades)
+      const scale = 1 + hitBuffs.reduce((sum, buff) => sum + (buffReaches(buff, hit) ? buff.scale ?? 0 : 0), 0)
       for (const [stat, value] of Object.entries(hitMultiplier(hit, setup.talents)) as [ScalingStat, number][]) {
-        terms.set(stat, (terms.get(stat) ?? 0) + count * value)
+        terms.set(stat, (terms.get(stat) ?? 0) + count * value * scale)
       }
       special.set(hit.special, terms)
       specialHits.set(hit.special, (specialHits.get(hit.special) ?? 0) + count * (hit.times ?? 1))
