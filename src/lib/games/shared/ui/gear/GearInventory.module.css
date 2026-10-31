@@ -81,3 +81,32 @@
   object-fit: contain;
   border-radius: 4px;
 }
+
+/* Recently updated pieces above the grid, after HSR's Relics tab */
+.recent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.recentList {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 8px;
+}
+
+.recentItem {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--mantine-color-dark-6);
+}
+
+.recentItem:hover {
+  background: var(--mantine-color-dark-5);
+}

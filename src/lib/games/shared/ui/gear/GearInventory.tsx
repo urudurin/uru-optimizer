@@ -1,6 +1,7 @@
 import {
   Button,
   Group,
+  Select,
   Text,
 } from '@mantine/core'
 import {
@@ -20,6 +21,10 @@ import type {
   GearDraft,
   GearKind,
 } from 'lib/games/shared/gear/gearKind'
+import {
+  readStorage,
+  writeStorage,
+} from 'lib/games/shared/storage'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   GearEditor,
@@ -56,6 +61,9 @@ type Row<T> = {
   critValue: number,
   score?: number,
   rating?: string,
+  // The score once fully levelled (HSR's Avg / Max potential), for the picked character or the wearer
+  avgPotential?: number,
+  maxPotential?: number,
 }
 
 type Filters = {
@@ -95,12 +103,33 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
     return () => document.removeEventListener('paste', onPaste)
   }, [kind, editing])
   const [shownCount, setShownCount] = useState(items.length)
+  // Score for (HSR's Relics tab "Relic recommendation character"): '' scores each piece for whoever wears it
+  const owners = useMemo(() => kind.owners?.() ?? [], [kind])
+  const [scoreFor, setScoreFor] = useState('')
+  const scoredFor = owners.some((o) => o.value === scoreFor) ? scoreFor : ''
+  // Recently updated (HSR's Recently updated relics): pieces saved in the editor, newest first, kept per gear kind
+  const recentKey = `uru-recent-${kind.noun.toLowerCase()}`
+  const [recentIds, setRecentIds] = useState<string[]>(() => {
+    try {
+      const parsed: unknown = JSON.parse(readStorage(recentKey) ?? '[]')
+      return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
+    } catch {
+      return []
+    }
+  })
+  const noteRecent = (id: string) => {
+    const next = [id, ...recentIds.filter((x) => x !== id)].slice(0, RECENT_SHOWN)
+    setRecentIds(next)
+    writeStorage(recentKey, JSON.stringify(next))
+  }
 
   const rows = useMemo<Row<T>[]>(() =>
     items.map((item) => {
       const subs = kind.substatValues(item)
       const owner = kind.ownerOf(item)
-      const score = kind.score(item)
+      const score = scoredFor && kind.scoreFor ? kind.scoreFor(item, scoredFor) : kind.score(item)
+      const scorer = scoredFor || owner
+      const potential = scorer ? kind.potentialFor?.(item, scorer) : undefined
       return {
         id: item.id,
         item,
@@ -115,8 +144,10 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
         critValue: 2 * (subs.critRate ?? subs['CRIT Rate'] ?? 0) + (subs.critDmg ?? subs['CRIT DMG'] ?? 0),
         score: score?.percent,
         rating: score?.rating,
+        avgPotential: potential?.avg,
+        maxPotential: potential?.max,
       }
-    }), [items, kind])
+    }), [items, kind, scoredFor])
 
   const slotLabel = useCallback((value: string) => kind.slots.find((s) => s.value === value)?.label ?? value, [kind])
 
@@ -165,6 +196,24 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
         valueFormatter: (p) => (p.value === undefined ? '' : `${p.value.toFixed(0)}% ${p.data?.rating ?? ''}`),
         cellStyle: gradient(85),
       },
+      ...(kind.potentialFor
+        ? [
+          {
+            field: 'avgPotential',
+            headerName: 'Avg potential',
+            width: 66,
+            valueFormatter: (p: { value?: number }) => (p.value === undefined ? '' : `${p.value.toFixed(0)}%`),
+            cellStyle: gradient(85),
+          } as ColDef<Row<T>>,
+          {
+            field: 'maxPotential',
+            headerName: 'Max potential',
+            width: 66,
+            valueFormatter: (p: { value?: number }) => (p.value === undefined ? '' : `${p.value.toFixed(0)}%`),
+            cellStyle: gradient(85),
+          } as ColDef<Row<T>>,
+        ]
+        : []),
     ]
   }, [kind, slotLabel])
 
@@ -208,6 +257,31 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
 
   const preview = selected.length === 1 ? selected[0] : undefined
 
+  // HSR's Top 10 insight: the characters this piece is among the 10 best of its slot for
+  const topFor = useMemo(() => {
+    if (!preview || !kind.scoreFor || owners.length === 0) return []
+    const slot = kind.slotOf(preview)
+    const sameSlot = items.filter((item) => kind.slotOf(item) === slot)
+    return owners.flatMap((owner) => {
+      const mine = kind.scoreFor!(preview, owner.value)?.percent
+      if (mine === undefined) return []
+      const better = sameSlot.filter((item) => (kind.scoreFor!(item, owner.value)?.percent ?? 0) > mine).length
+      return better < 10 ? [{ name: owner.label, rank: better + 1, score: mine }] : []
+    }).sort((a, b) => a.rank - b.rank || b.score - a.score)
+  }, [preview, items, kind, owners])
+
+  // Who a piece scores best for, among everyone who can wear it
+  const bestFor = (item: T) => {
+    if (!kind.scoreFor) return undefined
+    let best: { name: string, score: number } | undefined
+    for (const owner of owners) {
+      const score = kind.scoreFor(item, owner.value)?.percent
+      if (score !== undefined && (!best || score > best.score)) best = { name: owner.label, score }
+    }
+    return best
+  }
+  const recent = recentIds.flatMap((id) => rows.find((row) => row.id === id) ?? [])
+
   return (
     <div className={classes.inventory}>
       <div className={classes.filters}>
@@ -229,7 +303,50 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
           onChange={setFilter('equipped')}
         />
         <Button size='xs' variant='subtle' onClick={() => Object.keys(NO_FILTERS).forEach((key) => setFilter(key as keyof Filters)([]))}>Clear</Button>
+        {kind.scoreFor && owners.length > 0 && (
+          <Select
+            size='xs'
+            ml='auto'
+            w={200}
+            searchable
+            allowDeselect={false}
+            aria-label='Score for'
+            value={scoredFor}
+            onChange={(value) => setScoreFor(value ?? '')}
+            data={[{ value: '', label: 'Score for: whoever wears it' }, ...owners.map((o) => ({ value: o.value, label: `Score for: ${o.label}` }))]}
+          />
+        )}
       </div>
+
+      {recent.length > 0 && (
+        <div className={classes.recent}>
+          <Text size='xs' fw={600} c='dimmed' tt='uppercase'>Recently updated</Text>
+          <div className={classes.recentList}>
+            {recent.map((row) => {
+              const best = bestFor(row.item)
+              return (
+                <button
+                  key={row.id}
+                  type='button'
+                  className={classes.recentItem}
+                  onClick={() => gridRef.current?.api.getRowNode(row.id)?.setSelected(true, true)}
+                >
+                  <Text size='xs' fw={600} truncate>{`${row.set} · ${slotLabel(row.slot)}`}</Text>
+                  <Text size='xs' c='dimmed' truncate>{`+${row.level} ${kind.statLabel(row.mainStat)}`}</Text>
+                  <Text size='xs'>
+                    {[
+                      row.score !== undefined ? `Score ${row.score.toFixed(0)}%` : '',
+                      row.avgPotential !== undefined ? `Avg ${row.avgPotential.toFixed(0)}%` : '',
+                      row.maxPotential !== undefined ? `Max ${row.maxPotential.toFixed(0)}%` : '',
+                    ].filter(Boolean).join(' · ')}
+                  </Text>
+                  {best && <Text size='xs' c='dimmed' truncate>{`Best for ${best.name}`}</Text>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       <div className={`ag-theme-balham-dark ${classes.grid}`}>
         <AgGridReact<Row<T>>
@@ -252,6 +369,15 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
       <div className={classes.dock}>
         <div className={classes.preview}>
           {preview ? kind.preview(preview) : <Text size='sm' c='dimmed'>{`Select a ${kind.noun.toLowerCase()} to see it here`}</Text>}
+          {preview && kind.scoreFor && (
+            <Text size='xs' c='dimmed' mt={6}>
+              {topFor.length > 0
+                ? `Top 10 of its slot for: ${topFor.slice(0, 6).map((t) => `${t.name} #${t.rank}`).join(', ')}${
+                  topFor.length > 6 ? ` and ${topFor.length - 6} more` : ''
+                }`
+                : 'Not in the top 10 of its slot for anyone'}
+            </Text>
+          )}
         </div>
         <Group gap='xs' align='flex-start'>
           <Button size='xs' leftSection={<IconPlus size={14} />} onClick={() => setEditing({ draft: kind.newDraft() })}>
@@ -304,6 +430,7 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
           onClose={() => setEditing(undefined)}
           onSave={(item, owner) => {
             onSave(item, owner)
+            noteRecent(item.id)
             Message.success(editing.item ? `Saved the ${kind.noun.toLowerCase()}` : `Added the ${kind.noun.toLowerCase()}`)
             setEditing(undefined)
           }}
@@ -312,6 +439,9 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
     </div>
   )
 }
+
+// Recently updated pieces shown above the grid
+const RECENT_SHOWN = 6
 
 function inLevelBucket(level: number, bucket: string): boolean {
   const [from, to] = bucket.split('-').map(Number)

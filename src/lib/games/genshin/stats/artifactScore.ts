@@ -11,6 +11,7 @@ import {
   type GenshinStatKey,
 } from 'lib/games/genshin/types'
 import {
+  gearPotential,
   type GearScore,
   type PieceRules,
   scoreBuild,
@@ -69,6 +70,21 @@ export function scoreArtifact(artifact: Artifact, weights: Record<string, number
   if (artifact.rarity !== 5) return undefined
   const substats = artifact.substats.map((sub) => ({ stat: sub.stat, units: maxRoll(sub.stat) > 0 ? sub.value / maxRoll(sub.stat) : 0 }))
   return scoreGear(substats, artifact.main.stat, weights, ARTIFACT_RULES)
+}
+
+// The artifact's score once at +20, average and best case (shared/gearScore.ts gearPotential), 5-star only: a roll
+// every 4 levels, the first ones adding a 4th substat if it has 3
+export function artifactPotential(artifact: Artifact, weights: Record<string, number>): { avg: number, max: number } | undefined {
+  if (artifact.rarity !== 5) return undefined
+  const rolls = Math.max(0, 5 - Math.floor(artifact.level / 4))
+  const newSubstats = Math.min(rolls, Math.max(0, 4 - artifact.substats.length))
+  const substats = artifact.substats.map((sub) => ({ stat: sub.stat, units: maxRoll(sub.stat) > 0 ? sub.value / maxRoll(sub.stat) : 0 }))
+  return gearPotential(substats, artifact.main.stat, weights, ARTIFACT_RULES, {
+    newSubstats,
+    upgrades: rolls - newSubstats,
+    pool: SUBSTATS,
+    averageRoll: () => AVERAGE_ROLL,
+  })
 }
 
 // KQM Standards

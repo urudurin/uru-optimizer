@@ -9,6 +9,7 @@ import {
 import type { EnkaGenshinStore } from 'lib/games/genshin/importer/enkaParser'
 import { mainStatValue } from 'lib/games/genshin/importer/goodParser'
 import {
+  artifactPotential,
   genshinArtifactWeights,
   scoreArtifact,
 } from 'lib/games/genshin/stats/artifactScore'
@@ -111,6 +112,8 @@ export function genshinArtifactKind({ characters, images, store, artifacts }: {
     owners: () => characters.map((c) => ({ value: c.id, label: c.name })).sort((a, b) => a.label.localeCompare(b.label)),
     ownerName: (id) => byId.get(id)?.name ?? nameFromGoodKey(id),
     score,
+    scoreFor: (a, id) => (byId.get(id) ? scoreArtifact(a, weightsFor(byId.get(id)!)) : undefined),
+    potentialFor: (a, id) => (byId.get(id) ? artifactPotential(a, weightsFor(byId.get(id)!)) : undefined),
     preview: (a) => (
       <ArtifactCard
         artifact={a}

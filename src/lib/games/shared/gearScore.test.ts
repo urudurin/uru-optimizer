@@ -1,5 +1,6 @@
 import {
   benchmarkRating,
+  gearPotential,
   idealUnits,
   ratingFor,
   scoreBuild,
@@ -59,5 +60,27 @@ describe('gear score', () => {
     ]
     expect(weightsFromUpgrades(upgrades)).toEqual({ critRate: 1, atkPct: 0.5, def: 0 })
     expect(weightsFromPriority(['CRIT Rate', 'CRIT DMG', 'ATK%'])).toEqual({ 'CRIT Rate': 1, 'CRIT DMG': 0.8, 'ATK%': 0.6 })
+  })
+})
+
+describe('gearPotential', () => {
+  const rules = { substats: 4, upgrades: 5, substatCanMatchMain: false }
+  const weights = { critRate: 1, critDmg: 1, atkPct: 0.5, hp: 0 }
+  const pool = ['critRate', 'critDmg', 'atkPct', 'hp']
+  // ideal: 1 + 1 + 0.5 + 0 + 5 x 1 = 7.5 units
+
+  it('is the score itself once nothing is left to level', () => {
+    const subs = [{ stat: 'critRate', units: 3 }, { stat: 'critDmg', units: 2 }, { stat: 'atkPct', units: 1 }, { stat: 'hp', units: 3 }]
+    const now = scoreGear(subs, 'atk', weights, rules)!.percent
+    expect(gearPotential(subs, 'atk', weights, rules, { newSubstats: 0, upgrades: 0, pool, averageRoll: () => 0.85 })).toEqual({ avg: now, max: now })
+  })
+
+  it('best case takes the most wanted new substat and max rolls on the best substat; average spreads average rolls', () => {
+    const subs = [{ stat: 'atkPct', units: 1 }, { stat: 'hp', units: 1 }, { stat: 'critDmg', units: 1 }]
+    const potential = gearPotential(subs, 'atk', weights, rules, { newSubstats: 1, upgrades: 4, pool, averageRoll: () => 0.5 })!
+    // max: 0.5 + 0 + 1 + critRate 1 + 4 x 1 = 6.5 of 7.5
+    expect(potential.max).toBeCloseTo(86.6, 1)
+    // avg: 1.5 now + critRate 0.5 x 1 + 4 x (0.5 x 0.5 + 0 + 0.5 x 1 + 0.5 x 1) / 4 = 1.5 + 0.5 + 1.25 = 3.25 of 7.5
+    expect(potential.avg).toBeCloseTo(43.3, 1)
   })
 })

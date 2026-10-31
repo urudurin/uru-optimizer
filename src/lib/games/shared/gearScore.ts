@@ -66,6 +66,44 @@ export function scoreGear(substats: SubstatUnits[], mainStat: string, weights: R
   return { percent, rating: ratingFor(percent) }
 }
 
+// What levelling a piece still adds, per game: new substats it will gain, upgrades still to land on one of its
+// substats, every stat a new substat can be, and an average roll of a stat in units (1 = a max roll)
+export type PieceGrowth = { newSubstats: number, upgrades: number, pool: string[], averageRoll: (stat: string) => number }
+
+// HSR's relic potential (Relics tab Avg / Max potential): the score once the piece is fully levelled. Best case: new
+// substats are the most wanted stats it doesn't have and every upgrade is a max roll on its most wanted substat.
+// Average: new substats are any stat it can still get and upgrades land on its substats evenly, with average rolls
+export function gearPotential(
+  substats: SubstatUnits[],
+  mainStat: string,
+  weights: Record<string, number>,
+  rules: PieceRules,
+  growth: PieceGrowth,
+): { avg: number, max: number } | undefined {
+  const ideal = idealUnits(weights, mainStat, rules)
+  if (ideal <= 0) return undefined
+  const weight = (stat: string) => weights[stat] ?? 0
+  const now = substats.reduce((sum, sub) => sum + sub.units * weight(sub.stat), 0)
+  const have = new Set(substats.map((s) => s.stat))
+  const open = growth.pool.filter((stat) => !have.has(stat) && (rules.substatCanMatchMain || stat !== mainStat))
+  const newCount = Math.min(growth.newSubstats, open.length)
+
+  const bestNew = open.map(weight).sort((a, b) => b - a).slice(0, newCount)
+  const bestFinal = Math.max(0, ...substats.map((s) => weight(s.stat)), ...bestNew)
+  const max = now + bestNew.reduce((sum, w) => sum + w, 0) + growth.upgrades * bestFinal
+
+  // An average new substat, and an average upgrade spread evenly over the final substats
+  const openAverage = open.length ? open.reduce((sum, stat) => sum + weight(stat) * growth.averageRoll(stat), 0) / open.length : 0
+  const finalCount = substats.length + newCount
+  const upgradeAverage = finalCount
+    ? (substats.reduce((sum, s) => sum + weight(s.stat) * growth.averageRoll(s.stat), 0) + newCount * openAverage) / finalCount
+    : 0
+  const avg = now + newCount * openAverage + growth.upgrades * upgradeAverage
+
+  const percent = (raw: number) => Math.floor((raw / ideal) * 1000) / 10
+  return { avg: percent(avg), max: percent(max) }
+}
+
 // Weights from the build analysis: each substat's gain from one more roll, against the biggest gain. Stats that add
 // less than 5% of the best count as unwanted
 export function weightsFromUpgrades(upgrades: SubstatUpgrade[]): Record<string, number> {

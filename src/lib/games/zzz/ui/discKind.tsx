@@ -15,6 +15,7 @@ import {
 } from 'lib/games/zzz/discStats'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
+  discPotential,
   scoreDisc,
   zzzDiscWeights,
 } from 'lib/games/zzz/stats/discScore'
@@ -101,6 +102,13 @@ export function zzzDiscKind({ builds, images, discs }: { builds: ImportedBuild[]
     ...Object.entries(images.setNames),
     ...discs.map((d) => [d.setId, d.setName] as [string, string]),
   ])
+  // Each agent's weights, worked out once per kind (the Top 10 insight scores every disc for everyone)
+  const weightCache = new Map<string, Record<string, number>>()
+  const weightsOf = (id: string) => {
+    let weights = weightCache.get(id)
+    if (!weights) weightCache.set(id, weights = zzzDiscWeights(AGENTS[id]))
+    return weights
+  }
   const setOptions = [...setNames].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
 
   return {
@@ -125,6 +133,8 @@ export function zzzDiscKind({ builds, images, discs }: { builds: ImportedBuild[]
     // Only agents with a saved build can wear discs in the save
     owners: () => builds.map((b) => ({ value: b.agentId, label: b.name })).sort((a, b) => a.label.localeCompare(b.label)),
     ownerName: (id) => ownerNames.get(id) ?? AGENTS[id]?.name ?? `Agent ${id}`,
+    scoreFor: (disc, id) => (AGENTS[id] ? scoreDisc(disc, weightsOf(id)) : undefined),
+    potentialFor: (disc, id) => (AGENTS[id] ? discPotential(disc, weightsOf(id)) : undefined),
     score: (disc) => {
       const agent = disc.equippedBy ? AGENTS[disc.equippedBy] : undefined
       return agent ? scoreDisc(disc, zzzDiscWeights(agent)) : undefined

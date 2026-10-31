@@ -1,4 +1,5 @@
 import {
+  gearPotential,
   type GearScore,
   type PieceRules,
   scoreBuild,
@@ -117,4 +118,15 @@ export function standardBenchmark(weights: Record<string, number>): number {
 export function wuwaBuildScore(character: CharacterState, worn: Echo[]): GearScore | undefined {
   const weights = wuwaEchoWeights(character)
   return scoreBuild(worn.map((echo) => scoreEcho(echo, weights)), MAX_LOADOUT_ECHOES, standardBenchmark(weights))
+}
+
+// The echo's score once at +25, average and best case (shared/gearScore.ts gearPotential): a new substat every 5 levels
+// up to 5, each rolled once from its tiers, no upgrades
+export function echoPotential(echo: Echo, weights: Record<string, number>): { avg: number, max: number } | undefined {
+  return gearPotential(echo.substats.map((sub) => ({ stat: sub.stat, units: sub.value / maxRoll(sub.stat) })), echo.mainStat, weights, ECHO_RULES, {
+    newSubstats: Math.max(0, 5 - echo.substats.length),
+    upgrades: 0,
+    pool: SUBSTAT_KEYS,
+    averageRoll: (stat) => avgRollPct(stat as SubstatKey),
+  })
 }

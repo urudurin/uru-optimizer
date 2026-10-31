@@ -18,6 +18,7 @@ import {
   SUBSTAT_TIERS,
 } from 'lib/games/wuwa/echoStats'
 import {
+  echoPotential,
   scoreEcho,
   wuwaEchoWeights,
 } from 'lib/games/wuwa/stats/echoScore'
@@ -85,6 +86,15 @@ export function wuwaEchoKind({ characters }: { characters: CharacterState[] }): 
     const owner = wearer.get(echo.id)
     return owner ? scoreEcho(echo, wuwaEchoWeights(owner)) : undefined
   }
+  // Each Resonator's weights, worked out once per kind (the Top 10 insight scores every echo for everyone)
+  const weightCache = new Map<string, Record<string, number>>()
+  const weightsOf = (id: string) => {
+    const character = characters.find((c) => c.charId === id)
+    if (!character) return undefined
+    let weights = weightCache.get(id)
+    if (!weights) weightCache.set(id, weights = wuwaEchoWeights(character))
+    return weights
+  }
   const setOptions = Object.values(SONATA_SETS).map((set) => ({ value: set.id, label: set.name })).sort((a, b) => a.label.localeCompare(b.label))
 
   return {
@@ -109,6 +119,14 @@ export function wuwaEchoKind({ characters }: { characters: CharacterState[] }): 
     owners: () => characters.map((c) => ({ value: c.charId, label: characterName(c.charId) })).sort((a, b) => a.label.localeCompare(b.label)),
     ownerName: characterName,
     score,
+    scoreFor: (echo, id) => {
+      const weights = weightsOf(id)
+      return weights ? scoreEcho(echo, weights) : undefined
+    },
+    potentialFor: (echo, id) => {
+      const weights = weightsOf(id)
+      return weights ? echoPotential(echo, weights) : undefined
+    },
     preview: (echo) => <EchoCard echo={echo} owner={wearer.has(echo.id) ? characterName(wearer.get(echo.id)!.charId) : undefined} score={score(echo)} />,
 
     maxLevel: () => MAX_ECHO_LEVEL,

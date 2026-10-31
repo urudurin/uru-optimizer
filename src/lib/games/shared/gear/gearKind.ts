@@ -50,6 +50,9 @@ export type GearKind<T> = {
   owners?: () => GearOption[],
   ownerName: (id: string) => string,
   score: (item: T) => GearScore | undefined,
+  // The score and potential (once fully levelled) for any character, for the Relics-tab style "Score for" picker
+  scoreFor?: (item: T, characterId: string) => GearScore | undefined,
+  potentialFor?: (item: T, characterId: string) => { avg: number, max: number } | undefined,
   // The piece as a card, for the preview beside the grid
   preview: (item: T) => ReactNode,
 

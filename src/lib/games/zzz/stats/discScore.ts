@@ -1,4 +1,5 @@
 import {
+  gearPotential,
   type GearScore,
   type PieceRules,
   scoreGear,
@@ -7,6 +8,7 @@ import {
 import { withWeightOverrides } from 'lib/games/shared/scoreWeights'
 import type { AgentData } from 'lib/games/zzz/data/dataTypes'
 import { getPreset } from 'lib/games/zzz/data/presets'
+import { SUBSTAT_STATS } from 'lib/games/zzz/discStats'
 import type { Disc } from 'lib/games/zzz/types'
 
 // Disc scores (shared/gearScore.ts) for one agent, weighted by their build preset's substat priority (best first:
@@ -28,4 +30,18 @@ export function zzzDiscWeights(agent: AgentData): Record<string, number> {
 export function scoreDisc(disc: Disc, weights: Record<string, number>): GearScore | undefined {
   if (disc.rarity !== 'S') return undefined
   return scoreGear(disc.substats.map((sub) => ({ stat: sub.stat, units: sub.rolls })), disc.main.stat, weights, DISC_RULES)
+}
+
+// The disc's score once at +15, average and best case (shared/gearScore.ts gearPotential), S-rank only: a roll every 3
+// levels, the first one adding a 4th substat if it has 3. Disc substats count in rolls, so an average roll is 1
+export function discPotential(disc: Disc, weights: Record<string, number>): { avg: number, max: number } | undefined {
+  if (disc.rarity !== 'S') return undefined
+  const rolls = Math.max(0, 5 - Math.floor(disc.level / 3))
+  const newSubstats = Math.min(rolls, Math.max(0, 4 - disc.substats.length))
+  return gearPotential(disc.substats.map((sub) => ({ stat: sub.stat, units: sub.rolls })), disc.main.stat, weights, DISC_RULES, {
+    newSubstats,
+    upgrades: rolls - newSubstats,
+    pool: SUBSTAT_STATS,
+    averageRoll: () => 1,
+  })
 }
