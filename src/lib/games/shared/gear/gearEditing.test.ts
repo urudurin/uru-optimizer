@@ -83,6 +83,9 @@ describe('ZZZ discs', () => {
     const off = assignZzzDisc(data, 'd1', null)
     expect(off.builds[0].discIds[1]).toBeUndefined()
     expect(off.discs[0].equippedBy).toBeUndefined()
+    // Replace (HSR's default): Ellen's slot empties and Miyabi's old disc comes off
+    const replaced = assignZzzDisc(data, 'd2', '1091', false)
+    expect(replaced.builds.map((b) => b.discIds[1])).toEqual(['d2', undefined])
     // An agent without a build can't wear it; the same owner changes nothing
     expect(assignZzzDisc(data, 'd1', '9999')).toBe(data)
     expect(assignZzzDisc(data, 'd1', '1091')).toBe(data)
@@ -185,6 +188,16 @@ describe('WuWa echoes', () => {
     expect(withThree).toContain('n3')
     expect(withThree.filter(Boolean).length).toBeLessThanOrEqual(5)
     expect(assignWuwaEcho(data, 'e3', null).characters[0].echoIds).toEqual(['e1', 'e2', null, 'e4', 'e5'])
+  })
+
+  it('replace leaves the previous owner without the echo; swap gives them the dropped echo of the same cost', () => {
+    const echoes = [echo('e1', 4), echo('e2', 4), echo('e3', 1), echo('e4', 1), echo('e5', 1), echo('x4', 4)]
+    const other: CharacterState = { ...hsin, charId: 'suoming', echoIds: ['x4', null, null, null, null] }
+    const data = { echoes, characters: [{ ...hsin, echoIds: ['e1', 'e2', 'e3', 'e4', 'e5'] }, other], teams: [], priority: [] }
+    expect(assignWuwaEcho(data, 'x4', 'hsin').characters[1].echoIds[0]).toBeNull()
+    const swapped = assignWuwaEcho(data, 'x4', 'hsin', true)
+    expect(swapped.characters[0].echoIds).toContain('x4')
+    expect(swapped.characters[1].echoIds[0]).toBe('e1')
   })
 
   it('needs an echo that drops at that cost in that set, and real roll tiers', () => {

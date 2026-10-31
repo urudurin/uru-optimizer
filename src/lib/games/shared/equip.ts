@@ -1,5 +1,6 @@
-// Equipping a build onto a character the way the games do it, for games with fixed gear slots (ZZZ discs, Genshin
-// artifacts): a piece another character wears is swapped, so they get this character's old piece in that slot.
+// Equipping a build onto a character, for games with fixed gear slots (ZZZ discs, Genshin artifacts). A piece another
+// character wears is taken from them (their slot empties, HSR's default) or, with swap, they get this character's old
+// piece in that slot, as the games do it (shared/gameSettings.ts equipBehavior).
 // Works on plain maps so each game can map its own save shape in and out. Changes the browser save only, never the game.
 
 // Who wears what: owner id -> slot -> item id
@@ -35,6 +36,7 @@ export function equipSlots<Slot extends string | number>(
   loadouts: Loadouts<Slot>,
   owner: string,
   items: { slot: Slot, id: string }[],
+  swap = true,
 ): EquipChange {
   const wornBy = ownersOf(loadouts)
   const change: EquipChange = { owners: new Map(), changedOwners: new Set(), takenFrom: [] }
@@ -51,14 +53,18 @@ export function equipSlots<Slot extends string | number>(
     change.changedOwners.add(owner)
 
     if (from && from !== owner) {
-      // Swap: the other character gets this character's old piece in that slot, or an empty slot
+      // Swap: the other character gets this character's old piece in that slot; replace (or nothing to give): an empty slot
       const theirs: Partial<Record<Slot, string>> = loadouts.get(from) ?? {}
-      if (current) {
+      if (current && swap) {
         theirs[slot] = current
         change.owners.set(current, from)
         wornBy.set(current, from)
       } else {
         delete theirs[slot]
+        if (current) {
+          change.owners.set(current, undefined)
+          wornBy.delete(current)
+        }
       }
       change.changedOwners.add(from)
       change.takenFrom.push({ owner: from, itemId: id })

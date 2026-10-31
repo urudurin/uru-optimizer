@@ -35,6 +35,16 @@ describe('equipSlots', () => {
     expect(change.takenFrom).toEqual([{ owner: 'bennett', itemId: 'f2' }])
   })
 
+  it('without swap (HSR\'s replace) takes the piece and leaves the other slot empty, unequipping the old one', () => {
+    const map = loadouts()
+    const change = equipSlots(map, 'amber', [{ slot: 'flower', id: 'f2' }], false)
+
+    expect(map.get('amber')).toEqual({ flower: 'f2', plume: 'p1' })
+    expect(map.get('bennett')).toEqual({})
+    expect([...change.owners]).toEqual([['f2', 'amber'], ['f1', undefined]])
+    expect(change.takenFrom).toEqual([{ owner: 'bennett', itemId: 'f2' }])
+  })
+
   it('leaves the other character\'s slot empty when this one had nothing there, and unequips replaced pieces', () => {
     const map = loadouts()
     const change = equipSlots(map, 'bennett', [{ slot: 'plume', id: 'p1' }, { slot: 'flower', id: 'f3' }])

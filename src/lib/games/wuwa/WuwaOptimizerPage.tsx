@@ -14,6 +14,7 @@ import {
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
+import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { todayString } from 'lib/games/shared/importedPresets'
 import {
   fieldSetter,
@@ -321,7 +322,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const [statView, setStatView] = useState<StatView>('combat')
   // Saved builds of this character; bumped after a save or delete to read them again
   const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
-  const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('wuwa', character?.charId ?? '') : []), [character.charId, buildsVersion])
+  const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('wuwa', character?.charId ?? '') : []), [character?.charId, buildsVersion])
 
   const ownerOf = useMemo(() => {
     const owners = new Map<string, string>()
@@ -461,7 +462,11 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     const taken = losing.length > 0
       ? `
 
-${losing.join(', ')} will lose the echoes this loadout takes.`
+${losing.join(', ')} ${
+        swapsOnEquip('wuwa')
+          ? 'will get echoes of the same cost this Resonator drops, where there are some'
+          : 'will lose the echoes this loadout takes (Settings: replace)'
+      }.`
       : ''
     if (
       !await confirmAction('Equip loadout', `Equip loadout #${selected + 1} on ${characterName(character.charId)} in this browser's save?${taken}`, {

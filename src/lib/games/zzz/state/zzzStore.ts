@@ -1,3 +1,4 @@
+import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import {
   type ImportMode,
   mergeById,
@@ -68,7 +69,7 @@ export const useZzzStore = create<ZzzStore>()((set, get) => ({
 
   equip: (agent, wEngine, discs) => {
     const state = get()
-    const data = equipZzzDiscs({ discs: state.discs, builds: state.builds }, agent, wEngine, discs)
+    const data = equipZzzDiscs({ discs: state.discs, builds: state.builds }, agent, wEngine, discs, swapsOnEquip('zzz'))
     save(data.discs, data.builds)
     set(data)
   },
@@ -83,7 +84,7 @@ export const useZzzStore = create<ZzzStore>()((set, get) => ({
   saveDisc: (disc, owner) => {
     const state = get()
     const saved = saveZzzDisc({ discs: state.discs, builds: state.builds }, disc)
-    const data = owner === undefined ? saved : assignZzzDisc(saved, disc.id, owner)
+    const data = owner === undefined ? saved : assignZzzDisc(saved, disc.id, owner, swapsOnEquip('zzz'))
     save(data.discs, data.builds)
     set(data)
   },

@@ -16,6 +16,7 @@ import {
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
+import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { scoreBuild } from 'lib/games/shared/gearScore'
 import { todayString } from 'lib/games/shared/importedPresets'
 import {
@@ -587,7 +588,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     const swap = losing.length > 0
       ? `
 
-${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
+${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current discs in exchange` : 'will lose them (Settings: replace)'}.`
       : ''
     if (!await confirmAction('Equip build', `Equip build #${selected + 1} on ${agent.name} in this browser's save?${swap}`, { confirmLabel: 'Equip' })) return
     equip(agent, { id: loadout.wEngineId, refinement: Number(loadout.refinement) }, best.discs)

@@ -13,6 +13,7 @@ import {
   serializeGenshinData,
 } from 'lib/games/genshin/state/genshinState'
 import type { Artifact } from 'lib/games/genshin/types'
+import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import {
   type ImportMode,
   readStorage,
@@ -59,7 +60,7 @@ export const useGenshinStore = create<GenshinStore>()((set, get) => ({
 
   equip: (characterId, artifacts) => {
     const { artifacts: saved, characters } = get()
-    const data = equipGenshinArtifacts({ artifacts: saved, characters }, characterId, artifacts)
+    const data = equipGenshinArtifacts({ artifacts: saved, characters }, characterId, artifacts, swapsOnEquip('genshin'))
     save(data)
     set(data)
   },
@@ -74,7 +75,7 @@ export const useGenshinStore = create<GenshinStore>()((set, get) => ({
   saveArtifact: (artifact, owner) => {
     const { artifacts, characters } = get()
     const saved = saveGenshinArtifact({ artifacts, characters }, artifact)
-    const data = owner === undefined ? saved : assignGenshinArtifact(saved, artifact.id, owner)
+    const data = owner === undefined ? saved : assignGenshinArtifact(saved, artifact.id, owner, swapsOnEquip('genshin'))
     save(data)
     set(data)
   },

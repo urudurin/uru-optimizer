@@ -101,6 +101,7 @@ import {
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
+import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { todayString } from 'lib/games/shared/importedPresets'
 import {
   fieldSetter,
@@ -318,7 +319,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const [statView, setStatView] = useState<StatView>('combat')
   // Saved builds of this character; bumped after a save or delete to read them again
   const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
-  const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('genshin', character?.id ?? '') : []), [character.id, buildsVersion])
+  const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('genshin', character?.id ?? '') : []), [character?.id, buildsVersion])
 
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
   const equip = useGenshinStore((s) => s.equip)
@@ -479,7 +480,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     const swap = losing.length > 0
       ? `
 
-${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
+${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s current pieces in exchange` : 'will lose them (Settings: replace)'}.`
       : ''
     if (!await confirmAction('Equip build', `Equip build #${selected + 1} on ${character.name} in this browser's save?${swap}`, { confirmLabel: 'Equip' })) {
       return

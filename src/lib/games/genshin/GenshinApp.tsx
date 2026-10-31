@@ -52,6 +52,7 @@ export function GenshinApp() {
       groups={GROUPS}
       active={page}
       onNavigate={setPage}
+      settings={{ game: 'genshin', gearNoun: 'artifacts' }}
       notice={sampleOnly
         ? <SampleNotice onRemove={() => useGenshinStore.getState().clear()} onImport={() => setPage('data')} />
         : page !== 'data' && <BackupReminder game='genshin' hasData={hasData} onSave={() => setPage('data')} />}

@@ -52,6 +52,7 @@ export function ZzzApp() {
       groups={GROUPS}
       active={page}
       onNavigate={setPage}
+      settings={{ game: 'zzz', gearNoun: 'discs' }}
       notice={sampleOnly
         ? <SampleNotice onRemove={() => useZzzStore.getState().clear()} onImport={() => setPage('data')} />
         : page !== 'data' && <BackupReminder game='zzz' hasData={hasData} onSave={() => setPage('data')} />}

@@ -1,3 +1,4 @@
+import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import {
   type ImportMode,
   readStorage,
@@ -62,7 +63,7 @@ export const useWuwaStore = create<WuwaStore>()((set, get) => ({
 
   equip: (charId, echoes) => {
     const { echoes: saved, characters, teams, priority } = get()
-    const data = equipWuwaEchoes({ echoes: saved, characters, teams, priority }, charId, echoes)
+    const data = equipWuwaEchoes({ echoes: saved, characters, teams, priority }, charId, echoes, swapsOnEquip('wuwa'))
     save(data)
     set(data)
   },
@@ -77,7 +78,7 @@ export const useWuwaStore = create<WuwaStore>()((set, get) => ({
   saveEcho: (echo, owner) => {
     const { echoes, characters, teams, priority } = get()
     const saved = saveWuwaEcho({ echoes, characters, teams, priority }, echo)
-    const data = owner === undefined ? saved : assignWuwaEcho(saved, echo.id, owner)
+    const data = owner === undefined ? saved : assignWuwaEcho(saved, echo.id, owner, swapsOnEquip('wuwa'))
     save(data)
     set(data)
   },

@@ -84,16 +84,27 @@ export function deserializeWuwaData(text: string | null): WuwaData {
 
 // Makes these echoes the Resonator's current ones in the browser save, 4-cost first as the main echo. Echoes another
 // Resonator wore are taken off them (WuWa has no fixed slots to swap). Changes the browser save only, never the game
-export function equipWuwaEchoes(data: WuwaData, charId: string, echoes: Echo[]): WuwaData {
+// swap (shared/gameSettings.ts): someone losing an echo gets one of this Resonator's dropped echoes of the same cost
+// instead, which keeps their cost the same; without one, or without swap, their slot empties
+export function equipWuwaEchoes(data: WuwaData, charId: string, echoes: Echo[], swap = false): WuwaData {
   const ids = new Set(echoes.map((e) => e.id))
   const ordered = [...echoes].sort((a, b) => b.cost - a.cost).map((e) => e.id)
   const echoIds = Array.from({ length: MAX_LOADOUT_ECHOES }, (_, i) => ordered[i] ?? null)
+  const byId = new Map(data.echoes.map((e) => [e.id, e]))
+  const dropped = swap
+    ? (data.characters.find((c) => c.charId === charId)?.echoIds ?? []).flatMap((id) => (id && !ids.has(id) && byId.has(id) ? [byId.get(id)!] : []))
+    : []
+  const giveFor = (takenId: string): string | null => {
+    const cost = byId.get(takenId)?.cost
+    const index = dropped.findIndex((e) => e.cost === cost)
+    return index < 0 ? null : dropped.splice(index, 1)[0].id
+  }
   return {
     ...data,
     characters: data.characters.map((character) => {
       if (character.charId === charId) return { ...character, echoIds }
       if (!character.echoIds.some((id) => id && ids.has(id))) return character
-      return { ...character, echoIds: character.echoIds.map((id) => (id && ids.has(id) ? null : id)) }
+      return { ...character, echoIds: character.echoIds.map((id) => (id && ids.has(id) ? giveFor(id) : id)) }
     }),
   }
 }
@@ -102,7 +113,7 @@ export function equipWuwaEchoes(data: WuwaData, charId: string, echoes: Echo[]):
 // HSR's relic editor (lib/overlays/modals/relicModal). Taking it from someone works like the optimizer's Equip
 // WuWa has no slots, so room is made under the 5-echo, 12-cost limits: an echo of the same cost comes off first, then
 // the costliest ones
-export function assignWuwaEcho(data: WuwaData, echoId: string, charId: string | null): WuwaData {
+export function assignWuwaEcho(data: WuwaData, echoId: string, charId: string | null, swap = false): WuwaData {
   const echo = data.echoes.find((e) => e.id === echoId)
   if (!echo) return data
   const wearer = data.characters.find((c) => c.echoIds.includes(echoId))?.charId ?? null
@@ -126,7 +137,7 @@ export function assignWuwaEcho(data: WuwaData, echoId: string, charId: string | 
     const costliest = worn.reduce((a, b) => (b.cost > a.cost ? b : a))
     worn = worn.filter((e) => e !== costliest)
   }
-  return equipWuwaEchoes(data, charId, [...worn, echo])
+  return equipWuwaEchoes(data, charId, [...worn, echo], swap)
 }
 
 // Adds a Resonator by hand, or updates the details of one already saved. Their echoes stay as they are

@@ -1,3 +1,4 @@
+import { forgetGameSettings } from 'lib/games/shared/gameSettings'
 import {
   readStorage,
   writeStorage,
@@ -51,7 +52,7 @@ export function wrapBackup(kind: BackupKind, savedAt: string, saveText: string, 
 // stay out (third-party guide data, see CLAUDE.md)
 export type BackupSettings = Record<string, unknown>
 
-const settingsKeys = (game: string) => [`${game}-optimizer-settings`, `${game}-saved-rotations`, `${game}-saved-builds`]
+const settingsKeys = (game: string) => [`${game}-optimizer-settings`, `${game}-saved-rotations`, `${game}-saved-builds`, `${game}-settings`]
 
 export function backupSettings(game: string): BackupSettings {
   const settings: BackupSettings = {}
@@ -81,6 +82,8 @@ export function restoreBackupSettings(game: string, text: string): number {
     const value = (settings as Record<string, unknown>)[key]
     if (value !== undefined && writeStorage(key, JSON.stringify(value))) restored++
   }
+  // The game settings are cached once read
+  forgetGameSettings()
   return restored
 }
 

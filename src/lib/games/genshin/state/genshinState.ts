@@ -97,9 +97,10 @@ export function readGenshinBackup(text: string): GenshinData | undefined {
 // Makes these artifacts the character's current ones in the browser save, swapping with whoever wore them (see
 // shared/equip.ts). Characters whose artifacts changed lose their Enka stats, which no longer match; the Characters
 // page then shows calculated ones
-export function equipGenshinArtifacts(data: GenshinData, characterId: string, artifacts: Artifact[]): GenshinData {
+// swap: give a previous owner this character's old artifact (true) or leave their slot empty (shared/gameSettings.ts)
+export function equipGenshinArtifacts(data: GenshinData, characterId: string, artifacts: Artifact[], swap = true): GenshinData {
   const loadouts: Loadouts<ArtifactSlot> = new Map(data.characters.map((c) => [c.id, { ...c.artifactIds }]))
-  const change = equipSlots(loadouts, characterId, artifacts.map((a) => ({ slot: a.slot, id: a.id })))
+  const change = equipSlots(loadouts, characterId, artifacts.map((a) => ({ slot: a.slot, id: a.id })), swap)
   return {
     artifacts: data.artifacts.map((artifact) => {
       if (!change.owners.has(artifact.id)) return artifact
@@ -168,10 +169,10 @@ function withoutOwner(artifact: Artifact): Artifact {
 
 // Puts one artifact on a character or, with null, takes it off whoever wears it: the gear editor's "Equipped by", after
 // HSR's relic editor (lib/overlays/modals/relicModal). Taking it from someone works like the optimizer's Equip
-export function assignGenshinArtifact(data: GenshinData, artifactId: string, characterId: string | null): GenshinData {
+export function assignGenshinArtifact(data: GenshinData, artifactId: string, characterId: string | null, swap = true): GenshinData {
   const artifact = data.artifacts.find((a) => a.id === artifactId)
   if (!artifact || (artifact.equippedBy ?? null) === characterId) return data
-  if (characterId) return data.characters.some((c) => c.id === characterId) ? equipGenshinArtifacts(data, characterId, [artifact]) : data
+  if (characterId) return data.characters.some((c) => c.id === characterId) ? equipGenshinArtifacts(data, characterId, [artifact], swap) : data
   return {
     artifacts: data.artifacts.map((a) => (a.id === artifactId ? withoutOwner(a) : a)),
     characters: data.characters.map((c) =>

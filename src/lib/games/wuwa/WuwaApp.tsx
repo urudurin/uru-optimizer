@@ -52,6 +52,7 @@ export function WuwaApp() {
       groups={GROUPS}
       active={page}
       onNavigate={setPage}
+      settings={{ game: 'wuwa', gearNoun: 'echoes' }}
       notice={sampleOnly
         ? <SampleNotice onRemove={() => useWuwaStore.getState().clear()} onImport={() => setPage('data')} />
         : page !== 'data' && <BackupReminder game='wuwa' hasData={hasData} onSave={() => setPage('data')} />}

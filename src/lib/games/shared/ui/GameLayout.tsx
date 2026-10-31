@@ -10,12 +10,14 @@ import {
 import {
   IconAlertTriangle,
   IconInfoCircle,
+  IconSettings,
 } from '@tabler/icons-react'
 import {
   readStorage,
   writeStorage,
 } from 'lib/games/shared/storage'
 import classes from 'lib/games/shared/ui/GameLayout.module.css'
+import { GameSettingsDrawer } from 'lib/games/shared/ui/GameSettingsDrawer'
 import {
   type ReactNode,
   useState,
@@ -48,11 +50,14 @@ type GameLayoutProps<K extends string> = {
   onNavigate: (key: K) => void,
   // Shown above every page, e.g. the backup reminder
   notice?: ReactNode,
+  // A Settings entry at the end of the last group that opens the game's Settings drawer, like HSR's sidebar
+  settings?: { game: string, gearNoun: string },
   children: ReactNode,
 }
 
-export function GameLayout<K extends string>({ gameName, tagline, groups, active, onNavigate, notice, children }: GameLayoutProps<K>) {
+export function GameLayout<K extends string>({ gameName, tagline, groups, active, onNavigate, notice, settings, children }: GameLayoutProps<K>) {
   const items = groups.flatMap((group) => group.items)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   return (
     <div className={classes.shell}>
@@ -77,6 +82,14 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
                   {item.badge && <Badge className={classes.itemBadge} size='xs' variant='light'>{item.badge}</Badge>}
                 </UnstyledButton>
               ))}
+              {settings && group === groups[groups.length - 1] && (
+                <UnstyledButton className={classes.item} onClick={() => setSettingsOpen(true)}>
+                  <span className={classes.itemIcon}>
+                    <IconSettings size={18} />
+                  </span>
+                  Settings
+                </UnstyledButton>
+              )}
             </div>
           ))}
           <div className={classes.asideFooter}>Personal, non-commercial use. Not affiliated with the game's publisher.</div>
@@ -96,6 +109,8 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
           </UnstyledButton>
         ))}
       </nav>
+
+      {settings && <GameSettingsDrawer game={settings.game} gearNoun={settings.gearNoun} opened={settingsOpen} onClose={() => setSettingsOpen(false)} />}
 
       <main className={classes.main}>
         <div className={classes.mainInner}>

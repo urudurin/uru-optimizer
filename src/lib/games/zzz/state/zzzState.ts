@@ -70,6 +70,8 @@ export function equipZzzDiscs(
   agent: { id: string, name: string, element: string, specialty: string, level: number },
   wEngine: { id: string, refinement: number },
   discs: Disc[],
+  // Give a previous owner this agent's old disc (true) or leave their slot empty (shared/gameSettings.ts)
+  swap = true,
 ): ZzzData {
   const loadouts: Loadouts<DiscSlot> = new Map(data.builds.map((b) => [b.agentId, { ...b.discIds }]))
   // Discs the source says someone wears without a build for them still count as theirs
@@ -79,7 +81,7 @@ export function equipZzzDiscs(
     if (!slots[disc.slot]) slots[disc.slot] = disc.id
     loadouts.set(disc.equippedBy, slots)
   }
-  const change = equipSlots(loadouts, agent.id, discs.map((d) => ({ slot: d.slot, id: d.id })))
+  const change = equipSlots(loadouts, agent.id, discs.map((d) => ({ slot: d.slot, id: d.id })), swap)
 
   const builds = data.builds.map((build) => change.changedOwners.has(build.agentId) ? { ...build, discIds: loadouts.get(build.agentId) ?? {} } : build)
   if (!builds.some((b) => b.agentId === agent.id)) {
@@ -145,7 +147,7 @@ function withoutOwner(disc: Disc): Disc {
 
 // Puts one disc on an agent with a saved build or, with null, takes it off whoever wears it: the gear editor's "Equipped by", after
 // HSR's relic editor (lib/overlays/modals/relicModal). Taking it from someone works like the optimizer's Equip
-export function assignZzzDisc(data: ZzzData, discId: string, agentId: string | null): ZzzData {
+export function assignZzzDisc(data: ZzzData, discId: string, agentId: string | null, swap = true): ZzzData {
   const disc = data.discs.find((d) => d.id === discId)
   if (!disc) return data
   const wearer = data.builds.find((b) => b.discIds[disc.slot] === discId)?.agentId ?? disc.equippedBy
@@ -154,7 +156,7 @@ export function assignZzzDisc(data: ZzzData, discId: string, agentId: string | n
     const build = data.builds.find((b) => b.agentId === agentId)
     if (!build) return data
     const agent = { id: build.agentId, name: build.name, element: build.element, specialty: build.specialty, level: build.level }
-    return equipZzzDiscs(data, agent, { id: build.wEngineId ?? '', refinement: build.wEngineRefinement }, [disc])
+    return equipZzzDiscs(data, agent, { id: build.wEngineId ?? '', refinement: build.wEngineRefinement }, [disc], swap)
   }
   return {
     discs: data.discs.map((d) => (d.id === discId ? withoutOwner(d) : d)),
