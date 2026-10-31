@@ -192,4 +192,23 @@ describe('team buffs', () => {
     expect(buffed.atk).toBeCloseTo(bare.atk! + baseAtk * 0.2 + 500)
     expect(buffed.pyroDmg).toBeCloseTo((bare.pyroDmg ?? 0) + 15)
   })
+  it('genshin-optimizer givers: Xilonen and Citlali shred the receiver\'s element, Faruzan gives Anemo DMG, Gorou needs a Geo receiver for C6', () => {
+    const xilonen = character('Xilonen', { element: 'Geo' })
+    const citlali = character('Citlali', { element: 'Cryo' })
+    // Skill level 9 at C0: Xilonen -33%; Citlali A1 -20% for Pyro
+    const forXiangling = teamBuffsFor(xiangling, setup(['Xilonen', 'Citlali']), { characters: [xiangling, xilonen, citlali], artifacts: [] })
+    expect(forXiangling.debuffs.resShred).toEqual({ Pyro: 53 })
+    const forKazuha = teamBuffsFor(kazuha, setup(['Xilonen', 'Citlali']), { characters: [kazuha, xilonen, citlali], artifacts: [] })
+    expect(forKazuha.debuffs.resShred).toEqual({})
+    expect(forKazuha.applied.find((a) => a.buff.id === 'citlali-a1')?.reason).toBe('Only for Pyro and Hydro members')
+
+    const faruzan = character('Faruzan', { element: 'Anemo' })
+    const withFaruzan = teamBuffsFor(kazuha, setup(['Faruzan']), { characters: [kazuha, faruzan], artifacts: [] })
+    expect(withFaruzan.premod.anemoDmg).toBeCloseTo(30.6, 6)
+    expect(withFaruzan.debuffs.resShred).toEqual({ Anemo: 30 })
+
+    const gorou = character('Gorou', { element: 'Geo', constellation: 6 })
+    const pyroWithGorou = teamBuffsFor(xiangling, setup(['Gorou']), { characters: [xiangling, gorou], artifacts: [] })
+    expect(pyroWithGorou.applied.find((a) => a.buff.id === 'gorou-c6')?.reason).toBe('Only for Geo members')
+  })
 })

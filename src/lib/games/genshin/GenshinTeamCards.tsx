@@ -169,7 +169,9 @@ export function GenshinTeamCards({ character, characters, team, result, onTeamma
                   ? `In total: ${totals.map(([stat, value]) => describeStat(stat, value)).join(', ')}`
                   : 'Nothing counted right now'}
               </Text>
-              <Text size='xs' c='dimmed'>Buffs a character gives themselves aren't counted yet. Enemy shred only counts when ranking by rotation damage.</Text>
+              <Text size='xs' c='dimmed'>
+                A character's own kit effects are on the Own effects card. Enemy shred only counts when ranking by rotation damage.
+              </Text>
             </Stack>
           )}
       </FormCard>
