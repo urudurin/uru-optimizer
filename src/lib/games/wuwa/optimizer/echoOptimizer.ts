@@ -67,6 +67,8 @@ export type EchoFilters = {
   twoPieceSets: string[],
   // Leave out echoes another Resonator is wearing
   excludeEquippedByOthers: boolean,
+  // Resonators whose echoes are left out (the priority filter: those ranked above, shared/characterPriority.ts)
+  excludeOwners?: string[],
 }
 
 export type EchoRequest = {
@@ -232,6 +234,7 @@ export function filterPool(request: Pick<EchoRequest, 'character' | 'characters'
   return echoes.filter((echo) => {
     const owner = wornBy.get(echo.id)
     if (filters.excludeEquippedByOthers && owner && owner !== character.charId) return false
+    if (owner && owner !== character.charId && filters.excludeOwners?.includes(owner)) return false
     const allowed = filters.mainStats[echo.cost]
     return !allowed || allowed.length === 0 || allowed.includes(echo.mainStat)
   })

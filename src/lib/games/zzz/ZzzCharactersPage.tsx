@@ -10,6 +10,13 @@ import {
   Table,
   Text,
 } from '@mantine/core'
+import {
+  moveToTop,
+  orderByPriority,
+  readPriority,
+  usePriority,
+  writePriority,
+} from 'lib/games/shared/characterPriority'
 import { scoreBuild } from 'lib/games/shared/gearScore'
 import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import { BuildRating } from 'lib/games/shared/ui/BuildRating'
@@ -95,6 +102,8 @@ export function ZzzCharactersPage({ onImport }: { onImport: () => void }) {
   const [agentId, setAgentId] = useState<string | null>(null)
 
   // Saved agents first, then everyone else by name
+  // Saved ones in priority order (shared/characterPriority.ts)
+  const rankOrder = usePriority('zzz')
   const roster = useMemo(() => {
     const byAgent = new Map<string, RosterAgent>()
     for (const build of builds) {
@@ -108,8 +117,11 @@ export function ZzzCharactersPage({ onImport }: { onImport: () => void }) {
     ]
     const others = new Map<string, RosterAgent>()
     for (const agent of known) if (!byAgent.has(agent.agentId) && !others.has(agent.agentId)) others.set(agent.agentId, agent)
-    return [...byAgent.values(), ...[...others.values()].sort((a, b) => a.name.localeCompare(b.name))]
-  }, [builds, images, gameData])
+    return [
+      ...orderByPriority([...byAgent.keys()], rankOrder).map((id) => byAgent.get(id)!),
+      ...[...others.values()].sort((a, b) => a.name.localeCompare(b.name)),
+    ]
+  }, [builds, images, gameData, rankOrder])
 
   const entry = roster.find((a) => a.agentId === agentId) ?? roster[0]
 
@@ -240,6 +252,18 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
                             ),
                         })}
                       savedCount={savedBuilds.saved.length}
+                      onMoveToTop={() => writePriority('zzz', moveToTop([...new Set(allBuilds.map((b) => b.agentId))], readPriority('zzz'), entry.agentId))}
+                      onSortByScore={() => {
+                        // Each agent by their first saved build's disc score
+                        const firstBuild = new Map<string, (typeof allBuilds)[number]>()
+                        for (const b of allBuilds) if (!firstBuild.has(b.agentId)) firstBuild.set(b.agentId, b)
+                        const scored = [...firstBuild].map(([id, b]) => {
+                          const data = AGENTS[id]
+                          const worn = Object.values(b.discIds).flatMap((discId) => discs.find((d) => d.id === discId) ?? [])
+                          return { id, score: data ? scoreBuild(worn.map((d) => scoreDisc(d, zzzDiscWeights(data))), 6)?.percent ?? 0 : 0 }
+                        })
+                        writePriority('zzz', scored.sort((a, b) => b.score - a.score).map((s) => s.id))
+                      }}
                       onScoring={() =>
                         openScoringModal({
                           game: 'zzz',

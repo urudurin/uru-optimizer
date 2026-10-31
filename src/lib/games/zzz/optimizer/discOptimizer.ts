@@ -55,6 +55,8 @@ export type OptimizerFilters = {
   twoPieceSet?: string,
   // Leave out discs the source says another agent is wearing
   excludeEquippedByOthers: boolean,
+  // Agents whose discs are left out (the priority filter: those ranked above, shared/characterPriority.ts)
+  excludeOwners?: string[],
 }
 
 // What builds are ranked by: a stat, or the rotation's damage
@@ -108,6 +110,7 @@ export function filterPools(request: Pick<OptimizerRequest, 'agent' | 'discs' | 
     discs.filter((disc) => {
       if (disc.slot !== slot) return false
       if (filters.excludeEquippedByOthers && disc.equippedBy && disc.equippedBy !== agent.id) return false
+      if (disc.equippedBy && disc.equippedBy !== agent.id && filters.excludeOwners?.includes(disc.equippedBy)) return false
       const allowed = slot >= 4 ? filters.mainStats[slot as MainStatSlot] : undefined
       if (allowed && allowed.length > 0 && !allowed.includes(disc.main.stat)) return false
       return true

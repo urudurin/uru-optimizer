@@ -6,6 +6,7 @@ import { SUBSTAT_TIERS } from 'lib/games/wuwa/echoStats'
 import {
   costPatterns,
   countLoadouts,
+  filterPool,
   type EchoFilters,
   type EchoTarget,
   optimizeEchoes,
@@ -213,6 +214,14 @@ describe('optimizeEchoes', () => {
 
     expect(outcome.current?.echoes.map((e) => e.id)).toEqual(['echo-0', 'echo-1'])
     expect(outcome.builds.every((b) => b.echoes.every((e) => e.cost !== 1))).toBe(true)
+  })
+
+  it('the priority filter leaves out only echoes worn by Resonators ranked above', () => {
+    const above: CharacterState = { ...hsin, charId: 'above', echoIds: echoes.filter((e) => e.cost === 1).map((e) => e.id) }
+    const below: CharacterState = { ...hsin, charId: 'below', echoIds: echoes.filter((e) => e.cost === 3).map((e) => e.id) }
+    const pool = filterPool({ character: hsin, characters: [hsin, above, below], echoes, filters: { ...noFilters, excludeOwners: ['above'] } })
+    expect(pool.some((e) => e.cost === 1)).toBe(false)
+    expect(pool.some((e) => e.cost === 3)).toBe(true)
   })
 
   it('explains sets that cannot fit', () => {

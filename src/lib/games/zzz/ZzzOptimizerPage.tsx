@@ -13,6 +13,10 @@ import {
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
 import {
+  ranksAbove,
+  usePriority,
+} from 'lib/games/shared/characterPriority'
+import {
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
@@ -200,6 +204,8 @@ type ZzzOptimizerSettings = {
   minStats: Partial<Record<keyof FinalStats, number>>,
   maxStats: Partial<Record<keyof FinalStats, number>>,
   excludeEquippedByOthers: boolean,
+  // HSR's character priority filter: leave out gear worn by characters ranked above (shared/characterPriority.ts)
+  priorityFilter: boolean,
   resultLimit: number,
   // Agent ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
   teammates: string[],
@@ -288,6 +294,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     minStats: {},
     maxStats: {},
     excludeEquippedByOthers: false,
+    priorityFilter: false,
     resultLimit: DEFAULT_RESULT_LIMIT,
     teammates: [],
     teamSettings: {},
@@ -309,6 +316,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     minStats,
     maxStats,
     excludeEquippedByOthers,
+    priorityFilter,
     resultLimit,
     teammates,
     teamSettings,
@@ -328,6 +336,13 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const setMinStats = fieldSetter(updateSettings, 'minStats')
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
+  const setPriorityFilter = fieldSetter(updateSettings, 'priorityFilter')
+  // Gear worn by characters ranked above is left out when the priority filter is on (and worn gear is otherwise allowed)
+  const rankOrder = usePriority('zzz')
+  const excludeOwners = useMemo(
+    () => (priorityFilter && !excludeEquippedByOthers ? ranksAbove([...new Set(builds.map((b) => b.agentId))], rankOrder, agent.id) : undefined),
+    [priorityFilter, excludeEquippedByOthers, rankOrder, builds, agent.id],
+  )
   const setResultLimit = fieldSetter(updateSettings, 'resultLimit')
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
@@ -442,6 +457,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     fourPieceSet: fourPieceSet ?? undefined,
     twoPieceSet: twoPieceSet ?? undefined,
     excludeEquippedByOthers,
+    excludeOwners,
   }
   const pools = filterPools({ agent, discs, filters })
   const combinations = countCombinations(pools)
@@ -809,6 +825,13 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
                   label='Leave out discs other agents are wearing'
                   checked={excludeEquippedByOthers}
                   onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
+                />
+                <Switch
+                  label='Character priority filter'
+                  description='Leave out discs worn by agents ranked above this one on the Agents page'
+                  disabled={excludeEquippedByOthers}
+                  checked={priorityFilter && !excludeEquippedByOthers}
+                  onChange={(event) => setPriorityFilter(event.currentTarget.checked)}
                 />
               </FormCard>
             </FormRow>

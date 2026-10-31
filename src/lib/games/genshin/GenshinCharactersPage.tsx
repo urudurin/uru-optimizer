@@ -36,6 +36,13 @@ import {
   ELEMENT_ACCENTS,
   genshinStatRows,
 } from 'lib/games/genshin/ui/characterStats'
+import {
+  moveToTop,
+  orderByPriority,
+  readPriority,
+  usePriority,
+  writePriority,
+} from 'lib/games/shared/characterPriority'
 import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import { BuildRating } from 'lib/games/shared/ui/BuildRating'
 import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
@@ -67,14 +74,16 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
   const [picked, setPicked] = useState<string | null>(null)
 
   // Saved characters first, then everyone else with stat data by name. The Traveler is listed once, until one is saved
+  // Saved ones in priority order (shared/characterPriority.ts)
+  const rankOrder = usePriority('genshin')
   const rosterIds = useMemo(() => {
     const saved = new Set(characters.map((c) => c.id))
     const hasTraveler = characters.some((c) => c.id.startsWith('Traveler'))
     const others = Object.keys(stats.characters)
       .filter((id) => !saved.has(id) && !(id === 'Traveler' && hasTraveler))
       .sort((a, b) => nameOf(a, images).localeCompare(nameOf(b, images)))
-    return [...characters.map((c) => c.id), ...others]
-  }, [characters, images])
+    return [...orderByPriority(characters.map((c) => c.id), rankOrder), ...others]
+  }, [characters, images, rankOrder])
 
   const activeId = picked ?? rosterIds[0]
   const character = characters.find((c) => c.id === activeId)
@@ -185,6 +194,17 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
                       equip: (b) => equip(character.id, b.pieceIds.flatMap((id) => artifactById.get(id) ?? [])),
                     })}
                   savedCount={builds.saved.length}
+                  onMoveToTop={() => writePriority('genshin', moveToTop(characters.map((c) => c.id), readPriority('genshin'), character.id))}
+                  onSortByScore={() => {
+                    const wornBy = (c: GenshinCharacter) =>
+                      ARTIFACT_SLOTS.flatMap((slot) => {
+                        const id = c.artifactIds[slot]
+                        const artifact = id ? artifactById.get(id) : undefined
+                        return artifact ? [artifact] : []
+                      })
+                    const scored = characters.map((c) => ({ id: c.id, score: genshinBuildScore(c, wornBy(c))?.percent ?? 0 }))
+                    writePriority('genshin', scored.sort((a, b) => b.score - a.score).map((s) => s.id))
+                  }}
                   onScoring={() =>
                     openScoringModal({
                       game: 'genshin',

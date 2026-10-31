@@ -1,3 +1,4 @@
+import { forgetPriority } from 'lib/games/shared/characterPriority'
 import { forgetGameSettings } from 'lib/games/shared/gameSettings'
 import {
   readStorage,
@@ -54,7 +55,7 @@ export type BackupSettings = Record<string, unknown>
 
 const settingsKeys = (
   game: string,
-) => [`${game}-optimizer-settings`, `${game}-saved-rotations`, `${game}-saved-builds`, `${game}-settings`, `${game}-score-weights`]
+) => [`${game}-optimizer-settings`, `${game}-saved-rotations`, `${game}-saved-builds`, `${game}-settings`, `${game}-score-weights`, `${game}-priority`]
 
 export function backupSettings(game: string): BackupSettings {
   const settings: BackupSettings = {}
@@ -84,8 +85,9 @@ export function restoreBackupSettings(game: string, text: string): number {
     const value = (settings as Record<string, unknown>)[key]
     if (value !== undefined && writeStorage(key, JSON.stringify(value))) restored++
   }
-  // The game settings are cached once read
+  // The game settings and priority order are cached once read
   forgetGameSettings()
+  forgetPriority()
   return restored
 }
 

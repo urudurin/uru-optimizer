@@ -7,6 +7,7 @@ import {
 } from '@mantine/core'
 import { modals } from '@mantine/modals'
 import {
+  IconArrowBarToUp,
   IconArrowsExchange,
   IconChevronDown,
   IconDeviceFloppy,
@@ -14,6 +15,7 @@ import {
   IconFolderOpen,
   IconPlugConnectedX,
   IconScale,
+  IconSortDescending,
   IconTrash,
   IconUser,
 } from '@tabler/icons-react'
@@ -26,22 +28,27 @@ import { useState } from 'react'
 // The Characters page's Character menu, after HSR's (lib/tabs/tabCharacters/CharacterMenu.tsx): Character (edit,
 // switch gear with, unequip, delete), Builds (save the current build, view saved ones) and Scoring. Each game passes
 // what its save can do; confirmations and messages follow HSR's wording.
-export function CharacterMenu({ name, gearNoun, others, onEdit, onSwitch, onUnequip, onDelete, onSaveBuild, onViewBuilds, savedCount, onScoring }: {
-  name: string,
-  // 'discs', 'artifacts', 'echoes'
-  gearNoun: string,
-  // Who this character can switch gear with
-  others: GearOption[],
-  onEdit: () => void,
-  onSwitch: (otherId: string) => void,
-  onUnequip: () => void,
-  onDelete: () => void,
-  // Undefined when nothing is worn
-  onSaveBuild?: () => void,
-  onViewBuilds: () => void,
-  savedCount: number,
-  onScoring?: () => void,
-}) {
+export function CharacterMenu(
+  { name, gearNoun, others, onEdit, onSwitch, onUnequip, onDelete, onSaveBuild, onViewBuilds, savedCount, onScoring, onMoveToTop, onSortByScore }: {
+    name: string,
+    // 'discs', 'artifacts', 'echoes'
+    gearNoun: string,
+    // Who this character can switch gear with
+    others: GearOption[],
+    onEdit: () => void,
+    onSwitch: (otherId: string) => void,
+    onUnequip: () => void,
+    onDelete: () => void,
+    // Undefined when nothing is worn
+    onSaveBuild?: () => void,
+    onViewBuilds: () => void,
+    savedCount: number,
+    onScoring?: () => void,
+    // HSR's Priority group (shared/characterPriority.ts)
+    onMoveToTop?: () => void,
+    onSortByScore?: () => void,
+  },
+) {
   return (
     // At the top of the roster column, like HSR's (shared/ui/Showcase.tsx CharacterMenuSlot)
     <CharacterMenuSlot>
@@ -100,6 +107,40 @@ export function CharacterMenu({ name, gearNoun, others, onEdit, onSwitch, onUneq
             <>
               <Menu.Label>Scoring</Menu.Label>
               <Menu.Item leftSection={<IconScale size={14} />} onClick={onScoring}>Scoring weights</Menu.Item>
+            </>
+          )}
+
+          {(onMoveToTop || onSortByScore) && (
+            <>
+              <Menu.Label>Priority</Menu.Label>
+              {onSortByScore && (
+                <Menu.Item
+                  leftSection={<IconSortDescending size={14} />}
+                  onClick={async () => {
+                    const ok = await confirmAction(
+                      'Sort by effective substats',
+                      'Rank every saved character by their gear score, best first? The optimizer\'s priority filter follows this order.',
+                      { confirmLabel: 'Sort' },
+                    )
+                    if (!ok) return
+                    onSortByScore()
+                    Message.success('Sorted by effective substats')
+                  }}
+                >
+                  Sort by effective substats
+                </Menu.Item>
+              )}
+              {onMoveToTop && (
+                <Menu.Item
+                  leftSection={<IconArrowBarToUp size={14} />}
+                  onClick={() => {
+                    onMoveToTop()
+                    Message.success(`Moved ${name} to the top`)
+                  }}
+                >
+                  Move character to top
+                </Menu.Item>
+              )}
             </>
           )}
         </Menu.Dropdown>

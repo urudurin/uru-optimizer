@@ -97,6 +97,10 @@ import {
   genshinStatRows,
 } from 'lib/games/genshin/ui/characterStats'
 import {
+  ranksAbove,
+  usePriority,
+} from 'lib/games/shared/characterPriority'
+import {
   type DamagePart,
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
@@ -207,6 +211,8 @@ type GenshinOptimizerSettings = {
   fourPieceSet: string | null,
   twoPieceSets: string[],
   excludeEquippedByOthers: boolean,
+  // HSR's character priority filter: leave out gear worn by characters ranked above (shared/characterPriority.ts)
+  priorityFilter: boolean,
   resultLimit: number,
   minStats: Partial<Record<GenshinStatKey, number>>,
   maxStats: Partial<Record<GenshinStatKey, number>>,
@@ -232,6 +238,7 @@ function defaultSettings(characterId: string): GenshinOptimizerSettings {
     fourPieceSet: null,
     twoPieceSets: [],
     excludeEquippedByOthers: true,
+    priorityFilter: false,
     resultLimit: DEFAULT_RESULT_LIMIT,
     minStats: {},
     maxStats: {},
@@ -286,6 +293,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     fourPieceSet,
     twoPieceSets,
     excludeEquippedByOthers,
+    priorityFilter,
     resultLimit,
     minStats,
     maxStats,
@@ -301,6 +309,13 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const setFourPieceSet = fieldSetter(updateSettings, 'fourPieceSet')
   const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
+  const setPriorityFilter = fieldSetter(updateSettings, 'priorityFilter')
+  // Gear worn by characters ranked above is left out when the priority filter is on (and worn gear is otherwise allowed)
+  const rankOrder = usePriority('genshin')
+  const excludeOwners = useMemo(
+    () => (priorityFilter && !excludeEquippedByOthers ? ranksAbove(characters.map((c) => c.id), rankOrder, character?.id ?? '') : undefined),
+    [priorityFilter, excludeEquippedByOthers, rankOrder, characters, character?.id],
+  )
   const setResultLimit = fieldSetter(updateSettings, 'resultLimit')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
@@ -324,8 +339,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
   const equip = useGenshinStore((s) => s.equip)
   const filters = useMemo(
-    () => ({ mainStats, fourPieceSet: fourPieceSet ?? undefined, twoPieceSets, excludeEquippedByOthers }),
-    [mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers],
+    () => ({ mainStats, fourPieceSet: fourPieceSet ?? undefined, twoPieceSets, excludeEquippedByOthers, excludeOwners }),
+    [mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, excludeOwners],
   )
   // Artifacts per slot after the filters, live as the filters change
   const poolSizes = useMemo(
@@ -652,6 +667,13 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
                   label='Leave out artifacts other characters are wearing'
                   checked={excludeEquippedByOthers}
                   onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
+                />
+                <Switch
+                  label='Character priority filter'
+                  description='Leave out artifacts worn by characters ranked above this one on the Characters page'
+                  disabled={excludeEquippedByOthers}
+                  checked={priorityFilter && !excludeEquippedByOthers}
+                  onChange={(event) => setPriorityFilter(event.currentTarget.checked)}
                 />
               </FormCard>
             </FormRow>

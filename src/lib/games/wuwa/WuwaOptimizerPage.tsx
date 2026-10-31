@@ -10,6 +10,10 @@ import {
 } from '@mantine/core'
 import { IconTrendingUp } from '@tabler/icons-react'
 import {
+  ranksAbove,
+  usePriority,
+} from 'lib/games/shared/characterPriority'
+import {
   type DamagePart,
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
@@ -209,6 +213,8 @@ type WuwaOptimizerSettings = {
   fullSet: string | null,
   twoPieceSets: string[],
   excludeEquippedByOthers: boolean,
+  // HSR's character priority filter: leave out gear worn by characters ranked above (shared/characterPriority.ts)
+  priorityFilter: boolean,
   resultLimit: number,
   minStats: Partial<Record<keyof WuwaStats, number>>,
   maxStats: Partial<Record<keyof WuwaStats, number>>,
@@ -233,6 +239,7 @@ function defaultSettings(charId: string): WuwaOptimizerSettings {
     fullSet: null,
     twoPieceSets: [],
     excludeEquippedByOthers: true,
+    priorityFilter: false,
     resultLimit: DEFAULT_RESULT_LIMIT,
     minStats: {},
     maxStats: {},
@@ -288,6 +295,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     fullSet,
     twoPieceSets,
     excludeEquippedByOthers,
+    priorityFilter,
     resultLimit,
     minStats,
     maxStats,
@@ -302,6 +310,13 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const setFullSet = fieldSetter(updateSettings, 'fullSet')
   const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
+  const setPriorityFilter = fieldSetter(updateSettings, 'priorityFilter')
+  // Gear worn by characters ranked above is left out when the priority filter is on (and worn gear is otherwise allowed)
+  const rankOrder = usePriority('wuwa')
+  const excludeOwners = useMemo(
+    () => (priorityFilter && !excludeEquippedByOthers ? ranksAbove(characters.map((c) => c.charId), rankOrder, character?.charId ?? '') : undefined),
+    [priorityFilter, excludeEquippedByOthers, rankOrder, characters, character?.charId],
+  )
   const setResultLimit = fieldSetter(updateSettings, 'resultLimit')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
@@ -411,7 +426,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     cost: costOf(b.echoes),
   })
 
-  const filters = { mainStats, fullSet: fullSet ?? undefined, twoPieceSets: twoPieceSets.slice(0, maxTwoPiece), excludeEquippedByOthers }
+  const filters = { mainStats, fullSet: fullSet ?? undefined, twoPieceSets: twoPieceSets.slice(0, maxTwoPiece), excludeEquippedByOthers, excludeOwners }
   // Echoes per cost after the filters, and the loadouts they make, live as the filters change
   const pool = filterPool({ character, characters, echoes, filters })
 
@@ -637,6 +652,13 @@ ${losing.join(', ')} ${
                   label='Leave out echoes other Resonators are wearing'
                   checked={excludeEquippedByOthers}
                   onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
+                />
+                <Switch
+                  label='Character priority filter'
+                  description='Leave out echoes worn by Resonators ranked above this one on the Resonators page'
+                  disabled={excludeEquippedByOthers}
+                  checked={priorityFilter && !excludeEquippedByOthers}
+                  onChange={(event) => setPriorityFilter(event.currentTarget.checked)}
                 />
               </FormCard>
             </FormRow>

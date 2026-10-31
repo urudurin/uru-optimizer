@@ -5,6 +5,13 @@ import {
   Stack,
   Text,
 } from '@mantine/core'
+import {
+  moveToTop,
+  orderByPriority,
+  readPriority,
+  usePriority,
+  writePriority,
+} from 'lib/games/shared/characterPriority'
 import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import { BuildRating } from 'lib/games/shared/ui/BuildRating'
 import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
@@ -92,11 +99,13 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
     [],
   )
   // Saved Resonators first, then everyone else by name
+  // Saved ones in priority order (shared/characterPriority.ts)
+  const rankOrder = usePriority('wuwa')
   const rosterIds = useMemo(() => {
     const saved = new Set(characters.map((c) => c.charId))
     const others = Object.values(CHARACTERS).filter((c) => !saved.has(c.id)).sort((a, b) => a.name.localeCompare(b.name)).map((c) => c.id)
-    return [...characters.map((c) => c.charId), ...others]
-  }, [characters])
+    return [...orderByPriority(characters.map((c) => c.charId), rankOrder), ...others]
+  }, [characters, rankOrder])
 
   const activeId = picked ?? rosterIds[0]
   const character = characters.find((c) => c.charId === activeId)
@@ -202,6 +211,14 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
                       equip: (b) => equip(character.charId, b.pieceIds.flatMap((id) => echoById.get(id) ?? [])),
                     })}
                   savedCount={builds.saved.length}
+                  onMoveToTop={() => writePriority('wuwa', moveToTop(characters.map((c) => c.charId), readPriority('wuwa'), character.charId))}
+                  onSortByScore={() => {
+                    const scored = characters.map((c) => ({
+                      id: c.charId,
+                      score: wuwaBuildScore(c, c.echoIds.flatMap((id) => (id && echoById.get(id) ? [echoById.get(id)!] : [])))?.percent ?? 0,
+                    }))
+                    writePriority('wuwa', scored.sort((a, b) => b.score - a.score).map((s) => s.id))
+                  }}
                   onScoring={() =>
                     openScoringModal({
                       game: 'wuwa',

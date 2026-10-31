@@ -75,6 +75,8 @@ export type OptimizerFilters = {
   twoPieceSets: string[],
   // Leave out artifacts another character is wearing
   excludeEquippedByOthers: boolean,
+  // Characters whose artifacts are left out (the priority filter: those ranked above, shared/characterPriority.ts)
+  excludeOwners?: string[],
 }
 
 export type OptimizerRequest = {
@@ -233,6 +235,7 @@ export function filterPools(request: Pick<OptimizerRequest, 'character' | 'artif
     artifacts.filter((artifact) => {
       if (artifact.slot !== slot) return false
       if (filters.excludeEquippedByOthers && artifact.equippedBy && artifact.equippedBy !== character.id) return false
+      if (artifact.equippedBy && artifact.equippedBy !== character.id && filters.excludeOwners?.includes(artifact.equippedBy)) return false
       const allowed = slot === 'sands' || slot === 'goblet' || slot === 'circlet' ? filters.mainStats[slot] : undefined
       return !allowed || allowed.length === 0 || allowed.includes(artifact.main.stat)
     })
