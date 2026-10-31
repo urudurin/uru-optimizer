@@ -678,6 +678,22 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
     toggle: { kind: 'stacks', label: '1 ATK (Overloaded), 2 EM (Electro-Charged)', max: () => 2, step: 1 },
     confidence: 'sourced',
   }],
+  Prune: [{
+    id: 'prune-hexerei',
+    label: 'Hexerei: with 2 Hexerei in the party, a Hexerei Anemo member\'s ATK +30% after they trigger Swirl or Stellar Swirl with Tolling Rally',
+    target: 'others',
+    stage: 'premod',
+    stat: 'atkPct',
+    value: ({ giver, receiver, hexerei }) => hexerei >= 2 && ascensionOf(giver) >= 4 && receiver.element === 'Anemo' && HEXEREI.has(receiver.id) ? 30 : 0,
+    blockedBy: ({ receiver, hexerei }) =>
+      hexerei < 2
+        ? 'Needs 2 Hexerei characters in the party'
+        : receiver.element !== 'Anemo' || !HEXEREI.has(receiver.id)
+        ? 'Only for Hexerei Anemo members'
+        : undefined,
+    toggle: { kind: 'switch', label: 'After they Swirl with Tolling Rally' },
+    confidence: 'sourced',
+  }],
   Gorou: [
     {
       id: 'gorou-skill-def',

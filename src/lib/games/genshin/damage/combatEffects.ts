@@ -741,6 +741,21 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
     },
     confidence: 'sourced',
   }],
+  Lohen: [{
+    id: 'lohen-hexerei',
+    label:
+      'Hexerei: with 2 Hexerei in the party, Normal and Charged Attack DMG +40% after Etched Into Bone and Soul hits or his Burst, with Will to Win at 50% or more',
+    toggle: { kind: 'switch', label: 'Will to Win at 50%+' },
+    premod: ({ hexerei }) => (hexerei >= 2 ? { normalDmg: 40, chargedDmg: 40 } : {}),
+    confidence: 'sourced',
+  }],
+  Prune: [{
+    id: 'prune-hexerei',
+    label: 'Hexerei: with 2 Hexerei in the party, ATK +60% after a Hexerei member with Tolling Rally triggers a reaction',
+    toggle: { kind: 'switch', label: 'After such a reaction' },
+    premod: ({ character, hexerei }) => (hexerei >= 2 && ascended(character, 4) ? { atkPct: 60 } : {}),
+    confidence: 'sourced',
+  }],
   Kinich: [
     {
       id: 'kinich-a4',

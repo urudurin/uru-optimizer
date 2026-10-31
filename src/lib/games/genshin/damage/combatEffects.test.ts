@@ -290,4 +290,10 @@ describe('hit-specific and weapon combat effects', () => {
     expect(resolveCombat(durin, none, new Map()).reactions.vaporize).toBe(40)
     expect(resolveCombat(durin, { ...none, hexerei: 2 }, new Map()).reactions.vaporize).toBe(70)
   })
+  it('gives Lohen and Prune their Hexerei bonuses only with 2 Hexerei in the party', () => {
+    const lohen = character('Lohen', { element: 'Anemo' })
+    expect(resolveCombat(lohen, none, new Map()).premod.normalDmg ?? 0).toBe(0)
+    expect(resolveCombat(lohen, { ...none, hexerei: 2 }, new Map()).premod).toMatchObject({ normalDmg: 40, chargedDmg: 40 })
+    expect(resolveCombat(character('Prune', { element: 'Anemo' }), { ...none, hexerei: 2 }, new Map()).premod.atkPct).toBe(60)
+  })
 })
