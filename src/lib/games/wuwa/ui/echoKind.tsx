@@ -106,6 +106,7 @@ export function wuwaEchoKind({ characters }: { characters: CharacterState[] }): 
     formatValue,
     statLabel,
     ownerOf: (echo) => wearer.get(echo.id)?.charId,
+    owners: () => characters.map((c) => ({ value: c.charId, label: characterName(c.charId) })).sort((a, b) => a.label.localeCompare(b.label)),
     ownerName: characterName,
     score,
     preview: (echo) => <EchoCard echo={echo} owner={wearer.has(echo.id) ? characterName(wearer.get(echo.id)!.charId) : undefined} score={score(echo)} />,

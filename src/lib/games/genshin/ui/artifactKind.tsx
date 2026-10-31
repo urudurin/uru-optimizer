@@ -108,6 +108,7 @@ export function genshinArtifactKind({ characters, images, store, artifacts }: {
     formatValue: (stat, value) => formatStatValue(stat as GenshinStatKey, value),
     statLabel,
     ownerOf: (a) => a.equippedBy,
+    owners: () => characters.map((c) => ({ value: c.id, label: c.name })).sort((a, b) => a.label.localeCompare(b.label)),
     ownerName: (id) => byId.get(id)?.name ?? nameFromGoodKey(id),
     score,
     preview: (a) => (

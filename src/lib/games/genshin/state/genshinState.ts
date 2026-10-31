@@ -166,6 +166,22 @@ function withoutOwner(artifact: Artifact): Artifact {
   return rest
 }
 
+// Puts one artifact on a character or, with null, takes it off whoever wears it: the gear editor's "Equipped by", after
+// HSR's relic editor (lib/overlays/modals/relicModal). Taking it from someone works like the optimizer's Equip
+export function assignGenshinArtifact(data: GenshinData, artifactId: string, characterId: string | null): GenshinData {
+  const artifact = data.artifacts.find((a) => a.id === artifactId)
+  if (!artifact || (artifact.equippedBy ?? null) === characterId) return data
+  if (characterId) return data.characters.some((c) => c.id === characterId) ? equipGenshinArtifacts(data, characterId, [artifact]) : data
+  return {
+    artifacts: data.artifacts.map((a) => (a.id === artifactId ? withoutOwner(a) : a)),
+    characters: data.characters.map((c) =>
+      Object.values(c.artifactIds).includes(artifactId)
+        ? { ...c, artifactIds: Object.fromEntries(Object.entries(c.artifactIds).filter(([, id]) => id !== artifactId)), stats: {} }
+        : c
+    ),
+  }
+}
+
 // Who would lose artifacts to this character, by character id
 export function genshinPiecesTaken(data: GenshinData, characterId: string, artifacts: Artifact[]): string[] {
   const loadouts: Loadouts<ArtifactSlot> = new Map(data.characters.map((c) => [c.id, c.artifactIds]))

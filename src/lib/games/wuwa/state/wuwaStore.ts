@@ -5,6 +5,7 @@ import {
 } from 'lib/games/shared/storage'
 import type { ParsedWuwaData } from 'lib/games/wuwa/importer/userDataParser'
 import {
+  assignWuwaEcho,
   deleteWuwaEchoes,
   deserializeWuwaData,
   EMPTY_WUWA_DATA,
@@ -37,7 +38,8 @@ type WuwaStore = WuwaData & {
   // Adds a Resonator by hand or changes their level, sequence and weapon, see saveWuwaCharacter
   saveCharacter: (details: Omit<CharacterState, 'echoIds'>) => void,
   // Adds or edits an echo by hand, or deletes echoes, see saveWuwaEcho / deleteWuwaEchoes
-  saveEcho: (echo: Echo) => void,
+  // owner (the editor's Equipped by): a Resonator id puts it on them, null takes it off, undefined leaves it
+  saveEcho: (echo: Echo, owner?: string | null) => void,
   deleteEchoes: (ids: string[]) => void,
   clear: () => void,
 }
@@ -72,9 +74,10 @@ export const useWuwaStore = create<WuwaStore>()((set, get) => ({
     set(data)
   },
 
-  saveEcho: (echo) => {
+  saveEcho: (echo, owner) => {
     const { echoes, characters, teams, priority } = get()
-    const data = saveWuwaEcho({ echoes, characters, teams, priority }, echo)
+    const saved = saveWuwaEcho({ echoes, characters, teams, priority }, echo)
+    const data = owner === undefined ? saved : assignWuwaEcho(saved, echo.id, owner)
     save(data)
     set(data)
   },

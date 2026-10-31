@@ -42,9 +42,12 @@ export function GearEditor<T>({ kind, existing, initial, screenshot, onClose, on
   // A screenshot to read as soon as the editor opens (pasted on the inventory page)
   screenshot?: Blob,
   onClose: () => void,
-  onSave: (item: T) => void,
+  // owner: who it should be on (Equipped by): a character id, or null for nobody
+  onSave: (item: T, owner: string | null) => void,
 }) {
   const [draft, setDraft] = useState(initial)
+  // Equipped by, after HSR's relic editor: who wears the piece (empty for nobody)
+  const [owner, setOwner] = useState(() => (existing ? kind.ownerOf(existing) ?? '' : ''))
   const update = (changes: Partial<GearDraft>) => setDraft((prev) => fixMainStat(kind, { ...prev, ...changes }))
   const [reading, setReading] = useState<{ busy: boolean, image?: string, message?: string, error?: boolean }>({ busy: false })
   const draftRef = useRef(draft)
@@ -158,7 +161,26 @@ export function GearEditor<T>({ kind, existing, initial, screenshot, onClose, on
             onChange={(value) => update({ level: Math.max(0, Math.floor(Number(value) || 0)) })}
           />
         </Group>
-        <Select label='Set' searchable allowDeselect={false} value={draft.setId || null} onChange={(setId) => setId && update({ setId })} data={kind.sets()} />
+        <Group grow gap='sm' align='flex-end'>
+          <Select
+            label='Set'
+            searchable
+            allowDeselect={false}
+            value={draft.setId || null}
+            onChange={(setId) => setId && update({ setId })}
+            data={kind.sets()}
+          />
+          {kind.owners && (
+            <Select
+              label='Equipped by'
+              searchable
+              allowDeselect={false}
+              value={owner}
+              onChange={(value) => setOwner(value ?? '')}
+              data={[{ value: '', label: 'None' }, ...kind.owners()]}
+            />
+          )}
+        </Group>
         {kind.extraFields?.(draft, update)}
         <Group grow gap='sm' align='flex-end'>
           <Select
@@ -221,7 +243,7 @@ export function GearEditor<T>({ kind, existing, initial, screenshot, onClose, on
         )}
         <Group justify='flex-end' gap='xs'>
           <Button variant='subtle' onClick={onClose}>Cancel</Button>
-          <Button disabled={!result.item} onClick={() => result.item && onSave(result.item)}>{existing ? 'Save' : `Add ${noun}`}</Button>
+          <Button disabled={!result.item} onClick={() => result.item && onSave(result.item, owner || null)}>{existing ? 'Save' : `Add ${noun}`}</Button>
         </Group>
         <Text size='xs' c='dimmed'>Changes go to this browser's save only, never the game.</Text>
       </Stack>

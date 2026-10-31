@@ -10,6 +10,7 @@ import type {
   ParseWarning,
 } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
+  assignZzzDisc,
   deleteZzzDiscs,
   deserializeZzzData,
   equipZzzDiscs,
@@ -38,7 +39,8 @@ type ZzzStore = {
   // Adds an agent by hand or changes a saved build's Mindscape and W-Engine, see saveZzzBuild
   saveBuild: (build: ImportedBuild) => void,
   // Adds or edits a disc by hand, or deletes discs, see saveZzzDisc / deleteZzzDiscs
-  saveDisc: (disc: Disc) => void,
+  // owner (the editor's Equipped by): an agent id puts it on them, null takes it off, undefined leaves it
+  saveDisc: (disc: Disc, owner?: string | null) => void,
   deleteDiscs: (ids: string[]) => void,
   clear: () => void,
 }
@@ -78,9 +80,10 @@ export const useZzzStore = create<ZzzStore>()((set, get) => ({
     set(data)
   },
 
-  saveDisc: (disc) => {
+  saveDisc: (disc, owner) => {
     const state = get()
-    const data = saveZzzDisc({ discs: state.discs, builds: state.builds }, disc)
+    const saved = saveZzzDisc({ discs: state.discs, builds: state.builds }, disc)
+    const data = owner === undefined ? saved : assignZzzDisc(saved, disc.id, owner)
     save(data.discs, data.builds)
     set(data)
   },

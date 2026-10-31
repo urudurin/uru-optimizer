@@ -73,7 +73,8 @@ const NO_FILTERS: Filters = { slot: [], mainStat: [], substat: [], set: [], rari
 export function GearInventory<T extends { id: string }>({ kind, items, onSave, onDelete }: {
   kind: GearKind<T>,
   items: T[],
-  onSave: (item: T) => void,
+  // owner from the editor's Equipped by: a character id, or null for nobody
+  onSave: (item: T, owner: string | null) => void,
   onDelete: (ids: string[]) => void,
 }) {
   const gridRef = useRef<AgGridReact<Row<T>>>(null)
@@ -301,8 +302,8 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
           initial={editing.draft}
           screenshot={editing.screenshot}
           onClose={() => setEditing(undefined)}
-          onSave={(item) => {
-            onSave(item)
+          onSave={(item, owner) => {
+            onSave(item, owner)
             Message.success(editing.item ? `Saved the ${kind.noun.toLowerCase()}` : `Added the ${kind.noun.toLowerCase()}`)
             setEditing(undefined)
           }}

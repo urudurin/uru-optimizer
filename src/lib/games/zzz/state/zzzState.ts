@@ -143,6 +143,25 @@ function withoutOwner(disc: Disc): Disc {
   return rest
 }
 
+// Puts one disc on an agent with a saved build or, with null, takes it off whoever wears it: the gear editor's "Equipped by", after
+// HSR's relic editor (lib/overlays/modals/relicModal). Taking it from someone works like the optimizer's Equip
+export function assignZzzDisc(data: ZzzData, discId: string, agentId: string | null): ZzzData {
+  const disc = data.discs.find((d) => d.id === discId)
+  if (!disc) return data
+  const wearer = data.builds.find((b) => b.discIds[disc.slot] === discId)?.agentId ?? disc.equippedBy
+  if ((wearer ?? null) === agentId) return data
+  if (agentId) {
+    const build = data.builds.find((b) => b.agentId === agentId)
+    if (!build) return data
+    const agent = { id: build.agentId, name: build.name, element: build.element, specialty: build.specialty, level: build.level }
+    return equipZzzDiscs(data, agent, { id: build.wEngineId ?? '', refinement: build.wEngineRefinement }, [disc])
+  }
+  return {
+    discs: data.discs.map((d) => (d.id === discId ? withoutOwner(d) : d)),
+    builds: data.builds.map((b) => (b.discIds[disc.slot] === discId ? { ...b, discIds: { ...b.discIds, [disc.slot]: undefined } } : b)),
+  }
+}
+
 // Who would lose discs to this agent, by agent id
 export function zzzPiecesTaken(data: ZzzData, agentId: string, discs: Disc[]): string[] {
   const loadouts: Loadouts<DiscSlot> = new Map(data.builds.map((b) => [b.agentId, { ...b.discIds }]))

@@ -122,6 +122,8 @@ export function zzzDiscKind({ builds, images, discs }: { builds: ImportedBuild[]
     formatValue,
     statLabel: (stat) => stat,
     ownerOf: (disc) => disc.equippedBy,
+    // Only agents with a saved build can wear discs in the save
+    owners: () => builds.map((b) => ({ value: b.agentId, label: b.name })).sort((a, b) => a.label.localeCompare(b.label)),
     ownerName: (id) => ownerNames.get(id) ?? AGENTS[id]?.name ?? `Agent ${id}`,
     score: (disc) => {
       const agent = disc.equippedBy ? AGENTS[disc.equippedBy] : undefined

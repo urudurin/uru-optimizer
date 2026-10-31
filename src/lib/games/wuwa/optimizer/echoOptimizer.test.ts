@@ -10,8 +10,10 @@ import {
   type EchoTarget,
   optimizeEchoes,
   scoreStats,
+  withFullSets,
 } from 'lib/games/wuwa/optimizer/echoOptimizer'
 import {
+  type Bonus,
   computeWuwaStats,
   type WuwaStats,
 } from 'lib/games/wuwa/stats/computeStats'
@@ -74,6 +76,7 @@ function bruteForce(
   minStats: Partial<Record<keyof WuwaStats, number>>,
   filters: EchoFilters,
   maxStats: Partial<Record<keyof WuwaStats, number>> = {},
+  fullSetBonus?: Record<string, Bonus>,
 ): number[] {
   // With a maximum, a loadout with room left can be the better one
   const anySize = Object.keys(maxStats).length > 0
@@ -84,7 +87,7 @@ function bruteForce(
       const distinct = (setId: string) => new Set(chosen.filter((e) => e.setId === setId).map((e) => e.defId)).size
       if (filters.fullSet && distinct(filters.fullSet) < 5) return
       if (filters.twoPieceSets.some((id) => distinct(id) < 2)) return
-      const { stats } = computeWuwaStats(hsin, chosen)
+      const { stats } = computeWuwaStats(hsin, chosen, withFullSets({}, chosen, fullSetBonus))
       const fails = Object.entries(minStats).some(([stat, min]) => stats[stat as keyof WuwaStats] < min)
         || Object.entries(maxStats).some(([stat, max]) => stats[stat as keyof WuwaStats] > max)
       if (!fails) scores.push(scoreStats(stats, target))
@@ -163,6 +166,22 @@ describe('optimizeEchoes', () => {
       expect(outcome.builds.every((b) => b.stats[capped] <= maxStats[capped])).toBe(true)
     })
   }
+
+  it('adds a full-set bonus only to loadouts completing the set with different echoes, and still matches every loadout', () => {
+    const fullSetBonus = { 'void-thunder': { electroDmg: 30 }, 'heart-of-sworn-vigil': { critRate: 15, electroDmg: 22.5 } }
+    const target: EchoTarget = { kind: 'stat', stat: 'elementDmg' }
+    const outcome = optimizeEchoes({ character: hsin, characters: [hsin], echoes, filters: noFilters, minStats: {}, target, limit: 5, fullSetBonus })
+    if (!outcome.ok) throw new Error(outcome.reason)
+    const expected = bruteForce(echoes, target, {}, noFilters, {}, fullSetBonus).slice(0, 5)
+    expect(outcome.builds.map((b) => b.score)).toEqual(expected.map((score) => expect.closeTo(score, 6)))
+
+    // Five Void Thunder echoes, two of them the same echo: 4 different, so no full-set bonus
+    const echo = (id: string, defId: string, cost: Cost): Echo => ({ id, defId, cost, setId: 'void-thunder', mainStat: 'atkPct', level: 25, substats: [] })
+    const four = [echo('a', 'x', 4), echo('b', 'y', 3), echo('c', 'y', 3), echo('d', 'z', 1), echo('e', 'w', 1)]
+    expect(withFullSets({ atkPct: 5 }, four, fullSetBonus)).toEqual({ atkPct: 5 })
+    const five = [...four.slice(0, 2), echo('c', 'v', 3), ...four.slice(3)]
+    expect(withFullSets({ atkPct: 5 }, five, fullSetBonus)).toEqual({ atkPct: 5, electroDmg: 30 })
+  })
 
   it('counts loadouts the same as listing them', () => {
     const small = inventory({ 4: 3, 3: 4, 1: 4 })

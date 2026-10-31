@@ -1,4 +1,5 @@
 import {
+  assignGenshinArtifact,
   deleteGenshinArtifacts,
   saveGenshinArtifact,
 } from 'lib/games/genshin/state/genshinState'
@@ -7,6 +8,7 @@ import type {
   GenshinCharacter,
 } from 'lib/games/genshin/types'
 import {
+  assignWuwaEcho,
   deleteWuwaEchoes,
   saveWuwaEcho,
 } from 'lib/games/wuwa/state/wuwaState'
@@ -17,6 +19,7 @@ import type {
 import { wuwaEchoKind } from 'lib/games/wuwa/ui/echoKind'
 import type { ZzzImages } from 'lib/games/zzz/data/images'
 import {
+  assignZzzDisc,
   deleteZzzDiscs,
   saveZzzDisc,
 } from 'lib/games/zzz/state/zzzState'
@@ -72,6 +75,19 @@ describe('ZZZ discs', () => {
     expect(deleted.builds[0].discIds).toEqual({})
   })
 
+  it('Equipped by puts a disc on an agent with a build (swapping like Equip) or takes it off', () => {
+    const other = { ...build, id: 'b2', agentId: '1191', name: 'Ellen', discIds: { 1: 'd2' } }
+    const data = { discs: [disc('d1', 1, '1091'), disc('d2', 1, '1191')], builds: [build, other] }
+    const moved = assignZzzDisc(data, 'd2', '1091')
+    expect(moved.builds.map((b) => b.discIds[1])).toEqual(['d2', 'd1'])
+    const off = assignZzzDisc(data, 'd1', null)
+    expect(off.builds[0].discIds[1]).toBeUndefined()
+    expect(off.discs[0].equippedBy).toBeUndefined()
+    // An agent without a build can't wear it; the same owner changes nothing
+    expect(assignZzzDisc(data, 'd1', '9999')).toBe(data)
+    expect(assignZzzDisc(data, 'd1', '1091')).toBe(data)
+  })
+
   it('works out S-rank main stats like the game', () => {
     expect(sMainValue('HP', 15)).toBe(2200)
     expect(sMainValue('ATK%', 15)).toBe(30)
@@ -117,6 +133,17 @@ describe('Genshin artifacts', () => {
   })
   const character: GenshinCharacter = { id: 'c', name: 'C', level: 90, constellation: 0, artifactIds: { flower: 'a1' }, stats: { hp: 20000 }, statsDate: '' }
 
+  it('Equipped by puts an artifact on a character or takes it off, clearing their Enka stats', () => {
+    const data = { artifacts: [artifact('a1', 'flower', 'c'), artifact('a2', 'flower')], characters: [character] }
+    const swapped = assignGenshinArtifact(data, 'a2', 'c')
+    expect(swapped.characters[0]).toMatchObject({ artifactIds: { flower: 'a2' }, stats: {} })
+    expect(swapped.artifacts.find((a) => a.id === 'a2')?.equippedBy).toBe('c')
+    expect(swapped.artifacts.find((a) => a.id === 'a1')?.equippedBy).toBeUndefined()
+    const off = assignGenshinArtifact(data, 'a1', null)
+    expect(off.characters[0].artifactIds).toEqual({})
+    expect(off.artifacts[0].equippedBy).toBeUndefined()
+  })
+
   it('editing a worn artifact clears its owner\'s Enka stats; deleting takes it off them', () => {
     const data = { artifacts: [artifact('a1', 'flower', 'c')], characters: [character] }
     const edited = saveGenshinArtifact(data, { ...artifact('a1', 'flower', 'c'), level: 16 })
@@ -145,6 +172,19 @@ describe('WuWa echoes', () => {
     expect(saveWuwaEcho(data, { ...echo('e1', 4), level: 20 }).characters[0].echoIds[0]).toBe('e1')
     expect(saveWuwaEcho(data, echo('e1', 3)).characters[0].echoIds[0]).toBeNull()
     expect(deleteWuwaEchoes(data, ['e1'])).toMatchObject({ echoes: [], characters: [{ echoIds: [null, null, null, null, null] }] })
+  })
+
+  it('Equipped by adds an echo within 5 echoes and 12 cost, making room with the same cost first', () => {
+    const echoes = [echo('e1', 4), echo('e2', 4), echo('e3', 1), echo('e4', 1), echo('e5', 1), echo('n4', 4), echo('n3', 3)]
+    const full = { ...hsin, echoIds: ['e1', 'e2', 'e3', 'e4', 'e5'] }
+    const data = { echoes, characters: [full], teams: [], priority: [] }
+    // 4+4+1+1+1: a new 4-cost replaces a 4-cost
+    expect(assignWuwaEcho(data, 'n4', 'hsin').characters[0].echoIds).toEqual(['e2', 'n4', 'e3', 'e4', 'e5'])
+    // A 3-cost: no 3-cost to replace, so the costliest go until it fits
+    const withThree = assignWuwaEcho(data, 'n3', 'hsin').characters[0].echoIds
+    expect(withThree).toContain('n3')
+    expect(withThree.filter(Boolean).length).toBeLessThanOrEqual(5)
+    expect(assignWuwaEcho(data, 'e3', null).characters[0].echoIds).toEqual(['e1', 'e2', null, 'e4', 'e5'])
   })
 
   it('needs an echo that drops at that cost in that set, and real roll tiers', () => {

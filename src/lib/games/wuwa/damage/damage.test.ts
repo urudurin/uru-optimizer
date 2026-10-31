@@ -1,5 +1,8 @@
 import { splitDamage } from 'lib/games/shared/damageBreakdown'
-import { resolveWuwaCombat } from 'lib/games/wuwa/damage/combatEffects'
+import {
+  resolveWuwaCombat,
+  resolveWuwaSetEffects,
+} from 'lib/games/wuwa/damage/combatEffects'
 import {
   rotationLines,
   singleLineRotation,
@@ -157,6 +160,16 @@ describe('WuWa damage', () => {
     expect(resolveWuwaCombat('lupa', 0, { 'lupa-glory': 1 }).resShred).toBe(6)
     expect(resolveWuwaCombat('lingyang', 0, {}).lineScale).toEqual([{ section: 'intro', scale: 0.5 }])
     expect(resolveWuwaCombat('xiangli-yao', 0, {}).bonus).toEqual({ electroDmg: 20 })
+  })
+
+  it('resolves full-set Sonata effects: every set for the search, the asked-for ones for the card', () => {
+    const sets = resolveWuwaSetEffects(['wishes-of-quiet-snowfall'], 0, {})
+    expect(sets.applied.map((a) => a.effect.id)).toEqual(['set-wishes-of-quiet-snowfall-glacio', 'set-wishes-of-quiet-snowfall-crit'])
+    expect(sets.bonusBySet['wishes-of-quiet-snowfall']).toEqual({ glacioDmg: 10, critRate: 25 })
+    // Situational effects start off; turning a switch off drops its part
+    expect(sets.bonusBySet['tidebreaking-courage']).toEqual({ atkPct: 15 })
+    expect(resolveWuwaSetEffects([], 0, { 'set-wishes-of-quiet-snowfall-crit': false }).bonusBySet['wishes-of-quiet-snowfall']).toEqual({ glacioDmg: 10 })
+    expect(resolveWuwaSetEffects([], 0, { 'set-freezing-frost': 1 }).bonusBySet['freezing-frost']).toEqual({ glacioDmg: 10 })
   })
 
   it('resolves the kits added from the datamine text, with line boosts landing on real lines', () => {

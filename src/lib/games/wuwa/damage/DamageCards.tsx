@@ -198,15 +198,19 @@ function EchoSkillLines({ charId, rotation, mainEcho, onChange }: {
 }
 
 // The Resonator's own kit effects (damage/combatEffects.ts), with toggles; they count only in rotation damage
-export function KitEffectsCard({ name, applied, onSetting }: {
+// The kit's effects (Own effects), or with a title the full-set Sonata effects
+export function KitEffectsCard({ name, applied, onSetting, title = 'Own effects', description, emptyText = 'No kit effects for this Resonator yet.' }: {
   name: string,
   applied: WuwaAppliedEffect[],
   onSetting: (id: string, value: boolean | number) => void,
+  title?: string,
+  description?: string,
+  emptyText?: string,
 }) {
   return (
-    <FormCard title='Own effects' size='wide' description={`What ${name}'s kit does in combat, counted only when ranking by rotation damage.`}>
+    <FormCard title={title} size='wide' description={description ?? `What ${name}'s kit does in combat, counted only when ranking by rotation damage.`}>
       {applied.length === 0
-        ? <Text size='xs' c='dimmed'>No kit effects for this Resonator yet.</Text>
+        ? <Text size='xs' c='dimmed'>{emptyText}</Text>
         : (
           <Stack gap='sm'>
             {applied.map(({ effect, setting, counted, reason }) => (

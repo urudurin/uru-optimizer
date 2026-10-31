@@ -1,4 +1,5 @@
 import {
+  assignGenshinArtifact,
   deleteGenshinArtifacts,
   deserializeGenshinData,
   EMPTY_GENSHIN_DATA,
@@ -34,7 +35,8 @@ type GenshinStore = GenshinData & {
   // Adds a character by hand or changes their level, constellation or weapon, see saveGenshinCharacter
   saveCharacter: (details: GenshinCharacterDetails) => void,
   // Adds or edits an artifact by hand, or deletes artifacts, see saveGenshinArtifact / deleteGenshinArtifacts
-  saveArtifact: (artifact: Artifact) => void,
+  // owner (the editor's Equipped by): a character id puts it on them, null takes it off, undefined leaves it
+  saveArtifact: (artifact: Artifact, owner?: string | null) => void,
   deleteArtifacts: (ids: string[]) => void,
   clear: () => void,
 }
@@ -69,9 +71,10 @@ export const useGenshinStore = create<GenshinStore>()((set, get) => ({
     set(data)
   },
 
-  saveArtifact: (artifact) => {
+  saveArtifact: (artifact, owner) => {
     const { artifacts, characters } = get()
-    const data = saveGenshinArtifact({ artifacts, characters }, artifact)
+    const saved = saveGenshinArtifact({ artifacts, characters }, artifact)
+    const data = owner === undefined ? saved : assignGenshinArtifact(saved, artifact.id, owner)
     save(data)
     set(data)
   },

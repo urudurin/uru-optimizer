@@ -607,8 +607,322 @@ export function defaultEffectSetting(effect: WuwaCombatEffect): boolean | number
 }
 
 export function resolveWuwaCombat(charId: string, sequence: number, settings: Record<string, boolean | number>): WuwaResolvedCombat {
+  return resolveEffects(KIT_EFFECTS[charId] ?? [], sequence, settings)
+}
+
+// Full-set (5-piece, or 3 / 1 for the smaller sets) Sonata effects for the wearer, from the datamine's 3.7
+// phantomfetter text (EffectDescription with its parameters, Oct 31 2026). Only stat bonuses for the wearer are
+// modelled: effects that buff the incoming Resonator (Moonlit Clouds, Midnight Veil, Pact of Neonlight Leap), add hits
+// (Midnight Veil), raise Outro, Echo Skill or Coordinated Attack DMG (Lingering Tunes, Dream of the Lost, Law of
+// Harmony, Empyrean Anthem) or Tune Break Boost (Reel of Spliced Memories) are left out. Like the kits, conditions
+// start met unless the effect is situational (offByDefault). They count per loadout only when its set is complete
+// (different echoes), and only when ranking by rotation damage
+const stackOf = (setting: boolean | number) => stacks(setting)
+export const SET_FULL_EFFECTS: Record<string, WuwaCombatEffect[]> = {
+  'freezing-frost': [{
+    id: 'set-freezing-frost',
+    label: 'Freezing Frost 5pc: Glacio DMG +10% per stack after Basic or Heavy Attacks, up to 3',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 3 },
+    bonus: ({ setting }) => ({ glacioDmg: 10 * stackOf(setting) }),
+    confidence: 'sourced',
+  }],
+  'molten-rift': [{
+    id: 'set-molten-rift',
+    label: 'Molten Rift 5pc: Fusion DMG +30% for 15s after Resonance Skill',
+    toggle: { kind: 'switch', label: 'After Resonance Skill' },
+    bonus: () => ({ fusionDmg: 30 }),
+    confidence: 'sourced',
+  }],
+  'void-thunder': [{
+    id: 'set-void-thunder',
+    label: 'Void Thunder 5pc: Electro DMG +15% per stack after Heavy Attack or Resonance Skill, up to 2',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 2 },
+    bonus: ({ setting }) => ({ electroDmg: 15 * stackOf(setting) }),
+    confidence: 'sourced',
+  }],
+  'sierra-gale': [{
+    id: 'set-sierra-gale',
+    label: 'Sierra Gale 5pc: Aero DMG +30% for 15s after Intro Skill',
+    toggle: { kind: 'switch', label: 'After Intro' },
+    bonus: () => ({ aeroDmg: 30 }),
+    confidence: 'sourced',
+  }],
+  'celestial-light': [{
+    id: 'set-celestial-light',
+    label: 'Celestial Light 5pc: Spectro DMG +30% for 15s after Intro Skill',
+    toggle: { kind: 'switch', label: 'After Intro' },
+    bonus: () => ({ spectroDmg: 30 }),
+    confidence: 'sourced',
+  }],
+  'havoc-eclipse': [{
+    id: 'set-havoc-eclipse',
+    label: 'Havoc Eclipse 5pc: Havoc DMG +7.5% per stack after Basic or Heavy Attacks, up to 4',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 4 },
+    bonus: ({ setting }) => ({ havocDmg: 7.5 * stackOf(setting) }),
+    confidence: 'sourced',
+  }],
+  'rejuvenating-glow': [{
+    id: 'set-rejuvenating-glow',
+    label: 'Rejuvenating Glow 5pc: party ATK +15% for 30s after healing',
+    toggle: { kind: 'switch', label: 'After healing' },
+    bonus: () => ({ atkPct: 15 }),
+    confidence: 'sourced',
+  }],
+  'lingering-tunes': [{
+    id: 'set-lingering-tunes',
+    label: 'Lingering Tunes 5pc: ATK +5% every 1.5s on the field, up to 4 stacks (its Outro Skill DMG +60% isn\'t counted)',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 4 },
+    bonus: ({ setting }) => ({ atkPct: 5 * stackOf(setting) }),
+    confidence: 'sourced',
+  }],
+  'frosty-resolve': [
+    {
+      id: 'set-frosty-resolve-glacio',
+      label: 'Frosty Resolve 5pc: Glacio DMG +22.5% for 15s after Resonance Skill',
+      toggle: { kind: 'switch', label: 'After Resonance Skill' },
+      bonus: () => ({ glacioDmg: 22.5 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'set-frosty-resolve-skill',
+      label: 'Frosty Resolve 5pc: Resonance Skill DMG +18% per stack for 5s after Resonance Liberation, up to 2',
+      toggle: { kind: 'stacks', label: 'Stacks', max: 2 },
+      bonus: ({ setting }) => ({ skillDmg: 18 * stackOf(setting) }),
+      confidence: 'sourced',
+    },
+  ],
+  'eternal-radiance': [
+    {
+      id: 'set-eternal-radiance-crit',
+      label: 'Eternal Radiance 5pc: Crit Rate +20% for 15s after inflicting Spectro Frazzle',
+      toggle: { kind: 'switch', label: 'After Spectro Frazzle' },
+      bonus: () => ({ critRate: 20 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'set-eternal-radiance-spectro',
+      label: 'Eternal Radiance 5pc: Spectro DMG +15% for 15s after hitting a target with 10 Spectro Frazzle stacks',
+      toggle: { kind: 'switch', label: '10 Frazzle stacks' },
+      bonus: () => ({ spectroDmg: 15 }),
+      confidence: 'sourced',
+    },
+  ],
+  'tidebreaking-courage': [
+    {
+      id: 'set-tidebreaking-courage-atk',
+      label: 'Tidebreaking Courage 5pc: ATK +15%',
+      bonus: () => ({ atkPct: 15 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'set-tidebreaking-courage-dmg',
+      label: 'Tidebreaking Courage 5pc: every Attribute DMG +30% at 250% Energy Regen',
+      toggle: { kind: 'switch', label: 'Energy Regen 250%+' },
+      offByDefault: true,
+      bonus: () => ({ glacioDmg: 30, fusionDmg: 30, electroDmg: 30, aeroDmg: 30, spectroDmg: 30, havocDmg: 30 }),
+      confidence: 'sourced',
+    },
+  ],
+  'gusts-of-welkin': [{
+    id: 'set-gusts-of-welkin',
+    label: 'Gusts of Welkin 5pc: Aero DMG +30% for the triggering Resonator (15% team + 15%) for 20s after inflicting Aero Erosion',
+    toggle: { kind: 'switch', label: 'After Aero Erosion' },
+    bonus: () => ({ aeroDmg: 30 }),
+    confidence: 'sourced',
+  }],
+  'windward-pilgrimage': [{
+    id: 'set-windward-pilgrimage',
+    label: 'Windward Pilgrimage 5pc: Crit Rate +10% and Aero DMG +30% for 10s after hitting a target with Aero Erosion',
+    toggle: { kind: 'switch', label: 'Target has Aero Erosion' },
+    bonus: () => ({ critRate: 10, aeroDmg: 30 }),
+    confidence: 'sourced',
+  }],
+  'flaming-clawprint': [{
+    id: 'set-flaming-clawprint',
+    label: 'Flaming Clawprint 5pc: Fusion DMG +15% and Resonance Liberation DMG +20% for 35s after Resonance Liberation',
+    toggle: { kind: 'switch', label: 'After Liberation' },
+    bonus: () => ({ fusionDmg: 15, libDmg: 20 }),
+    confidence: 'sourced',
+  }],
+  'dream-of-the-lost': [{
+    id: 'set-dream-of-the-lost',
+    label: 'Dream of the Lost 3pc: Crit Rate +20% at 0 Resonance Energy (its Echo Skill DMG +35% isn\'t counted)',
+    toggle: { kind: 'switch', label: '0 Resonance Energy' },
+    bonus: () => ({ critRate: 20 }),
+    confidence: 'sourced',
+  }],
+  'crown-of-valor': [{
+    id: 'set-crown-of-valor',
+    label: 'Crown of Valor 3pc: ATK +6% and Crit DMG +4% per stack for 4s after gaining a Shield, up to 5',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 5 },
+    bonus: ({ setting }) => ({ atkPct: 6 * stackOf(setting), critDmg: 4 * stackOf(setting) }),
+    confidence: 'sourced',
+  }],
+  'law-of-harmony': [{
+    id: 'set-law-of-harmony',
+    label: 'Law of Harmony 3pc: Heavy Attack DMG +30% for 4s after Echo Skill (its team Echo Skill DMG isn\'t counted)',
+    toggle: { kind: 'switch', label: 'After Echo Skill' },
+    bonus: () => ({ heavyDmg: 30 }),
+    confidence: 'sourced',
+  }],
+  'flamewings-shadow': [{
+    id: 'set-flamewings-shadow',
+    label: 'Flamewing\'s Shadow 3pc: Fusion DMG +16% while both its Crit Rate effects are up (the Heavy Attack and Echo Skill Crit Rate isn\'t counted)',
+    toggle: { kind: 'switch', label: 'Both effects up' },
+    bonus: () => ({ fusionDmg: 16 }),
+    confidence: 'sourced',
+  }],
+  'thread-of-severed-fate': [{
+    id: 'set-thread-of-severed-fate',
+    label: 'Thread of Severed Fate 3pc: ATK +20% and Resonance Liberation DMG +30% for 5s after inflicting Havoc Bane',
+    toggle: { kind: 'switch', label: 'After Havoc Bane' },
+    bonus: () => ({ atkPct: 20, libDmg: 30 }),
+    confidence: 'sourced',
+  }],
+  'halo-of-starry-radiance': [{
+    id: 'set-halo-of-starry-radiance',
+    label: 'Halo of Starry Radiance 5pc: team ATK +0.2% per 1% Off-Tune Buildup Rate for 4s after healing, up to 25% (counted at the cap)',
+    toggle: { kind: 'switch', label: 'After healing, at the cap' },
+    offByDefault: true,
+    bonus: () => ({ atkPct: 25 }),
+    confidence: 'sourced',
+  }],
+  'rite-of-gilded-revelation': [
+    {
+      id: 'set-rite-of-gilded-revelation-spectro',
+      label: 'Rite of Gilded Revelation 5pc: Spectro DMG +10% per stack for 5s after Basic Attack DMG, up to 3',
+      toggle: { kind: 'stacks', label: 'Stacks', max: 3 },
+      bonus: ({ setting }) => ({ spectroDmg: 10 * stackOf(setting) }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'set-rite-of-gilded-revelation-basic',
+      label: 'Rite of Gilded Revelation 5pc: Basic Attack DMG +40% after Resonance Liberation with 3 stacks',
+      toggle: { kind: 'switch', label: 'Liberation at 3 stacks' },
+      bonus: () => ({ basicDmg: 40 }),
+      confidence: 'sourced',
+    },
+  ],
+  'trailblazing-star': [{
+    id: 'set-trailblazing-star',
+    label: 'Trailblazing Star 5pc: Crit Rate +20% and Fusion DMG +20% for 8s after inflicting Fusion Burst or Tune Rupture - Shifting',
+    toggle: { kind: 'switch', label: 'After Fusion Burst or Tune Rupture' },
+    bonus: () => ({ critRate: 20, fusionDmg: 20 }),
+    confidence: 'sourced',
+  }],
+  'chromatic-foam': [{
+    id: 'set-chromatic-foam',
+    label: 'Chromatic Foam 5pc: Fusion DMG +10% for 15s after inflicting Fusion Burst (the incoming Resonator\'s 25% isn\'t counted)',
+    toggle: { kind: 'switch', label: 'After Fusion Burst' },
+    bonus: () => ({ fusionDmg: 10 }),
+    confidence: 'sourced',
+  }],
+  'sound-of-true-name': [{
+    id: 'set-sound-of-true-name',
+    label: 'Sound of True Name 5pc: Aero DMG +15% for 5s after Echo Skill DMG (its Echo Skill Crit Rate isn\'t counted)',
+    toggle: { kind: 'switch', label: 'After Echo Skill DMG' },
+    bonus: () => ({ aeroDmg: 15 }),
+    confidence: 'sourced',
+  }],
+  'wishes-of-quiet-snowfall': [
+    {
+      id: 'set-wishes-of-quiet-snowfall-glacio',
+      label: 'Wishes of Quiet Snowfall 5pc: Glacio DMG +10% for 15s after inflicting Glacio Chafe',
+      toggle: { kind: 'switch', label: 'After Glacio Chafe' },
+      bonus: () => ({ glacioDmg: 10 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'set-wishes-of-quiet-snowfall-crit',
+      label:
+        'Wishes of Quiet Snowfall 5pc: Snowfall: Crit Rate +25% after Resonance Liberation DMG (or the incoming Resonator\'s Glacio DMG +25% from an Outro, not counted)',
+      toggle: { kind: 'switch', label: 'Snowfall used on Liberation' },
+      bonus: () => ({ critRate: 25 }),
+      confidence: 'sourced',
+    },
+  ],
+  'shadow-of-shattered-dreams': [{
+    id: 'set-shadow-of-shattered-dreams',
+    label: 'Shadow of Shattered Dreams 1pc: Basic and Heavy Attack DMG +35% for 15s after inflicting Hack - Shifting',
+    toggle: { kind: 'switch', label: 'After Hack - Shifting' },
+    bonus: () => ({ basicDmg: 35, heavyDmg: 35 }),
+    confidence: 'sourced',
+  }],
+  'song-of-feathered-trace': [
+    {
+      id: 'set-song-of-feathered-trace-xuanling',
+      label: 'Song of Feathered Trace 5pc: Xuanling\'s Feather, Crit Rate +20% and Heavy Attack DMG +35% for 15s after inflicting Havoc Bane',
+      toggle: { kind: 'switch', label: 'After Havoc Bane' },
+      bonus: () => ({ critRate: 20, heavyDmg: 35 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'set-song-of-feathered-trace-chongming',
+      label:
+        'Song of Feathered Trace 5pc: Chongming\'s Feather, team ATK +0.1% per 1% Energy Regen for 10s after inflicting Glacio Chafe, up to 25% (counted at the cap)',
+      toggle: { kind: 'switch', label: 'After Glacio Chafe, at the cap' },
+      offByDefault: true,
+      bonus: () => ({ atkPct: 25 }),
+      confidence: 'sourced',
+    },
+  ],
+  'heart-of-evils-purge': [{
+    id: 'set-heart-of-evils-purge',
+    label: 'Heart of Evil\'s Purge 5pc: Crit DMG +20% and Aero DMG +30% for 15s after inflicting Tune Strain - Shifting',
+    toggle: { kind: 'switch', label: 'After Tune Strain - Shifting' },
+    bonus: () => ({ critDmg: 20, aeroDmg: 30 }),
+    confidence: 'sourced',
+  }],
+  'lamp-of-nether-road': [{
+    id: 'set-lamp-of-nether-road',
+    label: 'Lamp of Nether Road 5pc: Crit Rate +5% per stack for 5s after gaining a Shield, up to 4; Fusion DMG +15% at 4',
+    toggle: { kind: 'stacks', label: 'Stacks', max: 4 },
+    bonus: ({ setting }) => ({ critRate: 5 * stackOf(setting), ...(stackOf(setting) >= 4 ? { fusionDmg: 15 } : {}) }),
+    confidence: 'sourced',
+  }],
+  'heart-of-sworn-vigil': [{
+    id: 'set-heart-of-sworn-vigil',
+    label: 'Heart of Sworn Vigil 5pc: Crit Rate +15% and Electro DMG +22.5% for 30s after inflicting Electro Flare or getting Unison',
+    toggle: { kind: 'switch', label: 'After Electro Flare or Unison' },
+    bonus: () => ({ critRate: 15, electroDmg: 22.5 }),
+    confidence: 'sourced',
+  }],
+  'flash-of-electric-reflection': [{
+    id: 'set-flash-of-electric-reflection',
+    label: 'Flash of Electric Reflection 5pc: Electro DMG +10% for 15s after inflicting Electro Flare (the incoming Resonator\'s 25% isn\'t counted)',
+    toggle: { kind: 'switch', label: 'After Electro Flare' },
+    bonus: () => ({ electroDmg: 10 }),
+    confidence: 'sourced',
+  }],
+  'flower-of-tinged-yearning': [{
+    id: 'set-flower-of-tinged-yearning',
+    label: 'Flower of Tinged Yearning 5pc: team ATK +10% for 30s after healing, +15% more with Unison',
+    toggle: { kind: 'stacks', label: '1 after healing, 2 with Unison', max: 2 },
+    bonus: ({ setting }) => ({ atkPct: stackOf(setting) >= 2 ? 25 : stackOf(setting) >= 1 ? 10 : 0 }),
+    confidence: 'sourced',
+  }],
+}
+
+export type WuwaResolvedSets = {
+  // The effects of the sets asked for (shown on the card)
+  applied: WuwaAppliedEffect[],
+  // Every set's full-set bonus with these settings, for the search to add to loadouts that complete the set
+  bonusBySet: Record<string, Bonus>,
+}
+
+export function resolveWuwaSetEffects(shownSets: string[], sequence: number, settings: Record<string, boolean | number>): WuwaResolvedSets {
+  const bonusBySet: Record<string, Bonus> = {}
+  for (const [setId, effects] of Object.entries(SET_FULL_EFFECTS)) {
+    const bonus = resolveEffects(effects, sequence, settings).bonus
+    if (Object.values(bonus).some((value) => value)) bonusBySet[setId] = bonus
+  }
+  const applied = shownSets.flatMap((setId) => resolveEffects(SET_FULL_EFFECTS[setId] ?? [], sequence, settings).applied)
+  return { applied, bonusBySet }
+}
+
+function resolveEffects(effects: WuwaCombatEffect[], sequence: number, settings: Record<string, boolean | number>): WuwaResolvedCombat {
   const resolved: WuwaResolvedCombat = { applied: [], bonus: {}, amplify: {}, defIgnore: 0, resShred: 0, lineScale: [] }
-  for (const effect of KIT_EFFECTS[charId] ?? []) {
+  for (const effect of effects) {
     const setting = settings[effect.id] ?? defaultEffectSetting(effect)
     if ((effect.minSequence ?? 0) > sequence) {
       resolved.applied.push({ effect, setting, counted: false, reason: `Needs Sequence ${effect.minSequence}` })

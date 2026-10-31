@@ -46,6 +46,8 @@ export type GearKind<T> = {
   formatValue: (stat: string, value: number) => string,
   statLabel: (stat: string) => string,
   ownerOf: (item: T) => string | undefined,
+  // Who can wear a piece, for the editor's Equipped by (saved characters; ZZZ agents with a build)
+  owners?: () => GearOption[],
   ownerName: (id: string) => string,
   score: (item: T) => GearScore | undefined,
   // The piece as a card, for the preview beside the grid

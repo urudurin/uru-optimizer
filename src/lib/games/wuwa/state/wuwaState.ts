@@ -12,6 +12,7 @@ import {
 import {
   type CharacterState,
   type Echo,
+  MAX_LOADOUT_COST,
   MAX_LOADOUT_ECHOES,
   type SavedTeam,
 } from 'lib/games/wuwa/types'
@@ -95,6 +96,37 @@ export function equipWuwaEchoes(data: WuwaData, charId: string, echoes: Echo[]):
       return { ...character, echoIds: character.echoIds.map((id) => (id && ids.has(id) ? null : id)) }
     }),
   }
+}
+
+// Puts one echo on a Resonator or, with null, takes it off whoever wears it: the gear editor's "Equipped by", after
+// HSR's relic editor (lib/overlays/modals/relicModal). Taking it from someone works like the optimizer's Equip
+// WuWa has no slots, so room is made under the 5-echo, 12-cost limits: an echo of the same cost comes off first, then
+// the costliest ones
+export function assignWuwaEcho(data: WuwaData, echoId: string, charId: string | null): WuwaData {
+  const echo = data.echoes.find((e) => e.id === echoId)
+  if (!echo) return data
+  const wearer = data.characters.find((c) => c.echoIds.includes(echoId))?.charId ?? null
+  if (wearer === charId) return data
+  if (!charId) {
+    return {
+      ...data,
+      characters: data.characters.map((c) => (c.charId === wearer ? { ...c, echoIds: c.echoIds.map((id) => (id === echoId ? null : id)) } : c)),
+    }
+  }
+  const character = data.characters.find((c) => c.charId === charId)
+  if (!character) return data
+  const byId = new Map(data.echoes.map((e) => [e.id, e]))
+  let worn = character.echoIds.flatMap((id) => (id && byId.has(id) ? [byId.get(id)!] : []))
+  const fits = (list: Echo[]) => list.length < MAX_LOADOUT_ECHOES && list.reduce((sum, e) => sum + e.cost, 0) + echo.cost <= MAX_LOADOUT_COST
+  if (!fits(worn)) {
+    const same = worn.findIndex((e) => e.cost === echo.cost)
+    if (same >= 0) worn = worn.filter((_, i) => i !== same)
+  }
+  while (!fits(worn) && worn.length > 0) {
+    const costliest = worn.reduce((a, b) => (b.cost > a.cost ? b : a))
+    worn = worn.filter((e) => e !== costliest)
+  }
+  return equipWuwaEchoes(data, charId, [...worn, echo])
 }
 
 // Adds a Resonator by hand, or updates the details of one already saved. Their echoes stay as they are

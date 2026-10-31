@@ -60,7 +60,10 @@ import {
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
-import { resolveWuwaCombat } from 'lib/games/wuwa/damage/combatEffects'
+import {
+  resolveWuwaCombat,
+  resolveWuwaSetEffects,
+} from 'lib/games/wuwa/damage/combatEffects'
 import { KIT_EFFECTS } from 'lib/games/wuwa/damage/combatEffects'
 import {
   type DamageSetup,
@@ -96,6 +99,7 @@ import {
   type EchoTarget,
   filterPool,
   targetLabel,
+  withFullSets,
   wuwaStatLabel,
 } from 'lib/games/wuwa/optimizer/echoOptimizer'
 import {
@@ -341,6 +345,13 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
       combatBonus[stat] = (combatBonus[stat] ?? 0) + value
     }
   }
+  // Full-set Sonata effects: every set's bonus goes to the search (loadouts that complete it get it); the card shows the
+  // Full set filter's set and the complete sets in the current and picked loadouts
+  const completeSets = (list: Echo[]) => [...setPieceCounts(list)].filter(([id, count]) => count >= (SONATA_SETS[id]?.fullPieces ?? 5)).map(([id]) => id)
+  const pickedEchoes = result?.outcome.ok ? result.outcome.builds[selected]?.echoes ?? [] : []
+  const shownSets = [...new Set([...(fullSet ? [fullSet] : []), ...completeSets(wornEchoes), ...completeSets(pickedEchoes)])]
+  const setEffects = resolveWuwaSetEffects(shownSets, character.sequence, combatSettings)
+  const fullSetBonus = byDamage ? setEffects.bonusBySet : undefined
   const damageSetup = {
     charId: character.charId,
     characterLevel: character.level,
@@ -361,7 +372,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const target: EchoTarget = byDamage ? { kind: 'damage', setup: damageSetup } : wuwaTarget(targetValue)
   // The current loadout's rotation damage, for the Rotation card
   const currentDamage = hasSkillData(character.charId) && wornEchoes.length > 0
-    ? rotationDamage(computeWuwaStats(character, wornEchoes, combatBonus).stats, damageSetup)
+    ? rotationDamage(computeWuwaStats(character, wornEchoes, withFullSets(combatBonus, wornEchoes, fullSetBonus)).stats, damageSetup)
     : undefined
   // A complete 5-piece set leaves no room for a 2-piece set, a 3-piece set leaves room for one
   const fullSetPieces = fullSet ? (SONATA_SETS[fullSet]?.fullPieces ?? 5) : 0
@@ -390,6 +401,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
       minStats,
       maxStats,
       teamBonus: combatBonus,
+      fullSetBonus,
       target,
       limit: resultLimitOf(resultLimit),
     }, setProgress)
@@ -631,6 +643,17 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                   setResult(undefined)
                 }}
               />
+              <KitEffectsCard
+                name={characterName(character.charId)}
+                title='Set effects'
+                description='Full-set Sonata effects, counted for every loadout that completes its set with different echoes, only when ranking by rotation damage. Shown for the Full set filter and the complete sets in the current and picked loadouts.'
+                emptyText='Pick a set under Full set, or a loadout with a complete set, to see its effects.'
+                applied={setEffects.applied}
+                onSetting={(id, value) => {
+                  setCombatSettings((current) => ({ ...current, [id]: value }))
+                  setResult(undefined)
+                }}
+              />
             </FormRow>
           </FormRows>
           <KitDisclaimer name={characterName(character.charId)} effects={KIT_EFFECTS[character.charId]} byDamage={byDamage} />
@@ -738,7 +761,12 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                   format: (value: number) => formatValue(stat, value),
                 })),
               ]}
-              upgrades={wuwaSubstatUpgrades(character, build.echoes, result.target, result.target.kind === 'damage' ? combatBonus : teamResult.bonus)}
+              upgrades={wuwaSubstatUpgrades(
+                character,
+                build.echoes,
+                result.target,
+                result.target.kind === 'damage' ? withFullSets(combatBonus, build.echoes, fullSetBonus) : teamResult.bonus,
+              )}
               breakdown={result.target.kind === 'damage' ? wuwaBreakdown(result.target.setup, build.stats) : undefined}
               scoreLabel={targetLabel(result.target)}
               onPin={(cells) => pins.pin(`#${selected + 1} · ${formatScore(result.target, build.score)}`, cells)}

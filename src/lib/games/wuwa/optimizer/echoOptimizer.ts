@@ -20,6 +20,7 @@ import {
   echoStats,
   finalizeWuwaStats,
   prepareWuwaCharacter,
+  setPieceCounts,
   sonataBonus,
   type WuwaStats,
 } from 'lib/games/wuwa/stats/computeStats'
@@ -79,6 +80,9 @@ export type EchoRequest = {
   maxStats?: Partial<Record<keyof WuwaStats, number>>,
   // What teammates give the Resonator (team/teamBuffs.ts), the same for every loadout
   teamBonus?: Bonus,
+  // Full-set combat bonuses by set (damage/combatEffects.ts SET_FULL_EFFECTS), added to loadouts that complete the set
+  // with different echoes. Only sent when ranking by rotation damage
+  fullSetBonus?: Record<string, Bonus>,
   target: EchoTarget,
   limit: number,
   // Called now and then while searching (added by the worker, never sent to it)
@@ -202,6 +206,25 @@ function fullPieces(setId: string): number {
   return SONATA_SETS[setId]?.fullPieces ?? 5
 }
 
+function addBonus(sum: Bonus, bonus: Bonus | undefined) {
+  for (const [stat, value] of Object.entries(bonus ?? {}) as [keyof Bonus, number][]) sum[stat] = (sum[stat] ?? 0) + value
+}
+
+// teamBonus plus the full-set bonuses of the sets these echoes complete (only different echoes count)
+export function withFullSets(teamBonus: Bonus | undefined, echoes: Echo[], fullSetBonus: Record<string, Bonus> | undefined): Bonus {
+  const sum: Bonus = { ...teamBonus }
+  if (!fullSetBonus) return sum
+  for (const [setId, count] of setPieceCounts(echoes)) if (count >= fullPieces(setId)) addBonus(sum, fullSetBonus[setId])
+  return sum
+}
+
+// A set's bonus with n different echoes: the on-screen 2-piece and, once complete, its full-set combat bonus
+function setBonusAt(setId: string, pieces: number, fullSetBonus: Record<string, Bonus> | undefined): Bonus {
+  const bonus = { ...sonataBonus(setId, pieces) }
+  if (pieces >= fullPieces(setId)) addBonus(bonus, fullSetBonus?.[setId])
+  return bonus
+}
+
 export function filterPool(request: Pick<EchoRequest, 'character' | 'characters' | 'echoes' | 'filters'>): Echo[] {
   const { character, characters, echoes, filters } = request
   const wornBy = new Map<string, string>()
@@ -218,7 +241,7 @@ function currentBuild(request: EchoRequest): EchoBuild | undefined {
   const byId = new Map(request.echoes.map((echo) => [echo.id, echo]))
   const worn = request.character.echoIds.flatMap((id) => (id && byId.get(id) ? [byId.get(id)!] : []))
   if (worn.length === 0) return undefined
-  const { stats } = computeWuwaStats(request.character, worn, request.teamBonus)
+  const { stats } = computeWuwaStats(request.character, worn, withFullSets(request.teamBonus, worn, request.fullSetBonus))
   return { echoes: worn, stats, score: scoreStats(stats, request.target) }
 }
 
@@ -264,8 +287,8 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
   // Sets that matter get an index, the rest share -1
   const setIds = [...new Set(pool.map((echo) => echo.setId))].filter((id) => {
     if (required.has(id)) return true
-    for (let pieces = 2; pieces <= fullPieces(id); pieces++) {
-      const bonus = toVector(sonataBonus(id, pieces))
+    for (let pieces = 1; pieces <= fullPieces(id); pieces++) {
+      const bonus = toVector(setBonusAt(id, pieces, request.fullSetBonus))
       if (relevant.some((i) => bonus[i] !== 0)) return true
     }
     return false
@@ -275,7 +298,7 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
   }
   const setIndex = new Map(setIds.map((id, i) => [id, i]))
   // bonusAt[s][n] = set s's bonus with n distinct echoes
-  const bonusAt = setIds.map((id) => Array.from({ length: MAX_LOADOUT_ECHOES + 1 }, (_, n) => toVector(sonataBonus(id, n))))
+  const bonusAt = setIds.map((id) => Array.from({ length: MAX_LOADOUT_ECHOES + 1 }, (_, n) => toVector(setBonusAt(id, n, request.fullSetBonus))))
   const requiredIndexes = [...required].map(([id, pieces]) => [setIndex.get(id)!, pieces] as const)
 
   // Only the patterns the pool can fill, and the most echoes of each cost any of them takes
@@ -449,7 +472,7 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
   }
 
   const builds = top.map((entry): EchoBuild => {
-    const { stats } = computeWuwaStats(character, entry.item, request.teamBonus)
+    const { stats } = computeWuwaStats(character, entry.item, withFullSets(request.teamBonus, entry.item, request.fullSetBonus))
     return { echoes: entry.item, stats, score: scoreStats(stats, target) }
   })
 
