@@ -47,7 +47,10 @@ export type SpecialStat =
   | `specialFlat:${SpecialKind}`
   | `specialCritRate:${SpecialKind}`
   | `specialCritDmg:${SpecialKind}`
-export type BuffStat = GenshinStatKey | EnemyDebuffKey | 'lunarBonus' | SpecialStat
+// bloomBonus: Bloom DMG Bonus for the receiver's Bloom reactions (Nilou's Bountiful Cores count as Bloom DMG)
+// hitFlat: flat DMG added to each of the receiver's hits of flatElements, for as many hits as a stacks toggle says (no
+// stacks: every hit) (Shenhe's Icy Quill, Vodyanitsa's Lead Vocal)
+export type BuffStat = GenshinStatKey | EnemyDebuffKey | 'lunarBonus' | 'bloomBonus' | 'hitFlat' | SpecialStat
 
 export function isSpecialStat(stat: BuffStat): stat is SpecialStat {
   return stat.startsWith('special')
@@ -89,6 +92,8 @@ export type TeamBuff = {
   toggle?: BuffToggle,
   // Buffs in the same group don't stack: only the biggest counts (two Noblesse Oblige wearers)
   nonStacking?: string,
+  // For hitFlat: the elements of the hits it reaches
+  flatElements?: DamageElement[],
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
 
@@ -121,6 +126,8 @@ const SHENHE_BURST_RES = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 15, 15, 15, 15, 15
 const XILONEN_SKILL_RES = [9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51]
 const FARUZAN_BURST_ANEMO = [18, 19.35, 20.7, 22.5, 23.85, 25.2, 27, 28.8, 30.6, 32.4, 34.2, 36, 38.25, 40.5, 42.75]
 const GOROU_SKILL_DEF = [206.16, 221.622, 237.084, 257.7, 273.162, 288.624, 309.24, 329.856, 350.472, 371.088, 391.704, 412.32, 438.09, 463.86, 489.63]
+// Shenhe's Icy Quill DMG Bonus, percent of her ATK by Skill level (the user's screenshot: 82.2% at level 10)
+const SHENHE_QUILL_ATK = [45.66, 49.08, 52.5, 57.07, 60.49, 63.92, 68.48, 73.05, 77.62, 82.18, 86.75, 91.31, 97.02, 102.73, 108.43]
 const IANSAN_BURST_ATK_CAP = [330, 370, 410, 450, 490, 530, 570, 610, 650, 690, 730, 770, 810, 850, 890]
 
 const needsAscension = (level: number) => (context: BuffContext) =>
@@ -155,12 +162,13 @@ const LUNAR_KIT_BUFFS: Record<string, TeamBuff[]> = {
   Lauma: [
     {
       id: 'lauma-pale-hymn',
-      label: 'Pale Hymn: Lunar-Bloom DMG added per hit, a share of her Elemental Mastery by her burst level',
+      label:
+        'Pale Hymn: Lunar-Bloom DMG added per hit, a share of her Elemental Mastery by her burst level; one stack per Lunar-Bloom hit (18 from her Burst, 18 more from her hold Skill)',
       target: 'team',
       stage: 'premod',
       stat: 'specialFlat:lunarbloom',
-      value: ({ giver, giverStats }) => (LAUMA_PALE_HYMN_EM[burstLevel(giver, 3) - 1] ?? 0) * (giverStats.elementalMastery ?? 0),
-      toggle: { kind: 'switch', label: 'Pale Hymn stacks' },
+      value: ({ giver, giverStats, setting }) => setting === 0 ? 0 : (LAUMA_PALE_HYMN_EM[burstLevel(giver, 3) - 1] ?? 0) * (giverStats.elementalMastery ?? 0),
+      toggle: { kind: 'stacks', label: 'Pale Hymn stacks', max: () => 36, step: 1 },
       confidence: 'sourced',
     },
     {
@@ -262,6 +270,49 @@ const LUNAR_KIT_BUFFS: Record<string, TeamBuff[]> = {
     value: ({ giver, giverStats }) => (ILLUGA_SONG_EM[burstLevel(giver, 3) - 1] ?? 0) * (giverStats.elementalMastery ?? 0),
     toggle: { kind: 'switch', label: 'During his Burst' },
     confidence: 'sourced',
+  }, {
+    // The A1 and A4 below are from the user's in-game screenshots (Oct 30 2026)
+    id: 'illuga-a4-lunarcrystallize',
+    label:
+      'Demonhunter\'s Dusk: Nightingale\'s Song adds 48/96/160% of his Elemental Mastery to Lunar-Crystallize hits with 1/2/3 Hydro or Geo members (its 7/14/24% on other Geo hits isn\'t counted)',
+    target: 'team',
+    stage: 'premod',
+    stat: 'specialFlat:lunarcrystallize',
+    value: ({ giver, giverStats, setting }) =>
+      ascensionOf(giver) >= 4 && typeof setting === 'number' ? ([0, 0.48, 0.96, 1.6][setting] ?? 0) * (giverStats.elementalMastery ?? 0) : 0,
+    blockedBy: needsAscension(4),
+    toggle: { kind: 'stacks', label: 'Hydro and Geo members', max: () => 3, step: 1 },
+    confidence: 'confirmed',
+  }, {
+    id: 'illuga-a1-crit',
+    label: 'Torchforger\'s Covenant: Lightkeeper\'s Oath, Geo DMG CRIT Rate +5% and CRIT DMG +10% after his Skill or Burst',
+    target: 'others',
+    stage: 'premod',
+    stat: 'critRate',
+    value: (c) => (ascensionOf(c.giver) >= 1 && c.receiver.element === 'Geo' ? 5 : 0),
+    blockedBy: (c) => needsAscension(1)(c) ?? (c.receiver.element === 'Geo' ? undefined : 'Only for Geo DMG (Geo members)'),
+    toggle: { kind: 'switch', label: 'Lightkeeper\'s Oath' },
+    confidence: 'confirmed',
+  }, {
+    id: 'illuga-a1-crit-dmg',
+    label: 'Torchforger\'s Covenant: Lightkeeper\'s Oath, Geo DMG CRIT DMG +10%',
+    target: 'others',
+    stage: 'premod',
+    stat: 'critDmg',
+    value: (c) => (ascensionOf(c.giver) >= 1 && c.receiver.element === 'Geo' ? 10 : 0),
+    blockedBy: (c) => needsAscension(1)(c) ?? (c.receiver.element === 'Geo' ? undefined : 'Only for Geo DMG (Geo members)'),
+    toggle: { kind: 'switch', label: 'Lightkeeper\'s Oath' },
+    confidence: 'confirmed',
+  }, {
+    id: 'illuga-a1-em',
+    label: 'Torchforger\'s Covenant: at Moonsign: Ascendant Gleam, Lightkeeper\'s Oath also gives Elemental Mastery +50',
+    target: 'others',
+    stage: 'premod',
+    stat: 'elementalMastery',
+    value: ({ giver }) => (ascensionOf(giver) >= 1 ? 50 : 0),
+    blockedBy: needsAscension(1),
+    toggle: { kind: 'switch', label: 'Lightkeeper\'s Oath at Ascendant Gleam' },
+    confidence: 'confirmed',
   }],
   Mona: [
     {
@@ -605,6 +656,50 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
   ],
   Shenhe: [
     {
+      id: 'shenhe-quill',
+      label: 'Spring Spirit Summoning: Icy Quill, Cryo hits add a share of Shenhe\'s ATK (82.2% at Skill level 10), for 5 hits after a press or 7 after a hold',
+      target: 'team',
+      stage: 'premod',
+      stat: 'hitFlat',
+      flatElements: ['Cryo'],
+      value: ({ giver, giverStats }) => (giverStats.atk ?? 0) * SHENHE_QUILL_ATK[skillLevel(giver, 3) - 1] / 100,
+      toggle: { kind: 'stacks', label: 'Quill hits (5 press, 7 hold)', max: () => 7, step: 1 },
+      confidence: 'confirmed',
+    },
+    {
+      id: 'shenhe-a4-hold',
+      label: 'Spirit Communion Seal: Normal, Charged and Plunging Attack DMG +15% after her Skill hold',
+      target: 'team',
+      stage: 'premod',
+      stat: 'normalDmg',
+      value: ({ giver }) => (ascensionOf(giver) >= 4 ? 15 : 0),
+      blockedBy: needsAscension(4),
+      toggle: { kind: 'switch', label: 'After her Skill hold', offByDefault: true },
+      confidence: 'confirmed',
+    },
+    {
+      id: 'shenhe-a4-hold-charged',
+      label: 'Spirit Communion Seal: Charged Attack DMG +15% after her Skill hold',
+      target: 'team',
+      stage: 'premod',
+      stat: 'chargedDmg',
+      value: ({ giver }) => (ascensionOf(giver) >= 4 ? 15 : 0),
+      blockedBy: needsAscension(4),
+      toggle: { kind: 'switch', label: 'After her Skill hold', offByDefault: true },
+      confidence: 'confirmed',
+    },
+    {
+      id: 'shenhe-a4-hold-plunging',
+      label: 'Spirit Communion Seal: Plunging Attack DMG +15% after her Skill hold',
+      target: 'team',
+      stage: 'premod',
+      stat: 'plungingDmg',
+      value: ({ giver }) => (ascensionOf(giver) >= 4 ? 15 : 0),
+      blockedBy: needsAscension(4),
+      toggle: { kind: 'switch', label: 'After her Skill hold', offByDefault: true },
+      confidence: 'confirmed',
+    },
+    {
       id: 'shenhe-burst-shred',
       label: 'Divine Maiden\'s Deliverance: the enemy\'s Cryo and Physical RES shred in her field (her Icy Quill\'s flat DMG isn\'t counted)',
       target: 'team',
@@ -683,6 +778,53 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
       confidence: 'sourced',
     },
   ],
+  Vodyanitsa: [
+    {
+      id: 'vodyanitsa-lead-vocal',
+      label:
+        'Dirge of the Fandyr: Lead Vocal, the active member\'s Hydro and Cryo hits add 140 DMG per 1,000 of her Max HP above 40,000 (up to 3,500), for 25 hits',
+      target: 'active',
+      stage: 'premod',
+      stat: 'hitFlat',
+      flatElements: ['Hydro', 'Cryo'],
+      value: ({ giver, giverStats }) => (ascensionOf(giver) >= 4 ? Math.min(3500, Math.max(0, (giverStats.hp ?? 0) - 40000) / 1000 * 140) : 0),
+      blockedBy: needsAscension(4),
+      toggle: { kind: 'stacks', label: 'Lead Vocal hits', max: () => 25, step: 1 },
+      confidence: 'confirmed',
+    },
+    {
+      id: 'vodyanitsa-lead-vocal-swirl',
+      label: 'Dirge of the Fandyr: with a Wandering Vortex, Lead Vocal adds 260 Stellar Swirl DMG per 1,000 of her Max HP above 40,000 (up to 6,500) instead',
+      target: 'active',
+      stage: 'premod',
+      stat: 'specialFlat:stellarswirl',
+      value: ({ giver, giverStats }) => (ascensionOf(giver) >= 4 ? Math.min(6500, Math.max(0, (giverStats.hp ?? 0) - 40000) / 1000 * 260) : 0),
+      blockedBy: needsAscension(4),
+      toggle: { kind: 'switch', label: 'Wandering Vortex', offByDefault: true },
+      confidence: 'confirmed',
+    },
+    {
+      id: 'vodyanitsa-a1-anemo',
+      label: 'The Last Djeguako Songstress: generating or detonating a Wandering Vortex lowers the enemy\'s Anemo RES by 35%',
+      target: 'team',
+      stage: 'premod',
+      stat: 'resShred:Anemo',
+      value: ({ giver }) => (ascensionOf(giver) >= 1 ? 35 : 0),
+      blockedBy: needsAscension(1),
+      toggle: { kind: 'switch', label: 'Wandering Vortex', offByDefault: true },
+      confidence: 'confirmed',
+    },
+  ],
+  YumemizukiMizuki: [{
+    id: 'mizuki-vast-dream',
+    label: 'Vast Be the Dream: in her Dreamdrifter state, Elemental Mastery +10% of hers for the other members',
+    target: 'others',
+    stage: 'premod',
+    stat: 'elementalMastery',
+    value: ({ giverStats }) => 0.1 * (giverStats.elementalMastery ?? 0),
+    toggle: { kind: 'switch', label: 'Mizuki in Dreamdrifter' },
+    confidence: 'confirmed',
+  }],
   Xilonen: [{
     id: 'xilonen-skill-shred',
     label: 'Yohual\'s Scratch: the enemy\'s RES shred for the party\'s Pyro, Hydro, Cryo, Electro (and Geo) elements while a Source Sample is active',
@@ -731,6 +873,30 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
     toggle: { kind: 'stacks', label: 'Seconds into her Burst', max: () => 14, step: 1 },
     confidence: 'sourced',
   }],
+  Nilou: [
+    {
+      id: 'nilou-a1-em',
+      label: 'Court of Dancing Petals: Golden Chalice\'s Bounty, Elemental Mastery +100 after being hit by Dendro attacks (Dendro and Hydro party only)',
+      target: 'team',
+      stage: 'premod',
+      stat: 'elementalMastery',
+      value: ({ giver }) => (ascensionOf(giver) >= 1 ? 100 : 0),
+      blockedBy: needsAscension(1),
+      toggle: { kind: 'switch', label: 'Golden Chalice\'s Bounty, hit by Dendro', offByDefault: true },
+      confidence: 'confirmed',
+    },
+    {
+      id: 'nilou-a4-bloom',
+      label: 'Dreamy Dance of Aeons: Bountiful Core (Bloom) DMG +9% per 1,000 of Nilou\'s Max HP above 30,000 (up to 400%)',
+      target: 'team',
+      stage: 'premod',
+      stat: 'bloomBonus',
+      value: ({ giver, giverStats }) => ascensionOf(giver) >= 4 ? Math.min(400, Math.max(0, (giverStats.hp ?? 0) - 30000) / 1000 * 9) : 0,
+      blockedBy: needsAscension(4),
+      toggle: { kind: 'switch', label: 'Golden Chalice\'s Bounty (Dendro and Hydro party)', offByDefault: true },
+      confidence: 'confirmed',
+    },
+  ],
   Zhongli: [
     {
       id: 'zhongli-shield-shred',

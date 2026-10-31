@@ -232,4 +232,47 @@ describe('hit-specific and weapon combat effects', () => {
     expect(resolveCombat(flins(6), none, new Map()).elevation).toEqual({ lunarcharged: 35 })
     expect(resolveCombat(flins(0), none, new Map()).elevation).toEqual({})
   })
+  it('gives Nefer\'s Veils of Falsehood: Phantasm Performance x1.24 and Burst DMG +37% per Veil at 3 (Burst level 9)', () => {
+    const nefer = character('Nefer', { element: 'Dendro' })
+    expect(resolveCombat(nefer, none, new Map()).premod).toMatchObject({ burstDmg: 3 * 37, elementalMastery: 100 })
+    const phantasm = 'Phantasm Performance 1-Hit DMG (Nefer)'
+    const noVeils = lineDamage(nefer, phantasm, { sets: [], settings: { 'nefer-a1': 0 } })
+    expect(lineDamage(nefer, phantasm) / noVeils).toBeCloseTo(1.24, 6)
+  })
+  it('gives Odette\'s Snow Swan\'s Dream to her Stellar Glimmer reactions, by Burst level', () => {
+    const odette = character('Odette', { element: 'Cryo' })
+    expect(resolveCombat(odette, none, new Map()).reactions).toEqual({ stellarconduct: 46, stellarswirl: 46 })
+    expect(resolveCombat(odette, { sets: [], settings: { 'odette-snow-swan': false } }, new Map()).reactions).toEqual({})
+    // C2 (from the user's screenshot): ATK +7% per Splendor stack, 8 stacks with C1, and Cryo RES -20%
+    const c2 = resolveCombat(character('Odette', { element: 'Cryo', constellation: 2 }), none, new Map())
+    expect(c2.premod.atkPct).toBe(56)
+    expect(c2.debuffs.resShred).toEqual({ Cryo: 20 })
+    expect(resolveCombat(odette, none, new Map()).premod.atkPct ?? 0).toBe(0)
+  })
+  it('adds teammates\' flat DMG per hit to only as many hits as it has triggers (Shenhe\'s Icy Quill)', () => {
+    const ganyu = character('Ganyu', { element: 'Cryo' })
+    const lotus = characterHits('Ganyu').find((h) => h.talent === 'skill')!
+    const setup = (hitFlats?: { flat: number, triggers: number, elements: ('Cryo' | 'Hydro')[] }[]) => ({
+      characterId: ganyu.id,
+      characterLevel: 90,
+      element: ganyu.element,
+      rotation: { counts: { [lotus.key]: 2 }, infusion: false, reaction: 'none' as const, reactionShare: 100 },
+      talents: { auto: 9, skill: 9, burst: 9 },
+      enemy: DEFAULT_ENEMY,
+      debuffs: NO_DEBUFFS,
+      hitFlats,
+    })
+    const none = rotationDamage(stats, setup())
+    const one = rotationDamage(stats, setup([{ flat: 1000, triggers: 1, elements: ['Cryo'] }])) - none
+    const both = rotationDamage(stats, setup([{ flat: 1000, triggers: 7, elements: ['Cryo'] }])) - none
+    expect(one).toBeGreaterThan(0)
+    expect(both / one).toBeCloseTo(2, 6)
+    // A Hydro flat doesn't reach Cryo hits
+    expect(rotationDamage(stats, setup([{ flat: 1000, triggers: 7, elements: ['Hydro'] }]))).toBeCloseTo(none, 6)
+  })
+
+  it('gives Mizuki Swirl DMG per point of Elemental Mastery in Dreamdrifter (0.42% at Skill level 9)', () => {
+    const mizuki = character('YumemizukiMizuki', { element: 'Anemo' })
+    expect(resolveCombat(mizuki, none, new Map()).reactionsPerEm).toEqual({ swirl: 0.42, stellarswirl: expect.closeTo(0.042, 6) })
+  })
 })

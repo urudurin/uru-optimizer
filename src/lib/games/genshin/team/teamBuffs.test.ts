@@ -211,4 +211,41 @@ describe('team buffs', () => {
     const pyroWithGorou = teamBuffsFor(xiangling, setup(['Gorou']), { characters: [xiangling, gorou], artifacts: [] })
     expect(pyroWithGorou.applied.find((a) => a.buff.id === 'gorou-c6')?.reason).toBe('Only for Geo members')
   })
+  it('gives Nilou\'s Bountiful Core Bloom DMG from her HP above 30,000, once Golden Chalice\'s Bounty is switched on', () => {
+    const nilou = character('Nilou', { element: 'Hydro' })
+    const off = teamBuffsFor(xiangling, setup(['Nilou']), { characters: [xiangling, nilou], artifacts: [] })
+    expect(off.bloomBonus).toBe(0)
+    const on = teamBuffsFor(xiangling, setup(['Nilou'], { settings: { 'Nilou:nilou-a4-bloom': true } }), { characters: [xiangling, nilou], artifacts: [] })
+    const hp = on.applied.find((a) => a.buff.id === 'nilou-a4-bloom')!
+    expect(on.bloomBonus).toBe(hp.value)
+    expect(on.bloomBonus).toBeLessThanOrEqual(400)
+  })
+
+  it('gives Illuga\'s Lightkeeper\'s Oath CRIT to Geo members only, and Demonhunter\'s Dusk Lunar-Crystallize DMG from his EM', () => {
+    const illuga = character('Illuga', { element: 'Geo' })
+    const navia = character('Navia', { element: 'Geo' })
+    const forNavia = teamBuffsFor(navia, setup(['Illuga']), { characters: [navia, illuga], artifacts: [] })
+    expect(forNavia.applied.find((a) => a.buff.id === 'illuga-a1-crit')?.value).toBe(5)
+    expect(forNavia.applied.find((a) => a.buff.id === 'illuga-a1-crit-dmg')?.value).toBe(10)
+    const forXiangling = teamBuffsFor(xiangling, setup(['Illuga']), { characters: [xiangling, illuga], artifacts: [] })
+    expect(forXiangling.applied.find((a) => a.buff.id === 'illuga-a1-crit')?.reason).toBe('Only for Geo DMG (Geo members)')
+    const dusk = forNavia.applied.find((a) => a.buff.id === 'illuga-a4-lunarcrystallize')!
+    expect(dusk.value).toBeGreaterThan(0)
+  })
+  it('turns Shenhe\'s Icy Quill into flat DMG for 7 Cryo hits, Lauma\'s Pale Hymn into 36 Lunar-Bloom hits, and needs Vodyanitsa above 40,000 HP', () => {
+    const shenhe = character('Shenhe', { element: 'Cryo' })
+    const ganyu = character('Ganyu', { element: 'Cryo' })
+    const quill = teamBuffsFor(ganyu, setup(['Shenhe']), { characters: [ganyu, shenhe], artifacts: [] })
+    expect(quill.hitFlats).toEqual([{ flat: expect.any(Number), triggers: 7, elements: ['Cryo'] }])
+    expect(quill.hitFlats[0].flat).toBeGreaterThan(0)
+
+    const lauma = character('Lauma', { element: 'Dendro' })
+    const pale = teamBuffsFor(ganyu, setup(['Lauma']), { characters: [ganyu, lauma], artifacts: [] })
+    expect(pale.specialFlatHits.lunarbloom).toBe(36)
+
+    // Without artifacts her Max HP is far below 40,000, so Lead Vocal adds nothing
+    const vodyanitsa = character('Vodyanitsa', { element: 'Hydro' })
+    const lead = teamBuffsFor(ganyu, setup(['Vodyanitsa']), { characters: [ganyu, vodyanitsa], artifacts: [] })
+    expect(lead.hitFlats).toEqual([])
+  })
 })

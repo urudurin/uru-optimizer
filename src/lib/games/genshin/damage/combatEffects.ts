@@ -70,6 +70,8 @@ export type CombatEffect = {
   hits?: (context: CombatContext) => HitBuff[],
   // Elevation of Lunar or Stellar kinds, in percent (damage/damage.ts DamageSetup.elevation)
   elevation?: (context: CombatContext) => Partial<Record<SpecialKind, number>>,
+  // Reaction DMG Bonus per point of Elemental Mastery, in percent (damage/damage.ts DamageSetup.reactionBonusPerEm)
+  reactionsPerEm?: (context: CombatContext) => Partial<Record<ReactionBonusKey, number>>,
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
 
@@ -358,6 +360,22 @@ const KOKOMI_BURST_NORMAL = [4.84, 5.203, 5.566, 6.05, 6.413, 6.776, 7.26, 7.744
 const KOKOMI_BURST_CHARGED = [6.776, 7.284, 7.792, 8.47, 8.978, 9.486, 10.164, 10.842, 11.519, 12.197, 12.874, 13.552, 14.399, 15.246, 16.093]
 const KOKOMI_BURST_SKILL = [7.096, 7.629, 8.161, 8.87, 9.403, 9.935, 10.644, 11.354, 12.064, 12.773, 13.483, 14.193, 15.08, 15.967, 16.854]
 const ALYOSHA_PRECISION_ATK = [11.66, 12.72, 13.78, 14.84, 15.9, 16.96, 18.02, 19.08, 20.14, 21.2, 22.472, 23.744, 25.016, 26.288, 27.56]
+// Nefer's Burst DMG per Veil of Falsehood consumed (genshin-optimizer skillParam; the in-game Skill Attributes), and her
+// Phantasm Performance hits (Veil of Falsehood: +8% per stack, the user's screenshot)
+const NEFER_BURST_PER_VEIL = [13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49, 52, 55]
+const NEFER_PHANTASM = [
+  'Phantasm Performance 1-Hit DMG (Nefer)',
+  'Phantasm Performance 2-Hit DMG (Nefer)',
+  'Phantasm Performance 1-Hit DMG (Shades)',
+  'Phantasm Performance 2-Hit DMG (Shades)',
+  'Phantasm Performance 3-Hit DMG (Shades)',
+]
+// Odette's Snow Swan's Dream Stellar Glimmer DMG Bonus by Burst level (genshin-optimizer skillParam; the effect itself
+// matches the user's screenshot of her Burst)
+const ODETTE_SNOW_SWAN = [14, 18, 22, 26, 30, 34, 38, 42, 46, 50, 54, 58, 62, 66, 70]
+// Mizuki's Dreamdrifter Swirl DMG Bonus per point of Elemental Mastery, percent by Skill level (genshin-optimizer
+// skillParam; Stellar Swirl gets a tenth of it)
+const MIZUKI_SWIRL_PER_EM = [0.18, 0.21, 0.24, 0.27, 0.3, 0.33, 0.36, 0.39, 0.42, 0.45, 0.48, 0.51, 0.54, 0.57, 0.6]
 const MAVUIKA_FLAMESTRIDER_NORMAL = [1, 2, 3, 4, 5].map((n) => `Flamestrider Normal Attack ${n}-Hit DMG`)
 const MAVUIKA_FLAMESTRIDER_CHARGED = ['Flamestrider Charged Attack Cyclic DMG', 'Flamestrider Charged Attack Final DMG']
 
@@ -460,14 +478,22 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
   Nefer: [
     {
       id: 'nefer-a1',
-      label: 'A1: Elemental Mastery +100 at 3 Veils (+200 at 5 from C2), at Moonsign: Ascendant Gleam (her Burst DMG per Veil isn\'t counted)',
+      label:
+        'A Wager of Moonlight: Veils of Falsehood (3, 5 from C2) at Moonsign: Ascendant Gleam: Phantasm Performance x(1 + 8% per Veil), Elemental Mastery +100 at 3 (+200 at 5); her Burst consumes them for Burst DMG per Veil',
       toggle: { kind: 'stacks', label: 'Veils', max: 5 },
       premod: ({ character, setting }) => {
         if (!ascended(character, 1)) return {}
-        const veils = stacks(setting)
-        return { elementalMastery: character.constellation >= 2 && veils >= 5 ? 200 : veils >= 3 ? 100 : 0 }
+        const veils = Math.min(stacks(setting), character.constellation >= 2 ? 5 : 3)
+        return {
+          elementalMastery: veils >= 5 ? 200 : veils >= 3 ? 100 : 0,
+          burstDmg: veils * NEFER_BURST_PER_VEIL[burstLevel(character, 5) - 1],
+        }
       },
-      confidence: 'sourced',
+      hits: ({ character, setting }) => {
+        const veils = Math.min(stacks(setting), character.constellation >= 2 ? 5 : 3)
+        return ascended(character, 1) && veils > 0 ? [{ labels: NEFER_PHANTASM, scale: 0.08 * veils }] : []
+      },
+      confidence: 'confirmed',
     },
     {
       id: 'nefer-c6',
@@ -476,6 +502,24 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
       confidence: 'sourced',
     },
   ],
+  Odette: [{
+    id: 'odette-snow-swan',
+    label: 'Presto: Bluebird Finale: Snow Swan\'s Dream, Stellar Glimmer (Stellar-Conduct and Stellar Swirl) DMG she deals is increased',
+    toggle: { kind: 'switch', label: 'Snow Swan\'s Dream' },
+    reactions: ({ character }) => {
+      const bonus = ODETTE_SNOW_SWAN[burstLevel(character, 5) - 1]
+      return { stellarconduct: bonus, stellarswirl: bonus }
+    },
+    confidence: 'confirmed',
+  }, {
+    id: 'odette-c2',
+    label:
+      'C2: ATK +7% per Marvelous Splendor stack (4, 8 from C1); in Radiance: Stellar Glimmer with her Solo Dance Double out, the enemy\'s Cryo RES -20% (and Electro or Anemo, by the Radiance)',
+    toggle: { kind: 'stacks', label: 'Marvelous Splendor stacks', max: 8 },
+    premod: ({ character, setting }) => character.constellation >= 2 ? { atkPct: 7 * Math.min(stacks(setting), character.constellation >= 1 ? 8 : 4) } : {},
+    debuffs: ({ character }) => (character.constellation >= 2 ? { resShred: { Cryo: 20 } } : {}),
+    confidence: 'confirmed',
+  }],
   Sandrone: [
     {
       id: 'sandrone-a4',
@@ -856,10 +900,20 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
   }],
   YumemizukiMizuki: [{
     id: 'mizuki-a4',
-    label: 'Bright Moon\'s Restless Voice: Elemental Mastery +100 after picking up a Mini Baku',
-    toggle: { kind: 'switch', label: 'Picked up a Mini Baku' },
+    label: 'Thoughts by Day Bring Dreams by Night: in Dreamdrifter, Elemental Mastery +100 when other members hit with Pyro, Hydro, Cryo or Electro attacks',
+    toggle: { kind: 'switch', label: 'Teammates\' elemental hits' },
     premod: ({ character }) => (ascended(character, 4) ? { elementalMastery: 100 } : {}),
-    confidence: 'sourced',
+    confidence: 'confirmed',
+  }, {
+    id: 'mizuki-dreamdrifter',
+    label:
+      'Aisa Utamakura Pilgrimage: in Dreamdrifter, Swirl and Stellar Swirl DMG + a share per point of her Elemental Mastery (0.42% / 0.042% at Skill level 9)',
+    toggle: { kind: 'switch', label: 'Dreamdrifter' },
+    reactionsPerEm: ({ character }) => {
+      const level = skillLevel(character, 3) - 1
+      return { swirl: MIZUKI_SWIRL_PER_EM[level], stellarswirl: MIZUKI_SWIRL_PER_EM[level] / 10 }
+    },
+    confidence: 'confirmed',
   }],
   Durin: [
     {
@@ -1344,6 +1398,7 @@ export type ResolvedCombat = {
   debuffs: { defShred: number, resShred: Partial<Record<Element | 'Physical', number>> },
   hitBuffs: HitBuff[],
   elevation: Partial<Record<SpecialKind, number>>,
+  reactionsPerEm: Partial<Record<ReactionBonusKey, number>>,
 }
 
 export function defaultEffectSetting(effect: CombatEffect): BuffSetting {
@@ -1360,7 +1415,16 @@ export function resolveCombat(character: GenshinCharacter, combat: CombatSetup, 
       (SET_4PC_EFFECTS[id] ?? []).map((effect) => ({ effect, sourceName: '4-piece set' }))
     ),
   ]
-  const resolved: ResolvedCombat = { applied: [], premod: {}, finals: [], reactions: {}, debuffs: { defShred: 0, resShred: {} }, hitBuffs: [], elevation: {} }
+  const resolved: ResolvedCombat = {
+    applied: [],
+    premod: {},
+    finals: [],
+    reactions: {},
+    debuffs: { defShred: 0, resShred: {} },
+    hitBuffs: [],
+    elevation: {},
+    reactionsPerEm: {},
+  }
   for (const { effect, sourceName } of candidates) {
     const setting = combat.settings[effect.id] ?? defaultEffectSetting(effect)
     const counted = on(setting) && !(effect.toggle?.kind === 'stacks' && stacks(setting) === 0)
@@ -1376,6 +1440,9 @@ export function resolveCombat(character: GenshinCharacter, combat: CombatSetup, 
       resolved.reactions[reaction] = (resolved.reactions[reaction] ?? 0) + value
     }
     resolved.hitBuffs.push(...(effect.hits?.(context) ?? []))
+    for (const [key, value] of Object.entries(effect.reactionsPerEm?.(context) ?? {}) as [ReactionBonusKey, number][]) {
+      resolved.reactionsPerEm[key] = (resolved.reactionsPerEm[key] ?? 0) + value
+    }
     for (const [kind, value] of Object.entries(effect.elevation?.(context) ?? {}) as [SpecialKind, number][]) {
       resolved.elevation[kind] = (resolved.elevation[kind] ?? 0) + value
     }

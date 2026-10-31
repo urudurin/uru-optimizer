@@ -352,6 +352,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     // Lunar Reaction DMG from the team (Moonsign: Ascendant Gleam) adds to every Lunar kind
     reactionBonus: {
       ...resolvedCombat.reactions,
+      // Bloom DMG from teammates (Nilou's Bountiful Cores)
+      ...(teamResult.bloomBonus ? { bloom: (resolvedCombat.reactions.bloom ?? 0) + teamResult.bloomBonus } : {}),
       ...Object.fromEntries((['lunarcharged', 'lunarbloom', 'lunarcrystallize'] as const).map((kind) => [
         kind,
         (resolvedCombat.reactions[kind] ?? 0) + teamResult.lunarBonus,
@@ -369,7 +371,10 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     teamReactions: reactionsInTeam,
     baseBonus: teamResult.baseBonus,
     elevation: resolvedCombat.elevation,
+    hitFlats: teamResult.hitFlats,
+    reactionBonusPerEm: resolvedCombat.reactionsPerEm,
     specialFlat: teamResult.specialFlat,
+    specialFlatHits: teamResult.specialFlatHits,
     specialCrit: teamResult.specialCrit,
     // Teammates who can trigger Stellar Swirl, ranked against for its contribution
     stellarContributors: teamResult.members

@@ -2,6 +2,7 @@ import {
   BENEDICTIONS,
   benedictionValue,
   type EnemyDebuffs,
+  type HitFlat,
   moonsignLevel,
   type SpecialKind,
 } from 'lib/games/genshin/damage/damage'
@@ -66,6 +67,10 @@ export type TeamBuffResult = TeamBuffTotals & {
   debuffs: EnemyDebuffs,
   // Lunar Reaction DMG Bonus from Moonsign: Ascendant Gleam, in percent
   lunarBonus: number,
+  // Bloom DMG Bonus from teammates (Nilou), in percent
+  bloomBonus: number,
+  // Flat DMG per hit of some elements, for a number of hits (Shenhe's Icy Quill, Vodyanitsa's Lead Vocal)
+  hitFlats: HitFlat[],
   // The party's Moonsign level, and the Lunar and Stellar Base DMG increase teammates' passives give, by kind
   moonsign: number,
   baseBonus: Partial<Record<SpecialKind, number>>,
@@ -73,6 +78,8 @@ export type TeamBuffResult = TeamBuffTotals & {
   // damage)
   specialBonus: Partial<Record<SpecialKind, number>>,
   specialFlat: Partial<Record<SpecialKind, number>>,
+  // How many hits of a kind get the flat DMG (a stacks toggle on it, Lauma's Pale Hymn)
+  specialFlatHits: Partial<Record<SpecialKind, number>>,
   specialCrit: Partial<Record<SpecialKind, { rate: number, dmg: number }>>,
   // Each teammate's level, element and own stats (for Stellar Swirl contribution ranking)
   members: { id: string, level: number, element?: Element, stats: Partial<Record<GenshinStatKey, number>> }[],
@@ -199,8 +206,11 @@ export function teamBuffsFor(
   const totals: TeamBuffTotals = { premod: {}, total: {} }
   const debuffs: EnemyDebuffs = { defShred: 0, resShred: {} }
   let lunarBonus = 0
+  let bloomBonus = 0
+  const hitFlats: HitFlat[] = []
   const specialBonus: Partial<Record<SpecialKind, number>> = {}
   const specialFlat: Partial<Record<SpecialKind, number>> = {}
+  const specialFlatHits: Partial<Record<SpecialKind, number>> = {}
   const specialCrit: Partial<Record<SpecialKind, { rate: number, dmg: number }>> = {}
   for (const entry of applied) {
     if (!entry.counted || !entry.stat) continue
@@ -208,11 +218,22 @@ export function teamBuffsFor(
       lunarBonus += entry.value
       continue
     }
+    if (entry.stat === 'bloomBonus') {
+      bloomBonus += entry.value
+      continue
+    }
+    if (entry.stat === 'hitFlat') {
+      const triggers = typeof entry.setting === 'number' ? entry.setting : Infinity
+      if (entry.value > 0 && triggers > 0) hitFlats.push({ flat: entry.value, triggers, elements: entry.buff.flatElements ?? [] })
+      continue
+    }
     if (isSpecialStat(entry.stat)) {
       const [field, kind] = entry.stat.split(':') as [string, SpecialKind]
       if (field === 'special') specialBonus[kind] = (specialBonus[kind] ?? 0) + entry.value
-      else if (field === 'specialFlat') specialFlat[kind] = (specialFlat[kind] ?? 0) + entry.value
-      else {
+      else if (field === 'specialFlat') {
+        specialFlat[kind] = (specialFlat[kind] ?? 0) + entry.value
+        if (typeof entry.setting === 'number') specialFlatHits[kind] = Math.max(specialFlatHits[kind] ?? 0, entry.setting)
+      } else {
         const crit = specialCrit[kind] ??= { rate: 0, dmg: 0 }
         if (field === 'specialCritRate') crit.rate += entry.value
         else crit.dmg += entry.value
@@ -239,5 +260,20 @@ export function teamBuffsFor(
     for (const kind of benediction.kinds) baseBonus[kind] = (baseBonus[kind] ?? 0) + value
   }
   const members = givers.map((g) => ({ id: g.character.id, level: g.character.level, element: g.character.element, stats: g.stats }))
-  return { ...totals, debuffs, lunarBonus, moonsign, baseBonus, specialBonus, specialFlat, specialCrit, members, applied, resonance }
+  return {
+    ...totals,
+    debuffs,
+    lunarBonus,
+    bloomBonus,
+    hitFlats,
+    moonsign,
+    baseBonus,
+    specialBonus,
+    specialFlat,
+    specialFlatHits,
+    specialCrit,
+    members,
+    applied,
+    resonance,
+  }
 }

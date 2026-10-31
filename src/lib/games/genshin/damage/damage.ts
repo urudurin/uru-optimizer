@@ -62,6 +62,9 @@ export type TalentHit = {
 }
 
 // Lunar and Stellar damage dealt directly by talents: the reaction it counts as, its factor and the RES it uses
+// Flat DMG added to each hit of some elements, for at most a number of hits in the rotation
+export type HitFlat = { flat: number, triggers: number, elements: DamageElement[] }
+
 export type SpecialKind = 'lunarcharged' | 'lunarbloom' | 'lunarcrystallize' | 'stellarconduct' | 'stellarswirl'
 const SPECIAL: Record<SpecialKind, { pattern: RegExp, factor: number, resist?: DamageElement }> = {
   lunarcharged: { pattern: /Lunar-Charged/, factor: 3, resist: 'Electro' },
@@ -185,8 +188,14 @@ export type DamageSetup = {
   baseBonus?: Partial<Record<SpecialKind, number>>,
   // Elevation per Lunar or Stellar kind, in percent: its own multiplier after CRIT (genshin-optimizer <kind>_specialDmg_)
   elevation?: Partial<Record<SpecialKind, number>>,
+  // Flat DMG teammates add to hits of some elements, up to a number of hits (Shenhe's Icy Quill, Vodyanitsa's Lead Vocal)
+  hitFlats?: HitFlat[],
+  // Reaction DMG Bonus per point of the character's Elemental Mastery, in percent (Mizuki's Dreamdrifter Swirl bonus)
+  reactionBonusPerEm?: Partial<Record<ReactionBonusKey, number>>,
   // Per Lunar or Stellar kind: flat damage added to each hit, and CRIT Rate / CRIT DMG for it, from teammates
   specialFlat?: Partial<Record<SpecialKind, number>>,
+  // How many hits of a kind get that flat DMG, when it runs out (Lauma's Pale Hymn stacks); every hit when left out
+  specialFlatHits?: Partial<Record<SpecialKind, number>>,
   specialCrit?: Partial<Record<SpecialKind, { rate: number, dmg: number }>>,
   // Stellar Swirl contribution scores of the teammates who can trigger it (stellarContribution)
   stellarContributors?: number[],
@@ -466,15 +475,17 @@ export type PreparedDamage = {
   def: number,
   reactionShare: number,
   // count and res for flat damage per hit; contribution for Stellar Swirl lines
-  transformative: { base: number, bonus: number, special: boolean, kind?: SpecialKind, count: number, res: number, contribution: boolean }[],
+  transformative: { base: number, bonus: number, perEm: number, special: boolean, kind?: SpecialKind, count: number, res: number, contribution: boolean }[],
   special: { terms: [ScalingStat, number][], bonus: number, kind: SpecialKind, hits: number, res: number }[],
   specialFlat: Partial<Record<SpecialKind, number>>,
+  specialFlatHits: Partial<Record<SpecialKind, number>>,
   specialCrit: Partial<Record<SpecialKind, { rate: number, dmg: number }>>,
   stellarContributors: number[],
   characterLevel: number,
   // The Base DMG increase per Lunar or Stellar kind: from teammates, and the character's own passive
   baseBonus: Partial<Record<SpecialKind, number>>,
   elevation: Partial<Record<SpecialKind, number>>,
+  hitFlats: HitFlat[],
   ownBenediction?: Benediction,
 }
 
@@ -642,6 +653,7 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     transformative.push({
       base,
       bonus: reactionBonus(bonusKey),
+      perEm: (setup.reactionBonusPerEm?.[bonusKey] ?? 0) / 100,
       special: !!TRANSFORMATIVE[line.reaction].special,
       kind,
       count,
@@ -672,8 +684,10 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     special: specialGroups,
     baseBonus: setup.baseBonus ?? {},
     elevation: setup.elevation ?? {},
+    hitFlats: setup.hitFlats ?? [],
     ownBenediction: BENEDICTIONS[setup.characterId],
     specialFlat: setup.specialFlat ?? {},
+    specialFlatHits: setup.specialFlatHits ?? {},
     specialCrit: setup.specialCrit ?? {},
     stellarContributors: setup.stellarContributors ?? [],
     characterLevel: setup.characterLevel,
@@ -686,9 +700,15 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
   const critDmg = get('critDmg')
   const allDmg = get('allDmg')
   let total = 0
+  // Flat DMG per hit from teammates, spread over the hits of its elements, at most its trigger count of them
+  const flatShares = prepared.hitFlats.map((hitFlat) => {
+    const hits = prepared.groups.reduce((sum, group) => sum + (hitFlat.elements.includes(group.element) ? group.hits : 0), 0)
+    return { elements: hitFlat.elements, share: hits > 0 ? hitFlat.flat * Math.min(1, hitFlat.triggers / hits) : 0 }
+  })
   for (const group of prepared.groups) {
     let base = 0
     for (const [stat, multiplier] of group.terms) base += multiplier / 100 * get(stat)
+    for (const flat of flatShares) if (flat.share > 0 && flat.elements.includes(group.element)) base += group.hits * flat.share
     if (group.catalyze > 0) {
       const em = get('elementalMastery')
       base += prepared.reactionShare * group.hits * group.catalyze * (1 + 5 * em / (em + 1200) + group.reactionBonus)
@@ -727,14 +747,25 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
       if (!extra) return crit
       return 1 + Math.min(Math.max(critRate + extra.rate, 0), 100) / 100 * (critDmg + extra.dmg) / 100
     }
-    const flatFor = (kind: SpecialKind | undefined) => (kind ? prepared.specialFlat[kind] ?? 0 : 0)
+    // Flat DMG per hit, spread over the kind's hits when only some of them get it
+    const kindHits = (kind: SpecialKind) =>
+      prepared.transformative.reduce((sum, r) => sum + (r.special && r.kind === kind ? r.count : 0), 0)
+      + prepared.special.reduce((sum, g) => sum + (g.kind === kind ? g.hits : 0), 0)
+    const flatFor = (kind: SpecialKind | undefined) => {
+      if (!kind) return 0
+      const flat = prepared.specialFlat[kind] ?? 0
+      const cap = prepared.specialFlatHits[kind]
+      if (!flat || cap === undefined) return flat
+      const hits = kindHits(kind)
+      return hits > 0 ? flat * Math.min(1, cap / hits) : 0
+    }
     const elevated = (kind: SpecialKind | undefined) => (kind ? 1 + (prepared.elevation[kind] ?? 0) / 100 : 1)
     for (const reaction of prepared.transformative) {
       if (!reaction.special) {
-        transformative += reaction.base * (1 + fromEm + reaction.bonus)
+        transformative += reaction.base * (1 + fromEm + reaction.bonus + reaction.perEm * em)
         continue
       }
-      const multiplier = 1 + specialFromEm + reaction.bonus
+      const multiplier = 1 + specialFromEm + reaction.bonus + reaction.perEm * em
       let value = (reaction.base * baseFactor(reaction.kind) + flatFor(reaction.kind) * reaction.count * reaction.res) * multiplier
         * critFor(reaction.kind) * elevated(reaction.kind)
       if (reaction.contribution && prepared.stellarContributors.length > 0) {
