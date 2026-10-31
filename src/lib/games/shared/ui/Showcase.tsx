@@ -2,6 +2,7 @@ import {
   ActionIcon,
   Button,
   Chip,
+  ColorInput,
   SegmentedControl,
   Stack,
   Text,
@@ -27,7 +28,12 @@ import {
   relicCardH,
   relicCardW,
 } from 'lib/constants/constantsUi'
+import {
+  readStorage,
+  writeStorage,
+} from 'lib/games/shared/storage'
 import classes from 'lib/games/shared/ui/Showcase.module.css'
+import { Assets } from 'lib/rendering/assets'
 import {
   ScreenshotAction,
   screenshotElementById,
@@ -204,9 +210,38 @@ function useShowcaseColor(portrait: string | undefined, accent: string | undefin
   return picked && picked.url === portrait ? picked.color : fallback
 }
 
+// The card colour a user picked per character, after HSR's showcase colour modes (Auto from the art, Custom, Standard):
+// localStorage uru-showcase-colors { [game:character]: { mode, color? } }
+type ColorMode = 'auto' | 'custom' | 'standard'
+type ColorChoice = { mode: ColorMode, color?: string }
+const COLORS_KEY = 'uru-showcase-colors'
+// HSR's Standard colour (lib/characterPreview/color/showcaseColorService.ts)
+const STANDARD_COLOR = '#647bb0'
+
+function readColorChoice(key: string | undefined): ColorChoice {
+  if (!key) return { mode: 'auto' }
+  try {
+    const all = JSON.parse(readStorage(COLORS_KEY) ?? '{}') as Record<string, ColorChoice | undefined>
+    const choice = all[key]
+    return choice && ['auto', 'custom', 'standard'].includes(choice.mode) ? choice : { mode: 'auto' }
+  } catch {
+    return { mode: 'auto' }
+  }
+}
+
+function writeColorChoice(key: string, choice: ColorChoice) {
+  let all: Record<string, ColorChoice> = {}
+  try {
+    all = JSON.parse(readStorage(COLORS_KEY) ?? '{}') as Record<string, ColorChoice>
+  } catch {
+    // start over
+  }
+  writeStorage(COLORS_KEY, JSON.stringify({ ...all, [key]: choice }))
+}
+
 let cardCounter = 0
 
-export function ShowcaseCard({ name, accent, portrait, portraitFit = 'cover', weapon, info, gear, sidePanel = false }: {
+export function ShowcaseCard({ name, accent, portrait, portraitFit = 'cover', weapon, heading, info, gear, sidePanel = false, colorKey, breakdown }: {
   name: string,
   // The card's colour until one is taken from the art, a CSS color
   accent?: string,
@@ -214,15 +249,32 @@ export function ShowcaseCard({ name, accent, portrait, portraitFit = 'cover', we
   // 'contain' for splash art that shouldn't be cropped
   portraitFit?: 'cover' | 'contain',
   weapon?: { image?: string, name: string, meta: string },
-  // The middle column: name, badges, stats, rating
+  // HSR's header row above the name: rarity stars (Genshin) or rank (ZZZ S / A)
+  heading?: { stars?: number, rank?: string },
+  // The middle column: name, badges, stats, rating (its first block is centered under the heading, like HSR's)
   info: ReactNode,
   // Up to six gear cards, laid out 2 x 3
   gear: ReactNode,
   // HSR's side panel with screenshot buttons (the Characters pages; the optimizer's preview has none)
   sidePanel?: boolean,
+  // Remembers the side panel's colour choice for this character, e.g. 'genshin:Xiangling'
+  colorKey?: string,
+  // The tabs under the card (with the side panel): gear scores and substat rolls
+  breakdown?: ShowcaseBreakdown,
 }) {
   const [cardId] = useState(() => `uru-showcase-${++cardCounter}`)
-  const seed = useShowcaseColor(portrait, accent)
+  const auto = useShowcaseColor(portrait, accent)
+  const [choice, setChoice] = useState(() => readColorChoice(colorKey))
+  const [choiceKey, setChoiceKey] = useState(colorKey)
+  if (choiceKey !== colorKey) {
+    setChoiceKey(colorKey)
+    setChoice(readColorChoice(colorKey))
+  }
+  const choose = (next: ColorChoice) => {
+    setChoice(next)
+    if (colorKey) writeColorChoice(colorKey, next)
+  }
+  const seed = choice.mode === 'standard' ? STANDARD_COLOR : choice.mode === 'custom' && choice.color ? choice.color : auto
   const theme = resolveShowcaseTheme(seed, true)
   const [shooting, setShooting] = useState<ScreenshotAction | undefined>()
   const shoot = async (action: ScreenshotAction) => {
@@ -267,7 +319,16 @@ export function ShowcaseCard({ name, accent, portrait, portraitFit = 'cover', we
           </div>
         )}
       </div>
-      <div className={classes.statsColumn} style={{ width: middleColumnWidth, height: parentH }}>{info}</div>
+      <div className={classes.statsColumn} style={{ width: middleColumnWidth, height: parentH }}>
+        {heading && (heading.stars || heading.rank) && (
+          <header className={classes.heading}>
+            {heading.stars
+              ? Array.from({ length: heading.stars }, (_, i) => <img key={i} src={Assets.getStar()} alt='' />)
+              : <span className={classes.rank}>{`${heading.rank}-rank`}</span>}
+          </header>
+        )}
+        {info}
+      </div>
       <div
         className={classes.gear}
         style={{ width: parentW, gridTemplateColumns: `repeat(2, ${relicCardW}px)`, gridAutoRows: relicCardH, gap: defaultGap }}
@@ -279,23 +340,110 @@ export function ShowcaseCard({ name, accent, portrait, portraitFit = 'cover', we
 
   if (!sidePanel) return card
   return (
-    <div className={classes.cardRow}>
-      {card}
-      <Stack className={classes.sidePanel} gap={6}>
-        <Text size='xs' fw={600} c='dimmed' ta='center'>Screenshot</Text>
-        <Button.Group>
-          <Tooltip label='Copy to clipboard'>
-            <ActionIcon size='lg' variant='filled' loading={shooting === ScreenshotAction.Clipboard} onClick={() => void shoot(ScreenshotAction.Clipboard)}>
-              <IconCamera size={18} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label='Download'>
-            <ActionIcon size='lg' variant='filled' loading={shooting === ScreenshotAction.Download} onClick={() => void shoot(ScreenshotAction.Download)}>
-              <IconDownload size={18} />
-            </ActionIcon>
-          </Tooltip>
-        </Button.Group>
-      </Stack>
+    <div className={classes.cardWithTabs}>
+      <div className={classes.cardRow}>
+        {card}
+        <Stack className={classes.sidePanel} gap={6}>
+          <Text size='xs' fw={600} c='dimmed' ta='center'>Screenshot</Text>
+          <Button.Group>
+            <Tooltip label='Copy to clipboard'>
+              <ActionIcon size='lg' variant='filled' loading={shooting === ScreenshotAction.Clipboard} onClick={() => void shoot(ScreenshotAction.Clipboard)}>
+                <IconCamera size={18} />
+              </ActionIcon>
+            </Tooltip>
+            <Tooltip label='Download'>
+              <ActionIcon size='lg' variant='filled' loading={shooting === ScreenshotAction.Download} onClick={() => void shoot(ScreenshotAction.Download)}>
+                <IconDownload size={18} />
+              </ActionIcon>
+            </Tooltip>
+          </Button.Group>
+          <Text size='xs' fw={600} c='dimmed' ta='center' mt={6}>Colour</Text>
+          <SegmentedControl
+            size='xs'
+            orientation='vertical'
+            fullWidth
+            value={choice.mode}
+            onChange={(mode) => choose({ mode: mode as ColorMode, color: mode === 'custom' ? choice.color ?? auto : choice.color })}
+            data={[{ value: 'auto', label: 'Auto' }, { value: 'custom', label: 'Custom' }, { value: 'standard', label: 'Standard' }]}
+          />
+          {choice.mode === 'custom' && (
+            <ColorInput
+              size='xs'
+              format='hex'
+              withEyeDropper={false}
+              value={choice.color ?? auto}
+              onChange={(color) => choose({ mode: 'custom', color })}
+            />
+          )}
+        </Stack>
+      </div>
+      {breakdown && <ShowcaseTabs breakdown={breakdown} />}
+    </div>
+  )
+}
+
+// What the tabs under the card show, after HSR's DPS Benchmark / Substat Rolls / None tabs: each piece's score, and the
+// substat rolls of the whole build (rolls in the game's own unit) with how much the character wants each stat
+export type ShowcaseBreakdown = {
+  pieces: { key: string, label: string, score?: { percent: number, rating: string } }[],
+  rolls: { stat: string, label: string, rolls: number, weight: number }[],
+  // e.g. 'rolls' (Genshin, ZZZ) or 'max rolls' (WuWa, whose substats roll once)
+  rollUnit: string,
+}
+
+type BreakdownTab = 'scores' | 'rolls' | 'none'
+
+function ShowcaseTabs({ breakdown }: { breakdown: ShowcaseBreakdown }) {
+  const [tab, setTab] = useState<BreakdownTab>('scores')
+  const rolls = [...breakdown.rolls].filter((r) => r.rolls > 0).sort((a, b) => b.weight - a.weight || b.rolls - a.rolls)
+  const most = Math.max(1, ...rolls.map((r) => r.rolls))
+  const useful = rolls.reduce((sum, r) => sum + r.rolls * r.weight, 0)
+  const total = rolls.reduce((sum, r) => sum + r.rolls, 0)
+  const scored = breakdown.pieces.flatMap((p) => (p.score ? [p.score.percent] : []))
+  return (
+    <div className={classes.tabs}>
+      <SegmentedControl
+        w={420}
+        value={tab}
+        onChange={(value) => setTab(value as BreakdownTab)}
+        data={[{ value: 'scores', label: 'Gear scores' }, { value: 'rolls', label: 'Substat rolls' }, { value: 'none', label: 'None' }]}
+      />
+      {tab === 'scores' && (
+        <div className={classes.tabPanel}>
+          {breakdown.pieces.map((piece) => (
+            <div key={piece.key} className={classes.breakdownRow}>
+              <span>{piece.label}</span>
+              <div className={classes.bar}>
+                <div style={{ width: `${Math.min(100, piece.score?.percent ?? 0)}%` }} />
+              </div>
+              <span className={classes.breakdownValue}>{piece.score ? `${piece.score.percent.toFixed(1)} (${piece.score.rating})` : '-'}</span>
+            </div>
+          ))}
+          {scored.length > 0 && (
+            <Text size='xs' c='dimmed'>
+              {`Average ${(scored.reduce((a, b) => a + b, 0) / scored.length).toFixed(1)}% of a perfect piece for this character, each grade 5%.`}
+            </Text>
+          )}
+        </div>
+      )}
+      {tab === 'rolls' && (
+        <div className={classes.tabPanel}>
+          {rolls.map((roll) => (
+            <div key={roll.stat} className={classes.breakdownRow} data-unwanted={roll.weight <= 0 || undefined}>
+              <span>{roll.label}</span>
+              <div className={classes.bar}>
+                <div style={{ width: `${(roll.rolls / most) * 100}%` }} />
+              </div>
+              <span className={classes.breakdownValue}>{`${roll.rolls.toFixed(roll.rolls % 1 ? 1 : 0)} · weight ${roll.weight}`}</span>
+            </div>
+          ))}
+          <Text size='xs' c='dimmed'>
+            {`${total.toFixed(total % 1 ? 1 : 0)} ${breakdown.rollUnit} in all, ${
+              useful.toFixed(1)
+            } of them weighted toward stats this character wants (faded stats count for nothing).`}
+          </Text>
+        </div>
+      )}
     </div>
   )
 }
@@ -314,4 +462,15 @@ export function StatList({ rows }: { rows: StatListRow[] }) {
       ))}
     </div>
   )
+}
+
+// Substat rolls added up per stat over the gear, for the Substat rolls tab
+export function sumRolls(
+  substats: { stat: string, rolls: number }[],
+  label: (stat: string) => string,
+  weights: Record<string, number>,
+): ShowcaseBreakdown['rolls'] {
+  const totals = new Map<string, number>()
+  for (const sub of substats) totals.set(sub.stat, (totals.get(sub.stat) ?? 0) + sub.rolls)
+  return [...totals].map(([stat, rolls]) => ({ stat, label: label(stat), rolls: Math.round(rolls * 10) / 10, weight: weights[stat] ?? 0 }))
 }

@@ -31,10 +31,19 @@ export type ZzzImages = {
   // Every disc set's English name, by our set id (for the disc editor)
   setNames: Record<string, string>,
   // Every agent's name, element and specialty, by agent id (for the Agents page roster)
-  agentInfo: Record<string, { name: string, element: string, specialty: string }>,
+  // rank: S or A, from Enka's Rarity (4 S, 3 A)
+  agentInfo: Record<string, { name: string, element: string, specialty: string, rank?: string }>,
 }
 
-type AvatarEntry = { Name?: string, ProfessionType?: string, ElementTypes?: string[], Image?: string, CircleIcon?: string, Colors?: { Accent?: string } }
+type AvatarEntry = {
+  Name?: string,
+  ProfessionType?: string,
+  ElementTypes?: string[],
+  Image?: string,
+  CircleIcon?: string,
+  Colors?: { Accent?: string },
+  Rarity?: number,
+}
 type WeaponEntry = { ImagePath?: string }
 type SuitEntry = { Icon?: string, Name?: string }
 
@@ -49,7 +58,8 @@ export const loadZzzImages = enkaStoreLoader(
     for (const [id, entry] of Object.entries(avatars as Record<string, AvatarEntry>)) {
       if (entry.Image && entry.CircleIcon) agents[id] = { portrait: url(entry.Image), circle: url(entry.CircleIcon), accent: entry.Colors?.Accent }
       const name = entry.Name ? names[entry.Name] : undefined
-      if (name) agentInfo[id] = { name, element: elementOf(id, entry.ElementTypes), specialty: entry.ProfessionType ?? 'Unknown' }
+      const rank = entry.Rarity === 4 ? 'S' : entry.Rarity === 3 ? 'A' : undefined
+      if (name) agentInfo[id] = { name, element: elementOf(id, entry.ElementTypes), specialty: entry.ProfessionType ?? 'Unknown', rank }
     }
     const wEngines: Record<string, string> = {}
     for (const [id, entry] of Object.entries(weapons as Record<string, WeaponEntry>)) if (entry.ImagePath) wEngines[id] = url(entry.ImagePath)

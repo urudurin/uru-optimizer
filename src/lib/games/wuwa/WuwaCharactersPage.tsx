@@ -20,11 +20,13 @@ import {
   RosterLayout,
   ShowcaseCard,
   StatList,
+  sumRolls,
 } from 'lib/games/shared/ui/Showcase'
 import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
 import {
   characterName,
   CHARACTERS,
+  ECHO_DEFINITIONS,
   SONATA_SETS,
   WEAPONS,
 } from 'lib/games/wuwa/data/gameData'
@@ -33,7 +35,10 @@ import {
   useUserArt,
 } from 'lib/games/wuwa/data/userArt'
 import { validateLoadout } from 'lib/games/wuwa/echoRules'
-import { SUBSTAT_KEYS } from 'lib/games/wuwa/echoStats'
+import {
+  maxRoll,
+  SUBSTAT_KEYS,
+} from 'lib/games/wuwa/echoStats'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import {
   computeWuwaStats,
@@ -156,6 +161,13 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
   return (
     <ShowcaseCard
       sidePanel
+      colorKey={`wuwa:${character.charId}`}
+      breakdown={{
+        pieces: loadout.map((e) => ({ key: e.id, label: `Cost ${e.cost} · ${ECHO_DEFINITIONS[e.defId]?.name ?? e.defId}`, score: scoreEcho(e, echoWeights) })),
+        // Echo substats roll once, so they add up in max rolls (value / its highest roll)
+        rolls: sumRolls(loadout.flatMap((e) => e.substats.map((s) => ({ stat: s.stat, rolls: s.value / maxRoll(s.stat) }))), statLabel, echoWeights),
+        rollUnit: 'max rolls',
+      }}
       name={name}
       accent={accentOf(element)}
       portrait={art?.portrait}
@@ -240,6 +252,7 @@ function NewResonator({ charId, art, onImport }: { charId: string, art?: Resonat
   return (
     <ShowcaseCard
       sidePanel
+      colorKey={`wuwa:${charId}`}
       name={name}
       accent={accentOf(element)}
       portrait={art?.portrait}

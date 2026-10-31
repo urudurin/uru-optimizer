@@ -49,6 +49,7 @@ import {
   RosterLayout,
   ShowcaseCard,
   StatList,
+  sumRolls,
 } from 'lib/games/shared/ui/Showcase'
 import {
   useMemo,
@@ -139,6 +140,17 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
   return (
     <ShowcaseCard
       sidePanel
+      heading={{ stars: infoOf(character.id, images)?.rarity }}
+      colorKey={`genshin:${character.id}`}
+      breakdown={{
+        pieces: worn.map((a) => ({
+          key: a.id,
+          label: `${a.slot[0].toUpperCase()}${a.slot.slice(1)} · ${a.setName}`,
+          score: scoreArtifact(a, artifactWeights),
+        })),
+        rolls: sumRolls(worn.flatMap((a) => a.substats.map((s) => ({ stat: s.stat, rolls: s.rolls ?? 0 }))), statLabel, artifactWeights),
+        rollUnit: 'rolls',
+      }}
       name={character.name}
       accent={character.element ? ELEMENT_ACCENTS[character.element] : undefined}
       portrait={art?.portrait}
@@ -239,6 +251,8 @@ function NewCharacter({ id, images, onImport }: { id: string, images: GenshinIma
   return (
     <ShowcaseCard
       sidePanel
+      heading={{ stars: info?.rarity }}
+      colorKey={`genshin:${id}`}
       name={name}
       accent={info?.element ? ELEMENT_ACCENTS[info.element] : undefined}
       portrait={images.characters[id]?.portrait}

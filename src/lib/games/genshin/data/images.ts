@@ -34,11 +34,12 @@ export type GenshinImages = {
   // By GOOD set key, then slot
   artifacts: Record<string, Partial<Record<ArtifactSlot, string>>>,
   // By GOOD key: names, elements and weapon types (the Traveler under 'Traveler')
-  characterInfo: Record<string, { name: string, element?: Element, weaponType?: WeaponType }>,
+  // rarity: 5 or 4 stars, from Enka's QualityType
+  characterInfo: Record<string, { name: string, element?: Element, weaponType?: WeaponType, rarity?: number }>,
   weaponInfo: Record<string, { name: string, weaponType?: WeaponType }>,
 }
 
-type AvatarEntry = { NameTextMapHash?: number | string, SideIconName?: string, Element?: string, WeaponType?: string }
+type AvatarEntry = { NameTextMapHash?: number | string, SideIconName?: string, Element?: string, WeaponType?: string, QualityType?: string }
 type WeaponEntry = { NameTextMapHash?: number | string, Icon?: string, WeaponType?: number }
 
 const AVATAR_WEAPON_TYPES: Record<string, WeaponType> = {
@@ -75,7 +76,8 @@ export const loadGenshinImages = enkaStoreLoader(
       if (id.includes('-')) continue
       const weaponType = entry.WeaponType ? AVATAR_WEAPON_TYPES[entry.WeaponType] : undefined
       // Enka's Traveler entry has no weapon type; the Traveler only uses swords
-      if (id === TRAVELER_AVATAR_ID) characterInfo.Traveler = { name: 'Traveler', weaponType: weaponType ?? 'Sword' }
+      const rarity = entry.QualityType?.startsWith('QUALITY_ORANGE') ? 5 : entry.QualityType === 'QUALITY_PURPLE' ? 4 : undefined
+      if (id === TRAVELER_AVATAR_ID) characterInfo.Traveler = { name: 'Traveler', weaponType: weaponType ?? 'Sword', rarity: 5 }
       const base = entry.SideIconName ? iconBase(entry.SideIconName) : undefined
       if (!base) continue
       const art = { portrait: url(`/ui/UI_Gacha_AvatarImg_${base}.png`), icon: url(`/ui/UI_AvatarIcon_${base}.png`) }
@@ -83,7 +85,7 @@ export const loadGenshinImages = enkaStoreLoader(
       const name = entry.NameTextMapHash !== undefined ? names[String(entry.NameTextMapHash)] : undefined
       if (name && id !== TRAVELER_AVATAR_ID && id !== '10000005') {
         characters[toGoodKey(name)] = art
-        characterInfo[toGoodKey(name)] = { name, element: entry.Element ? ELEMENTS[entry.Element] : undefined, weaponType }
+        characterInfo[toGoodKey(name)] = { name, element: entry.Element ? ELEMENTS[entry.Element] : undefined, weaponType, rarity }
       }
     }
     if (traveler) {

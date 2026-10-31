@@ -26,6 +26,7 @@ import {
   RosterLayout,
   ShowcaseCard,
   StatList,
+  sumRolls,
 } from 'lib/games/shared/ui/Showcase'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type {
@@ -201,6 +202,13 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
       {agent && display && (
         <ShowcaseCard
           sidePanel
+          heading={{ rank: images.agentInfo[entry.agentId]?.rank }}
+          colorKey={`zzz:${entry.agentId}`}
+          breakdown={{
+            pieces: worn.map((d) => ({ key: d.id, label: `Slot ${d.slot} · ${d.setName}`, score: scoreDisc(d, discWeights) })),
+            rolls: sumRolls(worn.flatMap((d) => d.substats.map((s) => ({ stat: s.stat, rolls: s.rolls }))), (stat) => stat, discWeights),
+            rollUnit: 'rolls',
+          }}
           name={agent.name}
           accent={art?.accent}
           portrait={art?.portrait}
@@ -365,6 +373,8 @@ function NewAgent({ entry, images, onImport }: { entry: RosterAgent, images: Zzz
   return (
     <ShowcaseCard
       sidePanel
+      heading={{ rank: images.agentInfo[entry.agentId]?.rank }}
+      colorKey={`zzz:${entry.agentId}`}
       name={agent.name}
       accent={art?.accent}
       portrait={art?.portrait}
@@ -387,6 +397,8 @@ function NoDataAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages 
   return (
     <ShowcaseCard
       sidePanel
+      heading={{ rank: images.agentInfo[entry.agentId]?.rank }}
+      colorKey={`zzz:${entry.agentId}`}
       name={entry.name}
       accent={art?.accent}
       portrait={art?.portrait}

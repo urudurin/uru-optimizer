@@ -268,6 +268,36 @@
   min-width: 0;
 }
 
+/* HSR's header: stars (or rank) centered, then the name block centered under it */
+.heading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1px;
+  min-height: 22px;
+}
+
+.heading img {
+  width: 20px;
+  height: 20px;
+}
+
+.heading .rank {
+  width: auto;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #f5c542;
+}
+
+.statsColumn > div:first-of-type {
+  text-align: center;
+}
+
+.statsColumn > div:first-of-type :global(.mantine-Group-root) {
+  justify-content: center;
+}
+
 .statList {
   display: flex;
   flex-direction: column;
@@ -319,4 +349,60 @@
   height: 34px;
   object-fit: contain;
   flex-shrink: 0;
+}
+
+/* The card with its side panel and the tabs under it, after HSR's DPS Benchmark / Substat Rolls / None */
+.cardWithTabs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.tabs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: var(--card-width);
+}
+
+.tabPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 6px;
+  background: var(--layer-2);
+}
+
+.breakdownRow {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 150px;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.breakdownRow[data-unwanted] {
+  opacity: 0.45;
+}
+
+.bar {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.bar > div {
+  height: 100%;
+  border-radius: 5px;
+  background: var(--mantine-color-primary-filled);
+}
+
+.breakdownValue {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
