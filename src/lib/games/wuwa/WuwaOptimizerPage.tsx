@@ -74,6 +74,7 @@ import {
   FormRow,
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
+import type { StatView } from 'lib/games/shared/ui/OptimizerSidebar'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import {
   resolveWuwaCombat,
@@ -316,6 +317,8 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const [result, setResult] = useState<{ outcome: EchoOutcome, ms: number, target: EchoTarget } | undefined>()
   const [selected, setSelected] = useState(0)
   const pins = usePinnedBuilds(character?.charId ?? '')
+  // Results columns: in-combat stats (team, kit and set buffs) or the stat screen, after HSR's stat view
+  const [statView, setStatView] = useState<StatView>('combat')
   // Saved builds of this character; bumped after a save or delete to read them again
   const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
   const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('wuwa', character?.charId ?? '') : []), [character.charId, buildsVersion])
@@ -401,7 +404,9 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const element = CHARACTER_INFO[character.charId]?.element
   const resultValues = (b: { echoes: Echo[], stats: WuwaStats, score: number }) => ({
     score: b.score,
-    ...Object.fromEntries(SHOWN_STATS.map((stat) => [stat, toDisplayStats(b.stats)[stat]])),
+    ...Object.fromEntries(
+      SHOWN_STATS.map((stat) => [stat, toDisplayStats(statView === 'basic' ? computeWuwaStats(character, b.echoes).stats : b.stats)[stat]]),
+    ),
     cost: costOf(b.echoes),
   })
 
@@ -860,6 +865,7 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
             }
             : undefined}
           equip={build ? { label: `loadout #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+          statView={{ value: statView, onChange: setStatView }}
           onReset={() => {
             updateSettings(defaultSettings(character.charId))
             setResult(undefined)

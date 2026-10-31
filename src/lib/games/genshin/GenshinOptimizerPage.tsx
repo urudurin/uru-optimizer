@@ -160,6 +160,7 @@ import {
   FormRow,
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
+import type { StatView } from 'lib/games/shared/ui/OptimizerSidebar'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { Message } from 'lib/interactions/message'
 import {
@@ -313,6 +314,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const [result, setResult] = useState<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget } | undefined>()
   const [selected, setSelected] = useState(0)
   const pins = usePinnedBuilds(character?.id ?? '')
+  // Results columns: in-combat stats (team, kit and set buffs) or the stat screen, after HSR's stat view
+  const [statView, setStatView] = useState<StatView>('combat')
   // Saved builds of this character; bumped after a save or delete to read them again
   const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
   const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('genshin', character?.id ?? '') : []), [character.id, buildsVersion])
@@ -804,11 +807,16 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                       rows={outcome.builds.map((b, i) => ({
                         id: String(i),
                         rank: String(i + 1),
-                        values: resultValues(b.score, b.stats),
+                        values: resultValues(b.score, statView === 'basic' ? computeGenshinStats(character, b.artifacts).stats : b.stats),
                         sets: describeSets(b.artifacts),
                       }))}
                       current={current
-                        ? { id: 'now', rank: 'Now', values: resultValues(current.score, current.stats), sets: describeSets(current.artifacts) }
+                        ? {
+                          id: 'now',
+                          rank: 'Now',
+                          values: resultValues(current.score, statView === 'basic' ? computeGenshinStats(character, current.artifacts).stats : current.stats),
+                          sets: describeSets(current.artifacts),
+                        }
                         : undefined}
                       selected={selected}
                       onSelect={setSelected}
@@ -887,6 +895,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
             }
             : undefined}
           equip={build ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+          statView={{ value: statView, onChange: setStatView }}
           onReset={() => {
             updateSettings(defaultSettings(character.id))
             setResult(undefined)

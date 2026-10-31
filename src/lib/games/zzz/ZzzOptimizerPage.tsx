@@ -77,6 +77,7 @@ import {
   FormRow,
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
+import type { StatView } from 'lib/games/shared/ui/OptimizerSidebar'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { resolveZzzCombat } from 'lib/games/zzz/damage/combatEffects'
 import { KIT_EFFECTS } from 'lib/games/zzz/damage/combatEffects'
@@ -402,6 +403,8 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
   const [selected, setSelected] = useState(0)
   const pins = usePinnedBuilds(agent.id)
+  // Results columns: in-combat stats (team, kit and set buffs) or the stat screen, after HSR's stat view
+  const [statView, setStatView] = useState<StatView>('combat')
   // Saved builds of this character; bumped after a save or delete to read them again
   const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
   const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('zzz', agent.id) : []), [agent.id, buildsVersion])
@@ -550,6 +553,9 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const currentDiscs = agentBuild ? Object.values(agentBuild.discIds).flatMap((id) => discs.find((d) => d.id === id) ?? []) : []
   const currentStats = computeInput && currentDiscs.length > 0 ? computeStats({ ...computeInput, discs: currentDiscs }).stats : undefined
   const currentDisplay = currentStats && toDisplayStats(currentStats)
+  // The stat screen of some discs: no combat conditions or squad buffs (Basic stats view)
+  const screenDisplay = (list: Disc[]) =>
+    computeInput ? toDisplayStats(computeStats({ ...computeInput, discs: list, conditions: statScreenConditions(), teamEffects: [] }).stats) : undefined
   const currentDamage = currentStats && rotationDamage(currentStats, damageSetup)
   // Each rotation line's share of the picked build's damage, for the build analysis
   const bestStats = best && computeInput ? computeStats({ ...computeInput, discs: best.discs }).stats : undefined
@@ -935,14 +941,26 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                     rows={outcome.builds.map((build, i) => ({
                       id: String(i),
                       rank: String(i + 1),
-                      values: { ...Object.fromEntries(resultColumns.map((row) => [row.key, build.display[row.key]])), damage: build.damage ?? 0 },
+                      values: {
+                        ...Object.fromEntries(
+                          resultColumns.map((row) => [row.key, (statView === 'basic' ? screenDisplay(build.discs) ?? build.display : build.display)[row.key]]),
+                        ),
+                        damage: build.damage ?? 0,
+                      },
                       sets: describeSets(build.discs),
                     }))}
                     current={currentDisplay
                       ? {
                         id: 'now',
                         rank: 'Now',
-                        values: { ...Object.fromEntries(resultColumns.map((row) => [row.key, currentDisplay[row.key]])), damage: currentDamage ?? 0 },
+                        values: {
+                          ...Object.fromEntries(
+                            resultColumns.map((
+                              row,
+                            ) => [row.key, (statView === 'basic' ? screenDisplay(currentDiscs) ?? currentDisplay : currentDisplay)[row.key]]),
+                          ),
+                          damage: currentDamage ?? 0,
+                        },
                         sets: describeSets(currentDiscs),
                       }
                       : undefined}
@@ -1010,6 +1028,7 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
           onCancel={cancel}
           results={outcome?.ok ? { count: outcome.builds.length, seconds: searchSeconds } : undefined}
           equip={best ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+          statView={{ value: statView, onChange: setStatView }}
           onReset={() => {
             updateSettings(defaultSettings(agent.id))
             setOutcome(null)

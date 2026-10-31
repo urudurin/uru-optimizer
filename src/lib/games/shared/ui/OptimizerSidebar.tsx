@@ -2,6 +2,7 @@ import {
   Button,
   Group,
   Progress,
+  SegmentedControl,
   Stack,
   Text,
 } from '@mantine/core'
@@ -29,6 +30,9 @@ import {
 // how big the search is, Start / Cancel with progress, what the last search found, and Equip for the picked build.
 // Shared by the ZZZ, Genshin and WuWa optimizer pages; Optimizer.module.css places it.
 
+// Results columns as combat stats (with team, kit and set buffs) or the stat screen, after HSR's stat and filter view
+export type StatView = 'combat' | 'basic'
+
 export type OptimizerSidebarProps = {
   // Pieces left per slot (or cost) after the filters
   pools: { label: string, value: number }[],
@@ -46,6 +50,7 @@ export type OptimizerSidebarProps = {
   results?: { count: number, seconds: number, note?: string },
   // The build picked in the results
   equip?: { label: string, onEquip: () => void, equipped: boolean },
+  statView?: { value: StatView, onChange: (view: StatView) => void },
   // Puts the character's filters back to their defaults (after a confirmation, like HSR's Reset)
   onReset?: () => void,
   // Pin the picked build to compare (shared/ui/optimizer/BuildCompare.tsx), and clear this character's pins
@@ -121,6 +126,15 @@ export function OptimizerSidebar(props: OptimizerSidebarProps) {
             </>
           )}
           {!running && props.hint && <Text size='xs' c={props.hint.warn ? 'yellow' : 'dimmed'}>{props.hint.text}</Text>}
+          {props.statView && (
+            <SegmentedControl
+              size='xs'
+              fullWidth
+              value={props.statView.value}
+              onChange={(value) => props.statView?.onChange(value as StatView)}
+              data={[{ value: 'combat', label: 'Combat stats' }, { value: 'basic', label: 'Basic stats' }]}
+            />
+          )}
           {props.onReset && (
             <Button
               size='xs'
