@@ -1,3 +1,4 @@
+import type { ScreenshotSpec } from 'lib/games/shared/gear/screenshotText'
 import type { GearScore } from 'lib/games/shared/gearScore'
 import type { ReactNode } from 'react'
 
@@ -67,6 +68,8 @@ export type GearKind<T> = {
   toDraft: (item: T) => GearDraft,
   // The piece, or what's wrong with the draft. existing is the piece being edited, whose id and owner it keeps
   fromDraft: (draft: GearDraft, existing?: T) => { item?: T, errors: string[] },
+  // How the game's screen shows a piece, for filling the editor from a screenshot (shared/gear/screenshotText.ts)
+  screenshot?: ScreenshotSpec,
 }
 
 let counter = 0

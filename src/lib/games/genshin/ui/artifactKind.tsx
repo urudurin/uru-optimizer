@@ -19,6 +19,7 @@ import {
   formatStatValue,
   type GenshinCharacter,
   type GenshinStatKey,
+  PERCENT_STATS,
   SLOT_LABELS,
   statLabel,
 } from 'lib/games/genshin/types'
@@ -28,6 +29,7 @@ import {
   type GearKind,
   newGearId,
 } from 'lib/games/shared/gear/gearKind'
+import type { ScreenStat } from 'lib/games/shared/gear/screenshotText'
 
 // Genshin artifacts for the shared gear inventory (shared/gear/gearKind.ts). Main stat values come from Enka's
 // relic_levels.json (loaded by the page), like the GOOD importer; substats are entered as shown in game and their roll
@@ -42,6 +44,21 @@ const MAIN_STATS: Record<ArtifactSlot, GenshinStatKey[]> = {
 }
 
 const MAX_LEVEL: Record<number, number> = { 5: 20, 4: 16 }
+
+// The artifact screen for "Add from screenshot": the slot's name, the main stat's name with its value below, "+20",
+// then "CRIT Rate+3.9%" substats
+const SLOT_NAMES: Record<ArtifactSlot, string> = {
+  flower: 'Flower of Life',
+  plume: 'Plume of Death',
+  sands: 'Sands of Eon',
+  goblet: 'Goblet of Eonothem',
+  circlet: 'Circlet of Logos',
+}
+const SCREEN_STATS: ScreenStat[] = [...new Set([...Object.values(MAIN_STATS).flat(), ...SUBSTAT_STATS])].map((stat) => ({
+  value: stat,
+  names: [statLabel(stat).replace('%', '')],
+  percent: PERCENT_STATS.has(stat),
+}))
 
 // A piece with this many max rolls of one stat is the top of that stat's colour scale
 const COLUMN_TOP_ROLLS = 5
@@ -112,6 +129,15 @@ export function genshinArtifactKind({ characters, images, store, artifacts }: {
       return value === undefined ? '—' : formatStatValue(draft.mainStat as GenshinStatKey, value)
     },
     substatStep: (stat) => (maxRoll(stat as GenshinStatKey) >= 10 ? 1 : 0.1),
+    screenshot: {
+      // The details panel on the right of the Artifacts inventory (user's screenshot, Oct 31 2026)
+      panel: { x: 0.755, y: 0.1, width: 0.225, height: 0.7 },
+      slotNames: ARTIFACT_SLOTS.map((slot) => ({ value: slot, names: [SLOT_NAMES[slot]] })),
+      sets: setOptions,
+      stats: SCREEN_STATS,
+      substatValue: (stat, value) => (SUBSTAT_STATS.includes(stat as GenshinStatKey) ? Math.round(value * 10) / 10 : undefined),
+      substatCount: 4,
+    },
     newDraft: () => ({ slot: 'flower', setId: setOptions[0]?.value ?? '', rarity: '5', level: 20, mainStat: 'hp', substats: [], extra: {} }),
     toDraft: (a) => ({
       slot: a.slot,

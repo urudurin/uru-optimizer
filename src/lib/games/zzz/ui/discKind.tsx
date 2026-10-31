@@ -3,6 +3,7 @@ import {
   type GearKind,
   newGearId,
 } from 'lib/games/shared/gear/gearKind'
+import type { ScreenStat } from 'lib/games/shared/gear/screenshotText'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type { ZzzImages } from 'lib/games/zzz/data/images'
 import { SETS } from 'lib/games/zzz/data/sets'
@@ -67,6 +68,26 @@ const maxRolls = (level: number) => 4 + Math.floor(level / 3)
 // A disc with this many max rolls of one stat is the top of that stat's colour scale
 const COLUMN_TOP_ROLLS = 5
 
+// The disc screen for "Add from screenshot": "Woodpecker Electro [3]", "Lv. 15/15", the main stat, then substats with
+// their upgrade count before the value ("CRIT Rate +2 7.2%"). Element DMG shows as the element's name
+const SCREEN_STATS: ScreenStat[] = [
+  { value: ZzzStats.HP, names: ['HP'], percent: false },
+  { value: ZzzStats.HP_P, names: ['HP'], percent: true },
+  { value: ZzzStats.ATK, names: ['ATK'], percent: false },
+  { value: ZzzStats.ATK_P, names: ['ATK'], percent: true },
+  { value: ZzzStats.DEF, names: ['DEF'], percent: false },
+  { value: ZzzStats.DEF_P, names: ['DEF'], percent: true },
+  { value: ZzzStats.CRIT_RATE, names: ['CRIT Rate'], percent: true },
+  { value: ZzzStats.CRIT_DMG, names: ['CRIT DMG'], percent: true },
+  { value: ZzzStats.ANOMALY_PROFICIENCY, names: ['Anomaly Proficiency'], percent: false },
+  { value: ZzzStats.ANOMALY_MASTERY, names: ['Anomaly Mastery'], percent: true },
+  { value: ZzzStats.IMPACT, names: ['Impact'], percent: true },
+  { value: ZzzStats.ENERGY_REGEN, names: ['Energy Regen'], percent: true },
+  { value: ZzzStats.PEN, names: ['PEN'], percent: false },
+  { value: ZzzStats.PEN_RATIO, names: ['PEN Ratio'], percent: true },
+  { value: ZzzStats.ELEMENT_DMG, names: ['Physical DMG Bonus', 'Fire DMG Bonus', 'Ice DMG Bonus', 'Electric DMG Bonus', 'Ether DMG Bonus'], percent: true },
+]
+
 function mainStatsFor(slot: string): ZzzStatsValues[] {
   const n = Number(slot) as DiscSlot
   const fixed = FIXED_MAIN_STAT_BY_SLOT[n]
@@ -128,6 +149,32 @@ export function zzzDiscKind({ builds, images, discs }: { builds: ImportedBuild[]
         const value = getSubstatValue('S', stat as ZzzStatsValues, rolls)
         return { value: String(rolls), label: `${value === undefined ? '?' : formatValue(stat, value)} (${rolls} roll${rolls === 1 ? '' : 's'})` }
       }),
+    screenshot: {
+      // The details panel between the disc grid and the disc ring on the Drive Disc screen (user's screenshot, Oct 31 2026)
+      panel: { x: 0.315, y: 0.1, width: 0.2, height: 0.72 },
+      slotFromLines: (lines) => {
+        for (const line of lines) {
+          const match = /[[(|{]\s*([1-6])\s*[\])|}]/.exec(line)
+          if (match) return match[1]
+        }
+        return undefined
+      },
+      levelFromLines: (lines) => {
+        for (const line of lines) {
+          const match = /\bLv\.?\s*(\d{1,2})\b/i.exec(line)
+          if (match && Number(match[1]) <= MAX_DISC_LEVEL) return Number(match[1])
+        }
+        return undefined
+      },
+      sets: setOptions,
+      stats: SCREEN_STATS,
+      // Values shown -> roll counts
+      substatValue: (stat, value) => {
+        const one = getSubstatValue('S', stat as ZzzStatsValues, 1)
+        return one ? Math.min(6, Math.max(1, Math.round(value / one))) : undefined
+      },
+      substatCount: 4,
+    },
     newDraft: () => ({ slot: '1', setId: setOptions[0]?.value ?? '', rarity: 'S', level: MAX_DISC_LEVEL, mainStat: ZzzStats.HP, substats: [], extra: {} }),
     toDraft: (disc) => ({
       slot: String(disc.slot),

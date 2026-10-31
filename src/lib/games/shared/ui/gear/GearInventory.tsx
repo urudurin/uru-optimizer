@@ -20,12 +20,16 @@ import type {
   GearDraft,
   GearKind,
 } from 'lib/games/shared/gear/gearKind'
-import { GearEditor } from 'lib/games/shared/ui/gear/GearEditor'
+import {
+  GearEditor,
+  imageFromClipboard,
+} from 'lib/games/shared/ui/gear/GearEditor'
 import classes from 'lib/games/shared/ui/gear/GearInventory.module.css'
 import { Gradient } from 'lib/rendering/gradient'
 import { FilterPill } from 'lib/tabs/tabRelics/topBar/FilterPill'
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -73,7 +77,20 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
   const gridRef = useRef<AgGridReact<Row<T>>>(null)
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
   const [selected, setSelected] = useState<T[]>([])
-  const [editing, setEditing] = useState<{ item?: T, draft: GearDraft } | undefined>()
+  const [editing, setEditing] = useState<{ item?: T, draft: GearDraft, screenshot?: Blob } | undefined>()
+
+  // A screenshot pasted on the page opens the Add dialog filled in from it (the dialog handles pastes while open)
+  useEffect(() => {
+    if (!kind.screenshot || editing) return
+    const onPaste = (event: ClipboardEvent) => {
+      const screenshot = imageFromClipboard(event)
+      if (!screenshot) return
+      event.preventDefault()
+      setEditing({ draft: kind.newDraft(), screenshot })
+    }
+    document.addEventListener('paste', onPaste)
+    return () => document.removeEventListener('paste', onPaste)
+  }, [kind, editing])
   const [shownCount, setShownCount] = useState(items.length)
 
   const rows = useMemo<Row<T>[]>(() =>
@@ -262,7 +279,9 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
           >
             {selected.length > 1 ? `Delete ${selected.length}` : 'Delete'}
           </Button>
-          <Text size='xs' c='dimmed' ml='auto'>{`${shownCount} of ${items.length} shown · double-click a row to edit`}</Text>
+          <Text size='xs' c='dimmed' ml='auto'>
+            {`${shownCount} of ${items.length} shown · double-click a row to edit${kind.screenshot ? ' · paste a screenshot (Ctrl+V) to add one' : ''}`}
+          </Text>
         </Group>
       </div>
 
@@ -271,6 +290,7 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
           kind={kind}
           existing={editing.item}
           initial={editing.draft}
+          screenshot={editing.screenshot}
           onClose={() => setEditing(undefined)}
           onSave={(item) => {
             onSave(item)
