@@ -9,7 +9,7 @@ import { BackupReminder } from 'lib/games/shared/ui/BackupReminder'
 import {
   GameLayout,
   type GameNavGroup,
-  useStoredPage,
+  useGamePage,
 } from 'lib/games/shared/ui/GameLayout'
 import { SampleNotice } from 'lib/games/shared/ui/SampleNotice'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
@@ -38,7 +38,7 @@ const GROUPS: GameNavGroup<WuwaPage>[] = [
 ]
 
 export function WuwaApp() {
-  const [page, setPage] = useStoredPage<WuwaPage>('wuwa-page', PAGES, 'optimizer')
+  const [page, setPage] = useGamePage<WuwaPage>('wuwa', PAGES, 'optimizer')
   // Gear ids in the save; the sample roster's start with sample- (shared/sampleData.ts)
   const gearIds = useWuwaStore(useShallow((s) => s.echoes.map((x) => x.id)))
   const sampleOnly = gearIds.length > 0 && gearIds.every(isSampleId)

@@ -9,7 +9,7 @@ import { BackupReminder } from 'lib/games/shared/ui/BackupReminder'
 import {
   GameLayout,
   type GameNavGroup,
-  useStoredPage,
+  useGamePage,
 } from 'lib/games/shared/ui/GameLayout'
 import { SampleNotice } from 'lib/games/shared/ui/SampleNotice'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
@@ -38,7 +38,7 @@ const GROUPS: GameNavGroup<ZzzPage>[] = [
 ]
 
 export function ZzzApp() {
-  const [page, setPage] = useStoredPage<ZzzPage>('zzz-page', PAGES, 'optimizer')
+  const [page, setPage] = useGamePage<ZzzPage>('zzz', PAGES, 'optimizer')
   // Gear ids in the save; the sample roster's start with sample- (shared/sampleData.ts)
   const gearIds = useZzzStore(useShallow((s) => s.discs.map((x) => x.id)))
   const sampleOnly = gearIds.length > 0 && gearIds.every(isSampleId)

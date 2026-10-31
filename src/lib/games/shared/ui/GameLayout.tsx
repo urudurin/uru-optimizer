@@ -13,6 +13,12 @@ import {
   IconSettings,
 } from '@tabler/icons-react'
 import {
+  gamePageHash,
+  type OtherGame,
+  readGameHash,
+  showHash,
+} from 'lib/games/gameHash'
+import {
   readStorage,
   writeStorage,
 } from 'lib/games/shared/storage'
@@ -20,6 +26,7 @@ import classes from 'lib/games/shared/ui/GameLayout.module.css'
 import { GameSettingsDrawer } from 'lib/games/shared/ui/GameSettingsDrawer'
 import {
   type ReactNode,
+  useEffect,
   useState,
 } from 'react'
 import {
@@ -247,14 +254,36 @@ export function Notices({ title, messages, max = 6 }: { title?: string, messages
   )
 }
 
-// The page the user last had open in a game, remembered in this browser only
-export function useStoredPage<K extends string>(storageKey: string, pages: readonly K[], fallback: K): [K, (page: K) => void] {
+// A game's open page, after HSR's tabs: its own address (#<game>-<page>, lib/games/gameHash.ts) so Back / Forward and
+// links work, and the last one remembered in this browser (`<game>-page`) for when the address names none
+export function useGamePage<K extends string>(game: OtherGame, pages: readonly K[], fallback: K): [K, (page: K) => void] {
+  const storageKey = `${game}-page`
+  const pageInHash = () => {
+    const fromHash = readGameHash()
+    return fromHash?.kind === 'game' && fromHash.game === game && pages.includes(fromHash.page as K) ? fromHash.page as K : undefined
+  }
   const [page, setPage] = useState<K>(() => {
     const stored = readStorage(storageKey)
-    return pages.includes(stored as K) ? stored as K : fallback
+    return pageInHash() ?? (pages.includes(stored as K) ? stored as K : fallback)
   })
+
+  useEffect(() => {
+    // The address shows the page from the first render, without a new history entry
+    showHash(gamePageHash(game, page), true)
+    const onHashChange = () => {
+      const next = pageInHash()
+      if (!next) return
+      writeStorage(storageKey, next)
+      setPage(next)
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+    // Mount only: later pages push their own address below
+  }, [])
+
   return [page, (next) => {
     writeStorage(storageKey, next)
     setPage(next)
+    showHash(gamePageHash(game, next))
   }]
 }

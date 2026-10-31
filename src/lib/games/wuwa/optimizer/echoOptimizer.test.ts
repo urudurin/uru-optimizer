@@ -6,9 +6,9 @@ import { SUBSTAT_TIERS } from 'lib/games/wuwa/echoStats'
 import {
   costPatterns,
   countLoadouts,
-  filterPool,
   type EchoFilters,
   type EchoTarget,
+  filterPool,
   optimizeEchoes,
   scoreStats,
   withFullSets,

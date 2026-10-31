@@ -14,7 +14,7 @@ import { BackupReminder } from 'lib/games/shared/ui/BackupReminder'
 import {
   GameLayout,
   type GameNavGroup,
-  useStoredPage,
+  useGamePage,
 } from 'lib/games/shared/ui/GameLayout'
 import { SampleNotice } from 'lib/games/shared/ui/SampleNotice'
 import { useShallow } from 'zustand/react/shallow'
@@ -38,7 +38,7 @@ const GROUPS: GameNavGroup<GenshinPage>[] = [
 ]
 
 export function GenshinApp() {
-  const [page, setPage] = useStoredPage<GenshinPage>('genshin-page', PAGES, 'optimizer')
+  const [page, setPage] = useGamePage<GenshinPage>('genshin', PAGES, 'optimizer')
   // Gear ids in the save; the sample roster's start with sample- (shared/sampleData.ts)
   const gearIds = useGenshinStore(useShallow((s) => s.artifacts.map((x) => x.id)))
   const sampleOnly = gearIds.length > 0 && gearIds.every(isSampleId)
