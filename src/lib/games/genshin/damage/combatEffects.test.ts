@@ -193,4 +193,24 @@ describe('hit-specific and weapon combat effects', () => {
     expect(caught.premod.burstDmg).toBe(32)
     expect(caught.hitBuffs).toContainEqual({ categories: ['burst'], critRate: 12 })
   })
+  it('genshin-optimizer kits: Arlecchino\'s Bond of Life, Skirk\'s Death\'s Crossing scale, Itto\'s ATK from DEF', () => {
+    // Arlecchino at Normal Attack level 9: 221.2% of ATK per 100% Bond, 200% Bond
+    const arle = character('Arlecchino', { element: 'Pyro' })
+    const first = characterHits('Arlecchino').find((h) => h.talent === 'auto' && h.label === '1-Hit DMG')!
+    const base = first.terms[0][1][8]
+    const noBond = lineDamage(arle, first.label, { sets: [], settings: { 'arlecchino-bond': 0 } })
+    expect(lineDamage(arle, first.label) / noBond).toBeCloseTo((base + 2 * 221.2) / base, 6)
+
+    // Skirk: x1.7 on Seven-Phase Flash hits with 3 stacks
+    const skirk = character('Skirk', { element: 'Cryo' })
+    const flash = characterHits('Skirk').find((h) => h.talent === 'skill' && h.label === '1-Hit DMG')!
+    const noStacks = lineDamage(skirk, flash.label, { sets: [], settings: { 'skirk-a4': 0 } }, 'skill')
+    expect(lineDamage(skirk, flash.label, undefined, 'skill') / noStacks).toBeCloseTo(1.7, 6)
+
+    // Itto: ATK + 97.92% of DEF at Burst level 9, only in combat
+    const itto = character('AratakiItto', { element: 'Geo' })
+    const off = computeGenshinStats(itto, [], {}, undefined, { sets: [], settings: { 'itto-burst': false } }).stats
+    const on = computeGenshinStats(itto, [], {}, undefined, none).stats
+    expect((on.atk ?? 0) - (off.atk ?? 0)).toBeCloseTo((off.def ?? 0) * 0.9792, 3)
+  })
 })

@@ -210,9 +210,10 @@ export type HitBuff = {
   scale?: number,
   // Adds percent of a stat to each hit (Raiden's Resolve, Redhorn's DEF)
   addTerms?: Partial<Record<ScalingStat, number>>,
-  // DMG Bonus and CRIT Rate for these hits, in percent
+  // DMG Bonus, CRIT Rate and CRIT DMG for these hits, in percent
   dmgBonus?: number,
   critRate?: number,
+  critDmg?: number,
   // DMG Bonus and CRIT Rate per point of Elemental Mastery above a floor, up to caps (Nahida's A4)
   fromEm?: { over: number, dmgPer?: number, dmgCap?: number, critPer?: number, critCap?: number },
 }
@@ -450,6 +451,7 @@ type ElementTerms = {
   // From hit-specific buffs, in percent
   dmgBonus: number,
   critRate: number,
+  critDmg: number,
   fromEm: NonNullable<HitBuff['fromEm']>[],
 }
 
@@ -619,6 +621,7 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
       hits: hitCounts.get(key) ?? 0,
       dmgBonus: reaching.reduce((sum, buff) => sum + (buff.dmgBonus ?? 0), 0) + (hitElement === element ? fieldDmg : 0),
       critRate: reaching.reduce((sum, buff) => sum + (buff.critRate ?? 0), 0),
+      critDmg: reaching.reduce((sum, buff) => sum + (buff.critDmg ?? 0), 0),
       fromEm: reaching.flatMap((buff) => (buff.fromEm ? [buff.fromEm] : [])),
     }
   })
@@ -698,7 +701,7 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
       dmgBonus += Math.min(fromEm.dmgCap ?? Infinity, over * (fromEm.dmgPer ?? 0))
       groupCrit += Math.min(fromEm.critCap ?? Infinity, over * (fromEm.critPer ?? 0))
     }
-    const crit = 1 + Math.min(Math.max(groupCrit, 0), 100) / 100 * critDmg / 100
+    const crit = 1 + Math.min(Math.max(groupCrit, 0), 100) / 100 * (critDmg + group.critDmg) / 100
     total += base * (1 + ((group.dmgStat ? get(group.dmgStat) : 0) + get(group.typeStat) + allDmg + dmgBonus) / 100) * group.res * amplify * crit
   }
   let transformative = 0

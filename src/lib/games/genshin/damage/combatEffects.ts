@@ -323,6 +323,34 @@ function burstLevel(character: GenshinCharacter, boostedAt: 3 | 5): number {
 
 const ascended = (character: GenshinCharacter, level: number) => (character.ascension ?? 6) >= level
 
+function autoLevel(character: GenshinCharacter, boostedAt: 3 | 5): number {
+  return Math.min(15, (character.talents?.auto ?? 9) + (character.constellation >= boostedAt ? 3 : 0))
+}
+
+// Talent scalings by level 1-15 (genshin-optimizer skillParam): Itto's ATK from DEF in his Burst, Ayato's Shunsuiken DMG
+// per Namisen stack (percent of HP) and his Burst's Normal Attack DMG, Arlecchino's Normal Attack DMG per Bond of Life
+// (percent of ATK at 100% Bond)
+const ITTO_BURST_DEF_TO_ATK = [57.6, 61.92, 66.24, 72, 76.32, 80.64, 86.4, 92.16, 97.92, 103.68, 109.44, 115.2, 122.4, 129.6, 136.8]
+const AYATO_NAMISEN_HP = [0.561, 0.607, 0.652, 0.718, 0.763, 0.816, 0.887, 0.959, 1.031, 1.109, 1.187, 1.266, 1.344, 1.422, 1.5]
+const AYATO_BURST_NORMAL = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 20, 20, 20, 20, 20]
+const ARLECCHINO_BOND_ATK = [120.4, 130.2, 140, 154, 163.8, 175, 190.4, 205.8, 221.2, 238, 254.8, 271.6, 288.4, 305.2, 322]
+const AYATO_SHUNSUIKEN = ['Shunsuiken 1-Hit DMG', 'Shunsuiken 2-Hit DMG', 'Shunsuiken 3-Hit DMG']
+// Noelle's ATK from DEF in her Burst; Mavuika's DMG per Fighting Spirit point (Sunfell Slice, Flamestrider Normal and
+// Charged Attacks, percent of ATK); Skirk's Serpent's Subtlety DMG per point over 50 (percent of ATK) and her Normal
+// Attack DMG Bonus by Void Rifts absorbed (1-3)
+const NOELLE_BURST_DEF_TO_ATK = [40, 43, 46, 50, 53, 56, 60, 64, 68, 72, 76, 80, 85, 90, 95]
+const MAVUIKA_SUNFELL = [1.6, 1.72, 1.84, 2, 2.12, 2.24, 2.4, 2.56, 2.72, 2.88, 3.04, 3.2, 3.4, 3.6, 3.8]
+const MAVUIKA_FLAME_NORMAL = [0.258, 0.279, 0.3, 0.33, 0.351, 0.375, 0.408, 0.441, 0.474, 0.51, 0.546, 0.582, 0.618, 0.654, 0.69]
+const MAVUIKA_FLAME_CHARGED = [0.516, 0.558, 0.6, 0.66, 0.702, 0.75, 0.816, 0.882, 0.948, 1.02, 1.092, 1.164, 1.236, 1.308, 1.38]
+const SKIRK_SERPENT = [19.323, 20.773, 22.222, 24.154, 25.603, 27.053, 28.985, 30.917, 32.85, 34.782, 36.714, 38.647, 41.062, 43.478, 45.893]
+const SKIRK_VOID_NORMAL = [
+  [6.6, 7.2, 7.8, 8.4, 9, 9.6, 10.2, 10.8, 11.4, 12, 12.6, 13.2, 13.8, 14.4, 15],
+  [8.8, 9.6, 10.4, 11.2, 12, 12.8, 13.6, 14.4, 15.2, 16, 16.8, 17.6, 18.4, 19.2, 20],
+  [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
+]
+const MAVUIKA_FLAMESTRIDER_NORMAL = [1, 2, 3, 4, 5].map((n) => `Flamestrider Normal Attack ${n}-Hit DMG`)
+const MAVUIKA_FLAMESTRIDER_CHARGED = ['Flamestrider Charged Attack Cyclic DMG', 'Flamestrider Charged Attack Final DMG']
+
 // Raiden's Resolve bonus per stack by Burst level 1-15, in percent of ATK (genshin-optimizer skillParam): the initial
 // slash (Musou no Hitotachi) and Musou Isshin's attacks
 const RAIDEN_INITIAL = 'Musou no Hitotachi Base DMG'
@@ -334,6 +362,412 @@ const FURINA_DMG_PER_FANFARE = [0.07, 0.09, 0.11, 0.13, 0.15, 0.17, 0.19, 0.21, 
 
 // By GOOD character key
 export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
+  // From here to Hu Tao: genshin-optimizer's sheets (Oct 26 2026), read by hand
+  Chongyun: [
+    {
+      id: 'chongyun-a4',
+      label: 'Rimechaser Blade: the enemy\'s Cryo RES -10% after the Skill field ends',
+      toggle: { kind: 'switch', label: 'Hit by the field\'s blade' },
+      debuffs: ({ character }) => (ascended(character, 4) ? { resShred: { Cryo: 10 } } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'chongyun-c6',
+      label: 'C6: Burst DMG +15% against enemies with a lower HP percentage than his',
+      toggle: { kind: 'switch', label: 'Enemy at a lower HP %' },
+      premod: ({ character }) => (character.constellation >= 6 ? { burstDmg: 15 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Dehya: [
+    {
+      id: 'dehya-c1',
+      label: 'C1: Max HP +20%; Skill DMG +3.6% and Burst DMG +6% of Max HP',
+      premod: ({ character }) => (character.constellation >= 1 ? { hpPct: 20 } : {}),
+      hits: ({ character }) =>
+        character.constellation >= 1 ? [{ categories: ['skill'], addTerms: { hp: 3.6 } }, { categories: ['burst'], addTerms: { hp: 6 } }] : [],
+      confidence: 'sourced',
+    },
+    {
+      id: 'dehya-c2',
+      label: 'C2: Fiery Sanctum field DMG +50% while she is in it',
+      toggle: { kind: 'switch', label: 'In the field' },
+      hits: ({ character }) => (character.constellation >= 2 ? [{ labels: ['Field DMG'], dmgBonus: 50 }] : []),
+      confidence: 'sourced',
+    },
+    {
+      id: 'dehya-c6',
+      label: 'C6: Burst CRIT Rate +10%, CRIT DMG +15% per stack (up to 4)',
+      toggle: { kind: 'stacks', label: 'Stacks', max: 4 },
+      hits: ({ character, setting }) => character.constellation >= 6 ? [{ categories: ['burst'], critRate: 10, critDmg: 15 * stacks(setting) }] : [],
+      confidence: 'sourced',
+    },
+  ],
+  Emilie: [
+    {
+      id: 'emilie-a4',
+      label: 'Rectification: DMG +15% per 1,000 ATK against burning enemies (up to 36%)',
+      toggle: { kind: 'switch', label: 'Enemy burning' },
+      final: (s, { character }) => (ascended(character, 4) ? { allDmg: Math.min(36, (s.atk ?? 0) / 1000 * 15) } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'emilie-c1',
+      label: 'C1: Skill DMG +20%',
+      premod: ({ character }) => (character.constellation >= 1 ? { skillDmg: 20 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'emilie-c2',
+      label: 'C2: the enemy\'s Dendro RES -30% after her attacks hit',
+      toggle: { kind: 'switch', label: 'Her attacks hit' },
+      debuffs: ({ character }) => (character.constellation >= 2 ? { resShred: { Dendro: 30 } } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Gaming: [
+    {
+      id: 'gaming-a4',
+      label: 'Air of Prosperity: Charmed Cloudstrider DMG +20% at 50% HP or more',
+      toggle: { kind: 'switch', label: 'At 50% HP or more' },
+      hits: ({ character }) => (ascended(character, 4) ? [{ labels: ['Plunging Attack: Charmed Cloudstrider DMG'], dmgBonus: 20 }] : []),
+      confidence: 'sourced',
+    },
+    {
+      id: 'gaming-c2',
+      label: 'C2: ATK +20% after he is healed past Max HP',
+      toggle: { kind: 'switch', label: 'Overhealed' },
+      premod: ({ character }) => (character.constellation >= 2 ? { atkPct: 20 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'gaming-c6',
+      label: 'C6: Charmed Cloudstrider CRIT Rate +20% and CRIT DMG +40%',
+      hits: ({ character }) => character.constellation >= 6 ? [{ labels: ['Plunging Attack: Charmed Cloudstrider DMG'], critRate: 20, critDmg: 40 }] : [],
+      confidence: 'sourced',
+    },
+  ],
+  Kinich: [
+    {
+      id: 'kinich-a4',
+      label: 'Hail to the Almighty Dragonlord: Scalespiker Cannon adds 320% of ATK per stack (up to 2)',
+      toggle: { kind: 'stacks', label: 'Stacks', max: 2 },
+      hits: ({ character, setting }) => ascended(character, 4) ? [{ labels: ['Scalespiker Cannon DMG'], addTerms: { atk: 320 * stacks(setting) } }] : [],
+      confidence: 'sourced',
+    },
+    {
+      id: 'kinich-c1',
+      label: 'C1: Scalespiker Cannon CRIT DMG +100%',
+      hits: ({ character }) => (character.constellation >= 1 ? [{ labels: ['Scalespiker Cannon DMG'], critDmg: 100 }] : []),
+      confidence: 'sourced',
+    },
+    {
+      id: 'kinich-c2',
+      label: 'C2: the enemy\'s Dendro RES -30% after the Cannon hits',
+      toggle: { kind: 'switch', label: 'Cannon hit' },
+      debuffs: ({ character }) => (character.constellation >= 2 ? { resShred: { Dendro: 30 } } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'kinich-c4',
+      label: 'C4: Burst DMG +70%',
+      premod: ({ character }) => (character.constellation >= 4 ? { burstDmg: 70 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Mavuika: [
+    {
+      id: 'mavuika-spirit',
+      label:
+        'Hour of Burning Skies: Sunfell Slice and Flamestrider Normal and Charged Attacks add a share of ATK per Fighting Spirit point (100-200); A4: DMG +0.2% per point right after the Burst',
+      toggle: { kind: 'stacks', label: 'Fighting Spirit spent', max: 200 },
+      hits: ({ character, setting }) => {
+        const spirit = stacks(setting)
+        const level = burstLevel(character, 3) - 1
+        return [
+          { categories: ['burst'], addTerms: { atk: MAVUIKA_SUNFELL[level] * spirit } },
+          { labels: MAVUIKA_FLAMESTRIDER_NORMAL, addTerms: { atk: MAVUIKA_FLAME_NORMAL[level] * spirit } },
+          { labels: MAVUIKA_FLAMESTRIDER_CHARGED, addTerms: { atk: MAVUIKA_FLAME_CHARGED[level] * spirit } },
+        ]
+      },
+      premod: ({ character, setting }) => (ascended(character, 4) ? { allDmg: 0.2 * stacks(setting) } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'mavuika-a1',
+      label: 'Gift of Flaming Flowers: ATK +30% after a Nightsoul Burst',
+      toggle: { kind: 'switch', label: 'After a Nightsoul Burst' },
+      premod: ({ character }) => (ascended(character, 1) ? { atkPct: 30 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'mavuika-c1',
+      label: 'C1: ATK +40% after gaining Fighting Spirit; C2: base ATK +200 (counted as flat ATK)',
+      toggle: { kind: 'switch', label: 'After gaining Fighting Spirit' },
+      premod: ({ character }) => ({
+        ...(character.constellation >= 1 ? { atkPct: 40 } : {}),
+        ...(character.constellation >= 2 ? { atk: 200 } : {}),
+      }),
+      confidence: 'sourced',
+    },
+  ],
+  Noelle: [
+    {
+      id: 'noelle-burst',
+      label: 'Sweeping Time: ATK from DEF (+50% of DEF more at C6)',
+      toggle: { kind: 'switch', label: 'During the Burst' },
+      final: (s, { character }) => ({
+        atk: (s.def ?? 0) * (NOELLE_BURST_DEF_TO_ATK[burstLevel(character, 5) - 1] + (character.constellation >= 6 ? 50 : 0)) / 100,
+      }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'noelle-c2',
+      label: 'C2: Charged Attack DMG +15%',
+      premod: ({ character }) => (character.constellation >= 2 ? { chargedDmg: 15 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Razor: [
+    {
+      id: 'razor-c1',
+      label: 'C1: DMG +10% after picking up an Elemental Orb or Particle',
+      toggle: { kind: 'switch', label: 'Picked up energy' },
+      premod: ({ character }) => (character.constellation >= 1 ? { allDmg: 10 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'razor-c2',
+      label: 'C2: CRIT Rate +10% against enemies below 30% HP',
+      toggle: { kind: 'switch', label: 'Enemy below 30% HP' },
+      premod: ({ character }) => (character.constellation >= 2 ? { critRate: 10 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'razor-c4',
+      label: 'C4: the enemy\'s DEF -15% after the Skill press hits',
+      toggle: { kind: 'switch', label: 'Skill press hit' },
+      debuffs: ({ character }) => (character.constellation >= 4 ? { defShred: 15 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Skirk: [
+    {
+      id: 'skirk-void',
+      label: 'Havoc: Ruin: Normal Attack DMG Bonus (her Seven-Phase Flash attacks too) by Void Rifts absorbed (1-3)',
+      toggle: { kind: 'stacks', label: 'Void Rifts absorbed', max: 3 },
+      hits: ({ character, setting }) => {
+        const n = stacks(setting)
+        return n > 0 ? [{ categories: ['normal', 'skill'], dmgBonus: SKIRK_VOID_NORMAL[n - 1][burstLevel(character, 3) - 1] }] : []
+      },
+      confidence: 'sourced',
+    },
+    {
+      id: 'skirk-serpent',
+      label: 'Havoc: Ruin: Burst hits add a share of ATK per Serpent\'s Subtlety point over 50 (up to 12, 22 at C2)',
+      toggle: { kind: 'stacks', label: 'Points over 50', max: 22 },
+      hits: ({ character, setting }) => [{
+        categories: ['burst'],
+        addTerms: { atk: Math.min(stacks(setting), character.constellation >= 2 ? 22 : 12) * SKIRK_SERPENT[burstLevel(character, 3) - 1] },
+      }],
+      confidence: 'sourced',
+    },
+    {
+      id: 'skirk-a4',
+      label: 'Return to Oblivion: Seven-Phase Flash hits x1.1/1.2/1.7 and Burst x1.05/1.15/1.6 with 1/2/3 Death\'s Crossing stacks; C4: ATK +10/20/40%',
+      toggle: { kind: 'stacks', label: 'Death\'s Crossing stacks', max: 3 },
+      hits: ({ character, setting }) => {
+        const n = stacks(setting)
+        if (!ascended(character, 4) || n === 0) return []
+        return [{ categories: ['skill'], scale: [0.1, 0.2, 0.7][n - 1] }, { categories: ['burst'], scale: [0.05, 0.15, 0.6][n - 1] }]
+      },
+      premod: ({ character, setting }) => character.constellation >= 4 && ascended(character, 4) ? { atkPct: [0, 10, 20, 40][stacks(setting)] ?? 0 } : {},
+      confidence: 'sourced',
+    },
+  ],
+  Varesa: [
+    {
+      id: 'varesa-a1',
+      label: 'Rainbow Crash: Plunging Attack ground impacts add 50% of ATK (180% from C1)',
+      toggle: { kind: 'switch', label: 'Rainbow Crash' },
+      hits: ({ character }) =>
+        ascended(character, 1)
+          ? [{
+            labels: ['Low Plunge DMG', 'High Plunge DMG', 'Fiery Passion Low Plunge DMG'],
+            addTerms: { atk: character.constellation >= 1 ? 180 : 50 },
+          }]
+          : [],
+      confidence: 'sourced',
+    },
+    {
+      id: 'varesa-a4',
+      label: 'Arising From the Ashes: ATK +35% per Nightsoul Burst stack (up to 2)',
+      toggle: { kind: 'stacks', label: 'Stacks', max: 2 },
+      premod: ({ character, setting }) => (ascended(character, 4) ? { atkPct: 35 * stacks(setting) } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Xiangling: [
+    {
+      id: 'xiangling-a4',
+      label: 'Beware, It\'s Super Hot!: ATK +10% after picking up a chili pepper',
+      toggle: { kind: 'switch', label: 'Picked up the chili' },
+      premod: ({ character }) => (ascended(character, 4) ? { atkPct: 10 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'xiangling-c1',
+      label: 'C1: the enemy\'s Pyro RES -15% after Guoba hits',
+      toggle: { kind: 'switch', label: 'Guoba hit' },
+      debuffs: ({ character }) => (character.constellation >= 1 ? { resShred: { Pyro: 15 } } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'xiangling-c6',
+      label: 'C6: Pyro DMG +15% during Pyronado (genshin-optimizer leaves it off her first two Burst swings and Pyronado itself)',
+      toggle: { kind: 'switch', label: 'During Pyronado' },
+      premod: ({ character }) => (character.constellation >= 6 ? { pyroDmg: 15 } : {}),
+      hits: ({ character }) => character.constellation >= 6 ? [{ labels: ['1-Hit Swing DMG', '2-Hit Swing DMG', 'Pyronado DMG'], dmgBonus: -15 }] : [],
+      confidence: 'sourced',
+    },
+  ],
+  Beidou: [
+    {
+      id: 'beidou-a4',
+      label: 'Lightning Storm: Normal and Charged Attack DMG +15% after a full-power Tidecaller',
+      toggle: { kind: 'switch', label: 'After a full-power Tidecaller' },
+      premod: ({ character }) => (ascended(character, 4) ? { normalDmg: 15, chargedDmg: 15 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'beidou-c6',
+      label: 'C6: the enemy\'s Electro RES -15% during Stormbreaker',
+      toggle: { kind: 'switch', label: 'During Stormbreaker' },
+      debuffs: ({ character }) => (character.constellation >= 6 ? { resShred: { Electro: 15 } } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  KamisatoAyato: [
+    {
+      id: 'ayato-namisen',
+      label: 'Kamisato Art: Kyouka: Shunsuiken hits add a share of Max HP per Namisen stack (4, 5 at C2)',
+      toggle: { kind: 'stacks', label: 'Namisen stacks', max: 5 },
+      hits: ({ character, setting }) => [{
+        labels: AYATO_SHUNSUIKEN,
+        addTerms: { hp: Math.min(stacks(setting), character.constellation >= 2 ? 5 : 4) * AYATO_NAMISEN_HP[skillLevel(character, 3) - 1] },
+      }],
+      premod: ({ character, setting }) => (character.constellation >= 2 && stacks(setting) >= 3 ? { hpPct: 50 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'ayato-burst',
+      label: 'Kamisato Art: Suiyuu: Normal Attack DMG Bonus in the Burst field',
+      toggle: { kind: 'switch', label: 'In the Burst field' },
+      premod: ({ character }) => ({ normalDmg: AYATO_BURST_NORMAL[burstLevel(character, 5) - 1] }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'ayato-c1',
+      label: 'C1: Shunsuiken DMG +40% against enemies at or below 50% HP',
+      toggle: { kind: 'switch', label: 'Enemy at or below 50% HP' },
+      hits: ({ character }) => (character.constellation >= 1 ? [{ labels: AYATO_SHUNSUIKEN, dmgBonus: 40 }] : []),
+      confidence: 'sourced',
+    },
+  ],
+  AratakiItto: [
+    {
+      id: 'itto-burst',
+      label: 'Royal Descent: Behold, Itto the Evil!: ATK from DEF',
+      toggle: { kind: 'switch', label: 'During the Burst' },
+      final: (s, { character }) => ({ atk: (s.def ?? 0) * ITTO_BURST_DEF_TO_ATK[burstLevel(character, 5) - 1] / 100 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'itto-a4',
+      label: 'Bloodline of the Crimson Oni: Arataki Kesagiri adds 35% of DEF',
+      hits: ({ character }) =>
+        ascended(character, 4) ? [{ labels: ['Arataki Kesagiri Combo Slash DMG', 'Arataki Kesagiri Final Slash DMG'], addTerms: { def: 35 } }] : [],
+      confidence: 'sourced',
+    },
+    {
+      id: 'itto-c4',
+      label: 'C4: ATK +20% and DEF +20% after the Burst ends',
+      toggle: { kind: 'switch', label: 'After the Burst' },
+      premod: ({ character }) => (character.constellation >= 4 ? { atkPct: 20, defPct: 20 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'itto-c6',
+      label: 'C6: Charged Attack CRIT DMG +70%',
+      hits: ({ character }) => (character.constellation >= 6 ? [{ categories: ['charged'], critDmg: 70 }] : []),
+      confidence: 'sourced',
+    },
+  ],
+  Yelan: [{
+    id: 'yelan-a1',
+    label: 'Turn Control: Max HP +6/12/18/30% with 1/2/3/4 elements in the party',
+    toggle: { kind: 'stacks', label: 'Elements in the party', max: 4 },
+    premod: ({ character, setting }) => (ascended(character, 1) ? { hpPct: [0, 6, 12, 18, 30][stacks(setting)] ?? 0 } : {}),
+    confidence: 'sourced',
+  }],
+  Navia: [
+    {
+      id: 'navia-a1',
+      label: 'Undisclosed Distribution Channels: Normal, Charged and Plunging Attack DMG +40% after the Skill (with a Geo infusion)',
+      toggle: { kind: 'switch', label: 'After the Skill' },
+      premod: ({ character }) => (ascended(character, 1) ? { normalDmg: 40, chargedDmg: 40, plungingDmg: 40 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'navia-a4',
+      label: 'Mutual Assistance Network: ATK +20% per Pyro, Electro, Cryo or Hydro teammate (up to 2)',
+      toggle: { kind: 'stacks', label: 'Such teammates', max: 2 },
+      premod: ({ character, setting }) => (ascended(character, 4) ? { atkPct: 20 * stacks(setting) } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'navia-skill-charges',
+      label: 'Ceremonial Crystalshot: Skill DMG +15% per Crystal Shrapnel charge above 3 (up to 6); C2: Rosula Shardshot CRIT Rate +12% per charge (up to 3)',
+      toggle: { kind: 'stacks', label: 'Crystal Shrapnel charges', max: 6 },
+      premod: ({ setting }) => ({ skillDmg: 15 * Math.max(0, stacks(setting) - 3) }),
+      hits: ({ character, setting }) =>
+        character.constellation >= 2 ? [{ labels: ['Rosula Shardshot Base DMG'], critRate: 12 * Math.min(3, stacks(setting)) }] : [],
+      confidence: 'sourced',
+    },
+    {
+      id: 'navia-c4',
+      label: 'C4: the enemy\'s Geo RES -20% after the Burst hits',
+      toggle: { kind: 'switch', label: 'Burst hit' },
+      debuffs: ({ character }) => (character.constellation >= 4 ? { resShred: { Geo: 20 } } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Arlecchino: [
+    {
+      id: 'arlecchino-bond',
+      label: 'Masque of the Red Death: Normal Attacks add a share of ATK per Bond of Life (Pyro infusion from 30%); C1 adds 100% more',
+      toggle: { kind: 'stacks', label: 'Bond of Life (% of Max HP)', max: 200 },
+      hits: ({ character, setting }) => {
+        const bond = stacks(setting) / 100
+        const share = ARLECCHINO_BOND_ATK[autoLevel(character, 3) - 1] + (character.constellation >= 1 ? 100 : 0)
+        return [{ categories: ['normal'], addTerms: { atk: share * bond } }]
+      },
+      confidence: 'sourced',
+    },
+    {
+      id: 'arlecchino-pyro',
+      label: 'Manifest Flame: Pyro DMG +40%',
+      premod: () => ({ pyroDmg: 40 }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'arlecchino-c6',
+      label: 'C6: Normal Attack and Burst CRIT Rate +10% and CRIT DMG +70% after the Skill',
+      toggle: { kind: 'switch', label: 'After the Skill' },
+      hits: ({ character }) => (character.constellation >= 6 ? [{ categories: ['normal', 'burst'], critRate: 10, critDmg: 70 }] : []),
+      confidence: 'sourced',
+    },
+  ],
   HuTao: [
     {
       id: 'hutao-skill-atk',
