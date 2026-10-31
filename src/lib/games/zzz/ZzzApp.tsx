@@ -13,10 +13,10 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import { SampleNotice } from 'lib/games/shared/ui/SampleNotice'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
-import { ZzzAgentsPage } from 'lib/games/zzz/ZzzAgentsPage'
+import { ZzzCharactersPage } from 'lib/games/zzz/ZzzCharactersPage'
 import { ZzzDataPage } from 'lib/games/zzz/ZzzDataPage'
 import { ZzzDiscsPage } from 'lib/games/zzz/ZzzDiscsPage'
-import { ZzzOptimizerPanel } from 'lib/games/zzz/ZzzOptimizerPanel'
+import { ZzzOptimizerPage } from 'lib/games/zzz/ZzzOptimizerPage'
 import { useShallow } from 'zustand/react/shallow'
 
 const PAGES = ['optimizer', 'agents', 'discs', 'data'] as const
@@ -30,8 +30,8 @@ const GROUPS: GameNavGroup<ZzzPage>[] = [
     label: 'Optimization',
     items: [
       { key: 'optimizer', label: 'Optimizer', icon: <IconTrendingUp size={ICON_SIZE} /> },
-      { key: 'agents', label: 'Agents', icon: <IconUser size={ICON_SIZE} /> },
       { key: 'discs', label: 'Discs', icon: <IconCards size={ICON_SIZE} /> },
+      { key: 'agents', label: 'Agents', icon: <IconUser size={ICON_SIZE} /> },
       { key: 'data', label: 'Import / Save', icon: <IconUpload size={ICON_SIZE} /> },
     ],
   },
@@ -56,8 +56,8 @@ export function ZzzApp() {
         ? <SampleNotice onRemove={() => useZzzStore.getState().clear()} onImport={() => setPage('data')} />
         : page !== 'data' && <BackupReminder game='zzz' hasData={hasData} onSave={() => setPage('data')} />}
     >
-      {page === 'agents' && <ZzzAgentsPage onImport={goToImport} />}
-      {page === 'optimizer' && <ZzzOptimizerPanel onImport={goToImport} />}
+      {page === 'agents' && <ZzzCharactersPage onImport={goToImport} />}
+      {page === 'optimizer' && <ZzzOptimizerPage onImport={goToImport} />}
       {page === 'discs' && <ZzzDiscsPage onImport={goToImport} />}
       {page === 'data' && <ZzzDataPage />}
     </GameLayout>

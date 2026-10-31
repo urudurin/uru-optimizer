@@ -1,5 +1,6 @@
 import {
   backupKindOf,
+  type BackupSettings,
   wrapBackup,
 } from 'lib/games/shared/backup'
 import {
@@ -53,8 +54,8 @@ export const WUWA_BACKUP_KIND = 'uru-wuwa-backup'
 
 // A backup file of the browser save, see shared/backup.ts. savedAt is YYYY-MM-DD.
 // It's a different shape from the WuwaEchoScorer user-data file, which the "kind" marker tells apart
-export function createWuwaBackup(data: WuwaData, savedAt: string): string {
-  return wrapBackup(WUWA_BACKUP_KIND, savedAt, serializeWuwaData(data))
+export function createWuwaBackup(data: WuwaData, savedAt: string, settings?: BackupSettings): string {
+  return wrapBackup(WUWA_BACKUP_KIND, savedAt, serializeWuwaData(data), settings)
 }
 
 // The data in a WuWa backup file, or undefined when the text isn't one. Never throws

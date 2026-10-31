@@ -14,6 +14,7 @@ import {
   resolveCombat,
   setCountsOf,
 } from 'lib/games/genshin/damage/combatEffects'
+import { KIT_EFFECTS } from 'lib/games/genshin/damage/combatEffects'
 import {
   type DamageSetup,
   DEFAULT_ENEMY,
@@ -109,6 +110,7 @@ import {
 } from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
 import { BuildAnalysis } from 'lib/games/shared/ui/BuildAnalysis'
+import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   EmptyState,
   Notices,
@@ -126,6 +128,12 @@ import {
   CharacterPortrait,
   RankButtons,
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
+import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
+import {
+  DEFAULT_RESULT_LIMIT,
+  resultLimitOf,
+  ResultLimitSelect,
+} from 'lib/games/shared/ui/optimizer/ResultLimit'
 import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
@@ -138,6 +146,7 @@ import {
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
+import { Message } from 'lib/interactions/message'
 import {
   useMemo,
   useState,
@@ -152,8 +161,6 @@ const MAIN_STAT_SLOTS = Object.keys(MAIN_STAT_OPTIONS) as MainStatSlot[]
 
 const MIN_STATS: GenshinStatKey[] = ['energyRecharge', 'critRate', 'critDmg', 'elementalMastery', 'atk', 'hp', 'def']
 const SHOWN_STATS: GenshinStatKey[] = ['hp', 'atk', 'def', 'elementalMastery', 'critRate', 'critDmg', 'energyRecharge']
-
-const RESULT_LIMIT = 10
 
 function formatScore(target: OptimizerTarget, score: number): string {
   if (target.kind === 'stat') return formatStatValue(target.stat, score)
@@ -182,6 +189,7 @@ type GenshinOptimizerSettings = {
   fourPieceSet: string | null,
   twoPieceSets: string[],
   excludeEquippedByOthers: boolean,
+  resultLimit: number,
   minStats: Partial<Record<GenshinStatKey, number>>,
   maxStats: Partial<Record<GenshinStatKey, number>>,
   // The team (team/teamBuffs.ts): teammate ids, whether this character is on the field, buff toggles
@@ -206,6 +214,7 @@ function defaultSettings(characterId: string): GenshinOptimizerSettings {
     fourPieceSet: null,
     twoPieceSets: [],
     excludeEquippedByOthers: true,
+    resultLimit: DEFAULT_RESULT_LIMIT,
     minStats: {},
     maxStats: {},
     teammates: [],
@@ -259,6 +268,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     fourPieceSet,
     twoPieceSets,
     excludeEquippedByOthers,
+    resultLimit,
     minStats,
     maxStats,
     teammates,
@@ -273,6 +283,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const setFourPieceSet = fieldSetter(updateSettings, 'fourPieceSet')
   const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
+  const setResultLimit = fieldSetter(updateSettings, 'resultLimit')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
   const setTeammates = fieldSetter(updateSettings, 'teammates')
@@ -313,7 +324,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
             title='Import your artifacts first'
             action={
               <Group gap='xs'>
-                <Button onClick={onImport}>Import</Button>
+                <Button onClick={onImport}>Import data</Button>
                 <Button variant='light' onClick={() => useGenshinStore.getState().importParsed(genshinSampleData(), 'replace')}>Try with sample data</Button>
               </Group>
             }
@@ -405,7 +416,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
       minStats,
       maxStats,
       target,
-      limit: RESULT_LIMIT,
+      limit: resultLimitOf(resultLimit),
       teamBuffs,
       // Combat effects only count for rotation damage; the stat targets stay on the stat screen
       combat: byDamage ? combat : undefined,
@@ -440,7 +451,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   ].join(' · ')
   const isWorn = build?.artifacts.every((a) => character.artifactIds[a.slot] === a.id) ?? false
 
-  function equipBuild() {
+  async function equipBuild() {
     if (!build || !result) return
     const losing = genshinPiecesTaken({ artifacts, characters }, character.id, build.artifacts).map((id) => ownerNames.get(id) ?? id)
     const swap = losing.length > 0
@@ -448,8 +459,11 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
 
 ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
       : ''
-    if (!window.confirm(`Equip build #${selected + 1} on ${character.name} in this browser's save?${swap}`)) return
+    if (!await confirmAction('Equip build', `Equip build #${selected + 1} on ${character.name} in this browser's save?${swap}`, { confirmLabel: 'Equip' })) {
+      return
+    }
     equip(character.id, build.artifacts)
+    Message.success('Equipped')
     // The "Now" row is this build from here on
     if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
   }
@@ -548,8 +562,9 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                     ...TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) })),
                   ]}
                 />
+                <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
               </FormCard>
-              <FormCard title='Options' size='narrow'>
+              <FormCard title='Optimizer options' size='narrow'>
                 <Switch
                   label='Leave out artifacts other characters are wearing'
                   checked={excludeEquippedByOthers}
@@ -558,65 +573,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
               </FormCard>
             </FormRow>
 
-            <FormRow
-              id='genshin-damage'
-              title='Damage'
-              summary={`Enemy level ${enemy.level}, ${enemy.res}% RES · ${Object.values(rotation.counts).reduce((sum, count) => sum + count, 0)} hits${
-                rotation.reaction !== 'none' ? ` · ${rotation.reaction}` : ''
-              }${byDamage ? '' : ' · not ranked by damage'}`}
-            >
-              <EnemyCard
-                enemy={enemy}
-                debuffs={debuffs}
-                onChange={(next) => {
-                  setEnemy(next)
-                  setResult(undefined)
-                }}
-              />
-              <RotationCard
-                character={character}
-                rotation={rotation}
-                talents={talents}
-                team={reactionsInTeam}
-                damage={currentDamage}
-                onChange={(next) => {
-                  setRotation(next)
-                  setResult(undefined)
-                }}
-              />
-              <EffectsCard
-                name={character.name}
-                fourPieceSet={fourPieceSet ? setOptions.find((o) => o.value === fourPieceSet)?.label ?? fourPieceSet : undefined}
-                applied={resolvedCombat.applied}
-                onSetting={(id, value) => {
-                  setCombatSettings((current) => ({ ...current, [id]: value }))
-                  setResult(undefined)
-                }}
-              />
-            </FormRow>
-
-            <FormRow id='genshin-team' title='Team' summary={teamSummary(team, teamResult, characters)}>
-              <GenshinTeamCards
-                character={character}
-                characters={characters}
-                team={team}
-                result={teamResult}
-                onTeammates={(ids) => {
-                  setTeammates(ids)
-                  setResult(undefined)
-                }}
-                onField={(value) => {
-                  setOnField(value)
-                  setResult(undefined)
-                }}
-                onSetting={(key, value) => {
-                  setTeamSettings((current) => ({ ...current, [key]: value }))
-                  setResult(undefined)
-                }}
-              />
-            </FormRow>
-
-            <FormRow id='genshin-filters' title='Artifact filters' summary={filterSummary}>
+            <FormRow id='genshin-filters' title='Artifact & stat filters' summary={filterSummary}>
               <FormCard
                 title='Sets'
                 description='Only 2-piece bonuses the character screen shows are counted, not 4-piece effects, so pick the set you want to run here.'
@@ -663,12 +620,73 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
                 />
               </FormCard>
             </FormRow>
+
+            <FormRow id='genshin-team' title='Teammates' summary={teamSummary(team, teamResult, characters)}>
+              <GenshinTeamCards
+                character={character}
+                characters={characters}
+                team={team}
+                result={teamResult}
+                onTeammates={(ids) => {
+                  setTeammates(ids)
+                  setResult(undefined)
+                }}
+                onField={(value) => {
+                  setOnField(value)
+                  setResult(undefined)
+                }}
+                onSetting={(key, value) => {
+                  setTeamSettings((current) => ({ ...current, [key]: value }))
+                  setResult(undefined)
+                }}
+              />
+            </FormRow>
+
+            <FormRow
+              id='genshin-damage'
+              title='Damage'
+              summary={`Enemy level ${enemy.level}, ${enemy.res}% RES · ${Object.values(rotation.counts).reduce((sum, count) => sum + count, 0)} hits${
+                rotation.reaction !== 'none' ? ` · ${rotation.reaction}` : ''
+              }${byDamage ? '' : ' · not ranked by damage'}`}
+            >
+              <EnemyCard
+                enemy={enemy}
+                debuffs={debuffs}
+                onChange={(next) => {
+                  setEnemy(next)
+                  setResult(undefined)
+                }}
+              />
+              <RotationCard
+                character={character}
+                rotation={rotation}
+                talents={talents}
+                team={reactionsInTeam}
+                damage={currentDamage}
+                onChange={(next) => {
+                  setRotation(next)
+                  setResult(undefined)
+                }}
+              />
+              <EffectsCard
+                name={character.name}
+                fourPieceSet={fourPieceSet ? setOptions.find((o) => o.value === fourPieceSet)?.label ?? fourPieceSet : undefined}
+                applied={resolvedCombat.applied}
+                onSetting={(id, value) => {
+                  setCombatSettings((current) => ({ ...current, [id]: value }))
+                  setResult(undefined)
+                }}
+              />
+            </FormRow>
           </FormRows>
+          <KitDisclaimer name={character.name} effects={KIT_EFFECTS[character.id]} byDamage={byDamage} />
 
           {!outcome && (
             <Panel>
               <EmptyState icon={<IconTrendingUp size={24} />} title={`Find the best artifacts for ${character.name}`}>
-                {`Pick what to rank by and any filters, then search. The best ${RESULT_LIMIT} builds show up here next to ${character.name}'s current artifacts.`}
+                {`Pick what to rank by and any filters, then search. The best ${
+                  resultLimitOf(resultLimit)
+                } builds show up here next to ${character.name}'s current artifacts.`}
               </EmptyState>
             </Panel>
           )}
@@ -680,7 +698,7 @@ ${losing.join(', ')} will get ${character.name}'s current pieces in exchange.`
               title='Results'
               description={`${(result.ms / 1000).toFixed(1)}s · ${formatNumber(outcome.visited)} partial and full builds checked · artifacts per slot ${
                 outcome.poolSizes.join('/')
-              }, ${outcome.prunedSizes.join('/')} after dropping ones that can't make the top ${RESULT_LIMIT}`}
+              }, ${outcome.prunedSizes.join('/')} after dropping ones that can't make the top ${resultLimitOf(resultLimit)}`}
             >
               <Stack gap='sm'>
                 {outcome.truncated && (

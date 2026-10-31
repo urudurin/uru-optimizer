@@ -5,6 +5,7 @@ import type {
 } from 'lib/games/genshin/types'
 import {
   backupKindOf,
+  type BackupSettings,
   wrapBackup,
 } from 'lib/games/shared/backup'
 import {
@@ -83,8 +84,8 @@ export function deserializeGenshinData(text: string | null): GenshinData {
 }
 
 // A backup file of the browser save, see shared/backup.ts. savedAt is YYYY-MM-DD
-export function createGenshinBackup(data: GenshinData, savedAt: string): string {
-  return wrapBackup(GENSHIN_BACKUP_KIND, savedAt, serializeGenshinData(data))
+export function createGenshinBackup(data: GenshinData, savedAt: string, settings?: BackupSettings): string {
+  return wrapBackup(GENSHIN_BACKUP_KIND, savedAt, serializeGenshinData(data), settings)
 }
 
 // The data in a Genshin backup file, or undefined when the text isn't one. Never throws

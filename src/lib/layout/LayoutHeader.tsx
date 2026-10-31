@@ -74,7 +74,8 @@ export function LayoutHeader() {
               <img src={Assets.getDiscord()} style={{ height: 32, borderRadius: 5, display: 'block' }} />
             </a>
           )}
-          <LanguageSelector />
+          {/* Only HSR's pages are translated; the Home tab and the other games are English for now */}
+          {!home && activeGame === 'hsr' && <LanguageSelector />}
         </Flex>
       </Flex>
     </header>

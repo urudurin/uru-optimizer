@@ -26,12 +26,15 @@ import {
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import {
   backupFileName,
+  backupSettings,
   downloadTextFile,
   recordBackup,
+  restoreBackupSettings,
 } from 'lib/games/shared/backup'
 import { parseJsonOrUndefined } from 'lib/games/shared/enka'
 import { formatNumber } from 'lib/games/shared/format'
 import { todayString } from 'lib/games/shared/importedPresets'
+import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   type EnkaImportConfig,
   EnkaImportPanel,
@@ -42,6 +45,7 @@ import {
   Panel,
   StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
+import { Message } from 'lib/interactions/message'
 import { useState } from 'react'
 
 const ENKA_CONFIG: EnkaImportConfig = {
@@ -74,7 +78,13 @@ export function GenshinDataPage() {
     const parsed = parseJsonOrUndefined(text)
     if (backup) {
       importParsed({ ...backup, warnings: [] }, 'replace')
-      setMessage({ ok: true, text: `Restored a backup with ${backup.characters.length} characters and ${backup.artifacts.length} artifacts` })
+      const settings = restoreBackupSettings('genshin', text)
+      setMessage({
+        ok: true,
+        text: `Restored a backup with ${backup.characters.length} characters and ${backup.artifacts.length} artifacts${
+          settings ? ' and your optimizer settings' : ''
+        }`,
+      })
     } else if (isGoodFile(parsed)) {
       setMessage({ ok: true, text: 'Reading the GOOD file...' })
       const outcome = await importGoodFile(parsed)
@@ -89,12 +99,17 @@ export function GenshinDataPage() {
 
   function handleSave() {
     const savedAt = todayString(new Date())
-    downloadTextFile(backupFileName('genshin', savedAt), createGenshinBackup({ artifacts, characters }, savedAt))
+    downloadTextFile(backupFileName('genshin', savedAt), createGenshinBackup({ artifacts, characters }, savedAt, backupSettings('genshin')))
+    Message.success('Saved a backup')
     recordBackup('genshin', savedAt)
   }
 
-  function handleClear() {
-    if (window.confirm('Remove all stored Genshin characters and artifacts from this browser?')) clear()
+  async function handleClear() {
+    if (
+      !await confirmAction('Clear data', 'Remove all stored Genshin characters and artifacts from this browser?', { danger: true, confirmLabel: 'Clear data' })
+    ) return
+    clear()
+    Message.success('Cleared data')
   }
 
   const hasData = artifacts.length > 0 || characters.length > 0

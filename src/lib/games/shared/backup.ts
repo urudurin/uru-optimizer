@@ -40,9 +40,48 @@ export function backupReminder(game: string, hasData: boolean, now: Date): { due
 
 export type BackupKind = 'uru-zzz-backup' | 'uru-wuwa-backup' | 'uru-genshin-backup'
 
-// Adds the marker and date to a serialized save. Pretty-printed so the file is readable if opened
-export function wrapBackup(kind: BackupKind, savedAt: string, saveText: string): string {
-  return `${JSON.stringify({ kind, savedAt, ...JSON.parse(saveText) as object }, null, 2)}\n`
+// Adds the marker and date to a serialized save, and the game's browser settings (backupSettings) when given.
+// Pretty-printed so the file is readable if opened
+export function wrapBackup(kind: BackupKind, savedAt: string, saveText: string, settings?: BackupSettings): string {
+  return `${JSON.stringify({ kind, savedAt, ...JSON.parse(saveText) as object, ...(settings ? { settings } : {}) }, null, 2)}\n`
+}
+
+// The browser settings a backup carries next to the save, by storage key, like HSR's save file keeps each character's
+// optimizer form: per-character optimizer settings (teams, rotations, filters) and saved rotations. Imported presets
+// stay out (third-party guide data, see CLAUDE.md)
+export type BackupSettings = Record<string, unknown>
+
+const settingsKeys = (game: string) => [`${game}-optimizer-settings`, `${game}-saved-rotations`]
+
+export function backupSettings(game: string): BackupSettings {
+  const settings: BackupSettings = {}
+  for (const key of settingsKeys(game)) {
+    const text = readStorage(key)
+    if (!text) continue
+    try {
+      settings[key] = JSON.parse(text)
+    } catch {
+      // A corrupted setting stays out of the backup
+    }
+  }
+  return settings
+}
+
+// Puts a backup's settings back in the browser; returns how many were restored. Only this game's keys, never throws
+export function restoreBackupSettings(game: string, text: string): number {
+  let settings: unknown
+  try {
+    settings = (JSON.parse(text) as { settings?: unknown }).settings
+  } catch {
+    return 0
+  }
+  if (typeof settings !== 'object' || settings === null) return 0
+  let restored = 0
+  for (const key of settingsKeys(game)) {
+    const value = (settings as Record<string, unknown>)[key]
+    if (value !== undefined && writeStorage(key, JSON.stringify(value))) restored++
+  }
+  return restored
 }
 
 // The kind of a backup file, or undefined for anything else. Never throws

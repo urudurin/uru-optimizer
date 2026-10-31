@@ -79,7 +79,7 @@ function presetOf(conditions: ActiveConditions): Preset {
 // One roster entry per agent, with every saved build of theirs (none for agents not in the save)
 type RosterAgent = { agentId: string, name: string, element: string, specialty: string, builds: ImportedBuild[] }
 
-export function ZzzAgentsPage({ onImport }: { onImport: () => void }) {
+export function ZzzCharactersPage({ onImport }: { onImport: () => void }) {
   const builds = useZzzStore((s) => s.builds)
   const images = useZzzImages()
   // Every agent and W-Engine, once Enka's data has loaded (data/enkaGameData.ts)

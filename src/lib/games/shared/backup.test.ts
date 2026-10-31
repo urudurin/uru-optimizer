@@ -1,7 +1,10 @@
 import {
   backupReminder,
+  backupSettings,
   recordBackup,
+  restoreBackupSettings,
   snoozeBackupReminder,
+  wrapBackup,
 } from 'lib/games/shared/backup'
 import {
   afterEach,
@@ -42,5 +45,24 @@ describe('backupReminder', () => {
     snoozeBackupReminder('genshin', day('2026-10-30'))
     expect(backupReminder('genshin', true, day('2026-11-05')).due).toBe(false)
     expect(backupReminder('genshin', true, day('2026-11-06')).due).toBe(true)
+  })
+
+  it('carries the optimizer settings and saved rotations in a backup and puts them back, this game only', () => {
+    localStorage.setItem('zzz-optimizer-settings', JSON.stringify({ last: '1091', byCharacter: { 1091: { rank: 'damage' } } }))
+    localStorage.setItem('zzz-saved-rotations', JSON.stringify({ 1091: [{ name: 'Ult', rotation: {} }] }))
+    localStorage.setItem('zzz-imported-presets', JSON.stringify({ presets: [] }))
+    localStorage.setItem('genshin-optimizer-settings', JSON.stringify({ last: 'Nefer' }))
+    const settings = backupSettings('zzz')
+    expect(Object.keys(settings).sort()).toEqual(['zzz-optimizer-settings', 'zzz-saved-rotations'])
+
+    const backup = wrapBackup('uru-zzz-backup', '2026-10-31', JSON.stringify({ version: 1, discs: [] }), settings)
+    localStorage.removeItem('zzz-optimizer-settings')
+    localStorage.removeItem('zzz-saved-rotations')
+    expect(restoreBackupSettings('zzz', backup)).toBe(2)
+    expect(JSON.parse(localStorage.getItem('zzz-optimizer-settings')!)).toEqual({ last: '1091', byCharacter: { 1091: { rank: 'damage' } } })
+    // Another game's restore ignores them; an old backup without settings restores nothing
+    expect(restoreBackupSettings('genshin', backup)).toBe(0)
+    expect(restoreBackupSettings('zzz', JSON.stringify({ kind: 'uru-zzz-backup' }))).toBe(0)
+    expect(restoreBackupSettings('zzz', 'not json')).toBe(0)
   })
 })

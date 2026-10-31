@@ -12,12 +12,15 @@ import {
 } from '@tabler/icons-react'
 import {
   backupFileName,
+  backupSettings,
   downloadTextFile,
   recordBackup,
+  restoreBackupSettings,
 } from 'lib/games/shared/backup'
 import { formatNumber } from 'lib/games/shared/format'
 import { todayString } from 'lib/games/shared/importedPresets'
 import type { ImportMode } from 'lib/games/shared/storage'
+import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   Notices,
   PageHeader,
@@ -30,6 +33,7 @@ import {
   readWuwaBackup,
 } from 'lib/games/wuwa/state/wuwaState'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
+import { Message } from 'lib/interactions/message'
 import { useState } from 'react'
 
 export function WuwaDataPage() {
@@ -50,7 +54,10 @@ export function WuwaDataPage() {
     const backup = readWuwaBackup(text)
     if (backup) {
       importParsed({ ...backup, warnings: [] }, mode)
-      setRestored(`Restored a backup with ${backup.echoes.length} echoes and ${backup.characters.length} Resonators`)
+      const settings = restoreBackupSettings('wuwa', text)
+      setRestored(
+        `Restored a backup with ${backup.echoes.length} echoes and ${backup.characters.length} Resonators${settings ? ' and your optimizer settings' : ''}`,
+      )
     } else {
       importParsed(parseWuwaUserDataJson(text), mode)
       setRestored(null)
@@ -59,12 +66,17 @@ export function WuwaDataPage() {
 
   function handleSave() {
     const savedAt = todayString(new Date())
-    downloadTextFile(backupFileName('wuwa', savedAt), createWuwaBackup({ echoes, characters, teams, priority }, savedAt))
+    downloadTextFile(backupFileName('wuwa', savedAt), createWuwaBackup({ echoes, characters, teams, priority }, savedAt, backupSettings('wuwa')))
+    Message.success('Saved a backup')
     recordBackup('wuwa', savedAt)
   }
 
-  function handleClear() {
-    if (window.confirm('Remove all stored WuWa echoes and Resonators from this browser?')) clear()
+  async function handleClear() {
+    if (!await confirmAction('Clear data', 'Remove all stored WuWa echoes and Resonators from this browser?', { danger: true, confirmLabel: 'Clear data' })) {
+      return
+    }
+    clear()
+    Message.success('Cleared data')
   }
 
   const hasData = echoes.length > 0 || characters.length > 0

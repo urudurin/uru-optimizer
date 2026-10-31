@@ -26,6 +26,7 @@ import {
 } from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
 import { BuildAnalysis } from 'lib/games/shared/ui/BuildAnalysis'
+import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   EmptyState,
   Notices,
@@ -43,6 +44,12 @@ import {
   CharacterPortrait,
   RankButtons,
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
+import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
+import {
+  DEFAULT_RESULT_LIMIT,
+  resultLimitOf,
+  ResultLimitSelect,
+} from 'lib/games/shared/ui/optimizer/ResultLimit'
 import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
@@ -57,6 +64,7 @@ import {
 } from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { resolveZzzCombat } from 'lib/games/zzz/damage/combatEffects'
+import { KIT_EFFECTS } from 'lib/games/zzz/damage/combatEffects'
 import {
   addAnomalyBonuses,
   agentHits,
@@ -146,13 +154,13 @@ import {
   DiscCard,
   elementColor,
 } from 'lib/games/zzz/ui/DiscCard'
+import { Message } from 'lib/interactions/message'
 import {
   useCallback,
   useMemo,
   useState,
 } from 'react'
 
-const RESULT_LIMIT = 50
 const MAX_IMPORT_WARNINGS = 6
 const MAIN_STAT_SLOTS: MainStatSlot[] = [4, 5, 6]
 
@@ -174,6 +182,7 @@ type ZzzOptimizerSettings = {
   minStats: Partial<Record<keyof FinalStats, number>>,
   maxStats: Partial<Record<keyof FinalStats, number>>,
   excludeEquippedByOthers: boolean,
+  resultLimit: number,
   // Agent ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
   teammates: string[],
   teamSettings: Record<string, ZzzBuffSetting>,
@@ -233,7 +242,7 @@ function migrateSaves() {
   )
 }
 
-export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
+export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   useState(migrateSaves)
   const discs = useZzzStore((s) => s.discs)
   const builds = useZzzStore((s) => s.builds)
@@ -261,6 +270,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     minStats: {},
     maxStats: {},
     excludeEquippedByOthers: false,
+    resultLimit: DEFAULT_RESULT_LIMIT,
     teammates: [],
     teamSettings: {},
     enemy: DEFAULT_ENEMY,
@@ -281,6 +291,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     minStats,
     maxStats,
     excludeEquippedByOthers,
+    resultLimit,
     teammates,
     teamSettings,
     enemy,
@@ -299,6 +310,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   const setMinStats = fieldSetter(updateSettings, 'minStats')
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
+  const setResultLimit = fieldSetter(updateSettings, 'resultLimit')
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
   const setEnemy = fieldSetter(updateSettings, 'enemy')
@@ -439,8 +451,10 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
     setPresetChoice('0')
   }
 
-  function removeImportedPresets() {
-    if (window.confirm('Remove the imported presets from this browser?')) clearImportedPresets()
+  async function removeImportedPresets() {
+    if (!await confirmAction('Remove imported presets', 'Remove the imported presets from this browser?', { danger: true, confirmLabel: 'Remove' })) return
+    clearImportedPresets()
+    Message.success('Removed the imported presets')
   }
 
   // The search runs in a web worker, so the page stays responsive while it works
@@ -462,7 +476,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
       damage: damageSetup,
       sortBy,
       thenBy,
-      limit: RESULT_LIMIT,
+      limit: resultLimitOf(resultLimit),
     }, setProgress)
     // undefined: cancelled, or replaced by a newer search that is still running
     if (response) {
@@ -488,7 +502,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
             title='Import your discs first'
             action={
               <Group gap='xs'>
-                <Button onClick={onImport}>Import discs</Button>
+                <Button onClick={onImport}>Import data</Button>
                 <Button variant='light' onClick={() => useZzzStore.getState().importParsed(zzzSampleData(), 'replace')}>Try with sample data</Button>
               </Group>
             }
@@ -542,7 +556,7 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
   ].join(' · ')
   const isWorn = !!best && best.discs.every((disc) => agentBuild?.discIds[disc.slot] === disc.id)
 
-  function equipBuild() {
+  async function equipBuild() {
     if (!best) return
     const losing = zzzPiecesTaken({ discs, builds }, agent.id, best.discs).map((id) => ownerNames.get(id) ?? AGENTS[id]?.name ?? `Agent ${id}`)
     const swap = losing.length > 0
@@ -550,8 +564,9 @@ export function ZzzOptimizerPanel({ onImport }: { onImport: () => void }) {
 
 ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
       : ''
-    if (!window.confirm(`Equip build #${selected + 1} on ${agent.name} in this browser's save?${swap}`)) return
+    if (!await confirmAction('Equip build', `Equip build #${selected + 1} on ${agent.name} in this browser's save?${swap}`, { confirmLabel: 'Equip' })) return
     equip(agent, { id: loadout.wEngineId, refinement: Number(loadout.refinement) }, best.discs)
+    Message.success('Equipped')
   }
 
   return (
@@ -684,7 +699,7 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                 </Accordion>
               </FormCard>
 
-              <FormCard title='Ranking'>
+              <FormCard title='Rank by'>
                 <Select
                   label='Rank by'
                   allowDeselect={false}
@@ -699,54 +714,19 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                   onChange={(value) => setThenBy(value as (keyof FinalStats)[])}
                   data={statRows.filter((row) => row.key !== sortBy).map((row) => ({ value: row.key, label: row.label }))}
                 />
+                <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
+              </FormCard>
+
+              <FormCard title='Optimizer options' size='narrow'>
+                <Switch
+                  label='Leave out discs other agents are wearing'
+                  checked={excludeEquippedByOthers}
+                  onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
+                />
               </FormCard>
             </FormRow>
 
-            <FormRow
-              id='zzz-damage'
-              title='Damage'
-              summary={`${formatNumber(Math.round(damageSetup.multiplier + (damageSetup.aftershock?.multiplier ?? 0)))}% of ATK per rotation${
-                damageSetup.anomalyMultiplier ? ` + ${formatNumber(Math.round(damageSetup.anomalyMultiplier))}% anomaly` : ''
-              } · enemy DEF ${enemy.def}${enemy.stunned ? ', stunned' : ''}`}
-            >
-              <EnemyCard enemy={enemy} debuffs={teamResult.debuffs} teamElements={teamElements} onChange={(next) => setEnemy(next)} />
-              <RotationCard
-                agentId={agent.id}
-                element={agent.element}
-                teamElements={teamElements}
-                scaling={agent.specialty === 'Rupture' ? 'Sheer Force' : agent.specialty === 'Armorer' ? 'DEF' : 'ATK'}
-                rotation={rotation}
-                damage={currentDamage}
-                onChange={(next) => setRotation(next)}
-              />
-              <KitEffectsCard
-                name={agent.name}
-                applied={kit.applied}
-                onSetting={(id, value) => setCombatSettings((current) => ({ ...current, [id]: value }))}
-              />
-            </FormRow>
-
-            <FormRow
-              id='zzz-team'
-              title='Team'
-              summary={zzzTeamSummary(teammates.map((id) => teammateOptions.find((o) => o.value === id)?.label ?? id), teamResult.applied)}
-            >
-              <TeamCards
-                name={agent.name}
-                options={teammateOptions}
-                teammates={teammates}
-                maxTeammates={2}
-                entries={zzzTeamEntries(teamResult.applied)}
-                notice={teamResult.missing.length > 0 ? `No stat screen for ${teamResult.missing.join(', ')}: save a build for them first` : undefined}
-                description='Their kits and 4-piece sets buff this agent. Teammates use the discs and W-Engine in their saved build.'
-                emptyText='Pick teammates to see what they give. Covers the squad buffs of 33 agents (Astra Yao, Caesar, Ju Fufu, Lighter, Lucia, Yuzuha, Zhao and more), squad 4-pieces (Swing Jazz, Astral Voice, Moonlight Lullaby, King of the Summit, Bunny in Wonderland) and 20 squad-buffing W-Engines.'
-                footnote="Givers are taken at skill level 12 and Core Skill F (saved builds don't record those). W-Engines count at the refinement in their build. Enemy shred and Aftershock DMG count only in rotation damage; Daze isn't counted."
-                onTeammates={(ids) => setTeammates(ids)}
-                onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
-              />
-            </FormRow>
-
-            <FormRow id='zzz-filters' title='Disc filters' summary={filterSummary}>
+            <FormRow id='zzz-filters' title='Disc & stat filters' summary={filterSummary}>
               <FormCard title='Sets' size='narrow'>
                 <SetPicker
                   label='4-piece set'
@@ -761,11 +741,6 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                   options={setOptions.map((o) => ({ ...o, icon: images.sets[o.value] }))}
                   value={twoPieceSet ? [twoPieceSet] : []}
                   onChange={(ids) => setTwoPieceSet(ids[0] ?? null)}
-                />
-                <Switch
-                  label='Leave out discs other agents are wearing'
-                  checked={excludeEquippedByOthers}
-                  onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
                 />
               </FormCard>
               <FormCard title='Main stats' size='narrow'>
@@ -797,7 +772,52 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                 <StatFilters rows={statRows} min={minStats} max={maxStats} onMin={(next) => setMinStats(next)} onMax={(next) => setMaxStats(next)} />
               </FormCard>
             </FormRow>
+
+            <FormRow
+              id='zzz-team'
+              title='Teammates'
+              summary={zzzTeamSummary(teammates.map((id) => teammateOptions.find((o) => o.value === id)?.label ?? id), teamResult.applied)}
+            >
+              <TeamCards
+                name={agent.name}
+                options={teammateOptions}
+                teammates={teammates}
+                maxTeammates={2}
+                entries={zzzTeamEntries(teamResult.applied)}
+                notice={teamResult.missing.length > 0 ? `No stat screen for ${teamResult.missing.join(', ')}: save a build for them first` : undefined}
+                description='Their kits and 4-piece sets buff this agent. Teammates use the discs and W-Engine in their saved build.'
+                emptyText='Pick teammates to see what they give. Covers the squad buffs of 33 agents (Astra Yao, Caesar, Ju Fufu, Lighter, Lucia, Yuzuha, Zhao and more), squad 4-pieces (Swing Jazz, Astral Voice, Moonlight Lullaby, King of the Summit, Bunny in Wonderland) and 20 squad-buffing W-Engines.'
+                footnote="Givers are taken at skill level 12 and Core Skill F (saved builds don't record those). W-Engines count at the refinement in their build. Enemy shred and Aftershock DMG count only in rotation damage; Daze isn't counted."
+                onTeammates={(ids) => setTeammates(ids)}
+                onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
+              />
+            </FormRow>
+
+            <FormRow
+              id='zzz-damage'
+              title='Damage'
+              summary={`${formatNumber(Math.round(damageSetup.multiplier + (damageSetup.aftershock?.multiplier ?? 0)))}% of ATK per rotation${
+                damageSetup.anomalyMultiplier ? ` + ${formatNumber(Math.round(damageSetup.anomalyMultiplier))}% anomaly` : ''
+              } · enemy DEF ${enemy.def}${enemy.stunned ? ', stunned' : ''}`}
+            >
+              <EnemyCard enemy={enemy} debuffs={teamResult.debuffs} teamElements={teamElements} onChange={(next) => setEnemy(next)} />
+              <RotationCard
+                agentId={agent.id}
+                element={agent.element}
+                teamElements={teamElements}
+                scaling={agent.specialty === 'Rupture' ? 'Sheer Force' : agent.specialty === 'Armorer' ? 'DEF' : 'ATK'}
+                rotation={rotation}
+                damage={currentDamage}
+                onChange={(next) => setRotation(next)}
+              />
+              <KitEffectsCard
+                name={agent.name}
+                applied={kit.applied}
+                onSetting={(id, value) => setCombatSettings((current) => ({ ...current, [id]: value }))}
+              />
+            </FormRow>
           </FormRows>
+          <KitDisclaimer name={agent.name} effects={KIT_EFFECTS[agent.id]} byDamage={byDamage} />
 
           {!outcome && (
             <Panel>

@@ -30,8 +30,8 @@ const GROUPS: GameNavGroup<GenshinPage>[] = [
     label: 'Optimization',
     items: [
       { key: 'optimizer', label: 'Optimizer', icon: <IconTrendingUp size={ICON_SIZE} /> },
-      { key: 'characters', label: 'Characters', icon: <IconUser size={ICON_SIZE} /> },
       { key: 'artifacts', label: 'Artifacts', icon: <IconCards size={ICON_SIZE} /> },
+      { key: 'characters', label: 'Characters', icon: <IconUser size={ICON_SIZE} /> },
       { key: 'data', label: 'Import / Save', icon: <IconUpload size={ICON_SIZE} /> },
     ],
   },

@@ -30,8 +30,8 @@ const GROUPS: GameNavGroup<WuwaPage>[] = [
     label: 'Optimization',
     items: [
       { key: 'optimizer', label: 'Optimizer', icon: <IconTrendingUp size={ICON_SIZE} /> },
-      { key: 'characters', label: 'Resonators', icon: <IconUser size={ICON_SIZE} /> },
       { key: 'echoes', label: 'Echoes', icon: <IconCards size={ICON_SIZE} /> },
+      { key: 'characters', label: 'Resonators', icon: <IconUser size={ICON_SIZE} /> },
       { key: 'data', label: 'Import / Save', icon: <IconUpload size={ICON_SIZE} /> },
     ],
   },

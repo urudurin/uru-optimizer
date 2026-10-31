@@ -20,11 +20,13 @@ import type {
   GearDraft,
   GearKind,
 } from 'lib/games/shared/gear/gearKind'
+import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   GearEditor,
   imageFromClipboard,
 } from 'lib/games/shared/ui/gear/GearEditor'
 import classes from 'lib/games/shared/ui/gear/GearInventory.module.css'
+import { Message } from 'lib/interactions/message'
 import { Gradient } from 'lib/rendering/gradient'
 import { FilterPill } from 'lib/tabs/tabRelics/topBar/FilterPill'
 import {
@@ -269,12 +271,19 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
             color='red'
             leftSection={<IconTrash size={14} />}
             disabled={selected.length === 0}
-            onClick={() => {
+            onClick={async () => {
               const noun = selected.length === 1 ? kind.noun.toLowerCase() : `${kind.noun.toLowerCase()}s`
-              if (window.confirm(`Delete ${selected.length} ${noun} from this browser's save? Whoever wears them loses them.`)) {
-                onDelete(selected.map((item) => item.id))
-                setSelected([])
-              }
+              const ok = await confirmAction(
+                `Delete ${noun}`,
+                `Delete ${
+                  selected.length === 1 ? 'the selected' : `the ${selected.length} selected`
+                } ${noun} from this browser's save? Whoever wears them loses them.`,
+                { danger: true, confirmLabel: 'Delete' },
+              )
+              if (!ok) return
+              onDelete(selected.map((item) => item.id))
+              setSelected([])
+              Message.success(`Deleted ${selected.length} ${noun}`)
             }}
           >
             {selected.length > 1 ? `Delete ${selected.length}` : 'Delete'}
@@ -294,6 +303,7 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
           onClose={() => setEditing(undefined)}
           onSave={(item) => {
             onSave(item)
+            Message.success(editing.item ? `Saved the ${kind.noun.toLowerCase()}` : `Added the ${kind.noun.toLowerCase()}`)
             setEditing(undefined)
           }}
         />

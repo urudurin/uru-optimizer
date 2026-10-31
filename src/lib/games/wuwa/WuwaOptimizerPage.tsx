@@ -23,6 +23,7 @@ import {
 } from 'lib/games/shared/optimizerSettings'
 import type { SearchProgress } from 'lib/games/shared/progress'
 import { BuildAnalysis } from 'lib/games/shared/ui/BuildAnalysis'
+import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   EmptyState,
   Notices,
@@ -40,6 +41,12 @@ import {
   CharacterPortrait,
   RankButtons,
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
+import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
+import {
+  DEFAULT_RESULT_LIMIT,
+  resultLimitOf,
+  ResultLimitSelect,
+} from 'lib/games/shared/ui/optimizer/ResultLimit'
 import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
@@ -54,6 +61,7 @@ import {
 } from 'lib/games/shared/ui/OptimizerForm'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { resolveWuwaCombat } from 'lib/games/wuwa/damage/combatEffects'
+import { KIT_EFFECTS } from 'lib/games/wuwa/damage/combatEffects'
 import {
   type DamageSetup,
   DEFAULT_ENEMY,
@@ -136,6 +144,7 @@ import {
 } from 'lib/games/wuwa/ui/EchoCard'
 import { WEAPON_OPTIONS } from 'lib/games/wuwa/ui/ResonatorForm'
 import { wuwaStatRows } from 'lib/games/wuwa/ui/resonatorStats'
+import { Message } from 'lib/interactions/message'
 import {
   useMemo,
   useState,
@@ -145,7 +154,6 @@ const COSTS: Cost[] = [4, 3, 1]
 const SHOWN_STATS: (keyof WuwaStats)[] = ['hp', 'atk', 'def', 'critRate', 'critDmg', 'energyRegen', 'elementDmg']
 const MIN_STATS: (keyof WuwaStats)[] = ['energyRegen', 'critRate', 'critDmg', 'atk', 'hp', 'def', 'elementDmg']
 const FLAT_STATS = new Set<keyof WuwaStats>(['hp', 'atk', 'def'])
-const RESULT_LIMIT = 10
 
 // One stat value as the overview screen rounds it: down
 function formatValue(stat: keyof WuwaStats, value: number): string {
@@ -159,7 +167,14 @@ function formatScore(target: EchoTarget, score: number): string {
 
 function describeSets(echoes: Echo[]): string {
   const sets = [...setPieceCounts(echoes)].filter(([, count]) => count >= 2).sort((a, b) => b[1] - a[1])
-  return sets.length > 0 ? sets.map(([id, count]) => `${count}pc ${setName(id)}`).join(' + ') : 'No set bonus'
+  // Only different echoes count, and a set has its 2-piece and full (5, or 3) tiers only, so name the tier that's on
+  return sets.length > 0
+    ? sets.map(([id, count]) => {
+      const full = SONATA_SETS[id]?.fullPieces ?? 5
+      if (count >= full) return `${full}pc ${setName(id)}`
+      return `2pc ${setName(id)}${count > 2 ? ` (${count} of ${full} different echoes, no full set)` : ''}`
+    }).join(' + ')
+    : 'No set bonus'
 }
 
 function costOf(echoes: Echo[]): number {
@@ -172,6 +187,7 @@ type WuwaOptimizerSettings = {
   fullSet: string | null,
   twoPieceSets: string[],
   excludeEquippedByOthers: boolean,
+  resultLimit: number,
   minStats: Partial<Record<keyof WuwaStats, number>>,
   maxStats: Partial<Record<keyof WuwaStats, number>>,
   // Character ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
@@ -195,6 +211,7 @@ function defaultSettings(charId: string): WuwaOptimizerSettings {
     fullSet: null,
     twoPieceSets: [],
     excludeEquippedByOthers: true,
+    resultLimit: DEFAULT_RESULT_LIMIT,
     minStats: {},
     maxStats: {},
     teammates: [],
@@ -249,6 +266,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     fullSet,
     twoPieceSets,
     excludeEquippedByOthers,
+    resultLimit,
     minStats,
     maxStats,
     teammates,
@@ -262,6 +280,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const setFullSet = fieldSetter(updateSettings, 'fullSet')
   const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
+  const setResultLimit = fieldSetter(updateSettings, 'resultLimit')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
   const setTeammates = fieldSetter(updateSettings, 'teammates')
@@ -372,7 +391,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
       maxStats,
       teamBonus: combatBonus,
       target,
-      limit: RESULT_LIMIT,
+      limit: resultLimitOf(resultLimit),
     }, setProgress)
     // undefined: cancelled, or replaced by a newer search that is still running
     if (response) {
@@ -400,7 +419,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const wornIds = new Set(character.echoIds.filter((id) => id !== null))
   const isWorn = !!build && build.echoes.length === wornIds.size && build.echoes.every((e) => wornIds.has(e.id))
 
-  function equipBuild() {
+  async function equipBuild() {
     if (!build || !result) return
     const losing = wuwaPiecesTaken({ echoes, characters, teams, priority }, character.charId, build.echoes).map(characterName)
     const taken = losing.length > 0
@@ -408,8 +427,13 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
 
 ${losing.join(', ')} will lose the echoes this loadout takes.`
       : ''
-    if (!window.confirm(`Equip loadout #${selected + 1} on ${characterName(character.charId)} in this browser's save?${taken}`)) return
+    if (
+      !await confirmAction('Equip loadout', `Equip loadout #${selected + 1} on ${characterName(character.charId)} in this browser's save?${taken}`, {
+        confirmLabel: 'Equip',
+      })
+    ) return
     equip(character.charId, build.echoes)
+    Message.success('Equipped')
     // The "Now" row is this loadout from here on
     if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
   }
@@ -501,8 +525,9 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                     ...TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) })),
                   ]}
                 />
+                <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
               </FormCard>
-              <FormCard title='Options' size='narrow'>
+              <FormCard title='Optimizer options' size='narrow'>
                 <Switch
                   label='Leave out echoes other Resonators are wearing'
                   checked={excludeEquippedByOthers}
@@ -511,56 +536,7 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
               </FormCard>
             </FormRow>
 
-            <FormRow
-              id='wuwa-damage'
-              title='Damage'
-              summary={`Enemy level ${enemy.level}, ${enemy.res}% RES · ${
-                Object.values(rotation.counts).reduce((sum, count) => sum + count, 0)
-              } hits · skill level ${rotation.skillLevel}${byDamage ? '' : ' · not ranked by damage'}`}
-            >
-              <EnemyCard
-                enemy={enemy}
-                onChange={(next) => {
-                  setEnemy(next)
-                  setResult(undefined)
-                }}
-              />
-              <RotationCard
-                charId={character.charId}
-                rotation={rotation}
-                mainEcho={wornEchoes[0]?.defId}
-                damage={currentDamage}
-                onChange={(next) => {
-                  setRotation(next)
-                  setResult(undefined)
-                }}
-              />
-              <KitEffectsCard
-                name={characterName(character.charId)}
-                applied={kit.applied}
-                onSetting={(id, value) => {
-                  setCombatSettings((current) => ({ ...current, [id]: value }))
-                  setResult(undefined)
-                }}
-              />
-            </FormRow>
-
-            <FormRow id='wuwa-team' title='Team' summary={wuwaTeamSummary(teammates.map(characterName), teamResult.applied)}>
-              <TeamCards
-                name={characterName(character.charId)}
-                options={teammateOptions}
-                teammates={teammates}
-                maxTeammates={2}
-                entries={wuwaTeamEntries(teamResult.applied)}
-                description='Their skills buff this Resonator. Teammates use the echoes they wear in the save.'
-                emptyText='Pick teammates to see what they give. Phase 1 covers Shorekeeper, Verina, Rebecca, Ciaccona, Denia, Buling, Suoming and Sigrika.'
-                footnote="DMG Amplification buffs (most Outros) scale every loadout the same, so they can't change the ranking and aren't listed. Echo Skill DMG isn't calculated yet."
-                onTeammates={(ids) => setTeammates(ids)}
-                onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
-              />
-            </FormRow>
-
-            <FormRow id='wuwa-filters' title='Echo filters' summary={filterSummary}>
+            <FormRow id='wuwa-filters' title='Echo & stat filters' summary={filterSummary}>
               <FormCard
                 title='Sonata sets'
                 description='Only bonuses the overview screen shows are counted (2-pieces, not most 5-piece effects), so pick the set you want to run here. Two copies of one echo count once.'
@@ -607,12 +583,62 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
                 />
               </FormCard>
             </FormRow>
+
+            <FormRow id='wuwa-team' title='Teammates' summary={wuwaTeamSummary(teammates.map(characterName), teamResult.applied)}>
+              <TeamCards
+                name={characterName(character.charId)}
+                options={teammateOptions}
+                teammates={teammates}
+                maxTeammates={2}
+                entries={wuwaTeamEntries(teamResult.applied)}
+                description='Their skills buff this Resonator. Teammates use the echoes they wear in the save.'
+                emptyText='Pick teammates to see what they give. Phase 1 covers Shorekeeper, Verina, Rebecca, Ciaccona, Denia, Buling, Suoming and Sigrika.'
+                footnote="DMG Amplification buffs (most Outros) scale every loadout the same, so they can't change the ranking and aren't listed. Echo Skill DMG isn't calculated yet."
+                onTeammates={(ids) => setTeammates(ids)}
+                onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
+              />
+            </FormRow>
+
+            <FormRow
+              id='wuwa-damage'
+              title='Damage'
+              summary={`Enemy level ${enemy.level}, ${enemy.res}% RES · ${
+                Object.values(rotation.counts).reduce((sum, count) => sum + count, 0)
+              } hits · skill level ${rotation.skillLevel}${byDamage ? '' : ' · not ranked by damage'}`}
+            >
+              <EnemyCard
+                enemy={enemy}
+                onChange={(next) => {
+                  setEnemy(next)
+                  setResult(undefined)
+                }}
+              />
+              <RotationCard
+                charId={character.charId}
+                rotation={rotation}
+                mainEcho={wornEchoes[0]?.defId}
+                damage={currentDamage}
+                onChange={(next) => {
+                  setRotation(next)
+                  setResult(undefined)
+                }}
+              />
+              <KitEffectsCard
+                name={characterName(character.charId)}
+                applied={kit.applied}
+                onSetting={(id, value) => {
+                  setCombatSettings((current) => ({ ...current, [id]: value }))
+                  setResult(undefined)
+                }}
+              />
+            </FormRow>
           </FormRows>
+          <KitDisclaimer name={characterName(character.charId)} effects={KIT_EFFECTS[character.charId]} byDamage={byDamage} />
 
           {!outcome && (
             <Panel>
               <EmptyState icon={<IconTrendingUp size={24} />} title={`Find the best echoes for ${characterName(character.charId)}`}>
-                {`Pick what to rank by and any filters, then search. The best ${RESULT_LIMIT} loadouts show up here next to the current one.`}
+                {`Pick what to rank by and any filters, then search. The best ${resultLimitOf(resultLimit)} loadouts show up here next to the current one.`}
               </EmptyState>
             </Panel>
           )}
@@ -624,7 +650,9 @@ ${losing.join(', ')} will lose the echoes this loadout takes.`
               title='Results'
               description={`${(result.ms / 1000).toFixed(1)}s · ${
                 formatNumber(outcome.visited)
-              } partial and full loadouts checked · ${outcome.poolSize} echoes, ${outcome.prunedSize} after dropping ones that can't make the top ${RESULT_LIMIT}`}
+              } partial and full loadouts checked · ${outcome.poolSize} echoes, ${outcome.prunedSize} after dropping ones that can't make the top ${
+                resultLimitOf(resultLimit)
+              }`}
             >
               <Stack gap='sm'>
                 {outcome.truncated && (

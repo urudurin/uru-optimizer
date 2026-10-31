@@ -12,12 +12,15 @@ import {
 } from '@tabler/icons-react'
 import {
   backupFileName,
+  backupSettings,
   downloadTextFile,
   recordBackup,
+  restoreBackupSettings,
 } from 'lib/games/shared/backup'
 import { formatNumber } from 'lib/games/shared/format'
 import { todayString } from 'lib/games/shared/importedPresets'
 import type { ImportMode } from 'lib/games/shared/storage'
+import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   Notices,
   PageHeader,
@@ -35,6 +38,7 @@ import {
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import { isSupportedBuild } from 'lib/games/zzz/stats/resolveBuild'
 import { ZzzEnkaImportPanel } from 'lib/games/zzz/ZzzEnkaImportPanel'
+import { Message } from 'lib/interactions/message'
 import { useState } from 'react'
 
 // A saved Enka.Network profile page, or undefined for any other file. Never throws
@@ -65,7 +69,8 @@ export function ZzzDataPage() {
     const enka = backup ? undefined : readEnkaFile(text)
     if (backup) {
       importParsed({ ...backup, warnings: [] }, mode)
-      setRestored(`Restored a backup with ${backup.discs.length} discs and ${backup.builds.length} builds`)
+      const settings = restoreBackupSettings('zzz', text)
+      setRestored(`Restored a backup with ${backup.discs.length} discs and ${backup.builds.length} builds${settings ? ' and your optimizer settings' : ''}`)
     } else if (enka) {
       const outcome = await importEnkaZzzProfile(enka)
       setRestored(outcome.ok ? outcome.data : outcome.reason)
@@ -77,12 +82,15 @@ export function ZzzDataPage() {
 
   function handleSave() {
     const savedAt = todayString(new Date())
-    downloadTextFile(backupFileName('zzz', savedAt), createZzzBackup({ discs, builds }, savedAt))
+    downloadTextFile(backupFileName('zzz', savedAt), createZzzBackup({ discs, builds }, savedAt, backupSettings('zzz')))
+    Message.success('Saved a backup')
     recordBackup('zzz', savedAt)
   }
 
-  function handleClear() {
-    if (window.confirm('Remove all stored ZZZ discs and builds from this browser?')) clear()
+  async function handleClear() {
+    if (!await confirmAction('Clear data', 'Remove all stored ZZZ discs and builds from this browser?', { danger: true, confirmLabel: 'Clear data' })) return
+    clear()
+    Message.success('Cleared data')
   }
 
   const supported = builds.filter(isSupportedBuild).length

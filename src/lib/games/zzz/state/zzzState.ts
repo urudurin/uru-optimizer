@@ -1,5 +1,6 @@
 import {
   backupKindOf,
+  type BackupSettings,
   wrapBackup,
 } from 'lib/games/shared/backup'
 import {
@@ -41,8 +42,8 @@ export function serializeZzzData(data: ZzzData): string {
 export const ZZZ_BACKUP_KIND = 'uru-zzz-backup'
 
 // A backup file of the browser save, see shared/backup.ts. savedAt is YYYY-MM-DD
-export function createZzzBackup(data: ZzzData, savedAt: string): string {
-  return wrapBackup(ZZZ_BACKUP_KIND, savedAt, serializeZzzData(data))
+export function createZzzBackup(data: ZzzData, savedAt: string, settings?: BackupSettings): string {
+  return wrapBackup(ZZZ_BACKUP_KIND, savedAt, serializeZzzData(data), settings)
 }
 
 // The data in a ZZZ backup file, or undefined when the text isn't one. Never throws
