@@ -20,6 +20,7 @@ import {
   defaultRotation,
   type EnemySettings,
   hasTalentData,
+  hexereiCount,
   migrateRotationCounts,
   type Rotation,
   rotationDamage,
@@ -332,7 +333,11 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   // The Lunar and Stellar kinds this team can trigger; the page only offers those
   const reactionsInTeam = teamReactions([character.id, ...teammates])
   // The character's own combat effects: their kit, and the 4-piece filter's set (every build has it)
-  const combat: CombatSetup = { sets: fourPieceSet ? [fourPieceSet] : [], settings: combatSettings }
+  const combat: CombatSetup = {
+    sets: fourPieceSet ? [fourPieceSet] : [],
+    settings: combatSettings,
+    hexerei: hexereiCount([character.id, ...teammates]),
+  }
   const resolvedCombat = resolveCombat(character, combat, setCountsOf(fourPieceSet ? Array(4).fill(fourPieceSet) : []))
   const debuffs = {
     defShred: teamResult.debuffs.defShred + resolvedCombat.debuffs.defShred,

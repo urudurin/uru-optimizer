@@ -57,6 +57,8 @@ export type CombatContext = {
   refinement: number,
   // true/false for a switch, the stack count for stacks
   setting: BuffSetting,
+  // Hexerei characters in the party, the character included
+  hexerei: number,
 }
 
 export type CombatEffect = {
@@ -376,6 +378,13 @@ const ODETTE_SNOW_SWAN = [14, 18, 22, 26, 30, 34, 38, 42, 46, 50, 54, 58, 62, 66
 // Mizuki's Dreamdrifter Swirl DMG Bonus per point of Elemental Mastery, percent by Skill level (genshin-optimizer
 // skillParam; Stellar Swirl gets a tenth of it)
 const MIZUKI_SWIRL_PER_EM = [0.18, 0.21, 0.24, 0.27, 0.3, 0.33, 0.36, 0.39, 0.42, 0.45, 0.48, 0.51, 0.54, 0.57, 0.6]
+// Durin's dark-form Burst hits (the user's screenshots: multipliers match the talent data at Burst level 9)
+const DURIN_DARK_BURST = [
+  'Principle of Darkness: As the Stars Smolder DMG (1)',
+  'Principle of Darkness: As the Stars Smolder DMG (2)',
+  'Principle of Darkness: As the Stars Smolder DMG (3)',
+  'Dragon of Dark Decay DMG',
+]
 const MAVUIKA_FLAMESTRIDER_NORMAL = [1, 2, 3, 4, 5].map((n) => `Flamestrider Normal Attack ${n}-Hit DMG`)
 const MAVUIKA_FLAMESTRIDER_CHARGED = ['Flamestrider Charged Attack Cyclic DMG', 'Flamestrider Charged Attack Final DMG']
 
@@ -595,6 +604,13 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
   ],
   Albedo: [
     {
+      id: 'albedo-hexerei',
+      label: 'Hexerei: with 2 Hexerei in the party, DMG +4% per 1,000 DEF (up to 12%), and +10% more per 1,000 DEF for himself as a Hexerei member (up to 30%)',
+      toggle: { kind: 'switch', label: 'After his Skill creates a Solar or Silver Isotoma' },
+      final: (s, { hexerei }) => (hexerei >= 2 ? { allDmg: Math.min(12, (s.def ?? 0) / 1000 * 4) + Math.min(30, (s.def ?? 0) / 1000 * 10) } : {}),
+      confidence: 'sourced',
+    },
+    {
       id: 'albedo-a1',
       label: 'Calcite Might: Transient Blossom DMG +25% against enemies below 50% HP',
       toggle: { kind: 'switch', label: 'Enemy below 50% HP' },
@@ -714,6 +730,17 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
       confidence: 'sourced',
     },
   ],
+  Fischl: [{
+    id: 'fischl-hexerei',
+    label: 'Hexerei: with 2 Hexerei in the party, ATK +22.5% after Overloaded, or Elemental Mastery +90 after Electro-Charged or Lunar-Charged (x2 at C6)',
+    toggle: { kind: 'stacks', label: '1 ATK (Overloaded), 2 EM (Electro-Charged)', max: 2 },
+    premod: ({ character, setting, hexerei }) => {
+      if (hexerei < 2) return {}
+      const c6 = character.constellation >= 6 ? 2 : 1
+      return stacks(setting) === 1 ? { atkPct: 22.5 * c6 } : { elementalMastery: 90 * c6 }
+    },
+    confidence: 'sourced',
+  }],
   Kinich: [
     {
       id: 'kinich-a4',
@@ -857,6 +884,12 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
       debuffs: ({ character }) => (character.constellation >= 4 ? { defShred: 15 } : {}),
       confidence: 'sourced',
     },
+    {
+      id: 'razor-hexerei',
+      label: 'Hexerei: his Burst\'s companion hits add 70% of ATK',
+      hits: () => [{ categories: ['burst'], addTerms: { atk: 70 } }],
+      confidence: 'sourced',
+    },
   ],
   Skirk: [
     {
@@ -918,9 +951,13 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
   Durin: [
     {
       id: 'durin-a1-dark',
-      label: 'A1: in his dark form, Vaporize and Melt DMG +40%',
+      label: 'A1: in his dark form, Vaporize and Melt DMG +40% (+30% more with 2 Hexerei in the party)',
       toggle: { kind: 'switch', label: 'Dark form' },
-      reactions: ({ character }) => (ascended(character, 1) ? { vaporize: 40, melt: 40 } : {}),
+      reactions: ({ character, hexerei }) => {
+        if (!ascended(character, 1)) return {}
+        const bonus = 40 + (hexerei >= 2 ? 30 : 0)
+        return { vaporize: bonus, melt: bonus }
+      },
       confidence: 'sourced',
     },
     {
@@ -936,7 +973,35 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
       premod: ({ character }) => (character.constellation >= 4 ? { burstDmg: 40 } : {}),
       confidence: 'sourced',
     },
+    {
+      // From the user's screenshot of his C6 (Oct 30 2026)
+      id: 'durin-c6',
+      label: 'C6: Burst DMG ignores 30% of DEF; his dark-form Burst (Stars Smolder, Dragon of Dark Decay) ignores 40% more',
+      hits: ({ character }) =>
+        character.constellation >= 6
+          ? [
+            { categories: ['burst'], defIgnore: 30 },
+            { labels: DURIN_DARK_BURST, defIgnore: 40 },
+          ]
+          : [],
+      confidence: 'confirmed',
+    },
+    {
+      id: 'durin-c6-light',
+      label: 'C6: in his light form, the enemy\'s DEF -30% after his Burst and Dragon of White Flame hit',
+      toggle: { kind: 'switch', label: 'Light form, hit' },
+      debuffs: ({ character }) => (character.constellation >= 6 ? { defShred: 30 } : {}),
+      confidence: 'confirmed',
+    },
   ],
+  Venti: [{
+    id: 'venti-hexerei',
+    label: 'Hexerei: with 2 Hexerei in the party, after his Burst swirls, it deals x1.35 and he gets DMG +50% while on the field',
+    toggle: { kind: 'switch', label: 'Burst swirled an element' },
+    hits: ({ hexerei }) => (hexerei >= 2 ? [{ categories: ['burst'], scale: 0.35 }] : []),
+    premod: ({ hexerei }) => (hexerei >= 2 ? { allDmg: 50 } : {}),
+    confidence: 'sourced',
+  }],
   Varesa: [
     {
       id: 'varesa-a1',
@@ -1385,6 +1450,8 @@ export const WEAPON_EFFECTS: Record<string, CombatEffect[]> = {
 export type CombatSetup = {
   sets: string[],
   settings: Record<string, BuffSetting>,
+  // Hexerei characters in the party (damage/damage.ts hexereiCount), for Hexerei effects
+  hexerei?: number,
 }
 
 export type AppliedEffect = { effect: CombatEffect, sourceName: string, setting: BuffSetting, counted: boolean }
@@ -1430,7 +1497,7 @@ export function resolveCombat(character: GenshinCharacter, combat: CombatSetup, 
     const counted = on(setting) && !(effect.toggle?.kind === 'stacks' && stacks(setting) === 0)
     resolved.applied.push({ effect, sourceName, setting, counted })
     if (!counted) continue
-    const context = { character, setting, refinement: character.weapon?.refinement ?? 1 }
+    const context = { character, setting, refinement: character.weapon?.refinement ?? 1, hexerei: combat.hexerei ?? 0 }
     for (const [stat, value] of Object.entries(effect.premod?.(context) ?? {}) as [GenshinStatKey, number][]) {
       resolved.premod[stat] = (resolved.premod[stat] ?? 0) + value
     }

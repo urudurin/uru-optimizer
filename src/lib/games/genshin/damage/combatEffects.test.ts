@@ -275,4 +275,19 @@ describe('hit-specific and weapon combat effects', () => {
     const mizuki = character('YumemizukiMizuki', { element: 'Anemo' })
     expect(resolveCombat(mizuki, none, new Map()).reactionsPerEm).toEqual({ swirl: 0.42, stellarswirl: expect.closeTo(0.042, 6) })
   })
+  it('gives Durin\'s C6 Burst its own DEF ignore: 30%, 70% for his dark-form Burst', () => {
+    const durin = (constellation: number) => character('Durin', { element: 'Pyro', constellation })
+    const light = 'Dragon of White Flame DMG'
+    const dark = 'Dragon of Dark Decay DMG'
+    // Level 90 against the default level 100 enemy
+    const def = (ignore: number) => 190 / (190 + 200 * (1 - ignore))
+    expect(lineDamage(durin(6), light) / lineDamage(durin(5), light)).toBeCloseTo(def(0.3) / def(0), 6)
+    // C4's Burst DMG +40% is in both, C6 only adds DEF ignore
+    expect(lineDamage(durin(6), dark) / lineDamage(durin(5), dark)).toBeCloseTo(def(0.7) / def(0), 6)
+  })
+  it('adds Durin\'s Hexerei Vaporize and Melt bonus with 2 Hexerei in the party', () => {
+    const durin = character('Durin', { element: 'Pyro' })
+    expect(resolveCombat(durin, none, new Map()).reactions.vaporize).toBe(40)
+    expect(resolveCombat(durin, { ...none, hexerei: 2 }, new Map()).reactions.vaporize).toBe(70)
+  })
 })

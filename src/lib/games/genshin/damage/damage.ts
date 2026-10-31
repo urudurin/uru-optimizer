@@ -104,6 +104,14 @@ export function teamReactions(ids: string[]): SpecialKind[] {
   return [...new Set(ids.flatMap((id) => BENEDICTIONS[id]?.kinds ?? []))]
 }
 
+// Hexerei characters (genshin-optimizer's sheets). The game unlocks it per character, but it is easy, so every one
+// counts; most Hexerei effects need 2 of them in the party
+export const HEXEREI = new Set(['Albedo', 'Durin', 'Fischl', 'Klee', 'Lohen', 'Mona', 'Nicole', 'Prune', 'Razor', 'Sucrose', 'Varka', 'Venti'])
+
+export function hexereiCount(ids: string[]): number {
+  return new Set(ids.filter((id) => HEXEREI.has(id))).size
+}
+
 // The party's Moonsign level: one per Lunar character (1 Nascent Gleam, 2+ Ascendant Gleam)
 export function moonsignLevel(ids: string[]): number {
   return ids.filter((id) => BENEDICTIONS[id]?.kinds.some((kind) => kind.startsWith('lunar'))).length
@@ -221,10 +229,11 @@ export type HitBuff = {
   scale?: number,
   // Adds percent of a stat to each hit (Raiden's Resolve, Redhorn's DEF)
   addTerms?: Partial<Record<ScalingStat, number>>,
-  // DMG Bonus, CRIT Rate and CRIT DMG for these hits, in percent
+  // DMG Bonus, CRIT Rate, CRIT DMG and DEF ignore for these hits, in percent
   dmgBonus?: number,
   critRate?: number,
   critDmg?: number,
+  defIgnore?: number,
   // DMG Bonus and CRIT Rate per point of Elemental Mastery above a floor, up to caps (Nahida's A4)
   fromEm?: { over: number, dmgPer?: number, dmgCap?: number, critPer?: number, critCap?: number },
 }
@@ -463,6 +472,7 @@ type ElementTerms = {
   dmgBonus: number,
   critRate: number,
   critDmg: number,
+  defIgnore: number,
   fromEm: NonNullable<HitBuff['fromEm']>[],
 }
 
@@ -473,6 +483,8 @@ type ElementTerms = {
 export type PreparedDamage = {
   groups: ElementTerms[],
   def: number,
+  // For hits with DEF ignore of their own: the DEF multiplier with that ignore on top of the shred
+  defWithIgnore: (ignore: number) => number,
   reactionShare: number,
   // count and res for flat damage per hit; contribution for Stellar Swirl lines
   transformative: { base: number, bonus: number, perEm: number, special: boolean, kind?: SpecialKind, count: number, res: number, contribution: boolean }[],
@@ -636,6 +648,7 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
       dmgBonus: reaching.reduce((sum, buff) => sum + (buff.dmgBonus ?? 0), 0) + (hitElement === element ? fieldDmg : 0),
       critRate: reaching.reduce((sum, buff) => sum + (buff.critRate ?? 0), 0),
       critDmg: reaching.reduce((sum, buff) => sum + (buff.critDmg ?? 0), 0),
+      defIgnore: reaching.reduce((sum, buff) => sum + (buff.defIgnore ?? 0), 0),
       fromEm: reaching.flatMap((buff) => (buff.fromEm ? [buff.fromEm] : [])),
     }
   })
@@ -679,6 +692,8 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
   return {
     groups,
     def,
+    defWithIgnore: (ignore: number) =>
+      characterFactor / (characterFactor + (enemy.level + 100) * Math.max(0, 1 - debuffs.defShred / 100) * Math.max(0, 1 - ignore / 100)),
     reactionShare: Math.max(0, Math.min(100, rotation.reactionShare)) / 100,
     transformative,
     special: specialGroups,
@@ -726,7 +741,10 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
       groupCrit += Math.min(fromEm.critCap ?? Infinity, over * (fromEm.critPer ?? 0))
     }
     const crit = 1 + Math.min(Math.max(groupCrit, 0), 100) / 100 * (critDmg + group.critDmg) / 100
+    // total is multiplied by the shared DEF multiplier at the end; hits with DEF ignore of their own get the difference
+    const defRatio = group.defIgnore > 0 && prepared.def > 0 ? prepared.defWithIgnore(group.defIgnore) / prepared.def : 1
     total += base * (1 + ((group.dmgStat ? get(group.dmgStat) : 0) + get(group.typeStat) + allDmg + dmgBonus) / 100) * group.res * amplify * crit
+      * defRatio
   }
   let transformative = 0
   if (prepared.transformative.length > 0 || prepared.special.length > 0) {

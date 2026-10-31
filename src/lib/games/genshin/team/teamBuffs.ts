@@ -2,6 +2,7 @@ import {
   BENEDICTIONS,
   benedictionValue,
   type EnemyDebuffs,
+  hexereiCount,
   type HitFlat,
   moonsignLevel,
   type SpecialKind,
@@ -144,6 +145,7 @@ export function teamBuffsFor(
 
   // Moonsign: one level per Lunar character in the party; Ascendant Gleam (2+) lets non-Moonsign teammates buff Lunar DMG
   const moonsign = moonsignLevel([receiver.id, ...teammates.map((c) => c.id)])
+  const hexerei = hexereiCount([receiver.id, ...teammates.map((c) => c.id)])
   const isMoonsign = (id: string) => BENEDICTIONS[id]?.kinds.some((kind) => kind.startsWith('lunar')) ?? false
   const candidates: { buff: TeamBuff, sourceName: string, giver?: (typeof givers)[number] }[] = []
   for (const giver of givers) {
@@ -180,6 +182,7 @@ export function teamBuffsFor(
       receiver,
       setting,
       teamMaxElementalMastery,
+      hexerei,
     }
     const stat = typeof buff.stat === 'function' ? buff.stat(context) : buff.stat
     const value = stat ? buff.value(context) : 0
@@ -223,7 +226,7 @@ export function teamBuffsFor(
       continue
     }
     if (entry.stat === 'hitFlat') {
-      const triggers = typeof entry.setting === 'number' ? entry.setting : Infinity
+      const triggers = entry.buff.flatTriggers ?? (typeof entry.setting === 'number' ? entry.setting : Infinity)
       if (entry.value > 0 && triggers > 0) hitFlats.push({ flat: entry.value, triggers, elements: entry.buff.flatElements ?? [] })
       continue
     }
@@ -232,7 +235,7 @@ export function teamBuffsFor(
       if (field === 'special') specialBonus[kind] = (specialBonus[kind] ?? 0) + entry.value
       else if (field === 'specialFlat') {
         specialFlat[kind] = (specialFlat[kind] ?? 0) + entry.value
-        if (typeof entry.setting === 'number') specialFlatHits[kind] = Math.max(specialFlatHits[kind] ?? 0, entry.setting)
+        if (entry.buff.capsHits && typeof entry.setting === 'number') specialFlatHits[kind] = Math.max(specialFlatHits[kind] ?? 0, entry.setting)
       } else {
         const crit = specialCrit[kind] ??= { rate: 0, dmg: 0 }
         if (field === 'specialCritRate') crit.rate += entry.value

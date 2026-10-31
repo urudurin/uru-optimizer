@@ -248,4 +248,30 @@ describe('team buffs', () => {
     const lead = teamBuffsFor(ganyu, setup(['Vodyanitsa']), { characters: [ganyu, vodyanitsa], artifacts: [] })
     expect(lead.hitFlats).toEqual([])
   })
+  it('gives Citlali\'s C1 Stellar Blades as flat DMG on 13 hits of any element, only from C1', () => {
+    const c0 = teamBuffsFor(xiangling, setup(['Citlali']), { characters: [xiangling, character('Citlali', { element: 'Cryo' })], artifacts: [] })
+    expect(c0.applied.find((a) => a.buff.id === 'citlali-c1')?.value).toBe(0)
+    const c1 = teamBuffsFor(xiangling, setup(['Citlali']), {
+      characters: [xiangling, character('Citlali', { element: 'Cryo', constellation: 1 })],
+      artifacts: [],
+    })
+    expect(c1.hitFlats).toEqual([{ flat: expect.any(Number), triggers: 13, elements: expect.arrayContaining(['Pyro', 'Physical']) }])
+  })
+  it('gives Illuga\'s Nightingale\'s Song to Geo hits (36 stacks, A4 for the 21 Burst stacks), and caps Lunar-Crystallize at the Song stacks, not the A4 member count', () => {
+    const illuga = character('Illuga', { element: 'Geo' })
+    const navia = character('Navia', { element: 'Geo' })
+    const result = teamBuffsFor(navia, setup(['Illuga']), { characters: [navia, illuga], artifacts: [] })
+    expect(result.hitFlats.map((h) => [h.triggers, h.elements])).toEqual([[36, ['Geo']], [21, ['Geo']]])
+    expect(result.specialFlatHits.lunarcrystallize).toBe(36)
+  })
+  it('needs 2 Hexerei characters in the party for Hexerei effects (Fischl alone no, Fischl with Sucrose yes)', () => {
+    const fischl = character('Fischl', { element: 'Electro' })
+    const alone = teamBuffsFor(xiangling, setup(['Fischl'], { settings: { 'Fischl:fischl-hexerei': 1 } }), { characters: [xiangling, fischl], artifacts: [] })
+    expect(alone.applied.find((a) => a.buff.id === 'fischl-hexerei')?.reason).toBe('Needs 2 Hexerei characters in the party')
+    const both = teamBuffsFor(xiangling, setup(['Fischl', 'Sucrose'], { settings: { 'Fischl:fischl-hexerei': 1 } }), {
+      characters: [xiangling, fischl, sucrose],
+      artifacts: [],
+    })
+    expect(both.applied.find((a) => a.buff.id === 'fischl-hexerei')?.value).toBe(22.5)
+  })
 })

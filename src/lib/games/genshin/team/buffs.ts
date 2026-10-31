@@ -1,6 +1,7 @@
-import type {
-  DamageElement,
-  SpecialKind,
+import {
+  type DamageElement,
+  HEXEREI,
+  type SpecialKind,
 } from 'lib/games/genshin/damage/damage'
 import { inferAscension } from 'lib/games/genshin/stats/computeStats'
 import {
@@ -76,6 +77,8 @@ export type BuffContext = {
   setting: BuffSetting,
   // Highest Elemental Mastery among the teammates
   teamMaxElementalMastery: number,
+  // Hexerei characters in the party (damage/damage.ts hexereiCount), the receiver included
+  hexerei: number,
 }
 
 export type TeamBuff = {
@@ -92,8 +95,11 @@ export type TeamBuff = {
   toggle?: BuffToggle,
   // Buffs in the same group don't stack: only the biggest counts (two Noblesse Oblige wearers)
   nonStacking?: string,
-  // For hitFlat: the elements of the hits it reaches
+  // For hitFlat: the elements of the hits it reaches, and a fixed hit count when its stacks toggle counts something else
   flatElements?: DamageElement[],
+  flatTriggers?: number,
+  // For specialFlat: its stacks toggle is how many hits get the flat DMG (Lauma's Pale Hymn, Illuga's Nightingale's Song)
+  capsHits?: boolean,
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
 
@@ -146,6 +152,8 @@ const FURINA_DMG_PER_FANFARE = [0.07, 0.09, 0.11, 0.13, 0.15, 0.17, 0.19, 0.21, 
 // giver's burst level, raised by 3 at the constellation genshin-optimizer gives
 const COLUMBINA_LUNAR_DMG = [13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46, 49, 52, 55]
 const LAUMA_PALE_HYMN_EM = [2.2224, 2.38908, 2.55576, 2.778, 2.94468, 3.11136, 3.3336, 3.55584, 3.77808, 4.00032, 4.22256, 4.4448, 4.7226, 5.0004, 5.2782]
+// Nightingale's Song on other Geo hits: percent of his Elemental Mastery by Burst level (genshin-optimizer skillParam)
+const ILLUGA_SONG_GEO_EM = [33.6, 36.12, 38.64, 42, 44.52, 47.04, 50.4, 53.76, 57.12, 60.48, 63.84, 67.2, 71.4, 75.6, 79.8]
 const ILLUGA_SONG_EM = [2.2592, 2.42864, 2.59808, 2.824, 2.99344, 3.16288, 3.3888, 3.61472, 3.84064, 4.06656, 4.29248, 4.5184, 4.8008, 5.0832, 5.3656]
 
 const LUNAR_KIT_BUFFS: Record<string, TeamBuff[]> = {
@@ -162,6 +170,7 @@ const LUNAR_KIT_BUFFS: Record<string, TeamBuff[]> = {
   Lauma: [
     {
       id: 'lauma-pale-hymn',
+      capsHits: true,
       label:
         'Pale Hymn: Lunar-Bloom DMG added per hit, a share of her Elemental Mastery by her burst level; one stack per Lunar-Bloom hit (18 from her Burst, 18 more from her hold Skill)',
       target: 'team',
@@ -263,18 +272,45 @@ const LUNAR_KIT_BUFFS: Record<string, TeamBuff[]> = {
   }],
   Illuga: [{
     id: 'illuga-burst-lunarcrystallize',
-    label: 'Burst: Lunar-Crystallize DMG added per hit, a share of his Elemental Mastery by his burst level',
+    label:
+      'Shadowless Reflection: Nightingale\'s Song, the active member\'s Lunar-Crystallize hits add a share of his Elemental Mastery by Burst level, one stack each (21, up to 15 more from Geo Constructs)',
     target: 'team',
     stage: 'premod',
     stat: 'specialFlat:lunarcrystallize',
-    value: ({ giver, giverStats }) => (ILLUGA_SONG_EM[burstLevel(giver, 3) - 1] ?? 0) * (giverStats.elementalMastery ?? 0),
-    toggle: { kind: 'switch', label: 'During his Burst' },
-    confidence: 'sourced',
+    capsHits: true,
+    value: ({ giver, giverStats, setting }) => setting === 0 ? 0 : (ILLUGA_SONG_EM[burstLevel(giver, 3) - 1] ?? 0) * (giverStats.elementalMastery ?? 0),
+    toggle: { kind: 'stacks', label: 'Nightingale\'s Song stacks', max: () => 36, step: 1 },
+    confidence: 'confirmed',
+  }, {
+    // The user's screenshots of his whole kit (Oct 30 2026); amounts by Burst level from genshin-optimizer
+    id: 'illuga-burst-geo',
+    label:
+      'Shadowless Reflection: Nightingale\'s Song, the active member\'s Geo hits add a share of his Elemental Mastery by Burst level, one stack each (21, up to 15 more from Geo Constructs)',
+    target: 'team',
+    stage: 'premod',
+    stat: 'hitFlat',
+    flatElements: ['Geo'],
+    value: ({ giver, giverStats }) => (ILLUGA_SONG_GEO_EM[burstLevel(giver, 3) - 1] ?? 0) / 100 * (giverStats.elementalMastery ?? 0),
+    toggle: { kind: 'stacks', label: 'Nightingale\'s Song stacks', max: () => 36, step: 1 },
+    confidence: 'confirmed',
+  }, {
+    id: 'illuga-a4-geo',
+    label:
+      'Demonhunter\'s Dusk: Nightingale\'s Song adds 7/14/24% more of his Elemental Mastery to Geo hits with 1/2/3 Hydro or Geo members (counted for the 21 Burst stacks)',
+    target: 'team',
+    stage: 'premod',
+    stat: 'hitFlat',
+    flatElements: ['Geo'],
+    flatTriggers: 21,
+    value: ({ giver, giverStats, setting }) =>
+      ascensionOf(giver) >= 4 && typeof setting === 'number' ? ([0, 0.07, 0.14, 0.24][setting] ?? 0) * (giverStats.elementalMastery ?? 0) : 0,
+    blockedBy: needsAscension(4),
+    toggle: { kind: 'stacks', label: 'Hydro and Geo members', max: () => 3, step: 1 },
+    confidence: 'confirmed',
   }, {
     // The A1 and A4 below are from the user's in-game screenshots (Oct 30 2026)
     id: 'illuga-a4-lunarcrystallize',
-    label:
-      'Demonhunter\'s Dusk: Nightingale\'s Song adds 48/96/160% of his Elemental Mastery to Lunar-Crystallize hits with 1/2/3 Hydro or Geo members (its 7/14/24% on other Geo hits isn\'t counted)',
+    label: 'Demonhunter\'s Dusk: Nightingale\'s Song adds 48/96/160% more of his Elemental Mastery to Lunar-Crystallize hits with 1/2/3 Hydro or Geo members',
     target: 'team',
     stage: 'premod',
     stat: 'specialFlat:lunarcrystallize',
@@ -403,6 +439,17 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
   ],
   Sucrose: [
     {
+      id: 'sucrose-hexerei',
+      label: 'Hexerei: with 2 Hexerei in the party, Normal, Charged, Plunging, Skill and Burst DMG +5.71% after her Skill, +7.14% after her Burst',
+      target: 'team',
+      stage: 'premod',
+      stat: 'allDmg',
+      value: ({ setting, hexerei }) => (hexerei < 2 ? 0 : setting === 2 ? 7.1429 : setting === 1 ? 5.7143 : 0),
+      blockedBy: ({ hexerei }) => (hexerei < 2 ? 'Needs 2 Hexerei characters in the party' : undefined),
+      toggle: { kind: 'stacks', label: '1 after her Skill, 2 after her Burst', max: () => 2, step: 1 },
+      confidence: 'sourced',
+    },
+    {
       id: 'sucrose-a1',
       label: 'Catalyst Conversion: Elemental Mastery +50 for members of the swirled element',
       target: 'others',
@@ -452,6 +499,22 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
   // From here to Zhongli: genshin-optimizer's sheets (Oct 26 2026). The squad's make-up isn't known here, so party
   // conditions are switches or stack counts; element-gated shreds go by the receiver's element (always in the party)
   Albedo: [
+    {
+      id: 'albedo-hexerei',
+      label:
+        'Hexerei: with 2 Hexerei in the party, Normal, Charged, Plunging, Skill and Burst DMG +4% per 1,000 of his DEF (up to 12%; +10% more per 1,000 for Hexerei members, up to 30%)',
+      target: 'others',
+      stage: 'premod',
+      stat: 'allDmg',
+      value: ({ giverStats, receiver, hexerei }) => {
+        if (hexerei < 2) return 0
+        const def = giverStats.def ?? 0
+        return Math.min(12, def / 1000 * 4) + (HEXEREI.has(receiver.id) ? Math.min(30, def / 1000 * 10) : 0)
+      },
+      blockedBy: ({ hexerei }) => (hexerei < 2 ? 'Needs 2 Hexerei characters in the party' : undefined),
+      toggle: { kind: 'switch', label: 'After his Skill creates a Solar or Silver Isotoma' },
+      confidence: 'sourced',
+    },
     {
       id: 'albedo-a4',
       label: 'Homuncular Nature: Elemental Mastery +125 after his Burst',
@@ -511,6 +574,19 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
     },
   ],
   Citlali: [{
+    // From the user's screenshot of her C1 (Oct 30 2026)
+    id: 'citlali-c1',
+    label:
+      'C1: Opalstar Vestments, the active member\'s Normal, Charged, Plunging, Skill and Burst hits add 200% of her Elemental Mastery, one Stellar Blade each (10, 3 more after Frozen or Melt)',
+    target: 'others',
+    stage: 'premod',
+    stat: 'hitFlat',
+    flatElements: ['Pyro', 'Hydro', 'Electro', 'Cryo', 'Anemo', 'Geo', 'Dendro', 'Physical'],
+    value: ({ giver, giverStats }) => (giver.constellation >= 1 ? 2 * (giverStats.elementalMastery ?? 0) : 0),
+    blockedBy: needsConstellation(1),
+    toggle: { kind: 'stacks', label: 'Stellar Blades (10, +3 after Frozen or Melt)', max: () => 13, step: 1 },
+    confidence: 'confirmed',
+  }, {
     id: 'citlali-a1',
     label: 'Itzpapa\'s Hymn: the enemy\'s Pyro and Hydro RES -20% after Frozen or Melt (-40% at C2)',
     target: 'team',
@@ -576,6 +652,18 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
       confidence: 'sourced',
     },
   ],
+  Fischl: [{
+    id: 'fischl-hexerei',
+    label:
+      'Hexerei: with 2 Hexerei in the party, the active member\'s ATK +22.5% after Overloaded or Elemental Mastery +90 after Electro-Charged or Lunar-Charged (x2 at C6)',
+    target: 'active',
+    stage: 'premod',
+    stat: ({ setting }) => (setting === 1 ? 'atkPct' : setting === 2 ? 'elementalMastery' : undefined),
+    value: ({ giver, setting, hexerei }) => (hexerei < 2 ? 0 : (setting === 1 ? 22.5 : 90) * (giver.constellation >= 6 ? 2 : 1)),
+    blockedBy: ({ hexerei }) => (hexerei < 2 ? 'Needs 2 Hexerei characters in the party' : undefined),
+    toggle: { kind: 'stacks', label: '1 ATK (Overloaded), 2 EM (Electro-Charged)', max: () => 2, step: 1 },
+    confidence: 'sourced',
+  }],
   Gorou: [
     {
       id: 'gorou-skill-def',
@@ -755,6 +843,17 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
     },
   ],
   Venti: [
+    {
+      id: 'venti-hexerei',
+      label: 'Hexerei: with 2 Hexerei in the party, the active member\'s DMG +50% after his Burst swirls an element',
+      target: 'active',
+      stage: 'premod',
+      stat: 'allDmg',
+      value: ({ hexerei }) => (hexerei >= 2 ? 50 : 0),
+      blockedBy: ({ hexerei }) => (hexerei < 2 ? 'Needs 2 Hexerei characters in the party' : undefined),
+      toggle: { kind: 'switch', label: 'Burst swirled an element' },
+      confidence: 'sourced',
+    },
     {
       id: 'venti-c2',
       label: 'C2: the enemy\'s Anemo and Physical RES -12% after his Skill hits',
