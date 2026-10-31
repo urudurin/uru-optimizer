@@ -178,4 +178,36 @@ describe('zzzTeamBuffsFor', () => {
       delete AGENTS[PULCHRA]
     }
   })
+  it('genshin-optimizer givers: Ju Fufu\'s Chain Attack and Ultimate DMG, Lighter only for Fire and Ice, Roxy\'s Contamination', () => {
+    const JUFUFU = '1391'
+    const LIGHTER = '1161'
+    const ROXY = '1621'
+    AGENTS[JUFUFU] = { ...MIYABI, id: JUFUFU, name: 'Ju Fufu', element: 'Fire', specialty: 'Stun' }
+    AGENTS[LIGHTER] = { ...MIYABI, id: LIGHTER, name: 'Lighter', element: 'Fire', specialty: 'Stun' }
+    AGENTS[ROXY] = { ...MIYABI, id: ROXY, name: 'Roxy', element: 'Wind', specialty: 'Stun' }
+    try {
+      const squad = [...builds, build(JUFUFU, 'Ju Fufu'), build(LIGHTER, 'Lighter'), build(ROXY, 'Roxy')]
+      const jufufu = zzzTeamBuffsFor(MIYABI.id, { teammates: [JUFUFU], settings: {} }, { builds: squad, discs })
+      expect(jufufu.kindBonus).toEqual({ chain: 20, ult: 40 })
+      expect(jufufu.debuffs.stunBonus).toBe(0)
+
+      // Miyabi is Ice: Lighter's RES shred counts; an Ether receiver gets nothing
+      const lighter = zzzTeamBuffsFor(MIYABI.id, { teammates: [LIGHTER], settings: {} }, { builds: squad, discs })
+      expect(lighter.debuffs.resShred).toBe(15)
+      const forAstra = zzzTeamBuffsFor(ASTRA, { teammates: [LIGHTER], settings: {} }, { builds: squad, discs })
+      expect(forAstra.applied.find((a) => a.buff.id === 'lighter-res')?.reason).toBe('Only for Fire and Ice agents')
+
+      const giver =
+        computeStats({ agent: AGENTS[ROXY], wEngine: HAILSTORM_SHRINE, wEngineRefinement: 1, coreSkillLevel: 6, discs: [], conditions: statScreenConditions() })
+          .stats
+      const roxy = zzzTeamBuffsFor(MIYABI.id, { teammates: [ROXY], settings: {} }, { builds: squad, discs })
+      expect(roxy.applied.find((a) => a.buff.id === 'roxy-contamination')?.value).toBeCloseTo(Math.min(40, 0.4 * giver.critRate), 6)
+      // Her stun bonus needs an Attack, Rupture or Armorer agent: Miyabi is Anomaly
+      expect(roxy.debuffs.stunBonus).toBe(0)
+    } finally {
+      delete AGENTS[JUFUFU]
+      delete AGENTS[LIGHTER]
+      delete AGENTS[ROXY]
+    }
+  })
 })

@@ -87,7 +87,7 @@ export function isDebuff(stat: string): stat is EnemyDebuffKey {
 }
 
 function isHitBonus(stat: string): stat is HitBonusKey {
-  return stat === 'aftershockDmg' || stat === 'sheerDmg' || stat === 'anomalyBuff'
+  return stat === 'aftershockDmg' || stat === 'sheerDmg' || stat === 'anomalyBuff' || stat === 'chainDmg' || stat === 'ultDmg'
 }
 
 function fourPieceSets(discs: Disc[]): string[] {
@@ -175,6 +175,8 @@ export function zzzTeamBuffsFor(
   for (const a of applied) if (a.counted && isDebuff(a.buff.stat)) debuffs[a.buff.stat] += a.value
   const kindBonus: KindBonus = {}
   for (const a of applied) if (a.counted && a.buff.stat === 'aftershockDmg') kindBonus.aftershock = (kindBonus.aftershock ?? 0) + a.value
+  for (const a of applied) if (a.counted && a.buff.stat === 'chainDmg') kindBonus.chain = (kindBonus.chain ?? 0) + a.value
+  for (const a of applied) if (a.counted && a.buff.stat === 'ultDmg') kindBonus.ult = (kindBonus.ult ?? 0) + a.value
   const sheerDmg = applied.filter((a) => a.counted && a.buff.stat === 'sheerDmg').reduce((sum, a) => sum + a.value, 0)
   const effects: StatEffect[] = applied.filter((a) => a.counted).flatMap((a) => (isDebuff(a.buff.stat) || isHitBonus(a.buff.stat) ? [] : [{
     stat: a.buff.stat,

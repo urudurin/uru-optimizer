@@ -58,7 +58,16 @@ export const DEBUFF_LABELS: Record<EnemyDebuffKey, string> = {
 // DMG Bonus for some hits only, counted in rotation damage (damage/damage.ts KindBonus)
 // Sheer DMG Bonus (its own multiplier on Rupture agents' hits) too
 // anomalyBuff: a multiplier of its own on the receiver's attribute anomalies (Remielle's Refringe), in percent
-export type HitBonusKey = 'aftershockDmg' | 'sheerDmg' | 'anomalyBuff'
+// chainDmg / ultDmg: Chain Attack and Ultimate DMG Bonus (Ju Fufu's Tiger's Roar)
+export type HitBonusKey = 'aftershockDmg' | 'sheerDmg' | 'anomalyBuff' | 'chainDmg' | 'ultDmg'
+
+export const HIT_BONUS_LABELS: Record<HitBonusKey, string> = {
+  aftershockDmg: 'Aftershock DMG',
+  sheerDmg: 'Sheer DMG',
+  anomalyBuff: 'attribute anomaly multiplier',
+  chainDmg: 'Chain Attack DMG',
+  ultDmg: 'Ultimate DMG',
+}
 
 export type ZzzTeamBuff = {
   id: string,
@@ -93,6 +102,11 @@ const needsMindscape = (level: number) => (context: ZzzBuffContext) =>
   context.giver.mindscape < level ? `Needs ${context.giver.name} at Mindscape ${level}` : undefined
 
 const switchOn = (context: ZzzBuffContext) => context.setting !== false
+
+const fireOrIce = (c: ZzzBuffContext) => c.receiver.element === 'Fire' || c.receiver.element === 'Ice'
+
+// Roxy's Additional Ability: an Attack, Rupture or Armorer agent in the squad
+const roxyQualifies = (c: ZzzBuffContext) => c.squad.some((m) => ['Attack', 'Rupture', 'Armorer'].includes(m.specialty))
 
 // Remielle's Additional Ability: another Anomaly agent, or someone of her faction, in the squad
 const remielleQualifies = (c: ZzzBuffContext) =>
@@ -266,6 +280,14 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
   // Trigger
   '1361': [
     {
+      id: 'trigger-stun',
+      label: 'Core Skill: the stunned enemy\'s stun multiplier +35% after her Aftershocks hit (genshin-optimizer)',
+      stat: 'stunBonus',
+      toggle: { kind: 'switch', label: 'Aftershock hit' },
+      value: (c) => (switchOn(c) ? 35 : 0),
+      confidence: 'sourced',
+    },
+    {
       id: 'm2-crit-dmg',
       label: 'Mindscape 2: CRIT DMG per Hunter\'s Gaze stack',
       stat: ZzzStats.CRIT_DMG,
@@ -352,6 +374,394 @@ export const AGENT_BUFFS: Record<string, ZzzTeamBuff[]> = {
         const three = c.squad.filter((m) => m.specialty === 'Anomaly').length >= 3
         return 0.02 * c.giverStats.anomalyProficiency + (three ? 10 : 0)
       },
+      confidence: 'sourced',
+    },
+  ],
+  // From here to Seth: genshin-optimizer's sheets (Oct 26 2026), Core Skill F. Conditions the squad can't know (a
+  // state being up, the enemy stunned) are switches
+  // Anton
+  '1111': [{
+    id: 'anton-m4-crit',
+    label: 'Mindscape 4: CRIT Rate +10% after his Chain Attack or Ultimate',
+    stat: ZzzStats.CRIT_RATE,
+    toggle: { kind: 'switch', label: 'After his Chain Attack or Ultimate' },
+    value: (c) => (switchOn(c) && c.giver.mindscape >= 4 ? 10 : 0),
+    blockedBy: needsMindscape(4),
+    confidence: 'sourced',
+  }],
+  // Ben
+  '1121': [{
+    id: 'ben-ability-crit',
+    label: 'Additional Ability: CRIT Rate +16% while he shields, with 3 Fire or Belobog agents in the squad',
+    stat: ZzzStats.CRIT_RATE,
+    toggle: { kind: 'switch', label: 'Shield up' },
+    value: (c) => (switchOn(c) && abilityCount(c.squad, 'Fire', 'BelebogHeavyIndustries') >= 3 ? 16 : 0),
+    blockedBy: needsSquad('Fire', 'BelebogHeavyIndustries', 'Fire agent or Belobog member'),
+    confidence: 'sourced',
+  }],
+  // Banyue
+  '1471': [{
+    id: 'banyue-m1-res',
+    label: 'Mindscape 1: the enemy\'s Fire RES -10% (Tremor)',
+    stat: 'resShred',
+    element: 'Fire',
+    toggle: { kind: 'switch', label: 'Tremor' },
+    value: (c) => (switchOn(c) && c.giver.mindscape >= 1 ? 10 : 0),
+    blockedBy: needsMindscape(1),
+    confidence: 'sourced',
+  }],
+  // Dialyn
+  '1481': [
+    {
+      id: 'dialyn-stun',
+      label: 'Core Skill: Malicious Complaint, the enemy\'s stun multiplier +30% (+50% at Mindscape 2)',
+      stat: 'stunBonus',
+      toggle: { kind: 'switch', label: 'Malicious Complaint' },
+      value: (c) => (switchOn(c) ? (c.giver.mindscape >= 2 ? 50 : 30) : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'dialyn-dmg',
+      label: 'Additional Ability: squad DMG +40% with Overwhelmingly Positive (+15% with Malicious Complaint at Mindscape 2)',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: { kind: 'switch', label: 'Overwhelmingly Positive' },
+      value: (c) => (switchOn(c) ? 40 + (c.giver.mindscape >= 2 ? 15 : 0) : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'dialyn-m1-res',
+      label: 'Mindscape 1: RES ignore 15% with Overwhelmingly Positive',
+      stat: 'resShred',
+      toggle: { kind: 'switch', label: 'Overwhelmingly Positive' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 1 ? 15 : 0),
+      blockedBy: needsMindscape(1),
+      confidence: 'sourced',
+    },
+  ],
+  // Ju Fufu: Tiger's Roar after her Chain Attack
+  '1391': [
+    {
+      id: 'jufufu-crit-dmg',
+      label: 'Core Skill: Tiger\'s Roar, CRIT DMG +20%, +0.05% per point of her ATK above 2,800 (up to 30% more; +22% at Mindscape 2)',
+      stat: ZzzStats.CRIT_DMG,
+      toggle: { kind: 'switch', label: 'Tiger\'s Roar' },
+      value: (c) => switchOn(c) ? 20 + Math.min(30, Math.max(0, c.giverStats.atk - 2800) * 0.05) + (c.giver.mindscape >= 2 ? 22 : 0) : 0,
+      confidence: 'sourced',
+    },
+    {
+      id: 'jufufu-chain-dmg',
+      label: 'Core Skill: Tiger\'s Roar, Chain Attack DMG +20%',
+      stat: 'chainDmg',
+      toggle: { kind: 'switch', label: 'Tiger\'s Roar' },
+      value: (c) => (switchOn(c) ? 20 : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'jufufu-ult-dmg',
+      label: 'Core Skill: Tiger\'s Roar, Ultimate DMG +40%',
+      stat: 'ultDmg',
+      toggle: { kind: 'switch', label: 'Tiger\'s Roar' },
+      value: (c) => (switchOn(c) ? 40 : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'jufufu-m1-stun',
+      label: 'Mindscape 1: the enemy\'s stun multiplier +35% after her Chain Attack hits',
+      stat: 'stunBonus',
+      toggle: { kind: 'switch', label: 'After her Chain Attack' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 1 ? 35 : 0),
+      blockedBy: needsMindscape(1),
+      confidence: 'sourced',
+    },
+  ],
+  // Koleda
+  '1101': [{
+    id: 'koleda-chain-dmg',
+    label: 'Additional Ability: Chain Attack DMG +35% per EX Special debuff (up to 2) on a stunned enemy, with 3 Fire, Belobog, Rupture or Armorer agents',
+    stat: 'chainDmg',
+    toggle: { kind: 'stacks', label: 'EX Special debuffs on a stunned enemy (max 2)', max: () => 2 },
+    value: (c) => typeof c.setting === 'number' && abilityCount(c.squad, 'Fire', 'BelebogHeavyIndustries', ['Rupture', 'Armorer']) >= 3 ? 35 * c.setting : 0,
+    blockedBy: (c) =>
+      abilityCount(c.squad, 'Fire', 'BelebogHeavyIndustries', ['Rupture', 'Armorer']) < 3 ? 'Needs 3 Fire, Belobog, Rupture or Armorer agents' : undefined,
+    confidence: 'sourced',
+  }],
+  // Lighter
+  '1161': [
+    {
+      id: 'lighter-res',
+      label: 'Core Skill: the enemy\'s Fire and Ice RES -15% after Morale Burst hits (-25% with Collapse at Mindscape 1)',
+      stat: 'resShred',
+      toggle: { kind: 'switch', label: 'Morale Burst hit' },
+      value: (c) => (switchOn(c) && fireOrIce(c) ? 15 + (c.giver.mindscape >= 1 ? 10 : 0) : 0),
+      blockedBy: (c) => (fireOrIce(c) ? undefined : 'Only for Fire and Ice agents'),
+      confidence: 'sourced',
+    },
+    {
+      id: 'lighter-elation',
+      label:
+        'Additional Ability: Fire and Ice DMG +1.25% per Elation stack (20), +0.25% per stack per 10 of his Impact above 170 (up to 75%), with 2 Attack or Sons of Calydon agents',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: { kind: 'switch', label: '20 Elation stacks' },
+      value: (c) => {
+        if (!switchOn(c) || !fireOrIce(c) || abilityCount(c.squad, '', 'SonsOfCalydon', ['Attack']) < 2) return 0
+        const m2 = c.giver.mindscape >= 2 ? 1.25 : 1
+        return Math.min(75 * m2, 20 * (1.25 + Math.max(0, c.giverStats.impact - 170) / 10 * 0.25) * m2)
+      },
+      blockedBy: (c) =>
+        !fireOrIce(c)
+          ? 'Only for Fire and Ice agents'
+          : abilityCount(c.squad, '', 'SonsOfCalydon', ['Attack']) < 2
+          ? 'Needs 2 Attack agents or Sons of Calydon members'
+          : undefined,
+      confidence: 'sourced',
+    },
+    {
+      id: 'lighter-m2-stun',
+      label: 'Mindscape 2: the enemy\'s stun multiplier +25% (Collapse)',
+      stat: 'stunBonus',
+      toggle: { kind: 'switch', label: 'Collapse' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 2 ? 25 : 0),
+      blockedBy: needsMindscape(2),
+      confidence: 'sourced',
+    },
+  ],
+  // Lucia
+  '1451': [
+    {
+      id: 'lucia-dmg',
+      label: 'Core Skill: Dreamer\'s Nursery Rhyme, DMG +20%',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: { kind: 'switch', label: 'Dreamer\'s Nursery Rhyme' },
+      value: (c) => (switchOn(c) ? 20 : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'lucia-crit-dmg',
+      label: 'Additional Ability: CRIT DMG +30% with Darkbreaker, with a Rupture or Stun agent in the squad',
+      stat: ZzzStats.CRIT_DMG,
+      toggle: { kind: 'switch', label: 'Darkbreaker' },
+      value: (c) => (switchOn(c) && c.squad.some((m) => m.specialty === 'Rupture' || m.specialty === 'Stun') ? 30 : 0),
+      blockedBy: (c) => (c.squad.some((m) => m.specialty === 'Rupture' || m.specialty === 'Stun') ? undefined : 'Needs a Rupture or Stun agent'),
+      confidence: 'sourced',
+    },
+    {
+      id: 'lucia-m1-res',
+      label: 'Mindscape 1: RES ignore 18% with Dreamer\'s Nursery Rhyme',
+      stat: 'resShred',
+      toggle: { kind: 'switch', label: 'Dreamer\'s Nursery Rhyme' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 1 ? 18 : 0),
+      blockedBy: needsMindscape(1),
+      confidence: 'sourced',
+    },
+    {
+      id: 'lucia-m2-sheer',
+      label: 'Mindscape 2: Sheer DMG +15% with Darkbreaker in an Ether Veil',
+      stat: 'sheerDmg',
+      toggle: { kind: 'switch', label: 'Darkbreaker in an Ether Veil' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 2 ? 15 : 0),
+      blockedBy: needsMindscape(2),
+      confidence: 'sourced',
+    },
+  ],
+  // Lycaon
+  '1141': [
+    {
+      id: 'lycaon-ice-res',
+      label: 'Core Skill: the enemy\'s Ice RES -25% after his EX Special or Assist Follow-Up hits',
+      stat: 'resShred',
+      element: 'Ice',
+      toggle: { kind: 'switch', label: 'After his EX Special or Follow-Up' },
+      value: (c) => (switchOn(c) ? 25 : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'lycaon-stun',
+      label: 'Additional Ability: the stunned enemy\'s stun multiplier +35%, with 3 Ice, Victoria Housekeeping or Anomaly agents',
+      stat: 'stunBonus',
+      value: (c) => (abilityCount(c.squad, 'Ice', 'VictoriaHousekeepingCo', ['Anomaly']) >= 3 ? 35 : 0),
+      blockedBy: (c) =>
+        abilityCount(c.squad, 'Ice', 'VictoriaHousekeepingCo', ['Anomaly']) < 3 ? 'Needs 3 Ice, Victoria Housekeeping or Anomaly agents' : undefined,
+      confidence: 'sourced',
+    },
+  ],
+  // Pan Yinhu (the Sheer Force he gives isn't counted)
+  '1421': [{
+    id: 'panyinhu-dmg-taken',
+    label: 'Additional Ability: the enemy takes 20% more DMG with Depleted Qi (+10% at Mindscape 1), with 2 Rupture or Yunkui Summit agents',
+    stat: 'dmgTaken',
+    toggle: { kind: 'switch', label: 'Depleted Qi' },
+    value: (c) => switchOn(c) && abilityCount(c.squad, '', 'YunkuiSummit', ['Rupture']) >= 2 ? 20 + (c.giver.mindscape >= 1 ? 10 : 0) : 0,
+    blockedBy: (c) => (abilityCount(c.squad, '', 'YunkuiSummit', ['Rupture']) < 2 ? 'Needs 2 Rupture agents or Yunkui Summit members' : undefined),
+    confidence: 'sourced',
+  }],
+  // Piper
+  '1281': [{
+    id: 'piper-dmg',
+    label: 'Additional Ability: squad DMG +18% at 20 Power, with 4 Anomaly, Physical or Sons of Calydon members counted',
+    stat: ZzzStats.ELEMENT_DMG,
+    toggle: { kind: 'switch', label: '20 Power' },
+    value: (c) => (switchOn(c) && abilityCount(c.squad, 'Physical', 'SonsOfCalydon', ['Anomaly']) >= 4 ? 18 : 0),
+    blockedBy: (c) => abilityCount(c.squad, 'Physical', 'SonsOfCalydon', ['Anomaly']) < 4 ? 'Needs 4 Anomaly, Physical or Sons of Calydon counts' : undefined,
+    confidence: 'sourced',
+  }],
+  // Qingyi
+  '1251': [
+    {
+      id: 'qingyi-stun',
+      label: 'Core Skill: Subjugation, the enemy\'s stun multiplier +4% per stack (up to 20; x1.35 at Mindscape 2)',
+      stat: 'stunBonus',
+      toggle: { kind: 'stacks', label: 'Subjugation (max 20)', max: () => 20 },
+      value: (c) => (typeof c.setting === 'number' ? 4 * c.setting * (c.giver.mindscape >= 2 ? 1.35 : 1) : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'qingyi-m1-def',
+      label: 'Mindscape 1: the enemy\'s DEF -15% after she spends 25 Voltage',
+      stat: 'defShred',
+      toggle: { kind: 'switch', label: 'Spent 25 Voltage' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 1 ? 15 : 0),
+      blockedBy: needsMindscape(1),
+      confidence: 'sourced',
+    },
+    {
+      id: 'qingyi-m6-res',
+      label: 'Mindscape 6: the enemy\'s RES -20% after Moonlit Blossoms hit',
+      stat: 'resShred',
+      toggle: { kind: 'switch', label: 'Moonlit Blossoms hit' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 6 ? 20 : 0),
+      blockedBy: needsMindscape(6),
+      confidence: 'sourced',
+    },
+  ],
+  // Roxy
+  '1621': [
+    {
+      id: 'roxy-contamination',
+      label: 'Core Skill: Contamination, CRIT DMG +0.4% per 1% of her CRIT Rate (up to 40%; Armorer agents get Laceration DMG instead, not counted)',
+      stat: ZzzStats.CRIT_DMG,
+      toggle: { kind: 'switch', label: 'Contamination' },
+      value: (c) => (switchOn(c) && c.receiver.specialty !== 'Armorer' ? Math.min(40, 0.4 * c.giverStats.critRate) : 0),
+      blockedBy: (c) => (c.receiver.specialty === 'Armorer' ? 'Armorer agents get Laceration DMG instead' : undefined),
+      confidence: 'sourced',
+    },
+    {
+      id: 'roxy-stun',
+      label: 'Additional Ability: the enemy\'s stun multiplier +30% (+30% more at Mindscape 2), with an Attack, Rupture or Armorer agent',
+      stat: 'stunBonus',
+      toggle: { kind: 'switch', label: 'Her hits landed' },
+      value: (c) => (switchOn(c) && roxyQualifies(c) ? 30 + (c.giver.mindscape >= 2 ? 30 : 0) : 0),
+      blockedBy: (c) => (roxyQualifies(c) ? undefined : 'Needs an Attack, Rupture or Armorer agent'),
+      confidence: 'sourced',
+    },
+    {
+      id: 'roxy-m1-res',
+      label: 'Mindscape 1: the enemy\'s RES -15%',
+      stat: 'resShred',
+      toggle: { kind: 'switch', label: 'Her hits landed' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 1 ? 15 : 0),
+      blockedBy: needsMindscape(1),
+      confidence: 'sourced',
+    },
+  ],
+  // Seed: her Direct Strike partner
+  '1461': [
+    {
+      id: 'seed-vanguard',
+      label: 'Core Skill: Direct Strike, her partner\'s ATK +1,000',
+      stat: ZzzStats.ATK,
+      toggle: { kind: 'switch', label: 'Direct Strike partner' },
+      value: (c) => (switchOn(c) ? 1000 : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'seed-vanguard-crit-dmg',
+      label: 'Core Skill: Direct Strike, her partner\'s CRIT DMG +30%',
+      stat: ZzzStats.CRIT_DMG,
+      toggle: { kind: 'switch', label: 'Direct Strike partner' },
+      value: (c) => (switchOn(c) ? 30 : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'seed-m2-def',
+      label: 'Mindscape 2: her partner ignores 20% of the enemy\'s DEF with Besiege',
+      stat: 'defShred',
+      toggle: { kind: 'switch', label: 'Besiege' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 2 ? 20 : 0),
+      blockedBy: needsMindscape(2),
+      confidence: 'sourced',
+    },
+  ],
+  // Yuzuha: Tanuki Wish
+  '1411': [
+    {
+      id: 'yuzuha-atk',
+      label: 'Core Skill: Tanuki Wish, ATK +40% of her initial ATK (up to 1,200)',
+      stat: ZzzStats.ATK,
+      toggle: { kind: 'switch', label: 'Tanuki Wish' },
+      value: (c) => (switchOn(c) ? Math.min(1200, 0.4 * c.giverStats.atk) : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'yuzuha-dmg',
+      label: 'Core Skill: Tanuki Wish, DMG +15% (+15% more after her EX Special or Ultimate hits at Mindscape 2)',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: { kind: 'switch', label: 'Tanuki Wish' },
+      value: (c) => (switchOn(c) ? 15 + (c.giver.mindscape >= 2 ? 15 : 0) : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'yuzuha-anomaly',
+      label:
+        'Additional Ability: attribute anomalies +0.2% per point of her Anomaly Mastery above 100 (up to 20%, x1.3 at Mindscape 1), a multiplier of their own',
+      stat: 'anomalyBuff',
+      toggle: { kind: 'switch', label: 'Tanuki Wish' },
+      value: (c) => (switchOn(c) ? Math.min(20, 0.2 * Math.max(0, c.giverStats.anomalyMastery - 100)) * (c.giver.mindscape >= 1 ? 1.3 : 1) : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'yuzuha-m1-res',
+      label: 'Mindscape 1: the enemy\'s RES -10% (Sweet Scare)',
+      stat: 'resShred',
+      toggle: { kind: 'switch', label: 'Sweet Scare' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 1 ? 10 : 0),
+      blockedBy: needsMindscape(1),
+      confidence: 'sourced',
+    },
+  ],
+  // Zhao
+  '1341': [
+    {
+      id: 'zhao-atk',
+      label: 'Core Skill: Ether Veil Wellspring, ATK +1,000',
+      stat: ZzzStats.ATK,
+      toggle: { kind: 'switch', label: 'Ether Veil Wellspring' },
+      value: (c) => (switchOn(c) ? 1000 : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'zhao-dmg',
+      label: 'Additional Ability: DMG +10% in an Ether Veil, +1% per 400 of her HP above 15,000 (up to 40%)',
+      stat: ZzzStats.ELEMENT_DMG,
+      toggle: { kind: 'switch', label: 'In an Ether Veil' },
+      value: (c) => (switchOn(c) ? Math.min(40, 10 + Math.max(0, c.giverStats.hp - 15000) / 400) : 0),
+      confidence: 'sourced',
+    },
+    {
+      id: 'zhao-m1-res',
+      label: 'Mindscape 1: RES ignore 15% while she is off the field',
+      stat: 'resShred',
+      toggle: { kind: 'switch', label: 'She is off the field' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 1 ? 15 : 0),
+      blockedBy: needsMindscape(1),
+      confidence: 'sourced',
+    },
+    {
+      id: 'zhao-m2-atk',
+      label: 'Mindscape 2: ATK +15% after she restores HP',
+      stat: ZzzStats.ATK_P,
+      toggle: { kind: 'switch', label: 'After she restores HP' },
+      value: (c) => (switchOn(c) && c.giver.mindscape >= 2 ? 15 : 0),
+      blockedBy: needsMindscape(2),
       confidence: 'sourced',
     },
   ],

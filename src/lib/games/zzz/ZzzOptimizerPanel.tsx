@@ -737,7 +737,7 @@ ${losing.join(', ')} will get ${agent.name}'s current discs in exchange.`
                 entries={zzzTeamEntries(teamResult.applied)}
                 notice={teamResult.missing.length > 0 ? `No stat screen for ${teamResult.missing.join(', ')}: save a build for them first` : undefined}
                 description='Their kits and 4-piece sets buff this agent. Teammates use the discs and W-Engine in their saved build.'
-                emptyText='Pick teammates to see what they give. Covers Astra Yao, Lucy, Soukaku, Caesar, Rina, Nicole, Trigger, Seth and Pulchra, squad 4-pieces (Swing Jazz, Astral Voice, Moonlight Lullaby, King of the Summit, Bunny in Wonderland) and 20 squad-buffing W-Engines.'
+                emptyText='Pick teammates to see what they give. Covers the squad buffs of 33 agents (Astra Yao, Caesar, Ju Fufu, Lighter, Lucia, Yuzuha, Zhao and more), squad 4-pieces (Swing Jazz, Astral Voice, Moonlight Lullaby, King of the Summit, Bunny in Wonderland) and 20 squad-buffing W-Engines.'
                 footnote="Givers are taken at skill level 12 and Core Skill F (saved builds don't record those). W-Engines count at the refinement in their build. Enemy shred and Aftershock DMG count only in rotation damage; Daze isn't counted."
                 onTeammates={(ids) => setTeammates(ids)}
                 onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}

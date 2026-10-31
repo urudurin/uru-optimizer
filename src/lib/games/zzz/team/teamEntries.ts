@@ -2,7 +2,11 @@ import {
   type TeamEntry,
   teamSummary,
 } from 'lib/games/shared/ui/optimizer/TeamCards'
-import { DEBUFF_LABELS } from 'lib/games/zzz/team/buffs'
+import {
+  DEBUFF_LABELS,
+  HIT_BONUS_LABELS,
+  type HitBonusKey,
+} from 'lib/games/zzz/team/buffs'
 import {
   isDebuff,
   type ZzzAppliedBuff,
@@ -15,7 +19,9 @@ const FLAT = new Set<string>([ZzzStats.ATK, ZzzStats.HP, ZzzStats.DEF, ZzzStats.
 
 function describeValue(entry: ZzzAppliedBuff): string {
   if (isDebuff(entry.buff.stat)) return `+${Math.round(entry.value * 10) / 10}% ${DEBUFF_LABELS[entry.buff.stat]}`
-  const stat = entry.buff.stat === ZzzStats.ELEMENT_DMG ? (entry.buff.element ? `${entry.buff.element} DMG` : 'DMG Bonus') : entry.buff.stat
+  const stat = entry.buff.stat === ZzzStats.ELEMENT_DMG
+    ? (entry.buff.element ? `${entry.buff.element} DMG` : 'DMG Bonus')
+    : HIT_BONUS_LABELS[entry.buff.stat as HitBonusKey] ?? entry.buff.stat
   return `+${FLAT.has(entry.buff.stat) ? Math.round(entry.value) : `${Math.round(entry.value * 10) / 10}%`} ${stat}`
 }
 
