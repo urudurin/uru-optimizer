@@ -236,6 +236,9 @@ export type HitBuff = {
   defIgnore?: number,
   // DMG Bonus and CRIT Rate per point of Elemental Mastery above a floor, up to caps (Nahida's A4)
   fromEm?: { over: number, dmgPer?: number, dmgCap?: number, critPer?: number, critCap?: number },
+  // These hits deal x(1 + per x the stat, up to cap), worked out per build, for at most hits of them (Durin's A4: 3% per
+  // 100 ATK up to 75%, 10 hits)
+  scaleFromStat?: { stat: GenshinStatKey, per: number, cap: number, hits?: number },
 }
 
 function buffReaches(buff: HitBuff, hit: TalentHit): boolean {
@@ -474,6 +477,7 @@ type ElementTerms = {
   critDmg: number,
   defIgnore: number,
   fromEm: NonNullable<HitBuff['fromEm']>[],
+  scaleFromStat: NonNullable<HitBuff['scaleFromStat']>[],
 }
 
 // transformative: summed reaction multiplier x level multiplier x RES over the rotation, before Elemental Mastery
@@ -650,6 +654,7 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
       critDmg: reaching.reduce((sum, buff) => sum + (buff.critDmg ?? 0), 0),
       defIgnore: reaching.reduce((sum, buff) => sum + (buff.defIgnore ?? 0), 0),
       fromEm: reaching.flatMap((buff) => (buff.fromEm ? [buff.fromEm] : [])),
+      scaleFromStat: reaching.flatMap((buff) => (buff.scaleFromStat ? [buff.scaleFromStat] : [])),
     }
   })
   const characterFactor = setup.characterLevel + 100
@@ -735,6 +740,10 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
     }
     let dmgBonus = group.dmgBonus
     let groupCrit = critRate + group.critRate
+    for (const scale of group.scaleFromStat) {
+      const share = scale.hits !== undefined && group.hits > 0 ? Math.min(1, scale.hits / group.hits) : 1
+      base *= 1 + Math.min(scale.cap, get(scale.stat) * scale.per) * share
+    }
     for (const fromEm of group.fromEm) {
       const over = Math.max(0, get('elementalMastery') - fromEm.over)
       dmgBonus += Math.min(fromEm.dmgCap ?? Infinity, over * (fromEm.dmgPer ?? 0))

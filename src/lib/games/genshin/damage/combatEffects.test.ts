@@ -296,4 +296,10 @@ describe('hit-specific and weapon combat effects', () => {
     expect(resolveCombat(lohen, { ...none, hexerei: 2 }, new Map()).premod).toMatchObject({ normalDmg: 40, chargedDmg: 40 })
     expect(resolveCombat(character('Prune', { element: 'Anemo' }), { ...none, hexerei: 2 }, new Map()).premod.atkPct).toBe(60)
   })
+  it('gives Durin\'s A4: Dragon hits deal 3% more per 100 ATK, up to 75%', () => {
+    const durin = character('Durin', { element: 'Pyro' })
+    const young = character('Durin', { element: 'Pyro', ascension: 3 })
+    const dragon = 'Dragon of White Flame DMG'
+    expect(lineDamage(durin, dragon) / lineDamage(young, dragon)).toBeCloseTo(1 + Math.min(0.75, (stats.atk ?? 0) * 0.0003), 6)
+  })
 })

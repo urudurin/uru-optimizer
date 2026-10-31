@@ -983,6 +983,16 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
       confidence: 'sourced',
     },
     {
+      // From the user's screenshot of his A4 (Oct 31 2026)
+      id: 'durin-a4',
+      label: 'Chaos Formed Like the Night: after his Burst, Dragon of White Flame and Dark Decay hits deal 3% more per 100 ATK (up to 75%), for 10 hits',
+      hits: ({ character }) =>
+        ascended(character, 4)
+          ? [{ labels: ['Dragon of White Flame DMG', 'Dragon of Dark Decay DMG'], scaleFromStat: { stat: 'atk', per: 0.0003, cap: 0.75, hits: 10 } }]
+          : [],
+      confidence: 'confirmed',
+    },
+    {
       id: 'durin-c4',
       label: 'C4: Burst DMG +40%',
       premod: ({ character }) => (character.constellation >= 4 ? { burstDmg: 40 } : {}),
