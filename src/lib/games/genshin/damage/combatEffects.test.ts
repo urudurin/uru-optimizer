@@ -82,11 +82,16 @@ describe('combat effects', () => {
   it('gives the Lunar sets\' 4-piece effects to the wearer', () => {
     const flins = character('Flins', { element: 'Electro' })
     const four = (setId: string) => setCountsOf(Array(4).fill(setId))
-    const aubade = resolveCombat(flins, { sets: ['AubadeOfMorningstarAndMoon'], settings: {} }, four('AubadeOfMorningstarAndMoon'))
+    // Flins' own A1 Lunar-Charged bonus off, to see the sets alone
+    const aubade = resolveCombat(flins, { sets: ['AubadeOfMorningstarAndMoon'], settings: { 'flins-a1': false } }, four('AubadeOfMorningstarAndMoon'))
     expect(aubade.reactions).toEqual({ lunarcharged: 60, lunarbloom: 60, lunarcrystallize: 60 })
-    const offField = resolveCombat(flins, { sets: ['AubadeOfMorningstarAndMoon'], settings: { 'aubade-lunar': 1 } }, four('AubadeOfMorningstarAndMoon'))
+    const offField = resolveCombat(
+      flins,
+      { sets: ['AubadeOfMorningstarAndMoon'], settings: { 'aubade-lunar': 1, 'flins-a1': false } },
+      four('AubadeOfMorningstarAndMoon'),
+    )
     expect(offField.reactions.lunarcharged).toBe(20)
-    const night = resolveCombat(flins, { sets: ['NightOfTheSkysUnveiling'], settings: {} }, four('NightOfTheSkysUnveiling'))
+    const night = resolveCombat(flins, { sets: ['NightOfTheSkysUnveiling'], settings: { 'flins-a1': false } }, four('NightOfTheSkysUnveiling'))
     expect(night.premod.critRate).toBe(30)
     expect(night.reactions.lunarbloom).toBe(20)
     const silken = resolveCombat(flins, { sets: ['SilkenMoonsSerenade'], settings: { 'silken-moon-em': 1 } }, four('SilkenMoonsSerenade'))
@@ -221,5 +226,10 @@ describe('hit-specific and weapon combat effects', () => {
     const plain = computeGenshinStats(nilou(0), [], {}, undefined, none).stats
     const c6 = computeGenshinStats(nilou(6), [], {}, undefined, none).stats
     expect((c6.critRate ?? 0) - (plain.critRate ?? 0)).toBeCloseTo(Math.min(30, (plain.hp ?? 0) / 1000 * 0.6), 4)
+  })
+  it('elevates a Lunar kind\'s damage as its own multiplier (Flins C6)', () => {
+    const flins = (constellation: number) => character('Flins', { element: 'Electro', constellation })
+    expect(resolveCombat(flins(6), none, new Map()).elevation).toEqual({ lunarcharged: 35 })
+    expect(resolveCombat(flins(0), none, new Map()).elevation).toEqual({})
   })
 })

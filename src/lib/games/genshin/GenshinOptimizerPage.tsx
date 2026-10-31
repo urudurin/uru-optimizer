@@ -368,6 +368,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     hitBuffs: resolvedCombat.hitBuffs,
     teamReactions: reactionsInTeam,
     baseBonus: teamResult.baseBonus,
+    elevation: resolvedCombat.elevation,
     specialFlat: teamResult.specialFlat,
     specialCrit: teamResult.specialCrit,
     // Teammates who can trigger Stellar Swirl, ranked against for its contribution

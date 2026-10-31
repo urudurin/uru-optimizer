@@ -1,4 +1,7 @@
-import type { HitBuff } from 'lib/games/genshin/damage/damage'
+import type {
+  HitBuff,
+  SpecialKind,
+} from 'lib/games/genshin/damage/damage'
 import type { ScreenStats } from 'lib/games/genshin/data/screenPassives'
 import type { BuffSetting } from 'lib/games/genshin/team/buffs'
 import {
@@ -65,6 +68,8 @@ export type CombatEffect = {
   reactions?: (context: CombatContext) => Partial<Record<ReactionBonusKey, number>>,
   debuffs?: (context: CombatContext) => { defShred?: number, resShred?: Partial<Record<Element | 'Physical', number>> },
   hits?: (context: CombatContext) => HitBuff[],
+  // Elevation of Lunar or Stellar kinds, in percent (damage/damage.ts DamageSetup.elevation)
+  elevation?: (context: CombatContext) => Partial<Record<SpecialKind, number>>,
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
 
@@ -368,6 +373,182 @@ const FURINA_DMG_PER_FANFARE = [0.07, 0.09, 0.11, 0.13, 0.15, 0.17, 0.19, 0.21, 
 // By GOOD character key
 export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
   // From here to Hu Tao: genshin-optimizer's sheets (Oct 26 2026), read by hand
+  // Lunar and Stellar characters: their Lunar or Stellar bonuses to the party are in team/buffs.ts; these are their own
+  Aino: [
+    {
+      id: 'aino-a4',
+      label: 'A4: Burst hits add 50% of Elemental Mastery',
+      hits: ({ character }) => (ascended(character, 4) ? [{ categories: ['burst'], addTerms: { elementalMastery: 50 } }] : []),
+      confidence: 'sourced',
+    },
+    {
+      id: 'aino-c1',
+      label: 'C1: Elemental Mastery +80 after her Skill or Burst',
+      toggle: { kind: 'switch', label: 'After her Skill or Burst' },
+      premod: ({ character }) => (character.constellation >= 1 ? { elementalMastery: 80 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Columbina: [
+    {
+      id: 'columbina-a1',
+      label: 'A1: CRIT Rate +5% per stack (up to 3)',
+      toggle: { kind: 'stacks', label: 'Stacks', max: 3 },
+      premod: ({ character, setting }) => (ascended(character, 1) ? { critRate: 5 * stacks(setting) } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'columbina-c2',
+      label: 'C2: Max HP +40% with Brilliance',
+      toggle: { kind: 'switch', label: 'Brilliance' },
+      premod: ({ character }) => (character.constellation >= 2 ? { hpPct: 40 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Flins: [
+    {
+      id: 'flins-a1',
+      label: 'A1: Lunar-Charged DMG +20% at Moonsign: Ascendant Gleam',
+      toggle: { kind: 'switch', label: 'Ascendant Gleam' },
+      reactions: ({ character }) => (ascended(character, 1) ? { lunarcharged: 20 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'flins-a4',
+      label: 'A4: Elemental Mastery +8% of ATK (up to 160; 10% and 220 at C4)',
+      final: (s, { character }) => {
+        if (!ascended(character, 4)) return {}
+        const c4 = character.constellation >= 4
+        return { elementalMastery: Math.min(c4 ? 220 : 160, (s.atk ?? 0) * (c4 ? 0.1 : 0.08)) }
+      },
+      confidence: 'sourced',
+    },
+    {
+      id: 'flins-c4',
+      label: 'C4: ATK +20%',
+      premod: ({ character }) => (character.constellation >= 4 ? { atkPct: 20 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'flins-c6',
+      label: 'C6: Lunar-Charged DMG elevated by 35%',
+      elevation: ({ character }) => (character.constellation >= 6 ? { lunarcharged: 35 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Lauma: [{
+    id: 'lauma-a4',
+    label: 'A4: Skill DMG +0.04% per Elemental Mastery (up to 32%)',
+    final: (s, { character }) => (ascended(character, 4) ? { skillDmg: Math.min(32, (s.elementalMastery ?? 0) * 0.04) } : {}),
+    confidence: 'sourced',
+  }],
+  Linnea: [
+    {
+      id: 'linnea-a4',
+      label: 'A4: Elemental Mastery +5% of DEF while the active member isn\'t a Moonsign character',
+      toggle: { kind: 'switch', label: 'Active member isn\'t Moonsign' },
+      final: (s, { character }) => (ascended(character, 4) ? { elementalMastery: (s.def ?? 0) * 0.05 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'linnea-c4',
+      label: 'C4: DEF +25%',
+      premod: ({ character }) => (character.constellation >= 4 ? { defPct: 25 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Nefer: [
+    {
+      id: 'nefer-a1',
+      label: 'A1: Elemental Mastery +100 at 3 Veils (+200 at 5 from C2), at Moonsign: Ascendant Gleam (her Burst DMG per Veil isn\'t counted)',
+      toggle: { kind: 'stacks', label: 'Veils', max: 5 },
+      premod: ({ character, setting }) => {
+        if (!ascended(character, 1)) return {}
+        const veils = stacks(setting)
+        return { elementalMastery: character.constellation >= 2 && veils >= 5 ? 200 : veils >= 3 ? 100 : 0 }
+      },
+      confidence: 'sourced',
+    },
+    {
+      id: 'nefer-c6',
+      label: 'C6: Lunar-Bloom DMG elevated by 15% at Moonsign: Ascendant Gleam',
+      elevation: ({ character }) => (character.constellation >= 6 ? { lunarbloom: 15 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Sandrone: [
+    {
+      id: 'sandrone-a4',
+      label: 'A4: Elemental Mastery +8% of ATK (up to 160)',
+      final: (s, { character }) => (ascended(character, 4) ? { elementalMastery: Math.min(160, (s.atk ?? 0) * 0.08) } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'sandrone-c6',
+      label: 'C6: Stellar Reaction DMG elevated by 20%',
+      elevation: ({ character }) => (character.constellation >= 6 ? { stellarconduct: 20, stellarswirl: 20 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Vesna: [
+    {
+      id: 'vesna-a4-atk',
+      label: 'A4: with Stellar Swirl Radiance, ATK +6% per Anemo or Cryo member (x3 at C4)',
+      toggle: { kind: 'stacks', label: 'Anemo and Cryo members', max: 4 },
+      premod: ({ character, setting }) => (ascended(character, 4) ? { atkPct: 6 * stacks(setting) * (character.constellation >= 4 ? 3 : 1) } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'vesna-a4-em',
+      label: 'A4: with Stellar Swirl Radiance, Elemental Mastery +25 per member of another element (x3 at C4)',
+      toggle: { kind: 'stacks', label: 'Other members', max: 3 },
+      premod: ({ character, setting }) => ascended(character, 4) ? { elementalMastery: 25 * stacks(setting) * (character.constellation >= 4 ? 3 : 1) } : {},
+      confidence: 'sourced',
+    },
+    {
+      id: 'vesna-c1',
+      label: 'C1: Stellar Swirl DMG +20% while her Skill is armed',
+      toggle: { kind: 'switch', label: 'Skill armed' },
+      reactions: ({ character }) => (character.constellation >= 1 ? { stellarswirl: 20 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'vesna-c6',
+      label: 'C6: Stellar Swirl DMG elevated by 20%',
+      elevation: ({ character }) => (character.constellation >= 6 ? { stellarswirl: 20 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  Vodyanitsa: [{
+    id: 'vodyanitsa-c4',
+    label: 'C4: Max HP +20% per state level (up to 3)',
+    toggle: { kind: 'stacks', label: 'State level', max: 3 },
+    premod: ({ character, setting }) => (character.constellation >= 4 ? { hpPct: 20 * stacks(setting) } : {}),
+    confidence: 'sourced',
+  }],
+  Zibai: [
+    {
+      id: 'zibai-a4-geo',
+      label: 'A4: DEF +15% per other Geo member',
+      toggle: { kind: 'stacks', label: 'Other Geo members', max: 3 },
+      premod: ({ character, setting }) => (ascended(character, 4) ? { defPct: 15 * stacks(setting) } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'zibai-a4-hydro',
+      label: 'A4: Elemental Mastery +60 per Hydro member',
+      toggle: { kind: 'stacks', label: 'Hydro members', max: 3 },
+      premod: ({ character, setting }) => (ascended(character, 4) ? { elementalMastery: 60 * stacks(setting) } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'zibai-c6',
+      label: 'C6: Lunar-Crystallize DMG elevated by 1.6% per point (up to 30)',
+      toggle: { kind: 'stacks', label: 'Points', max: 30 },
+      elevation: ({ character, setting }) => (character.constellation >= 6 ? { lunarcrystallize: 1.6 * stacks(setting) } : {}),
+      confidence: 'sourced',
+    },
+  ],
   Albedo: [
     {
       id: 'albedo-a1',
@@ -1162,6 +1343,7 @@ export type ResolvedCombat = {
   reactions: Partial<Record<ReactionBonusKey, number>>,
   debuffs: { defShred: number, resShred: Partial<Record<Element | 'Physical', number>> },
   hitBuffs: HitBuff[],
+  elevation: Partial<Record<SpecialKind, number>>,
 }
 
 export function defaultEffectSetting(effect: CombatEffect): BuffSetting {
@@ -1178,7 +1360,7 @@ export function resolveCombat(character: GenshinCharacter, combat: CombatSetup, 
       (SET_4PC_EFFECTS[id] ?? []).map((effect) => ({ effect, sourceName: '4-piece set' }))
     ),
   ]
-  const resolved: ResolvedCombat = { applied: [], premod: {}, finals: [], reactions: {}, debuffs: { defShred: 0, resShred: {} }, hitBuffs: [] }
+  const resolved: ResolvedCombat = { applied: [], premod: {}, finals: [], reactions: {}, debuffs: { defShred: 0, resShred: {} }, hitBuffs: [], elevation: {} }
   for (const { effect, sourceName } of candidates) {
     const setting = combat.settings[effect.id] ?? defaultEffectSetting(effect)
     const counted = on(setting) && !(effect.toggle?.kind === 'stacks' && stacks(setting) === 0)
@@ -1194,6 +1376,9 @@ export function resolveCombat(character: GenshinCharacter, combat: CombatSetup, 
       resolved.reactions[reaction] = (resolved.reactions[reaction] ?? 0) + value
     }
     resolved.hitBuffs.push(...(effect.hits?.(context) ?? []))
+    for (const [kind, value] of Object.entries(effect.elevation?.(context) ?? {}) as [SpecialKind, number][]) {
+      resolved.elevation[kind] = (resolved.elevation[kind] ?? 0) + value
+    }
     const debuffs = effect.debuffs?.(context)
     resolved.debuffs.defShred += debuffs?.defShred ?? 0
     for (const [element, value] of Object.entries(debuffs?.resShred ?? {}) as [Element | 'Physical', number][]) {

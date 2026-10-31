@@ -183,6 +183,8 @@ export type DamageSetup = {
   // Base DMG increase per Lunar or Stellar kind from teammates' passives (team/teamBuffs.ts), in percent. The character's
   // own passive is worked out from their stats; they add up
   baseBonus?: Partial<Record<SpecialKind, number>>,
+  // Elevation per Lunar or Stellar kind, in percent: its own multiplier after CRIT (genshin-optimizer <kind>_specialDmg_)
+  elevation?: Partial<Record<SpecialKind, number>>,
   // Per Lunar or Stellar kind: flat damage added to each hit, and CRIT Rate / CRIT DMG for it, from teammates
   specialFlat?: Partial<Record<SpecialKind, number>>,
   specialCrit?: Partial<Record<SpecialKind, { rate: number, dmg: number }>>,
@@ -472,6 +474,7 @@ export type PreparedDamage = {
   characterLevel: number,
   // The Base DMG increase per Lunar or Stellar kind: from teammates, and the character's own passive
   baseBonus: Partial<Record<SpecialKind, number>>,
+  elevation: Partial<Record<SpecialKind, number>>,
   ownBenediction?: Benediction,
 }
 
@@ -668,6 +671,7 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     transformative,
     special: specialGroups,
     baseBonus: setup.baseBonus ?? {},
+    elevation: setup.elevation ?? {},
     ownBenediction: BENEDICTIONS[setup.characterId],
     specialFlat: setup.specialFlat ?? {},
     specialCrit: setup.specialCrit ?? {},
@@ -724,6 +728,7 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
       return 1 + Math.min(Math.max(critRate + extra.rate, 0), 100) / 100 * (critDmg + extra.dmg) / 100
     }
     const flatFor = (kind: SpecialKind | undefined) => (kind ? prepared.specialFlat[kind] ?? 0 : 0)
+    const elevated = (kind: SpecialKind | undefined) => (kind ? 1 + (prepared.elevation[kind] ?? 0) / 100 : 1)
     for (const reaction of prepared.transformative) {
       if (!reaction.special) {
         transformative += reaction.base * (1 + fromEm + reaction.bonus)
@@ -731,7 +736,7 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
       }
       const multiplier = 1 + specialFromEm + reaction.bonus
       let value = (reaction.base * baseFactor(reaction.kind) + flatFor(reaction.kind) * reaction.count * reaction.res) * multiplier
-        * critFor(reaction.kind)
+        * critFor(reaction.kind) * elevated(reaction.kind)
       if (reaction.contribution && prepared.stellarContributors.length > 0) {
         // The character's share at their rank among the teammates who also contribute
         const own = reactionLevelMultiplier(prepared.characterLevel) * baseFactor(reaction.kind) * multiplier * critFor(reaction.kind)
@@ -744,7 +749,7 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
       let base = 0
       for (const [stat, multiplier] of group.terms) base += multiplier / 100 * get(stat)
       transformative += (base * baseFactor(group.kind) + flatFor(group.kind) * group.hits * group.res) * (1 + specialFromEm + group.bonus)
-        * critFor(group.kind)
+        * critFor(group.kind) * elevated(group.kind)
     }
   }
   return total * prepared.def + transformative
