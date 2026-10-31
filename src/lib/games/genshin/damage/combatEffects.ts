@@ -348,6 +348,11 @@ const SKIRK_VOID_NORMAL = [
   [8.8, 9.6, 10.4, 11.2, 12, 12.8, 13.6, 14.4, 15.2, 16, 16.8, 17.6, 18.4, 19.2, 20],
   [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
 ]
+// Kokomi's Burst bonuses to Normal and Charged Attacks and Bake-Kurage (percent of HP), Alyosha's ATK% per Precision stack
+const KOKOMI_BURST_NORMAL = [4.84, 5.203, 5.566, 6.05, 6.413, 6.776, 7.26, 7.744, 8.228, 8.712, 9.196, 9.68, 10.285, 10.89, 11.495]
+const KOKOMI_BURST_CHARGED = [6.776, 7.284, 7.792, 8.47, 8.978, 9.486, 10.164, 10.842, 11.519, 12.197, 12.874, 13.552, 14.399, 15.246, 16.093]
+const KOKOMI_BURST_SKILL = [7.096, 7.629, 8.161, 8.87, 9.403, 9.935, 10.644, 11.354, 12.064, 12.773, 13.483, 14.193, 15.08, 15.967, 16.854]
+const ALYOSHA_PRECISION_ATK = [11.66, 12.72, 13.78, 14.84, 15.9, 16.96, 18.02, 19.08, 20.14, 21.2, 22.472, 23.744, 25.016, 26.288, 27.56]
 const MAVUIKA_FLAMESTRIDER_NORMAL = [1, 2, 3, 4, 5].map((n) => `Flamestrider Normal Attack ${n}-Hit DMG`)
 const MAVUIKA_FLAMESTRIDER_CHARGED = ['Flamestrider Charged Attack Cyclic DMG', 'Flamestrider Charged Attack Final DMG']
 
@@ -363,6 +368,43 @@ const FURINA_DMG_PER_FANFARE = [0.07, 0.09, 0.11, 0.13, 0.15, 0.17, 0.19, 0.21, 
 // By GOOD character key
 export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
   // From here to Hu Tao: genshin-optimizer's sheets (Oct 26 2026), read by hand
+  Albedo: [
+    {
+      id: 'albedo-a1',
+      label: 'Calcite Might: Transient Blossom DMG +25% against enemies below 50% HP',
+      toggle: { kind: 'switch', label: 'Enemy below 50% HP' },
+      hits: ({ character }) => (ascended(character, 1) ? [{ labels: ['Transient Blossom DMG'], dmgBonus: 25 }] : []),
+      confidence: 'sourced',
+    },
+    {
+      id: 'albedo-c2',
+      label: 'C2: Burst hits add 30% of DEF per Fatal Reckoning stack (up to 4)',
+      toggle: { kind: 'stacks', label: 'Fatal Reckoning stacks', max: 4 },
+      hits: ({ character, setting }) => (character.constellation >= 2 ? [{ categories: ['burst'], addTerms: { def: 30 * stacks(setting) } }] : []),
+      confidence: 'sourced',
+    },
+  ],
+  Alyosha: [
+    {
+      id: 'alyosha-precision',
+      label: 'Skill: ATK% per Precision stack while he is on the field (1, 2 at C6)',
+      toggle: { kind: 'stacks', label: 'Precision stacks', max: 2 },
+      premod: ({ character, setting }) => ({
+        atkPct: Math.min(stacks(setting), character.constellation >= 6 ? 2 : 1) * ALYOSHA_PRECISION_ATK[skillLevel(character, 3) - 1],
+      }),
+      confidence: 'sourced',
+    },
+    {
+      id: 'alyosha-a4',
+      label: 'A4: Skill and Burst DMG +0.35% per 1% Energy Recharge (counted up to 200%)',
+      final: (s, { character }) => {
+        if (!ascended(character, 4)) return {}
+        const bonus = 0.35 * Math.min(200, s.energyRecharge ?? 0)
+        return { skillDmg: bonus, burstDmg: bonus }
+      },
+      confidence: 'sourced',
+    },
+  ],
   Chongyun: [
     {
       id: 'chongyun-a4',
@@ -511,6 +553,22 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
       confidence: 'sourced',
     },
   ],
+  Nilou: [
+    {
+      id: 'nilou-c4',
+      label: 'C4: Burst DMG +50% after the third dance step of Pirouette hits',
+      toggle: { kind: 'switch', label: 'After Pirouette' },
+      premod: ({ character }) => (character.constellation >= 4 ? { burstDmg: 50 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'nilou-c6',
+      label: 'C6: CRIT Rate +0.6% and CRIT DMG +1.2% per 1,000 Max HP (up to 30% / 60%)',
+      final: (s, { character }) =>
+        character.constellation >= 6 ? { critRate: Math.min(30, (s.hp ?? 0) / 1000 * 0.6), critDmg: Math.min(60, (s.hp ?? 0) / 1000 * 1.2) } : {},
+      confidence: 'sourced',
+    },
+  ],
   Noelle: [
     {
       id: 'noelle-burst',
@@ -525,6 +583,30 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
       id: 'noelle-c2',
       label: 'C2: Charged Attack DMG +15%',
       premod: ({ character }) => (character.constellation >= 2 ? { chargedDmg: 15 } : {}),
+      confidence: 'sourced',
+    },
+  ],
+  SangonomiyaKokomi: [
+    {
+      id: 'kokomi-burst',
+      label: 'Nereid\'s Ascension: Normal and Charged Attacks and Bake-Kurage add a share of Max HP (A4 adds 15% of her 25% Healing Bonus to the first two)',
+      toggle: { kind: 'switch', label: 'During the Burst' },
+      hits: ({ character }) => {
+        const level = burstLevel(character, 3) - 1
+        const a4 = ascended(character, 4) ? 0.15 * 25 : 0
+        return [
+          { categories: ['normal'], addTerms: { hp: KOKOMI_BURST_NORMAL[level] + a4 } },
+          { categories: ['charged'], addTerms: { hp: KOKOMI_BURST_CHARGED[level] + a4 } },
+          { labels: ['Ripple DMG'], addTerms: { hp: KOKOMI_BURST_SKILL[level] } },
+        ]
+      },
+      confidence: 'sourced',
+    },
+    {
+      id: 'kokomi-c6',
+      label: 'C6: Hydro DMG +40% after healing a member above 80% HP with a Normal or Charged Attack',
+      toggle: { kind: 'switch', label: 'After such a heal' },
+      premod: ({ character }) => (character.constellation >= 6 ? { hydroDmg: 40 } : {}),
       confidence: 'sourced',
     },
   ],
@@ -582,6 +664,41 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
         return [{ categories: ['skill'], scale: [0.1, 0.2, 0.7][n - 1] }, { categories: ['burst'], scale: [0.05, 0.15, 0.6][n - 1] }]
       },
       premod: ({ character, setting }) => character.constellation >= 4 && ascended(character, 4) ? { atkPct: [0, 10, 20, 40][stacks(setting)] ?? 0 } : {},
+      confidence: 'sourced',
+    },
+  ],
+  Xingqiu: [{
+    id: 'xingqiu-a4',
+    label: 'Blades Amidst Raindrops: Hydro DMG +20%',
+    premod: ({ character }) => (ascended(character, 4) ? { hydroDmg: 20 } : {}),
+    confidence: 'sourced',
+  }],
+  YumemizukiMizuki: [{
+    id: 'mizuki-a4',
+    label: 'Bright Moon\'s Restless Voice: Elemental Mastery +100 after picking up a Mini Baku',
+    toggle: { kind: 'switch', label: 'Picked up a Mini Baku' },
+    premod: ({ character }) => (ascended(character, 4) ? { elementalMastery: 100 } : {}),
+    confidence: 'sourced',
+  }],
+  Durin: [
+    {
+      id: 'durin-a1-dark',
+      label: 'A1: in his dark form, Vaporize and Melt DMG +40%',
+      toggle: { kind: 'switch', label: 'Dark form' },
+      reactions: ({ character }) => (ascended(character, 1) ? { vaporize: 40, melt: 40 } : {}),
+      confidence: 'sourced',
+    },
+    {
+      id: 'durin-c1-dark',
+      label: 'C1: in his dark form, Burst hits add 150% of ATK',
+      toggle: { kind: 'switch', label: 'Dark form' },
+      hits: ({ character }) => (character.constellation >= 1 ? [{ categories: ['burst'], addTerms: { atk: 150 } }] : []),
+      confidence: 'sourced',
+    },
+    {
+      id: 'durin-c4',
+      label: 'C4: Burst DMG +40%',
+      premod: ({ character }) => (character.constellation >= 4 ? { burstDmg: 40 } : {}),
       confidence: 'sourced',
     },
   ],

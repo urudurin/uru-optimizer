@@ -213,4 +213,13 @@ describe('hit-specific and weapon combat effects', () => {
     const on = computeGenshinStats(itto, [], {}, undefined, none).stats
     expect((on.atk ?? 0) - (off.atk ?? 0)).toBeCloseTo((off.def ?? 0) * 0.9792, 3)
   })
+  it('works out stat-based kit effects: Alyosha\'s Skill DMG from Energy Recharge, Nilou\'s C6 CRIT from HP', () => {
+    const alyosha = character('Alyosha', { element: 'Electro' })
+    const a = computeGenshinStats(alyosha, [], {}, undefined, none).stats
+    expect(a.skillDmg).toBeCloseTo(0.35 * Math.min(200, a.energyRecharge ?? 0), 6)
+    const nilou = (constellation: number) => character('Nilou', { element: 'Hydro', constellation })
+    const plain = computeGenshinStats(nilou(0), [], {}, undefined, none).stats
+    const c6 = computeGenshinStats(nilou(6), [], {}, undefined, none).stats
+    expect((c6.critRate ?? 0) - (plain.critRate ?? 0)).toBeCloseTo(Math.min(30, (plain.hp ?? 0) / 1000 * 0.6), 4)
+  })
 })
