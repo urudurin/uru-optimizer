@@ -42,6 +42,7 @@ function describeStat(stat: BuffStat, value: number): string {
   if (isDebuff(stat)) return `${value}% ${debuffLabel(stat)}`
   if (stat === 'lunarBonus') return `+${value.toFixed(1)}% Lunar Reaction DMG`
   if (stat === 'bloomBonus') return `+${value.toFixed(1)}% Bloom DMG`
+  if (stat === 'vaporizeBonus') return `+${value.toFixed(1)}% Vaporize DMG`
   if (stat === 'hitFlat') return `+${Math.round(value)} DMG per hit`
   if (isSpecialStat(stat)) {
     const [field, kind] = stat.split(':')
@@ -114,6 +115,7 @@ export function GenshinTeamCards({ character, characters, team, result, onTeamma
     ...Object.entries(result.debuffs.resShred).map(([element, value]) => [`resShred:${element}`, value] as [BuffStat, number]),
     ...(result.lunarBonus ? [['lunarBonus', result.lunarBonus] as [BuffStat, number]] : []),
     ...(result.bloomBonus ? [['bloomBonus', result.bloomBonus] as [BuffStat, number]] : []),
+    ...(result.vaporizeBonus ? [['vaporizeBonus', result.vaporizeBonus] as [BuffStat, number]] : []),
   ]
   return (
     <>

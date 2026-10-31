@@ -70,6 +70,8 @@ export type TeamBuffResult = TeamBuffTotals & {
   lunarBonus: number,
   // Bloom DMG Bonus from teammates (Nilou), in percent
   bloomBonus: number,
+  // Vaporize DMG Bonus from teammates (Mona's Hexerei), in percent
+  vaporizeBonus: number,
   // Flat DMG per hit of some elements, for a number of hits (Shenhe's Icy Quill, Vodyanitsa's Lead Vocal)
   hitFlats: HitFlat[],
   // The party's Moonsign level, and the Lunar and Stellar Base DMG increase teammates' passives give, by kind
@@ -210,6 +212,7 @@ export function teamBuffsFor(
   const debuffs: EnemyDebuffs = { defShred: 0, resShred: {} }
   let lunarBonus = 0
   let bloomBonus = 0
+  let vaporizeBonus = 0
   const hitFlats: HitFlat[] = []
   const specialBonus: Partial<Record<SpecialKind, number>> = {}
   const specialFlat: Partial<Record<SpecialKind, number>> = {}
@@ -223,6 +226,10 @@ export function teamBuffsFor(
     }
     if (entry.stat === 'bloomBonus') {
       bloomBonus += entry.value
+      continue
+    }
+    if (entry.stat === 'vaporizeBonus') {
+      vaporizeBonus += entry.value
       continue
     }
     if (entry.stat === 'hitFlat') {
@@ -268,6 +275,7 @@ export function teamBuffsFor(
     debuffs,
     lunarBonus,
     bloomBonus,
+    vaporizeBonus,
     hitFlats,
     moonsign,
     baseBonus,

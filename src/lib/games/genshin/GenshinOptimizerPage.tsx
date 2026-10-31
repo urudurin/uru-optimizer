@@ -359,6 +359,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
       ...resolvedCombat.reactions,
       // Bloom DMG from teammates (Nilou's Bountiful Cores)
       ...(teamResult.bloomBonus ? { bloom: (resolvedCombat.reactions.bloom ?? 0) + teamResult.bloomBonus } : {}),
+      ...(teamResult.vaporizeBonus ? { vaporize: (resolvedCombat.reactions.vaporize ?? 0) + teamResult.vaporizeBonus } : {}),
       ...Object.fromEntries((['lunarcharged', 'lunarbloom', 'lunarcrystallize'] as const).map((kind) => [
         kind,
         (resolvedCombat.reactions[kind] ?? 0) + teamResult.lunarBonus,

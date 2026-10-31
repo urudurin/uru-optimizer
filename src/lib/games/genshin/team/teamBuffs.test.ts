@@ -274,4 +274,10 @@ describe('team buffs', () => {
     })
     expect(both.applied.find((a) => a.buff.id === 'fischl-hexerei')?.value).toBe(22.5)
   })
+  it('gives Mona\'s Hexerei Vaporize bonus to others with 2 Hexerei in the party, 5% per stack', () => {
+    const mona = character('Mona', { element: 'Hydro' })
+    const party = { characters: [xiangling, mona, sucrose], artifacts: [] }
+    expect(teamBuffsFor(xiangling, setup(['Mona', 'Sucrose']), party).vaporizeBonus).toBe(15)
+    expect(teamBuffsFor(xiangling, setup(['Mona']), { characters: [xiangling, mona], artifacts: [] }).vaporizeBonus).toBe(0)
+  })
 })

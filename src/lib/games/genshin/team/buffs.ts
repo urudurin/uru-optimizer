@@ -51,7 +51,8 @@ export type SpecialStat =
 // bloomBonus: Bloom DMG Bonus for the receiver's Bloom reactions (Nilou's Bountiful Cores count as Bloom DMG)
 // hitFlat: flat DMG added to each of the receiver's hits of flatElements, for as many hits as a stacks toggle says (no
 // stacks: every hit) (Shenhe's Icy Quill, Vodyanitsa's Lead Vocal)
-export type BuffStat = GenshinStatKey | EnemyDebuffKey | 'lunarBonus' | 'bloomBonus' | 'hitFlat' | SpecialStat
+// vaporizeBonus: Vaporize DMG Bonus for the receiver's Vaporize reactions (Mona's Hexerei Astral Glow of Mercury)
+export type BuffStat = GenshinStatKey | EnemyDebuffKey | 'lunarBonus' | 'bloomBonus' | 'vaporizeBonus' | 'hitFlat' | SpecialStat
 
 export function isSpecialStat(stat: BuffStat): stat is SpecialStat {
   return stat.startsWith('special')
@@ -401,6 +402,19 @@ const LUNAR_KIT_BUFFS: Record<string, TeamBuff[]> = {
 }
 
 export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
+  // Mona's Hexerei: Secret Rite, from the user's screenshots (Oct 30 2026)
+  Mona: [{
+    id: 'mona-hexerei',
+    label:
+      'Hexerei: Secret Rite, with 2 Hexerei in the party, other members\' Vaporize DMG +5% per Astral Glow of Mercury stack (up to 3, from her Normal and Charged Attacks)',
+    target: 'others',
+    stage: 'premod',
+    stat: 'vaporizeBonus',
+    value: ({ setting, hexerei }) => (hexerei >= 2 && typeof setting === 'number' ? 5 * setting : 0),
+    blockedBy: ({ hexerei }) => (hexerei < 2 ? 'Needs 2 Hexerei characters in the party' : undefined),
+    toggle: { kind: 'stacks', label: 'Astral Glow of Mercury stacks', max: () => 3, step: 1 },
+    confidence: 'confirmed',
+  }],
   Bennett: [
     {
       id: 'bennett-burst-atk',
@@ -1054,8 +1068,10 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
       confidence: 'sourced',
     },
   ],
-  ...LUNAR_KIT_BUFFS,
 }
+
+// The Lunar characters' buffs go with any others they have (Mona's Hexerei is in the list above)
+for (const [id, buffs] of Object.entries(LUNAR_KIT_BUFFS)) CHARACTER_BUFFS[id] = [...(CHARACTER_BUFFS[id] ?? []), ...buffs]
 
 const byRefinement = (r1: number, step: number) => (giver: GenshinCharacter) => r1 + step * ((giver.weapon?.refinement ?? 1) - 1)
 
