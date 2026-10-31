@@ -43,8 +43,12 @@ import {
   usePriority,
   writePriority,
 } from 'lib/games/shared/characterPriority'
+import { rememberedDamageScore } from 'lib/games/shared/damageScore'
 import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
-import { BuildRating } from 'lib/games/shared/ui/BuildRating'
+import {
+  BuildRating,
+  DPS_SCORE_LABEL,
+} from 'lib/games/shared/ui/BuildRating'
 import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
 import { PageHeader } from 'lib/games/shared/ui/GameLayout'
 import {
@@ -136,6 +140,8 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
     const artifact = id ? artifactById.get(id) : undefined
     return artifact ? [artifact] : []
   })
+  // The optimizer's DPS score for these artifacts when it has one (shared/damageScore.ts), the artifact score otherwise
+  const dpsScore = rememberedDamageScore('genshin', character.id, worn.map((a) => a.id))
   // Scored for this character, see stats/artifactScore.ts
   const artifactWeights = genshinArtifactWeights(character)
   const weapon = character.weapon
@@ -243,7 +249,7 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
                 No stats yet. Put this character in your in-game showcase and import from Enka.Network to see their stat screen numbers.
               </Text>
             )}
-          <BuildRating score={genshinBuildScore(character, worn)} label='Artifact score' />
+          <BuildRating score={dpsScore ?? genshinBuildScore(character, worn)} label={dpsScore ? DPS_SCORE_LABEL : 'Artifact score'} />
           {computed?.missing.map((note) => <Text key={note} size='xs' c='yellow'>{note}</Text>)}
         </>
       }

@@ -17,9 +17,13 @@ import {
   usePriority,
   writePriority,
 } from 'lib/games/shared/characterPriority'
+import { rememberedDamageScore } from 'lib/games/shared/damageScore'
 import { scoreBuild } from 'lib/games/shared/gearScore'
 import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
-import { BuildRating } from 'lib/games/shared/ui/BuildRating'
+import {
+  BuildRating,
+  DPS_SCORE_LABEL,
+} from 'lib/games/shared/ui/BuildRating'
 import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
 import {
   Notices,
@@ -189,6 +193,8 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
   const notes = [...(resolved.ok ? resolved.notes : []), ...(computed?.warnings ?? [])]
   const discWeights = agent ? zzzDiscWeights(agent) : {}
   const worn = resolved.ok ? resolved.build.discs : []
+  // The optimizer's DPS score for these discs when it has one (shared/damageScore.ts), the disc score otherwise
+  const dpsScore = rememberedDamageScore('zzz', entry.agentId, worn.map((d) => d.id))
 
   const form = editing && (
     <AgentForm
@@ -298,7 +304,10 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
               )}
 
               <StatList rows={zzzStatRows(display, entry.specialty)} />
-              <BuildRating score={scoreBuild(worn.map((disc) => scoreDisc(disc, discWeights)), 6)} label='Disc score' />
+              <BuildRating
+                score={dpsScore ?? scoreBuild(worn.map((disc) => scoreDisc(disc, discWeights)), 6)}
+                label={dpsScore ? DPS_SCORE_LABEL : 'Disc score'}
+              />
 
               <SegmentedControl
                 size='xs'

@@ -42,6 +42,10 @@ import {
   pinnedCells,
   type StatDiffRow,
 } from 'lib/games/shared/ui/BuildAnalysis'
+import {
+  DPS_SCORE_LABEL,
+  RememberDamageScore,
+} from 'lib/games/shared/ui/BuildRating'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   EmptyState,
@@ -126,7 +130,10 @@ import { zzzSampleData } from 'lib/games/zzz/data/sampleData'
 import { SETS } from 'lib/games/zzz/data/sets'
 import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
-import { zzzSubstatUpgrades } from 'lib/games/zzz/optimizer/analysis'
+import {
+  zzzDamageScore,
+  zzzSubstatUpgrades,
+} from 'lib/games/zzz/optimizer/analysis'
 import {
   countCombinations,
   filterPools,
@@ -574,6 +581,9 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const screenDisplay = (list: Disc[]) =>
     computeInput ? toDisplayStats(computeStats({ ...computeInput, discs: list, conditions: statScreenConditions(), teamEffects: [] }).stats) : undefined
   const currentDamage = currentStats && rotationDamage(currentStats, damageSetup)
+  // DPS scores when ranking by damage (shared/damageScore.ts): the current discs' is kept for the Agents page
+  const currentDpsScore = byDamage && computeInput ? zzzDamageScore({ ...computeInput, discs: currentDiscs }, damageSetup) : undefined
+  const pickedDpsScore = byDamage && computeInput && best ? zzzDamageScore({ ...computeInput, discs: best.discs }, damageSetup) : undefined
   // Each rotation line's share of the picked build's damage, for the build analysis
   const bestStats = best && computeInput ? computeStats({ ...computeInput, discs: best.discs }).stats : undefined
   const breakdown = bestStats && byDamage
@@ -1013,8 +1023,8 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
                 </Group>
               }
               rows={zzzStatRows(best.display, agent.specialty)}
-              rating={scoreBuild(best.discs.map((disc) => scoreDisc(disc, zzzDiscWeights(agent))), 6)}
-              ratingLabel='Disc score'
+              rating={pickedDpsScore ?? scoreBuild(best.discs.map((disc) => scoreDisc(disc, zzzDiscWeights(agent))), 6)}
+              ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Disc score'}
               notes={best.warnings}
               gear={best.discs.map((disc) => (
                 <DiscCard
@@ -1039,6 +1049,7 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
             />
           )}
           <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
+          <RememberDamageScore game='zzz' characterId={agent.id} pieceIds={currentDiscs.map((d) => d.id)} score={currentDpsScore} />
         </Stack>
 
         <OptimizerSidebar

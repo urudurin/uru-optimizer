@@ -43,7 +43,10 @@ import {
   teamSummary,
 } from 'lib/games/genshin/GenshinTeamCards'
 import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
-import { genshinSubstatUpgrades } from 'lib/games/genshin/optimizer/analysis'
+import {
+  genshinDamageScore,
+  genshinSubstatUpgrades,
+} from 'lib/games/genshin/optimizer/analysis'
 import {
   filterPools,
   type MainStatSlot,
@@ -126,6 +129,10 @@ import {
   pinnedCells,
   type StatDiffRow,
 } from 'lib/games/shared/ui/BuildAnalysis'
+import {
+  DPS_SCORE_LABEL,
+  RememberDamageScore,
+} from 'lib/games/shared/ui/BuildRating'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   EmptyState,
@@ -443,6 +450,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const currentDamage = hasTalentData(character.id)
     ? rotationDamage(computeGenshinStats(character, worn, {}, teamBuffs, combat).stats, damageSetup)
     : undefined
+  // The current artifacts' DPS score when ranking by damage (shared/damageScore.ts), kept for the Characters page
+  const currentDpsScore = byDamage ? genshinDamageScore(character, worn, target, teamBuffs, combat) : undefined
 
   async function run() {
     setRunning(true)
@@ -475,6 +484,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const outcome = result?.outcome
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
+  const pickedDpsScore = build && result ? genshinDamageScore(character, build.artifacts, result.target, teamBuffs, combat) : undefined
   const shown = statsToShow(character)
   const resultValues = (score: number, stats: Partial<Record<GenshinStatKey, number>>) => ({
     score,
@@ -872,8 +882,8 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
                 </Group>
               }
               rows={genshinStatRows(character, build.stats)}
-              rating={genshinBuildScore(character, build.artifacts)}
-              ratingLabel='Artifact score'
+              rating={pickedDpsScore ?? genshinBuildScore(character, build.artifacts)}
+              ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Artifact score'}
               gear={build.artifacts.map((artifact) => (
                 <ArtifactCard
                   key={artifact.id}
@@ -897,6 +907,7 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
             />
           )}
           <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
+          <RememberDamageScore game='genshin' characterId={character.id} pieceIds={worn.map((a) => a.id)} score={currentDpsScore} />
         </Stack>
 
         <OptimizerSidebar

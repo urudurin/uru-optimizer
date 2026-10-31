@@ -12,8 +12,12 @@ import {
   usePriority,
   writePriority,
 } from 'lib/games/shared/characterPriority'
+import { rememberedDamageScore } from 'lib/games/shared/damageScore'
 import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
-import { BuildRating } from 'lib/games/shared/ui/BuildRating'
+import {
+  BuildRating,
+  DPS_SCORE_LABEL,
+} from 'lib/games/shared/ui/BuildRating'
 import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
 import {
   Notices,
@@ -156,6 +160,8 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
     const echo = id ? echoById.get(id) : undefined
     return echo ? [echo] : []
   })
+  // The optimizer's DPS score for these echoes when it has one (shared/damageScore.ts), the echo score otherwise
+  const dpsScore = rememberedDamageScore('wuwa', character.charId, loadout.map((e) => e.id))
   // Scored for this Resonator, see stats/echoScore.ts
   const echoWeights = wuwaEchoWeights(character)
   const { stats, warnings } = computeWuwaStats(character, loadout)
@@ -248,7 +254,7 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
             />
           )}
           <StatList rows={rows} />
-          <BuildRating score={wuwaBuildScore(character, loadout)} label='Echo score' />
+          <BuildRating score={dpsScore ?? wuwaBuildScore(character, loadout)} label={dpsScore ? DPS_SCORE_LABEL : 'Echo score'} />
           <Text size='xs' c={cost > MAX_LOADOUT_COST ? 'red' : 'dimmed'}>{`Echo cost ${cost} / ${MAX_LOADOUT_COST} · main echo first`}</Text>
           <Notices messages={[...warnings, ...validateLoadout(loadout)]} />
         </>

@@ -39,6 +39,10 @@ import {
   pinnedCells,
   type StatDiffRow,
 } from 'lib/games/shared/ui/BuildAnalysis'
+import {
+  DPS_SCORE_LABEL,
+  RememberDamageScore,
+} from 'lib/games/shared/ui/BuildRating'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
   EmptyState,
@@ -113,7 +117,10 @@ import {
 import { wuwaSampleData } from 'lib/games/wuwa/data/sampleData'
 import { useUserArt } from 'lib/games/wuwa/data/userArt'
 import { MAIN_STAT_MAX } from 'lib/games/wuwa/echoStats'
-import { wuwaSubstatUpgrades } from 'lib/games/wuwa/optimizer/analysis'
+import {
+  wuwaDamageScore,
+  wuwaSubstatUpgrades,
+} from 'lib/games/wuwa/optimizer/analysis'
 import {
   countLoadouts,
   type EchoOutcome,
@@ -412,6 +419,8 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const currentDamage = hasSkillData(character.charId) && wornEchoes.length > 0
     ? rotationDamage(computeWuwaStats(character, wornEchoes, withFullSets(combatBonus, wornEchoes, fullSetBonus)).stats, damageSetup)
     : undefined
+  // The current loadout's DPS score when ranking by damage (shared/damageScore.ts), kept for the Resonators page
+  const currentDpsScore = byDamage ? wuwaDamageScore(character, wornEchoes, target, withFullSets(combatBonus, wornEchoes, fullSetBonus)) : undefined
   // A complete 5-piece set leaves no room for a 2-piece set, a 3-piece set leaves room for one
   const fullSetPieces = fullSet ? (SONATA_SETS[fullSet]?.fullPieces ?? 5) : 0
   const maxTwoPiece = fullSet ? Math.floor((5 - fullSetPieces) / 2) : 2
@@ -461,6 +470,9 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const outcome = result?.outcome
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
+  const pickedDpsScore = build && result
+    ? wuwaDamageScore(character, build.echoes, result.target, withFullSets(combatBonus, build.echoes, fullSetBonus))
+    : undefined
   const mainFilters = COSTS.filter((cost) => mainStats[cost]?.length).length
   const filterSummary = [
     [fullSet ? `Full ${setName(fullSet)}` : '', ...twoPieceSets.slice(0, maxTwoPiece).map((id) => `2pc ${setName(id)}`)].filter(Boolean).join(' + ')
@@ -842,8 +854,8 @@ ${losing.join(', ')} ${
                 </Group>
               }
               rows={wuwaStatRows(toDisplayStats(build.stats), element)}
-              rating={wuwaBuildScore(character, build.echoes)}
-              ratingLabel='Echo score'
+              rating={pickedDpsScore ?? wuwaBuildScore(character, build.echoes)}
+              ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Echo score'}
               footer={<Text size='xs' c='dimmed'>Pick the main echo (its skill) yourself: echo skills don't change the overview screen.</Text>}
               gear={build.echoes.map((echo) => (
                 <EchoCard
@@ -872,6 +884,7 @@ ${losing.join(', ')} ${
             />
           )}
           <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
+          <RememberDamageScore game='wuwa' characterId={character.charId} pieceIds={wornEchoes.map((e) => e.id)} score={currentDpsScore} />
         </Stack>
 
         <OptimizerSidebar
