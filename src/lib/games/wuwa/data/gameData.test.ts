@@ -27,7 +27,7 @@ describe('WuWa datamine data', () => {
       'weapons',
       'echoes',
       'sets',
-      'characters (element, weaponType, minorFortes)',
+      'characters (element, rarity, weaponType, minorFortes)',
       'weapons.rarity',
       'weapons.passiveStats',
     ])
@@ -99,7 +99,7 @@ describe('WuWa datamine data', () => {
   })
 
   it('has the minor fortes the stat screen confirms for Hsin', () => {
-    expect(CHARACTERS.hsin).toEqual({ id: 'hsin', name: 'Hsin', element: 'electroDmg', weaponType: 5, minorFortes: { critRate: 8, atkPct: 12 } })
+    expect(CHARACTERS.hsin).toEqual({ id: 'hsin', name: 'Hsin', element: 'electroDmg', rarity: 5, weaponType: 5, minorFortes: { critRate: 8, atkPct: 12 } })
   })
 
   it('uses the in-game name, or one derived from the id', () => {

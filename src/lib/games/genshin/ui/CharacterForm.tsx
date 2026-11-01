@@ -16,6 +16,7 @@ import {
 } from 'lib/games/genshin/goodKeys'
 import type { GenshinCharacterDetails } from 'lib/games/genshin/state/genshinState'
 import type { Element } from 'lib/games/genshin/types'
+import { GenshinWeaponSelect } from 'lib/games/genshin/ui/pickers'
 import { useState } from 'react'
 
 const ELEMENTS: Element[] = ['Anemo', 'Geo', 'Electro', 'Dendro', 'Hydro', 'Pyro', 'Cryo']
@@ -42,9 +43,9 @@ export function weaponOptions(weaponInfo: GenshinImages['weaponInfo'], weaponTyp
 
 // Level, constellation and weapon for a character added by hand (or a saved one, to change them). The Traveler also
 // picks an element, which decides their GOOD key
-export function CharacterForm({ initial, weaponInfo, weaponType, isTraveler, submitLabel, onSubmit, onCancel }: {
+export function CharacterForm({ initial, images, weaponType, isTraveler, submitLabel, onSubmit, onCancel }: {
   initial: GenshinCharacterDetails,
-  weaponInfo: GenshinImages['weaponInfo'],
+  images: GenshinImages,
   weaponType?: WeaponType,
   isTraveler?: boolean,
   submitLabel: string,
@@ -82,26 +83,23 @@ export function CharacterForm({ initial, weaponInfo, weaponType, isTraveler, sub
           data={range(0, 6).map((value) => ({ value, label: `C${value}` }))}
         />
       </Group>
-      <Select
+      <GenshinWeaponSelect
         size='xs'
-        label='Weapon'
-        placeholder='No weapon'
-        searchable
-        clearable
+        images={images}
+        weaponType={weaponType}
         value={weapon?.id ?? null}
         onChange={(id) =>
           update({
             weapon: id
               ? {
                 id,
-                name: weaponInfo[id]?.name ?? nameFromGoodKey(id),
+                name: images.weaponInfo[id]?.name ?? nameFromGoodKey(id),
                 rarity: WEAPON_RARITY[id] ?? 5,
                 level: weapon?.level ?? 90,
                 refinement: weapon?.refinement ?? 1,
               }
               : undefined,
           })}
-        data={weaponOptions(weaponInfo, weaponType)}
       />
       <Group grow gap={8}>
         <NumberInput

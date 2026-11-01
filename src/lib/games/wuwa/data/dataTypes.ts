@@ -62,6 +62,8 @@ export type CharacterData = {
   id: string,
   name: string,
   element: ElementDmgKey | null,
+  // Datamine QualityId, 4 or 5 stars
+  rarity: number | null,
   // Datamine weapon type id of the weapons they use (see ui/ResonatorForm.tsx WEAPON_TYPES)
   weaponType: number | null,
   minorFortes: Partial<Record<StatKey, number>>,

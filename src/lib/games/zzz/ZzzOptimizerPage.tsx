@@ -213,6 +213,10 @@ import {
   elementColor,
 } from 'lib/games/zzz/ui/DiscCard'
 import { sMainValue } from 'lib/games/zzz/ui/discKind'
+import {
+  ZzzAgentSelect,
+  ZzzWEngineSelect,
+} from 'lib/games/zzz/ui/pickers'
 import { Message } from 'lib/interactions/message'
 import {
   useCallback,
@@ -809,21 +813,11 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
                 weapon={wEngine && { image: images.wEngines[wEngine.id], name: wEngine.name }}
               />
               <FormCard title='Agent'>
-                <Select
-                  aria-label='Agent'
-                  allowDeselect={false}
-                  value={agent.id}
-                  onChange={changeAgent}
-                  data={agents.map((a) => ({ value: a.id, label: a.name }))}
-                />
-                <Select
-                  label='W-Engine'
-                  placeholder='No W-Engine'
-                  searchable
-                  clearable
+                <ZzzAgentSelect images={images} value={agent.id} onChange={changeAgent} />
+                <ZzzWEngineSelect
+                  images={images}
                   value={loadout.wEngineId || null}
                   onChange={(value) => setLoadout((prev) => ({ ...prev, wEngineId: value ?? '' }))}
-                  data={Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name }))}
                 />
                 <RankButtons
                   label='Refinement'

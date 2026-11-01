@@ -10,13 +10,13 @@
       "weapons",
       "echoes",
       "sets",
-      "characters (element, weaponType, minorFortes)",
+      "characters (element, rarity, weaponType, minorFortes)",
       "weapons.rarity",
       "weapons.passiveStats"
     ],
     "excluded": "Everything from Prydwen: character build profiles (sets, main stats, substat weights, targets, teams, weapons ranking, element) and minor fortes",
     "confidence": "sourced",
-    "characters": "Element and weapon type (BinData/role/roleinfo.json ElementId, WeaponType), weapon rarity (BinData/weapon/weaponconf.json QualityId) and minor fortes (BinData/skillTree/skilltree.json stat nodes) read directly from the datamine branch 3.7 by src/scripts/wuwa/extractCharacters.mjs on 2026-11-01",
+    "characters": "Element, rarity and weapon type (BinData/role/roleinfo.json ElementId, QualityId, WeaponType), weapon rarity (BinData/weapon/weaponconf.json QualityId) and minor fortes (BinData/skillTree/skilltree.json stat nodes) read directly from the datamine branch 3.7 by src/scripts/wuwa/extractCharacters.mjs on 2026-11-01",
     "weaponPassives": "Always-on weapon passive bonuses per refinement, from the first sentence of each passive description and its values (BinData/weapon/weaponconf.json Desc, DescParams), branch 3.7, same script and date as characters"
   },
   "bases": {
@@ -54900,6 +54900,7 @@
       "id": "aalto",
       "name": "Aalto",
       "element": "aeroDmg",
+      "rarity": 4,
       "weaponType": 3,
       "minorFortes": {
         "aeroDmg": 12,
@@ -54910,6 +54911,7 @@
       "id": "aemeath",
       "name": "Aemeath",
       "element": "fusionDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
@@ -54920,6 +54922,7 @@
       "id": "augusta",
       "name": "Augusta",
       "element": "electroDmg",
+      "rarity": 5,
       "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
@@ -54930,6 +54933,7 @@
       "id": "baizhi",
       "name": "Baizhi",
       "element": "glacioDmg",
+      "rarity": 4,
       "weaponType": 5,
       "minorFortes": {
         "healingBonus": 12,
@@ -54940,6 +54944,7 @@
       "id": "brant",
       "name": "Brant",
       "element": "fusionDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
@@ -54950,6 +54955,7 @@
       "id": "buling",
       "name": "Buling",
       "element": "electroDmg",
+      "rarity": 4,
       "weaponType": 5,
       "minorFortes": {
         "healingBonus": 12,
@@ -54960,6 +54966,7 @@
       "id": "calcharo",
       "name": "Calcharo",
       "element": "electroDmg",
+      "rarity": 5,
       "weaponType": 1,
       "minorFortes": {
         "atkPct": 12,
@@ -54970,6 +54977,7 @@
       "id": "camellya",
       "name": "Camellya",
       "element": "havocDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critDmg": 16,
@@ -54980,6 +54988,7 @@
       "id": "cantarella",
       "name": "Cantarella",
       "element": "havocDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
@@ -54990,6 +54999,7 @@
       "id": "carlotta",
       "name": "Carlotta",
       "element": "glacioDmg",
+      "rarity": 5,
       "weaponType": 3,
       "minorFortes": {
         "critRate": 8,
@@ -55000,6 +55010,7 @@
       "id": "cartethyia",
       "name": "Cartethyia",
       "element": "aeroDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
@@ -55010,6 +55021,7 @@
       "id": "changli",
       "name": "Changli",
       "element": "fusionDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
@@ -55020,6 +55032,7 @@
       "id": "chisa",
       "name": "Chisa",
       "element": "havocDmg",
+      "rarity": 5,
       "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
@@ -55030,6 +55043,7 @@
       "id": "chixia",
       "name": "Chixia",
       "element": "fusionDmg",
+      "rarity": 4,
       "weaponType": 3,
       "minorFortes": {
         "fusionDmg": 12,
@@ -55040,6 +55054,7 @@
       "id": "ciaccona",
       "name": "Ciaccona",
       "element": "aeroDmg",
+      "rarity": 5,
       "weaponType": 3,
       "minorFortes": {
         "critDmg": 16,
@@ -55050,6 +55065,7 @@
       "id": "danjin",
       "name": "Danjin",
       "element": "havocDmg",
+      "rarity": 4,
       "weaponType": 2,
       "minorFortes": {
         "havocDmg": 12,
@@ -55060,6 +55076,7 @@
       "id": "denia",
       "name": "Denia",
       "element": "fusionDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "critDmg": 16,
@@ -55070,6 +55087,7 @@
       "id": "encore",
       "name": "Encore",
       "element": "fusionDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "fusionDmg": 12,
@@ -55080,6 +55098,7 @@
       "id": "galbrena",
       "name": "Galbrena",
       "element": "fusionDmg",
+      "rarity": 5,
       "weaponType": 3,
       "minorFortes": {
         "critDmg": 16,
@@ -55090,6 +55109,7 @@
       "id": "hiyuki",
       "name": "Hiyuki",
       "element": "glacioDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
@@ -55100,6 +55120,7 @@
       "id": "hsin",
       "name": "Hsin",
       "element": "electroDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
@@ -55110,6 +55131,7 @@
       "id": "iuno",
       "name": "Iuno",
       "element": "aeroDmg",
+      "rarity": 5,
       "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
@@ -55120,6 +55142,7 @@
       "id": "jianxin",
       "name": "Jianxin",
       "element": "aeroDmg",
+      "rarity": 5,
       "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
@@ -55130,6 +55153,7 @@
       "id": "jingran",
       "name": "Jingran",
       "element": "fusionDmg",
+      "rarity": 5,
       "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
@@ -55140,6 +55164,7 @@
       "id": "jinhsi",
       "name": "Jinhsi",
       "element": "spectroDmg",
+      "rarity": 5,
       "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
@@ -55150,6 +55175,7 @@
       "id": "jiyan",
       "name": "Jiyan",
       "element": "aeroDmg",
+      "rarity": 5,
       "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
@@ -55160,6 +55186,7 @@
       "id": "lingyang",
       "name": "Lingyang",
       "element": "glacioDmg",
+      "rarity": 5,
       "weaponType": 4,
       "minorFortes": {
         "glacioDmg": 12,
@@ -55170,6 +55197,7 @@
       "id": "lucilla",
       "name": "Lucilla",
       "element": "glacioDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
@@ -55180,6 +55208,7 @@
       "id": "lucy",
       "name": "Lucy",
       "element": "spectroDmg",
+      "rarity": 5,
       "weaponType": 3,
       "minorFortes": {
         "critRate": 8,
@@ -55190,6 +55219,7 @@
       "id": "lumi",
       "name": "Lumi",
       "element": "electroDmg",
+      "rarity": 4,
       "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
@@ -55200,6 +55230,7 @@
       "id": "lupa",
       "name": "Lupa",
       "element": "fusionDmg",
+      "rarity": 5,
       "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
@@ -55210,6 +55241,7 @@
       "id": "luuk-herssen",
       "name": "Luuk Herssen",
       "element": "spectroDmg",
+      "rarity": 5,
       "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
@@ -55220,6 +55252,7 @@
       "id": "lynae",
       "name": "Lynae",
       "element": "spectroDmg",
+      "rarity": 5,
       "weaponType": 3,
       "minorFortes": {
         "critRate": 8,
@@ -55230,6 +55263,7 @@
       "id": "mornye",
       "name": "Mornye",
       "element": "fusionDmg",
+      "rarity": 5,
       "weaponType": 1,
       "minorFortes": {
         "healingBonus": 12,
@@ -55240,6 +55274,7 @@
       "id": "mortefi",
       "name": "Mortefi",
       "element": "fusionDmg",
+      "rarity": 4,
       "weaponType": 3,
       "minorFortes": {
         "fusionDmg": 12,
@@ -55250,6 +55285,7 @@
       "id": "phoebe",
       "name": "Phoebe",
       "element": "spectroDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "critDmg": 16,
@@ -55260,6 +55296,7 @@
       "id": "phrolova",
       "name": "Phrolova",
       "element": "havocDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
@@ -55270,6 +55307,7 @@
       "id": "qingxiao",
       "name": "Qingxiao",
       "element": "aeroDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critDmg": 16,
@@ -55280,6 +55318,7 @@
       "id": "qiuyuan",
       "name": "Qiuyuan",
       "element": "aeroDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
@@ -55290,6 +55329,7 @@
       "id": "rebecca",
       "name": "Rebecca",
       "element": "electroDmg",
+      "rarity": 5,
       "weaponType": 3,
       "minorFortes": {
         "critRate": 8,
@@ -55300,6 +55340,7 @@
       "id": "roccia",
       "name": "Roccia",
       "element": "havocDmg",
+      "rarity": 5,
       "weaponType": 4,
       "minorFortes": {
         "critDmg": 16,
@@ -55310,6 +55351,7 @@
       "id": "rover-aero",
       "name": "Rover: Aero",
       "element": "aeroDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "healingBonus": 12,
@@ -55320,6 +55362,7 @@
       "id": "rover-electro",
       "name": "Rover: Electro",
       "element": "electroDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
@@ -55330,6 +55373,7 @@
       "id": "rover-havoc",
       "name": "Rover: Havoc",
       "element": "havocDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "atkPct": 12,
@@ -55340,6 +55384,7 @@
       "id": "rover-spectro",
       "name": "Rover: Spectro",
       "element": "spectroDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "spectroDmg": 12,
@@ -55350,6 +55395,7 @@
       "id": "sanhua",
       "name": "Sanhua",
       "element": "glacioDmg",
+      "rarity": 4,
       "weaponType": 2,
       "minorFortes": {
         "glacioDmg": 12,
@@ -55360,6 +55406,7 @@
       "id": "sigrika",
       "name": "Sigrika",
       "element": "aeroDmg",
+      "rarity": 5,
       "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
@@ -55370,6 +55417,7 @@
       "id": "suisui",
       "name": "Suisui",
       "element": "glacioDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "healingBonus": 12,
@@ -55380,6 +55428,7 @@
       "id": "suoming",
       "name": "Suoming",
       "element": "electroDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
@@ -55390,6 +55439,7 @@
       "id": "taoqi",
       "name": "Taoqi",
       "element": "havocDmg",
+      "rarity": 4,
       "weaponType": 1,
       "minorFortes": {
         "havocDmg": 12,
@@ -55400,6 +55450,7 @@
       "id": "the-shorekeeper",
       "name": "Shorekeeper",
       "element": "spectroDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "healingBonus": 12,
@@ -55410,6 +55461,7 @@
       "id": "verina",
       "name": "Verina",
       "element": "spectroDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "healingBonus": 12,
@@ -55420,6 +55472,7 @@
       "id": "xiangli-yao",
       "name": "Xiangli Yao",
       "element": "electroDmg",
+      "rarity": 5,
       "weaponType": 4,
       "minorFortes": {
         "critDmg": 16,
@@ -55430,6 +55483,7 @@
       "id": "yangyang",
       "name": "Yangyang",
       "element": "aeroDmg",
+      "rarity": 4,
       "weaponType": 2,
       "minorFortes": {
         "atkPct": 12,
@@ -55440,6 +55494,7 @@
       "id": "yangyang-xuanling",
       "name": "Yangyang: Xuanling",
       "element": "havocDmg",
+      "rarity": 5,
       "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
@@ -55450,6 +55505,7 @@
       "id": "yinlin",
       "name": "Yinlin",
       "element": "electroDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
@@ -55460,6 +55516,7 @@
       "id": "youhu",
       "name": "Youhu",
       "element": "glacioDmg",
+      "rarity": 4,
       "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
@@ -55470,6 +55527,7 @@
       "id": "yuanwu",
       "name": "Yuanwu",
       "element": "electroDmg",
+      "rarity": 4,
       "weaponType": 4,
       "minorFortes": {
         "electroDmg": 12,
@@ -55480,6 +55538,7 @@
       "id": "zani",
       "name": "Zani",
       "element": "spectroDmg",
+      "rarity": 5,
       "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
@@ -55490,6 +55549,7 @@
       "id": "zhezhi",
       "name": "Zhezhi",
       "element": "glacioDmg",
+      "rarity": 5,
       "weaponType": 5,
       "minorFortes": {
         "critRate": 8,

@@ -131,6 +131,7 @@ import {
 import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
 import {
   characterName,
+  CHARACTERS,
   SONATA_SETS,
   WEAPONS,
 } from 'lib/games/wuwa/data/gameData'
@@ -198,6 +199,10 @@ import {
   elementName,
   setName,
 } from 'lib/games/wuwa/ui/EchoCard'
+import {
+  WuwaCharacterSelect,
+  WuwaWeaponSelect,
+} from 'lib/games/wuwa/ui/pickers'
 import { WEAPON_OPTIONS } from 'lib/games/wuwa/ui/ResonatorForm'
 import { wuwaStatRows } from 'lib/games/wuwa/ui/resonatorStats'
 import { Message } from 'lib/interactions/message'
@@ -703,35 +708,28 @@ ${losing.join(', ')} ${
                 weapon={weapon && { name: weapon.name }}
               />
               <FormCard title='Resonator'>
-                <Select
-                  aria-label='Resonator'
-                  searchable
-                  allowDeselect={false}
+                <WuwaCharacterSelect
+                  characters={characters}
+                  art={art}
                   value={character.charId}
                   onChange={(value) => {
-                    if (!value) return
                     setCharacterId(value)
                     rememberCharacter(SETTINGS_KEY, value)
                     setResult(undefined)
                   }}
-                  data={characters.map((c) => ({ value: c.charId, label: characterName(c.charId) }))}
                 />
                 <Text size='xs' c='dimmed'>
                   {`Level ${character.level} · ${weapon ? `${weapon.name}, level ${character.weaponLevel}` : 'No weapon'}`}
                 </Text>
                 {/* Like HSR's light cone, Eidolon and Superimposition pickers, these change the saved Resonator */}
-                <Select
-                  label='Weapon'
-                  searchable
-                  allowDeselect={false}
-                  placeholder='No weapon'
+                <WuwaWeaponSelect
+                  weaponType={CHARACTERS[character.charId]?.weaponType}
                   value={character.weaponId ?? null}
                   onChange={(weaponId) => {
-                    if (!weaponId || weaponId === character.weaponId) return
-                    saveCharacter({ ...character, weaponId })
+                    if ((weaponId ?? undefined) === character.weaponId) return
+                    saveCharacter({ ...character, weaponId: weaponId ?? undefined })
                     setResult(undefined)
                   }}
-                  data={WEAPON_OPTIONS}
                 />
                 <RankButtons
                   label='Sequence'

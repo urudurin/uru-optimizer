@@ -13,6 +13,9 @@ export const ECHO_DEFINITIONS = data.echoes
 export const SONATA_SETS = data.sets
 export const CHARACTERS = data.characters
 
+// The datamine's weapon types
+export const WEAPON_TYPES: Record<number, string> = { 1: 'Broadblade', 2: 'Sword', 3: 'Pistols', 4: 'Gauntlets', 5: 'Rectifier' }
+
 // The in-game name from the datamine, or one derived from the id for characters it doesn't have: "rover-havoc" -> "Rover Havoc"
 export function characterName(id: string): string {
   return CHARACTERS[id]?.name ?? id.split('-').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')

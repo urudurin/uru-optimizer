@@ -201,6 +201,7 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
   const form = editing && (
     <AgentForm
       initial={build}
+      images={images}
       submitLabel='Save'
       onSubmit={(changed) => {
         saveBuild(changed)

@@ -1,0 +1,13 @@
+/* CardSelect.tsx: the picked option's icon in the field, and text tags in HSR's segmented filter rows */
+
+.icon {
+  width: 20px;
+  height: 20px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.tagText {
+  white-space: nowrap;
+  padding: 0 6px;
+}

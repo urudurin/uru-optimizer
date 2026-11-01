@@ -109,6 +109,10 @@ import {
   genshinStatRows,
 } from 'lib/games/genshin/ui/characterStats'
 import {
+  GenshinCharacterSelect,
+  GenshinWeaponSelect,
+} from 'lib/games/genshin/ui/pickers'
+import {
   ranksAbove,
   usePriority,
 } from 'lib/games/shared/characterPriority'
@@ -726,42 +730,38 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
                 weapon={character.weapon && { image: images.weapons[character.weapon.id], name: character.weapon.name }}
               />
               <FormCard title='Character'>
-                <Select
-                  aria-label='Character'
-                  searchable
-                  allowDeselect={false}
+                <GenshinCharacterSelect
+                  characters={usable}
+                  images={images}
                   value={character.id}
                   onChange={(value) => {
-                    if (!value) return
                     setCharacterId(value)
                     rememberCharacter(SETTINGS_KEY, value)
                     setResult(undefined)
                   }}
-                  data={usable.map((c) => ({ value: c.id, label: c.name }))}
                 />
                 <Text size='xs' c='dimmed'>
                   {`Level ${character.level} · ${character.weapon ? `${character.weapon.name}, level ${character.weapon.level}` : 'No weapon'}`}
                 </Text>
                 {/* Like HSR's light cone, Eidolon and Superimposition pickers, these change the saved character */}
-                <Select
-                  label='Weapon'
-                  searchable
-                  allowDeselect={false}
-                  placeholder='No weapon'
+                <GenshinWeaponSelect
+                  images={images}
+                  weaponType={images.characterInfo[character.id.startsWith('Traveler') ? 'Traveler' : character.id]?.weaponType}
                   value={character.weapon?.id ?? null}
                   onChange={(id) => {
-                    if (!id || id === character.weapon?.id) return
-                    const weapon = {
-                      id,
-                      name: images.weaponInfo[id]?.name ?? nameFromGoodKey(id),
-                      rarity: WEAPON_RARITY[id] ?? 5,
-                      level: character.weapon?.level ?? 90,
-                      refinement: character.weapon?.refinement ?? 1,
-                    }
+                    if (id === (character.weapon?.id ?? null)) return
+                    const weapon = id
+                      ? {
+                        id,
+                        name: images.weaponInfo[id]?.name ?? nameFromGoodKey(id),
+                        rarity: WEAPON_RARITY[id] ?? 5,
+                        level: character.weapon?.level ?? 90,
+                        refinement: character.weapon?.refinement ?? 1,
+                      }
+                      : undefined
                     saveCharacter({ ...character, weapon })
                     setResult(undefined)
                   }}
-                  data={weaponOptions(images.weaponInfo, images.characterInfo[character.id.startsWith('Traveler') ? 'Traveler' : character.id]?.weaponType)}
                 />
                 <RankButtons
                   label='Constellation'

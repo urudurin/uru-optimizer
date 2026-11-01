@@ -227,7 +227,7 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
           {editing && (
             <CharacterForm
               initial={character}
-              weaponInfo={images.weaponInfo}
+              images={images}
               weaponType={infoOf(character.id, images)?.weaponType}
               submitLabel='Save'
               onSubmit={(details) => {

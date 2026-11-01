@@ -6,14 +6,18 @@ import {
   Stack,
   Switch,
 } from '@mantine/core'
-import { WEAPONS } from 'lib/games/wuwa/data/gameData'
+import {
+  CHARACTERS,
+  WEAPON_TYPES,
+  WEAPONS,
+} from 'lib/games/wuwa/data/gameData'
 import type { CharacterState } from 'lib/games/wuwa/types'
+import { WuwaWeaponSelect } from 'lib/games/wuwa/ui/pickers'
 import { useState } from 'react'
 
-// The datamine's weapon types
-export const WEAPON_TYPES: Record<number, string> = { 1: 'Broadblade', 2: 'Sword', 3: 'Pistols', 4: 'Gauntlets', 5: 'Rectifier' }
+export { WEAPON_TYPES }
 
-// Every weapon, grouped by type. The datamine doesn't say which type a Resonator uses, so all of them are offered
+// Every weapon, grouped by type (the teammate cards' weapon override)
 export const WEAPON_OPTIONS = Object.entries(WEAPON_TYPES).map(([type, group]) => ({
   group,
   items: Object.values(WEAPONS)
@@ -49,15 +53,11 @@ export function ResonatorForm({ initial, submitLabel, onSubmit, onCancel }: {
           data={range(0, 6).map((value) => ({ value, label: `S${value}` }))}
         />
       </Group>
-      <Select
+      <WuwaWeaponSelect
         size='xs'
-        label='Weapon'
-        placeholder='No weapon'
-        searchable
-        clearable
+        weaponType={CHARACTERS[details.charId]?.weaponType}
         value={details.weaponId ?? null}
         onChange={(value) => update({ weaponId: value ?? undefined })}
-        data={WEAPON_OPTIONS}
       />
       <Group grow gap={8}>
         <NumberInput
