@@ -147,6 +147,7 @@ import {
 import {
   BuildAnalysis,
   pinnedCells,
+  PreviewWithAnalysis,
   type StatDiffRow,
 } from 'lib/games/shared/ui/BuildAnalysis'
 import {
@@ -997,53 +998,55 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
             </Panel>
           )}
 
-          {build && result && (
-            <BuildPreview
-              title={`Build #${selected + 1}`}
-              description={`${describeSets(build.artifacts)}${
-                current ? ` · ${build.score >= current.score ? '+' : ''}${(((build.score / current.score) - 1) * 100).toFixed(1)}% vs current` : ''
-              }`}
-              name={character.name}
-              accent={character.element ? ELEMENT_ACCENTS[character.element] : undefined}
-              portrait={images.characters[character.id]?.portrait}
-              weapon={character.weapon && {
-                image: images.weapons[character.weapon.id],
-                name: character.weapon.name,
-                meta: `${character.weapon.rarity}★ · Lv ${character.weapon.level} · R${character.weapon.refinement}`,
-              }}
-              heading={
-                <Group gap={6} mt={4}>
-                  {character.element && <Badge size='sm' variant='light' color={elementColor(character.element)}>{character.element}</Badge>}
-                  <Text size='xs' c='dimmed'>
-                    {`Lv ${character.level} · C${character.constellation}${teammates.some(Boolean) ? ' · with team buffs' : ''}`}
-                  </Text>
-                </Group>
-              }
-              rows={genshinStatRows(character, build.stats)}
-              rating={pickedDpsScore ?? genshinBuildScore(character, build.artifacts)}
-              ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Artifact score'}
-              gear={build.artifacts.map((artifact) => (
-                <ArtifactCard
-                  key={artifact.id}
-                  artifact={artifact}
-                  icon={images.artifacts[artifact.setId]?.[artifact.slot]}
-                  owner={artifact.equippedBy ? (ownerNames.get(artifact.equippedBy) ?? artifact.equippedBy) : undefined}
-                  score={scoreArtifact(artifact, genshinArtifactWeights(character))}
-                />
-              ))}
-            />
-          )}
+          <PreviewWithAnalysis game='genshin'>
+            {build && result && (
+              <BuildPreview
+                title={`Build #${selected + 1}`}
+                description={`${describeSets(build.artifacts)}${
+                  current ? ` · ${build.score >= current.score ? '+' : ''}${(((build.score / current.score) - 1) * 100).toFixed(1)}% vs current` : ''
+                }`}
+                name={character.name}
+                accent={character.element ? ELEMENT_ACCENTS[character.element] : undefined}
+                portrait={images.characters[character.id]?.portrait}
+                weapon={character.weapon && {
+                  image: images.weapons[character.weapon.id],
+                  name: character.weapon.name,
+                  meta: `${character.weapon.rarity}★ · Lv ${character.weapon.level} · R${character.weapon.refinement}`,
+                }}
+                heading={
+                  <Group gap={6} mt={4}>
+                    {character.element && <Badge size='sm' variant='light' color={elementColor(character.element)}>{character.element}</Badge>}
+                    <Text size='xs' c='dimmed'>
+                      {`Lv ${character.level} · C${character.constellation}${teammates.some(Boolean) ? ' · with team buffs' : ''}`}
+                    </Text>
+                  </Group>
+                }
+                rows={genshinStatRows(character, build.stats)}
+                rating={pickedDpsScore ?? genshinBuildScore(character, build.artifacts)}
+                ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Artifact score'}
+                gear={build.artifacts.map((artifact) => (
+                  <ArtifactCard
+                    key={artifact.id}
+                    artifact={artifact}
+                    icon={images.artifacts[artifact.setId]?.[artifact.slot]}
+                    owner={artifact.equippedBy ? (ownerNames.get(artifact.equippedBy) ?? artifact.equippedBy) : undefined}
+                    score={scoreArtifact(artifact, genshinArtifactWeights(character))}
+                  />
+                ))}
+              />
+            )}
 
-          {build && result && (
-            <BuildAnalysis
-              buildLabel={`Build #${selected + 1}`}
-              rows={analysisRows}
-              upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs, result.target.kind === 'damage' ? combat : undefined)}
-              breakdown={result.target.kind === 'damage' ? genshinBreakdown(result.target.setup, build.stats) : undefined}
-              scoreLabel={targetLabel(result.target)}
-              formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
-            />
-          )}
+            {build && result && (
+              <BuildAnalysis
+                buildLabel={`Build #${selected + 1}`}
+                rows={analysisRows}
+                upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs, result.target.kind === 'damage' ? combat : undefined)}
+                breakdown={result.target.kind === 'damage' ? genshinBreakdown(result.target.setup, build.stats) : undefined}
+                scoreLabel={targetLabel(result.target)}
+                formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
+              />
+            )}
+          </PreviewWithAnalysis>
           <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
           <RememberDamageScore game='genshin' characterId={character.id} pieceIds={worn.map((a) => a.id)} score={currentDpsScore} />
         </Stack>

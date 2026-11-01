@@ -6,6 +6,7 @@ import {
 import type { SubstatUpgrade } from 'lib/games/shared/analysis'
 import type { DamagePart } from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
+import { useGameSettings } from 'lib/games/shared/gameSettings'
 import { Panel } from 'lib/games/shared/ui/GameLayout'
 import type { PinnedCell } from 'lib/games/shared/ui/optimizer/BuildCompare'
 import {
@@ -13,6 +14,7 @@ import {
   ComboDistribution,
 } from 'lib/games/shared/ui/optimizer/DamageCharts'
 import tableClasses from 'lib/tabs/tabOptimizer/analysis/UpgradeTable.module.css'
+import type { ReactNode } from 'react'
 
 // The analysis under an optimizer's picked build, after HSR's expanded data panel: its stats next to the current
 // build's, HSR's substat upgrades table (what one more roll of each substat adds to its score, and as a percent), and
@@ -39,6 +41,17 @@ function Change({ row }: { row: StatDiffRow }) {
 function formatGain(gain: number): string {
   if (gain >= 100) return formatNumber(Math.round(gain))
   return gain.toFixed(gain >= 10 ? 1 : 2)
+}
+
+// The build preview and its analysis, in the order the game's Settings pick (shared/gameSettings.ts analysisPosition),
+// like HSR's optimizer tab flipping its column. children: the preview first, then the analysis
+export function PreviewWithAnalysis({ game, children }: { game: string, children: ReactNode }) {
+  const { analysisPosition } = useGameSettings(game)
+  return (
+    <div style={{ display: 'flex', flexDirection: analysisPosition === 'above' ? 'column-reverse' : 'column', gap: 'var(--mantine-spacing-lg)' }}>
+      {children}
+    </div>
+  )
 }
 
 // A snapshot of the rows for Pin build in the sidebar (shared/ui/optimizer/BuildCompare.tsx)

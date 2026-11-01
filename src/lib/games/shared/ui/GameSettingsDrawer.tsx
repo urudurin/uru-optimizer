@@ -5,6 +5,7 @@ import {
   Text,
 } from '@mantine/core'
 import {
+  type AnalysisPosition,
   type EquipBehavior,
   useGameSettings,
   writeGameSettings,
@@ -36,8 +37,19 @@ export function GameSettingsDrawer({ game, gearNoun, opened, onClose }: {
         <Text size='xs' c='dimmed'>
           {`Used by the optimizer's Equip, saved builds and the editor's Equipped by. Replace leaves the other character's slot empty; swap gives them this character's old piece${
             game === 'wuwa' ? ' (an echo of the same cost, when there is one)' : ''
-          }. Settings are kept in this browser and in backups.`}
+          }.`}
         </Text>
+        <Select
+          label='Optimizer build analysis position'
+          allowDeselect={false}
+          value={settings.analysisPosition}
+          onChange={(value) => value && writeGameSettings(game, { analysisPosition: value as AnalysisPosition })}
+          data={[
+            { value: 'below', label: 'Default: Show the build analysis below the build preview' },
+            { value: 'above', label: 'Show the build analysis above the build preview' },
+          ]}
+        />
+        <Text size='xs' c='dimmed'>Settings are kept in this browser and in backups.</Text>
       </Stack>
     </Drawer>
   )

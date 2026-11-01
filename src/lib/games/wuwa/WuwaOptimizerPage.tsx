@@ -48,6 +48,7 @@ import {
 import {
   BuildAnalysis,
   pinnedCells,
+  PreviewWithAnalysis,
   type StatDiffRow,
 } from 'lib/games/shared/ui/BuildAnalysis'
 import {
@@ -970,52 +971,54 @@ ${losing.join(', ')} ${
             </Panel>
           )}
 
-          {build && result && (
-            <BuildPreview
-              title={`Loadout #${selected + 1}`}
-              description={`${describeSets(build.echoes)} · Cost ${costOf(build.echoes)} / ${MAX_LOADOUT_COST}${
-                current ? ` · ${build.score >= current.score ? '+' : ''}${(((build.score / current.score) - 1) * 100).toFixed(1)}% vs current` : ''
-              }`}
-              name={characterName(character.charId)}
-              accent={element && `var(--mantine-color-${elementColor(element)}-6)`}
-              portrait={art[character.charId]?.portrait}
-              weapon={weapon && { name: weapon.name, meta: `Lv ${character.weaponLevel} · R${character.refinement}` }}
-              heading={
-                <Group gap={6} mt={4}>
-                  {element && <Badge size='sm' variant='light' color={elementColor(element)}>{elementName(element)}</Badge>}
-                  <Text size='xs' c='dimmed'>{`Lv ${character.level} · S${character.sequence}`}</Text>
-                </Group>
-              }
-              rows={wuwaStatRows(toDisplayStats(build.stats), element)}
-              rating={pickedDpsScore ?? wuwaBuildScore(character, build.echoes)}
-              ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Echo score'}
-              footer={<Text size='xs' c='dimmed'>Pick the main echo (its skill) yourself: echo skills don't change the overview screen.</Text>}
-              gear={build.echoes.map((echo) => (
-                <EchoCard
-                  key={echo.id}
-                  echo={echo}
-                  owner={ownerOf.get(echo.id)}
-                  score={scoreEcho(echo, wuwaEchoWeights(character))}
-                />
-              ))}
-            />
-          )}
+          <PreviewWithAnalysis game='wuwa'>
+            {build && result && (
+              <BuildPreview
+                title={`Loadout #${selected + 1}`}
+                description={`${describeSets(build.echoes)} · Cost ${costOf(build.echoes)} / ${MAX_LOADOUT_COST}${
+                  current ? ` · ${build.score >= current.score ? '+' : ''}${(((build.score / current.score) - 1) * 100).toFixed(1)}% vs current` : ''
+                }`}
+                name={characterName(character.charId)}
+                accent={element && `var(--mantine-color-${elementColor(element)}-6)`}
+                portrait={art[character.charId]?.portrait}
+                weapon={weapon && { name: weapon.name, meta: `Lv ${character.weaponLevel} · R${character.refinement}` }}
+                heading={
+                  <Group gap={6} mt={4}>
+                    {element && <Badge size='sm' variant='light' color={elementColor(element)}>{elementName(element)}</Badge>}
+                    <Text size='xs' c='dimmed'>{`Lv ${character.level} · S${character.sequence}`}</Text>
+                  </Group>
+                }
+                rows={wuwaStatRows(toDisplayStats(build.stats), element)}
+                rating={pickedDpsScore ?? wuwaBuildScore(character, build.echoes)}
+                ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Echo score'}
+                footer={<Text size='xs' c='dimmed'>Pick the main echo (its skill) yourself: echo skills don't change the overview screen.</Text>}
+                gear={build.echoes.map((echo) => (
+                  <EchoCard
+                    key={echo.id}
+                    echo={echo}
+                    owner={ownerOf.get(echo.id)}
+                    score={scoreEcho(echo, wuwaEchoWeights(character))}
+                  />
+                ))}
+              />
+            )}
 
-          {build && result && (
-            <BuildAnalysis
-              buildLabel={`Loadout #${selected + 1}`}
-              rows={analysisRows}
-              upgrades={wuwaSubstatUpgrades(
-                character,
-                build.echoes,
-                result.target,
-                result.target.kind === 'damage' ? withFullSets(combatBonus, build.echoes, fullSetBonus) : teamBonus,
-              )}
-              breakdown={result.target.kind === 'damage' ? wuwaBreakdown(result.target.setup, build.stats) : undefined}
-              scoreLabel={targetLabel(result.target)}
-              formatRoll={(upgrade) => upgrade.stat.endsWith('Flat') ? String(Math.round(upgrade.roll)) : `${upgrade.roll.toFixed(1)}%`}
-            />
-          )}
+            {build && result && (
+              <BuildAnalysis
+                buildLabel={`Loadout #${selected + 1}`}
+                rows={analysisRows}
+                upgrades={wuwaSubstatUpgrades(
+                  character,
+                  build.echoes,
+                  result.target,
+                  result.target.kind === 'damage' ? withFullSets(combatBonus, build.echoes, fullSetBonus) : teamBonus,
+                )}
+                breakdown={result.target.kind === 'damage' ? wuwaBreakdown(result.target.setup, build.stats) : undefined}
+                scoreLabel={targetLabel(result.target)}
+                formatRoll={(upgrade) => upgrade.stat.endsWith('Flat') ? String(Math.round(upgrade.roll)) : `${upgrade.roll.toFixed(1)}%`}
+              />
+            )}
+          </PreviewWithAnalysis>
           <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
           <RememberDamageScore game='wuwa' characterId={character.charId} pieceIds={wornEchoes.map((e) => e.id)} score={currentDpsScore} />
         </Stack>

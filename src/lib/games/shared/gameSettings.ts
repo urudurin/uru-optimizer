@@ -11,9 +11,13 @@ import { useSyncExternalStore } from 'react'
 // 'swap' gives them this character's old piece instead
 export type EquipBehavior = 'replace' | 'swap'
 
-export type GameSettings = { equipBehavior: EquipBehavior }
+// Where the optimizer's build analysis goes, after HSR's Expanded info panel position: below the build preview (HSR's
+// default) or above it
+export type AnalysisPosition = 'below' | 'above'
 
-export const DEFAULT_GAME_SETTINGS: GameSettings = { equipBehavior: 'replace' }
+export type GameSettings = { equipBehavior: EquipBehavior, analysisPosition: AnalysisPosition }
+
+export const DEFAULT_GAME_SETTINGS: GameSettings = { equipBehavior: 'replace', analysisPosition: 'below' }
 
 const storageKey = (game: string) => `${game}-settings`
 const listeners = new Set<() => void>()
@@ -32,6 +36,9 @@ export function readGameSettings(game: string): GameSettings {
   }
   const settings: GameSettings = {
     equipBehavior: saved.equipBehavior === 'swap' || saved.equipBehavior === 'replace' ? saved.equipBehavior : DEFAULT_GAME_SETTINGS.equipBehavior,
+    analysisPosition: saved.analysisPosition === 'above' || saved.analysisPosition === 'below'
+      ? saved.analysisPosition
+      : DEFAULT_GAME_SETTINGS.analysisPosition,
   }
   cache.set(game, settings)
   return settings

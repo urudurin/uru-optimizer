@@ -115,6 +115,12 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
             {item.label}
           </UnstyledButton>
         ))}
+        {settings && (
+          <UnstyledButton className={classes.mobileItem} onClick={() => setSettingsOpen(true)}>
+            <IconSettings size={18} />
+            Settings
+          </UnstyledButton>
+        )}
       </nav>
 
       {settings && <GameSettingsDrawer game={settings.game} gearNoun={settings.gearNoun} opened={settingsOpen} onClose={() => setSettingsOpen(false)} />}

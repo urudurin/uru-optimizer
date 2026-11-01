@@ -52,6 +52,7 @@ import {
 import {
   BuildAnalysis,
   pinnedCells,
+  PreviewWithAnalysis,
   type StatDiffRow,
 } from 'lib/games/shared/ui/BuildAnalysis'
 import {
@@ -1124,49 +1125,51 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
             </Panel>
           )}
 
-          {best && (
-            <BuildPreview
-              title={`Build #${selected + 1}`}
-              description={`${describeSets(best.discs)}${
-                currentDisplay ? ` · ${rankLabel} ${rankText(best)} vs ${rankText({ display: currentDisplay, damage: currentDamage })} now` : ''
-              }`}
-              name={agent.name}
-              accent={images.agents[agent.id]?.accent}
-              portrait={images.agents[agent.id]?.portrait}
-              weapon={wEngine && { image: images.wEngines[wEngine.id], name: wEngine.name, meta: `${wEngine.rarity}-rank · R${loadout.refinement}` }}
-              heading={
-                <Group gap={6} mt={4}>
-                  <Badge size='sm' variant='light' color={elementColor(agent.element)}>{agent.element}</Badge>
-                  <Badge size='sm' variant='light' color='gray'>{agent.specialty}</Badge>
-                  <Text size='xs' c='dimmed'>{`Lv ${agent.level} · Core Skill ${'ABCDEF'[Number(coreSkill) - 1]}`}</Text>
-                </Group>
-              }
-              rows={zzzStatRows(best.display, agent.specialty)}
-              rating={pickedDpsScore ?? scoreBuild(best.discs.map((disc) => scoreDisc(disc, zzzDiscWeights(agent))), 6)}
-              ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Disc score'}
-              notes={best.warnings}
-              gear={best.discs.map((disc) => (
-                <DiscCard
-                  key={disc.id}
-                  disc={disc}
-                  icon={images.sets[disc.setId]}
-                  owner={disc.equippedBy ? (ownerNames.get(disc.equippedBy) ?? `Agent ${disc.equippedBy}`) : undefined}
-                  score={scoreDisc(disc, zzzDiscWeights(agent))}
-                />
-              ))}
-            />
-          )}
+          <PreviewWithAnalysis game='zzz'>
+            {best && (
+              <BuildPreview
+                title={`Build #${selected + 1}`}
+                description={`${describeSets(best.discs)}${
+                  currentDisplay ? ` · ${rankLabel} ${rankText(best)} vs ${rankText({ display: currentDisplay, damage: currentDamage })} now` : ''
+                }`}
+                name={agent.name}
+                accent={images.agents[agent.id]?.accent}
+                portrait={images.agents[agent.id]?.portrait}
+                weapon={wEngine && { image: images.wEngines[wEngine.id], name: wEngine.name, meta: `${wEngine.rarity}-rank · R${loadout.refinement}` }}
+                heading={
+                  <Group gap={6} mt={4}>
+                    <Badge size='sm' variant='light' color={elementColor(agent.element)}>{agent.element}</Badge>
+                    <Badge size='sm' variant='light' color='gray'>{agent.specialty}</Badge>
+                    <Text size='xs' c='dimmed'>{`Lv ${agent.level} · Core Skill ${'ABCDEF'[Number(coreSkill) - 1]}`}</Text>
+                  </Group>
+                }
+                rows={zzzStatRows(best.display, agent.specialty)}
+                rating={pickedDpsScore ?? scoreBuild(best.discs.map((disc) => scoreDisc(disc, zzzDiscWeights(agent))), 6)}
+                ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Disc score'}
+                notes={best.warnings}
+                gear={best.discs.map((disc) => (
+                  <DiscCard
+                    key={disc.id}
+                    disc={disc}
+                    icon={images.sets[disc.setId]}
+                    owner={disc.equippedBy ? (ownerNames.get(disc.equippedBy) ?? `Agent ${disc.equippedBy}`) : undefined}
+                    score={scoreDisc(disc, zzzDiscWeights(agent))}
+                  />
+                ))}
+              />
+            )}
 
-          {best && computeInput && (
-            <BuildAnalysis
-              buildLabel={`Build #${selected + 1}`}
-              rows={analysisRows}
-              upgrades={zzzSubstatUpgrades({ ...computeInput, discs: best.discs }, sortBy, damageSetup)}
-              breakdown={breakdown}
-              scoreLabel={rankLabel}
-              formatRoll={(upgrade) => /%|CRIT/.test(upgrade.stat) ? `${upgrade.roll}%` : String(upgrade.roll)}
-            />
-          )}
+            {best && computeInput && (
+              <BuildAnalysis
+                buildLabel={`Build #${selected + 1}`}
+                rows={analysisRows}
+                upgrades={zzzSubstatUpgrades({ ...computeInput, discs: best.discs }, sortBy, damageSetup)}
+                breakdown={breakdown}
+                scoreLabel={rankLabel}
+                formatRoll={(upgrade) => /%|CRIT/.test(upgrade.stat) ? `${upgrade.roll}%` : String(upgrade.roll)}
+              />
+            )}
+          </PreviewWithAnalysis>
           <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
           <RememberDamageScore game='zzz' characterId={agent.id} pieceIds={currentDiscs.map((d) => d.id)} score={currentDpsScore} />
         </Stack>
