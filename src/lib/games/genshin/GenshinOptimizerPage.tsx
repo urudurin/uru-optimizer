@@ -74,7 +74,10 @@ import {
   computeGenshinStats,
   hasStatData,
 } from 'lib/games/genshin/stats/computeStats'
-import type { BuffSetting } from 'lib/games/genshin/team/buffs'
+import {
+  type BuffSetting,
+  SET_4PC_BUFFS,
+} from 'lib/games/genshin/team/buffs'
 import { teamBuffsFor } from 'lib/games/genshin/team/teamBuffs'
 import {
   type Artifact,
@@ -125,6 +128,11 @@ import {
   savedBuilds,
 } from 'lib/games/shared/savedBuilds'
 import {
+  fourPieceSetsOf,
+  keepOverridesFor,
+  type TeammateOverrides,
+} from 'lib/games/shared/teammateOverrides'
+import {
   BuildAnalysis,
   pinnedCells,
   type StatDiffRow,
@@ -167,6 +175,7 @@ import {
   limitsSummary,
   StatFilters,
 } from 'lib/games/shared/ui/optimizer/StatFilters'
+import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
 import {
   FormCard,
   FormRow,
@@ -226,6 +235,8 @@ type GenshinOptimizerSettings = {
   // The team (team/teamBuffs.ts): teammate ids, whether this character is on the field, buff toggles
   teammates: string[],
   onField: boolean,
+  // Rank, weapon and 4-piece changes per teammate, for the team buffs only (shared/teammateOverrides.ts)
+  teammateOverrides: TeammateOverrides,
   teamSettings: Record<string, BuffSetting>,
   // The rotation damage target (damage/damage.ts): the enemy and the rotation
   enemy: EnemySettings,
@@ -252,6 +263,7 @@ function defaultSettings(characterId: string): GenshinOptimizerSettings {
     teammates: [],
     onField: true,
     teamSettings: {},
+    teammateOverrides: {},
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(characterId),
     combatSettings: {},
@@ -307,6 +319,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     teammates,
     onField,
     teamSettings,
+    teammateOverrides,
     enemy,
     rotation,
     combatSettings,
@@ -329,6 +342,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setOnField = fieldSetter(updateSettings, 'onField')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
+  const setTeammateOverrides = fieldSetter(updateSettings, 'teammateOverrides')
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
@@ -382,7 +396,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   }
 
   // What the team gives this character, the same for every build
-  const team = { teammates, onField, settings: teamSettings }
+  const team = { teammates, onField, settings: teamSettings, overrides: keepOverridesFor(teammateOverrides, teammates) }
   const teamResult = teamBuffsFor(character, team, { characters, artifacts })
   const teamBuffs = { premod: teamResult.premod, total: teamResult.total }
   const talents = rotationTalents(character, rotation)
@@ -490,7 +504,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     score,
     ...Object.fromEntries(shown.map((stat) => [stat, stats[stat] ?? 0])),
   })
-  const setName = (id: string) => setOptions.find((o) => o.value === id)?.label ?? id
+  const setName = (id: string) => setOptions.find((o) => o.value === id)?.label ?? nameFromGoodKey(id)
   const mainFilters = MAIN_STAT_SLOTS.filter((slot) => mainStats[slot]?.length).length
   const filterSummary = [
     fourPieceSet ? `4pc ${setName(fourPieceSet)}` : twoPieceSets.length ? twoPieceSets.map((id) => `2pc ${setName(id)}`).join(' + ') : 'Any sets',
@@ -754,6 +768,32 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
                   setTeamSettings((current) => ({ ...current, [key]: value }))
                   setResult(undefined)
                 }}
+              />
+              <TeammateOverrideCard
+                rankPrefix='C'
+                weaponLabel='weapon'
+                refinementPrefix='R'
+                overrides={team.overrides}
+                onChange={(next) => {
+                  setTeammateOverrides(next)
+                  setResult(undefined)
+                }}
+                members={teammates.flatMap((id) => {
+                  const mate = characters.find((c) => c.id === id)
+                  if (!mate || id === character.id) return []
+                  const wornSets = Object.values(mate.artifactIds).flatMap((artifactId) => artifacts.find((a) => a.id === artifactId)?.setId ?? [])
+                  const fourPiece = fourPieceSetsOf(wornSets)[0]
+                  return [{
+                    id,
+                    name: mate.name,
+                    roster: { rank: mate.constellation, weaponId: mate.weapon?.id, refinement: mate.weapon?.refinement ?? 1, fourPiece },
+                    weapons: weaponOptions(images.weaponInfo, images.characterInfo[id.startsWith('Traveler') ? 'Traveler' : id]?.weaponType),
+                    sets: [...new Set([...(fourPiece ? [fourPiece] : []), ...Object.keys(SET_4PC_BUFFS)])].map((setId) => ({
+                      value: setId,
+                      label: setName(setId),
+                    })),
+                  }]
+                })}
               />
             </FormRow>
 

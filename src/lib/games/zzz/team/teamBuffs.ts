@@ -1,4 +1,10 @@
 import {
+  resolveTeammate,
+  teammateFourPieces,
+  type TeammateOverride,
+  type TeammateOverrides,
+} from 'lib/games/shared/teammateOverrides'
+import {
   type AnomalyBonuses,
   type EnemyDebuffs,
   type KindBonus,
@@ -36,6 +42,8 @@ export type ZzzTeamSetup = {
   teammates: string[],
   // Toggles and stack counts by settingKey
   settings: Record<string, ZzzBuffSetting>,
+  // Mindscape, W-Engine and 4-piece set changes per teammate (shared/teammateOverrides.ts)
+  overrides?: TeammateOverrides,
 }
 
 export type ZzzAppliedBuff = {
@@ -119,9 +127,13 @@ export function zzzTeamBuffsFor(
   if (!receiver) return NO_TEAM
 
   const missing: string[] = []
-  const givers: { member: SquadMember, stats: FinalStats, discs: Disc[], wEngineId?: string, refinement: number }[] = []
+  const givers: { member: SquadMember, stats: FinalStats, discs: Disc[], wEngineId?: string, refinement: number, override?: TeammateOverride }[] = []
   for (const id of setup.teammates.filter((t) => t !== receiverId).slice(0, 2)) {
-    const build = data.builds.find((b) => b.agentId === id)
+    const saved = data.builds.find((b) => b.agentId === id)
+    const override = setup.overrides?.[id]
+    // The override's Mindscape and W-Engine, as if saved in their build
+    const shown = saved && resolveTeammate({ rank: saved.mindscapeLevel, weaponId: saved.wEngineId, refinement: saved.wEngineRefinement ?? 1 }, override)
+    const build = saved && shown ? { ...saved, mindscapeLevel: shown.rank, wEngineId: shown.weaponId, wEngineRefinement: shown.refinement } : saved
     const member = squadMember(id, build?.mindscapeLevel ?? 0)
     const resolved = build ? resolveBuild(build, data.discs) : undefined
     if (!member || !resolved?.ok) {
@@ -129,7 +141,7 @@ export function zzzTeamBuffsFor(
       continue
     }
     const stats = computeStats({ ...resolved.build, coreSkillLevel: 6, conditions: statScreenConditions() }).stats
-    givers.push({ member, stats, discs: resolved.build.discs, wEngineId: build?.wEngineId, refinement: build?.wEngineRefinement ?? 1 })
+    givers.push({ member, stats, discs: resolved.build.discs, wEngineId: build?.wEngineId, refinement: build?.wEngineRefinement ?? 1, override })
   }
   const squad = [receiver, ...givers.map((g) => g.member)]
 
@@ -137,7 +149,7 @@ export function zzzTeamBuffsFor(
   for (const giver of givers) {
     const sources: { buff: ZzzTeamBuff, sourceName: string, setId?: string }[] = [
       ...(AGENT_BUFFS[giver.member.agentId] ?? []).map((buff) => ({ buff, sourceName: giver.member.name })),
-      ...fourPieceSets(giver.discs).flatMap((setId) =>
+      ...teammateFourPieces(fourPieceSets(giver.discs), giver.override).flatMap((setId) =>
         (SET_4PC_BUFFS[setId] ?? []).map((buff) => ({ buff, sourceName: `${giver.member.name}'s 4-piece set`, setId }))
       ),
       ...(giver.wEngineId ? W_ENGINE_TEAM_BUFFS[giver.wEngineId] ?? [] : []).map((buff) => ({ buff, sourceName: `${giver.member.name}'s W-Engine` })),

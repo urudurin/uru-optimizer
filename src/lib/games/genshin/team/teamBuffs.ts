@@ -7,6 +7,8 @@ import {
   moonsignLevel,
   type SpecialKind,
 } from 'lib/games/genshin/damage/damage'
+import stats from 'lib/games/genshin/data/generated/stats.json'
+import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
 import {
   computeGenshinStats,
   prepareCharacter,
@@ -32,6 +34,12 @@ import {
   type GenshinCharacter,
   type GenshinStatKey,
 } from 'lib/games/genshin/types'
+import {
+  resolveTeammate,
+  teammateFourPieces,
+  type TeammateOverride,
+  type TeammateOverrides,
+} from 'lib/games/shared/teammateOverrides'
 
 // What a character's teammates give them, after Genshin Optimizer's team model: each teammate's buffs (kit, weapon,
 // 4-piece set) are worked out from that teammate's own stats and the receiver, buffs that don't stack count once, and
@@ -46,6 +54,22 @@ export type TeamSetup = {
   onField: boolean,
   // Toggle values by setting key (see settingKey), missing means the toggle's default
   settings: Record<string, BuffSetting>,
+  // Constellation, weapon and 4-piece set changes per teammate (shared/teammateOverrides.ts)
+  overrides?: TeammateOverrides,
+}
+
+// The teammate with their override's constellation and weapon (a new weapon at level 90)
+function withOverride(character: GenshinCharacter, override: TeammateOverride | undefined): GenshinCharacter {
+  if (!override) return character
+  const roster = { rank: character.constellation, weaponId: character.weapon?.id, refinement: character.weapon?.refinement ?? 1 }
+  const shown = resolveTeammate(roster, override)
+  const weaponData = shown.weaponId ? (stats.weapons as Record<string, { rarity: number } | undefined>)[shown.weaponId] : undefined
+  const weapon = !shown.weaponId || !character.weapon && !weaponData
+    ? character.weapon
+    : shown.weaponId === character.weapon?.id
+    ? { ...character.weapon, refinement: shown.refinement }
+    : { id: shown.weaponId, name: nameFromGoodKey(shown.weaponId), rarity: weaponData?.rarity ?? 5, level: 90, refinement: shown.refinement }
+  return { ...character, constellation: shown.rank, weapon }
 }
 
 export type AppliedBuff = {
@@ -131,7 +155,11 @@ export function teamBuffsFor(
 ): TeamBuffResult {
   const byId = new Map(data.characters.map((c) => [c.id, c]))
   const artifactsById = new Map(data.artifacts.map((a) => [a.id, a]))
-  const teammates = setup.teammates.filter((id) => id !== receiver.id).slice(0, 3).flatMap((id) => byId.get(id) ?? [])
+  const teammates = setup.teammates
+    .filter((id) => id !== receiver.id)
+    .slice(0, 3)
+    .flatMap((id) => byId.get(id) ?? [])
+    .map((character) => withOverride(character, setup.overrides?.[character.id]))
 
   // Each teammate's own stats, from their worn artifacts
   const givers = teammates.map((character) => {
@@ -157,7 +185,7 @@ export function teamBuffsFor(
     for (const buff of WEAPON_BUFFS[character.weapon?.id ?? ''] ?? []) {
       candidates.push({ buff, sourceName: `${character.name}'s ${character.weapon?.name}`, giver })
     }
-    for (const setId of fourPieceSets(giver.worn)) {
+    for (const setId of teammateFourPieces(fourPieceSets(giver.worn), setup.overrides?.[character.id])) {
       for (const buff of SET_4PC_BUFFS[setId] ?? []) candidates.push({ buff, sourceName: `${character.name}'s 4-piece set`, giver })
     }
   }

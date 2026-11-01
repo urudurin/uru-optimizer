@@ -65,6 +65,22 @@ describe('team buffs', () => {
     expect(teamBuffsFor(xiangling, setup(['Bennett']), { characters: [xiangling, c5], artifacts: [] }).total.atk).toBeCloseTo(baseAtk * (1.12 + 0.2))
   })
 
+  it('applies teammate overrides (constellation, 4-piece set) without the saved character changing', () => {
+    const baseAtk = prepareCharacter(bennett)!.baseAtk
+    const data = { characters: [xiangling, bennett], artifacts: [] }
+    const c5 = teamBuffsFor(xiangling, setup(['Bennett'], { overrides: { Bennett: { rank: 5, fourPiece: 'NoblesseOblige' } } }), data)
+    expect(c5.total.atk).toBeCloseTo(baseAtk * (1.12 + 0.2))
+    expect(c5.premod.atkPct).toBe(20)
+    expect(bennett.constellation).toBe(0)
+
+    // No 4-piece takes off the Noblesse he wears
+    const worn = teamBuffsFor(xiangling, setup(['Bennett'], { overrides: { Bennett: { fourPiece: 'none' } } }), {
+      characters: [xiangling, wearing(bennett)],
+      artifacts: noblesse('Bennett'),
+    })
+    expect(worn.premod.atkPct).toBeUndefined()
+  })
+
   it('Kazuha gives DMG Bonus for the swirled element from his Elemental Mastery, defaulting to the receiver\'s element', () => {
     const result = teamBuffsFor(xiangling, setup(['KaedeharaKazuha']), { characters: [xiangling, kazuha], artifacts: [] })
     const kazuhaEm = computeGenshinStats(kazuha, []).stats.elementalMastery!

@@ -38,6 +38,11 @@ import {
   savedBuilds,
 } from 'lib/games/shared/savedBuilds'
 import {
+  fourPieceSetsOf,
+  keepOverridesFor,
+  type TeammateOverrides,
+} from 'lib/games/shared/teammateOverrides'
+import {
   BuildAnalysis,
   pinnedCells,
   type StatDiffRow,
@@ -81,6 +86,7 @@ import {
   StatFilters,
 } from 'lib/games/shared/ui/optimizer/StatFilters'
 import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
+import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
 import {
   FormCard,
   FormRow,
@@ -167,7 +173,10 @@ import {
   scoreDisc,
   zzzDiscWeights,
 } from 'lib/games/zzz/stats/discScore'
-import type { ZzzBuffSetting } from 'lib/games/zzz/team/buffs'
+import {
+  SET_4PC_BUFFS,
+  type ZzzBuffSetting,
+} from 'lib/games/zzz/team/buffs'
 import { zzzTeamBuffsFor } from 'lib/games/zzz/team/teamBuffs'
 import {
   zzzTeamEntries,
@@ -216,6 +225,8 @@ type ZzzOptimizerSettings = {
   resultLimit: number,
   // Agent ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
   teammates: string[],
+  // Rank, weapon and 4-piece changes per teammate, for the team buffs only (shared/teammateOverrides.ts)
+  teammateOverrides: TeammateOverrides,
   teamSettings: Record<string, ZzzBuffSetting>,
   // The enemy and the rotation, for ranking by damage (damage/damage.ts)
   enemy: EnemySettings,
@@ -305,6 +316,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     resultLimit: DEFAULT_RESULT_LIMIT,
     teammates: [],
     teamSettings: {},
+    teammateOverrides: {},
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(id),
     combatSettings: {},
@@ -327,6 +339,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     resultLimit,
     teammates,
     teamSettings,
+    teammateOverrides,
     enemy,
     rotation,
     combatSettings,
@@ -353,11 +366,12 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const setResultLimit = fieldSetter(updateSettings, 'resultLimit')
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
+  const setTeammateOverrides = fieldSetter(updateSettings, 'teammateOverrides')
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
   // What the squad gives this agent, the same for every build
-  const team = { teammates, settings: teamSettings }
+  const team = { teammates, settings: teamSettings, overrides: keepOverridesFor(teammateOverrides, teammates) }
   const teamResult = zzzTeamBuffsFor(agent.id, team, { builds, discs }, fourPieceSet ?? undefined)
   // The agent's own kit effects, counted only when ranking by rotation damage
   const byDamage = sortBy === 'damage'
@@ -910,6 +924,28 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
                 footnote="Givers are taken at skill level 12 and Core Skill F (saved builds don't record those). W-Engines count at the refinement in their build. Enemy shred and Aftershock DMG count only in rotation damage; Daze isn't counted."
                 onTeammates={(ids) => setTeammates(ids)}
                 onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
+              />
+              <TeammateOverrideCard
+                rankPrefix='M'
+                weaponLabel='W-Engine'
+                refinementPrefix='R'
+                overrides={team.overrides}
+                onChange={setTeammateOverrides}
+                members={teammates.flatMap((id) => {
+                  const build = builds.find((b) => b.agentId === id)
+                  if (!build || id === agent.id) return []
+                  const fourPiece = fourPieceSetsOf(Object.values(build.discIds).flatMap((discId) => discs.find((d) => d.id === discId)?.setId ?? []))[0]
+                  return [{
+                    id,
+                    name: build.name,
+                    roster: { rank: build.mindscapeLevel, weaponId: build.wEngineId, refinement: build.wEngineRefinement ?? 1, fourPiece },
+                    weapons: Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name })),
+                    sets: [...new Set([...(fourPiece ? [fourPiece] : []), ...Object.keys(SET_4PC_BUFFS)])].map((setId) => ({
+                      value: setId,
+                      label: SETS[setId]?.name ?? setId,
+                    })),
+                  }]
+                })}
               />
             </FormRow>
 

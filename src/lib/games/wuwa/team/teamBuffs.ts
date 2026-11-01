@@ -1,3 +1,7 @@
+import {
+  resolveTeammate,
+  type TeammateOverrides,
+} from 'lib/games/shared/teammateOverrides'
 import type { HitType } from 'lib/games/wuwa/damage/damage'
 import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
 import { characterName } from 'lib/games/wuwa/data/gameData'
@@ -25,6 +29,8 @@ export type WuwaTeamSetup = {
   // Character ids, at most two
   teammates: string[],
   settings: Record<string, WuwaBuffSetting>,
+  // Sequence and weapon changes per teammate (shared/teammateOverrides.ts)
+  overrides?: TeammateOverrides,
 }
 
 export type WuwaAppliedBuff = {
@@ -67,8 +73,10 @@ export function wuwaTeamBuffsFor(
   const receiverElement = CHARACTER_INFO[receiver.charId]?.element
   const applied: WuwaAppliedBuff[] = []
   for (const id of setup.teammates.filter((t) => t !== receiver.charId).slice(0, 2)) {
-    const giver = data.characters.find((c) => c.charId === id)
-    if (!giver) continue
+    const saved = data.characters.find((c) => c.charId === id)
+    if (!saved) continue
+    const shown = resolveTeammate({ rank: saved.sequence, weaponId: saved.weaponId, refinement: saved.refinement }, setup.overrides?.[id])
+    const giver: CharacterState = { ...saved, sequence: shown.rank, weaponId: shown.weaponId, refinement: shown.refinement }
     const worn = giver.echoIds.flatMap((echoId) => (echoId ? echoById.get(echoId) ?? [] : []))
     // As the overview screen shows them (Energy Regen 250 = 250%)
     const giverStats = toDisplayStats(computeWuwaStats(giver, worn).stats)

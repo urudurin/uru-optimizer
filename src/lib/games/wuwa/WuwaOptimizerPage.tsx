@@ -35,6 +35,10 @@ import {
   savedBuilds,
 } from 'lib/games/shared/savedBuilds'
 import {
+  keepOverridesFor,
+  type TeammateOverrides,
+} from 'lib/games/shared/teammateOverrides'
+import {
   BuildAnalysis,
   pinnedCells,
   type StatDiffRow,
@@ -78,6 +82,7 @@ import {
   StatFilters,
 } from 'lib/games/shared/ui/optimizer/StatFilters'
 import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
+import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
 import {
   FormCard,
   FormRow,
@@ -227,6 +232,8 @@ type WuwaOptimizerSettings = {
   maxStats: Partial<Record<keyof WuwaStats, number>>,
   // Character ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
   teammates: string[],
+  // Rank, weapon and 4-piece changes per teammate, for the team buffs only (shared/teammateOverrides.ts)
+  teammateOverrides: TeammateOverrides,
   teamSettings: Record<string, WuwaBuffSetting>,
   // The rotation damage target (damage/damage.ts): the enemy and the rotation
   enemy: EnemySettings,
@@ -252,6 +259,7 @@ function defaultSettings(charId: string): WuwaOptimizerSettings {
     maxStats: {},
     teammates: [],
     teamSettings: {},
+    teammateOverrides: {},
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(charId),
     combatSettings: {},
@@ -308,6 +316,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     maxStats,
     teammates,
     teamSettings,
+    teammateOverrides,
     enemy,
     rotation,
     combatSettings,
@@ -329,11 +338,15 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
+  const setTeammateOverrides = fieldSetter(updateSettings, 'teammateOverrides')
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
   // What the team gives this Resonator, the same for every loadout (nothing before anything is imported)
-  const teamResult = character ? wuwaTeamBuffsFor(character, { teammates, settings: teamSettings }, { characters, echoes }) : NO_WUWA_TEAM
+  const teamOverrides = keepOverridesFor(teammateOverrides, teammates)
+  const teamResult = character
+    ? wuwaTeamBuffsFor(character, { teammates, settings: teamSettings, overrides: teamOverrides }, { characters, echoes })
+    : NO_WUWA_TEAM
   const teammateOptions = characters.filter((c) => c.charId !== character?.charId).map((c) => ({ value: c.charId, label: characterName(c.charId) }))
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState<SearchProgress | undefined>()
@@ -735,6 +748,23 @@ ${losing.join(', ')} ${
                 footnote="DMG Amplification buffs (most Outros) scale every loadout the same, so they can't change the ranking and aren't listed. Echo Skill DMG isn't calculated yet."
                 onTeammates={(ids) => setTeammates(ids)}
                 onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
+              />
+              <TeammateOverrideCard
+                rankPrefix='S'
+                weaponLabel='weapon'
+                refinementPrefix='R'
+                overrides={teamOverrides}
+                onChange={setTeammateOverrides}
+                members={teammates.flatMap((id) => {
+                  const mate = characters.find((c) => c.charId === id)
+                  if (!mate || id === character.charId) return []
+                  return [{
+                    id,
+                    name: characterName(id),
+                    roster: { rank: mate.sequence, weaponId: mate.weaponId, refinement: mate.refinement },
+                    weapons: WEAPON_OPTIONS,
+                  }]
+                })}
               />
             </FormRow>
 
