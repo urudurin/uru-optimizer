@@ -22,6 +22,12 @@ import { formatNumber } from 'lib/games/shared/format'
 import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { todayString } from 'lib/games/shared/importedPresets'
 import {
+  type FilterCause,
+  type PoolCandidate,
+  poolCauses,
+  statLimitCauses,
+} from 'lib/games/shared/noResults'
+import {
   fieldSetter,
   migrateOptimizerSettings,
   readOptimizerSettings,
@@ -68,6 +74,7 @@ import {
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
+import { NoResults } from 'lib/games/shared/ui/optimizer/NoResults'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -471,6 +478,68 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const filters = { mainStats, fullSet: fullSet ?? undefined, twoPieceSets: twoPieceSets.slice(0, maxTwoPiece), excludeEquippedByOthers, excludeOwners }
   // Echoes per cost after the filters, and the loadouts they make, live as the filters change
   const pool = filterPool({ character, characters, echoes, filters })
+  // What to loosen when nothing matches (shared/noResults.ts): pool filters, checked for emptying the pool, then stat limits
+  const noResultCauses = (): FilterCause[] => {
+    const clear = () => setResult(undefined)
+    const candidates: PoolCandidate<typeof filters>[] = []
+    for (const [cost, allowed] of Object.entries(mainStats) as [string, StatKey[] | undefined][]) {
+      if (!allowed?.length) continue
+      candidates.push({
+        key: `main:${cost}`,
+        label: `Cost ${cost} main stat: ${allowed.map(statLabel).join(', ')}`,
+        fixLabel: 'Allow any',
+        without: { ...filters, mainStats: { ...mainStats, [cost]: [] } },
+        apply: () => (setMainStats({ ...mainStats, [cost]: [] }), clear()),
+      })
+    }
+    if (fullSet) {
+      candidates.push({
+        key: 'full',
+        label: `Full set: ${setName(fullSet)}`,
+        fixLabel: 'Clear',
+        without: { ...filters, fullSet: undefined },
+        apply: () => (setFullSet(null), clear()),
+      })
+    }
+    if (twoPieceSets.length > 0) {
+      candidates.push({
+        key: '2pc',
+        label: `2-piece sets: ${twoPieceSets.map(setName).join(', ')}`,
+        fixLabel: 'Clear',
+        without: { ...filters, twoPieceSets: [] },
+        apply: () => (setTwoPieceSets([]), clear()),
+      })
+    }
+    if (excludeEquippedByOthers) {
+      candidates.push({
+        key: 'worn',
+        label: 'Leave out echoes others are wearing',
+        fixLabel: 'Allow them',
+        without: { ...filters, excludeEquippedByOthers: false },
+        apply: () => (setExcludeEquippedByOthers(false), clear()),
+      })
+    }
+    if (excludeOwners?.length) {
+      candidates.push({
+        key: 'priority',
+        label: 'Character priority filter',
+        fixLabel: 'Turn off',
+        without: { ...filters, excludeOwners: undefined },
+        apply: () => (setPriorityFilter(false), clear()),
+      })
+    }
+    const poolEmpty = (f: typeof filters) => filterPool({ character, characters, echoes, filters: f }).length === 0
+    return [
+      ...poolCauses(candidates, poolEmpty, pool.length === 0),
+      ...statLimitCauses(
+        MIN_STATS.map((stat) => ({ key: stat, label: wuwaStatLabel(stat) })),
+        minStats,
+        maxStats,
+        (next) => (setMinStats(next), clear()),
+        (next) => (setMaxStats(next), clear()),
+      ),
+    ]
+  }
 
   async function run() {
     setRunning(true)
@@ -851,6 +920,12 @@ ${losing.join(', ')} ${
             </Panel>
           )}
 
+          {!running && pool.length === 0 && echoes.length > 0 && (
+            <Panel title='No loadout with these filters' description='No echoes are left, so the search can&apos;t start.'>
+              <NoResults causes={noResultCauses()} gearNoun='echoes' />
+            </Panel>
+          )}
+
           {outcome && !outcome.ok && <Notices messages={[outcome.reason]} />}
 
           {outcome?.ok && result && (
@@ -870,7 +945,7 @@ ${losing.join(', ')} ${
                   </Text>
                 )}
                 {outcome.builds.length === 0
-                  ? <Text size='sm' c='dimmed'>Nothing matched. Loosen the minimum stats or filters and search again.</Text>
+                  ? <NoResults title='Nothing matched' causes={noResultCauses()} gearNoun='echoes' />
                   : (
                     <ResultsGrid
                       key={outcome.builds.length + result.target.kind}

@@ -120,6 +120,12 @@ import { formatNumber } from 'lib/games/shared/format'
 import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { todayString } from 'lib/games/shared/importedPresets'
 import {
+  type FilterCause,
+  type PoolCandidate,
+  poolCauses,
+  statLimitCauses,
+} from 'lib/games/shared/noResults'
+import {
   fieldSetter,
   migrateOptimizerSettings,
   readOptimizerSettings,
@@ -167,6 +173,7 @@ import {
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
+import { NoResults } from 'lib/games/shared/ui/optimizer/NoResults'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -380,6 +387,70 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     () => (character ? filterPools({ character, artifacts, filters }).map((pool) => pool.length) : []),
     [character, artifacts, filters],
   )
+  // What to loosen when nothing matches (shared/noResults.ts): pool filters, checked for emptying a slot, then stat limits
+  const noResultCauses = (): FilterCause[] => {
+    if (!character) return []
+    const clear = () => setResult(undefined)
+    const candidates: PoolCandidate<typeof filters>[] = []
+    for (const slot of MAIN_STAT_SLOTS) {
+      const allowed = mainStats[slot] ?? []
+      if (allowed.length === 0) continue
+      candidates.push({
+        key: `main:${slot}`,
+        label: `${slot[0].toUpperCase()}${slot.slice(1)} main stat: ${allowed.map(statLabel).join(', ')}`,
+        fixLabel: 'Allow any',
+        without: { ...filters, mainStats: { ...mainStats, [slot]: [] } },
+        apply: () => (setMainStats({ ...mainStats, [slot]: [] }), clear()),
+      })
+    }
+    if (fourPieceSet) {
+      candidates.push({
+        key: '4pc',
+        label: `4-piece set: ${setName(fourPieceSet)}`,
+        fixLabel: 'Clear',
+        without: { ...filters, fourPieceSet: undefined },
+        apply: () => (setFourPieceSet(null), clear()),
+      })
+    }
+    if (twoPieceSets.length > 0) {
+      candidates.push({
+        key: '2pc',
+        label: `2-piece sets: ${twoPieceSets.map(setName).join(', ')}`,
+        fixLabel: 'Clear',
+        without: { ...filters, twoPieceSets: [] },
+        apply: () => (setTwoPieceSets([]), clear()),
+      })
+    }
+    if (excludeEquippedByOthers) {
+      candidates.push({
+        key: 'worn',
+        label: 'Leave out artifacts others are wearing',
+        fixLabel: 'Allow them',
+        without: { ...filters, excludeEquippedByOthers: false },
+        apply: () => (setExcludeEquippedByOthers(false), clear()),
+      })
+    }
+    if (excludeOwners?.length) {
+      candidates.push({
+        key: 'priority',
+        label: 'Character priority filter',
+        fixLabel: 'Turn off',
+        without: { ...filters, excludeOwners: undefined },
+        apply: () => (setPriorityFilter(false), clear()),
+      })
+    }
+    const poolEmpty = (f: typeof filters) => filterPools({ character, artifacts, filters: f }).some((pool) => pool.length === 0)
+    return [
+      ...poolCauses(candidates, poolEmpty, poolSizes.some((size) => size === 0)),
+      ...statLimitCauses(
+        MIN_STATS.map((stat) => ({ key: stat, label: statLabel(stat) })),
+        minStats,
+        maxStats,
+        (next) => (setMinStats(next), clear()),
+        (next) => (setMaxStats(next), clear()),
+      ),
+    ]
+  }
   const setOptions = useMemo(() => {
     const names = new Map(artifacts.map((a) => [a.setId, a.setName]))
     return [...names].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
@@ -867,6 +938,12 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
             </Panel>
           )}
 
+          {!running && poolSizes.some((size) => size === 0) && (
+            <Panel title='No full build with these filters' description='A slot has no artifacts left, so the search can&apos;t start.'>
+              <NoResults causes={noResultCauses()} gearNoun='artifacts' />
+            </Panel>
+          )}
+
           {outcome && !outcome.ok && <Notices messages={[outcome.reason]} />}
 
           {outcome?.ok && result && (
@@ -884,7 +961,7 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
                   </Text>
                 )}
                 {outcome.builds.length === 0
-                  ? <Text size='sm' c='dimmed'>Nothing matched. Loosen the minimum stats or filters and search again.</Text>
+                  ? <NoResults title='Nothing matched' causes={noResultCauses()} gearNoun='artifacts' />
                   : (
                     <ResultsGrid
                       key={outcome.builds.length + result.target.kind}

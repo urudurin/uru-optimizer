@@ -25,6 +25,12 @@ import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { scoreBuild } from 'lib/games/shared/gearScore'
 import { todayString } from 'lib/games/shared/importedPresets'
 import {
+  type FilterCause,
+  type PoolCandidate,
+  poolCauses,
+  statLimitCauses,
+} from 'lib/games/shared/noResults'
+import {
   fieldSetter,
   migrateOptimizerSettings,
   readOptimizerSettings,
@@ -72,6 +78,7 @@ import {
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
+import { NoResults } from 'lib/games/shared/ui/optimizer/NoResults'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -495,6 +502,63 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const pools = filterPools({ agent, discs, filters })
   const combinations = countCombinations(pools)
   const emptySlots = pools.flatMap((pool, i) => pool.length === 0 ? [i + 1] : [])
+  // What to loosen when nothing matches (shared/noResults.ts): pool filters, checked for emptying a slot, then stat limits
+  const noResultCauses = (): FilterCause[] => {
+    const clear = () => setOutcome(null)
+    const candidates: PoolCandidate<OptimizerFilters>[] = []
+    for (const slot of [4, 5, 6] as MainStatSlot[]) {
+      const allowed = mainStats[slot] ?? []
+      if (allowed.length === 0) continue
+      candidates.push({
+        key: `main:${slot}`,
+        label: `Slot ${slot} main stat: ${allowed.join(', ')}`,
+        fixLabel: 'Allow any',
+        without: { ...filters, mainStats: { ...mainStats, [slot]: [] } },
+        apply: () => (setMainStats({ ...mainStats, [slot]: [] }), clear()),
+      })
+    }
+    if (fourPieceSet) {
+      candidates.push({
+        key: '4pc',
+        label: `4-piece set: ${setName(fourPieceSet)}`,
+        fixLabel: 'Clear',
+        without: { ...filters, fourPieceSet: undefined },
+        apply: () => (setFourPieceSet(null), clear()),
+      })
+    }
+    if (twoPieceSet) {
+      candidates.push({
+        key: '2pc',
+        label: `2-piece set: ${setName(twoPieceSet)}`,
+        fixLabel: 'Clear',
+        without: { ...filters, twoPieceSet: undefined },
+        apply: () => (setTwoPieceSet(null), clear()),
+      })
+    }
+    if (excludeEquippedByOthers) {
+      candidates.push({
+        key: 'worn',
+        label: 'Leave out discs others are wearing',
+        fixLabel: 'Allow them',
+        without: { ...filters, excludeEquippedByOthers: false },
+        apply: () => (setExcludeEquippedByOthers(false), clear()),
+      })
+    }
+    if (excludeOwners?.length) {
+      candidates.push({
+        key: 'priority',
+        label: 'Character priority filter',
+        fixLabel: 'Turn off',
+        without: { ...filters, excludeOwners: undefined },
+        apply: () => (setPriorityFilter(false), clear()),
+      })
+    }
+    const poolEmpty = (f: OptimizerFilters) => filterPools({ agent, discs, filters: f }).some((pool) => pool.length === 0)
+    return [
+      ...poolCauses(candidates, poolEmpty, emptySlots.length > 0),
+      ...statLimitCauses(statRows, minStats, maxStats, (next) => (setMinStats(next), clear()), (next) => (setMaxStats(next), clear())),
+    ]
+  }
 
   function changeAgent(id: string | null) {
     if (!id || !AGENTS[id]) return
@@ -996,6 +1060,12 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
             </Panel>
           )}
 
+          {!running && emptySlots.length > 0 && (
+            <Panel title='No full build with these filters' description='A slot has no discs left, so the search can&apos;t start.'>
+              <NoResults causes={noResultCauses()} gearNoun='discs' />
+            </Panel>
+          )}
+
           {outcome && !outcome.ok && <Notices messages={[outcome.reason]} />}
 
           {outcome?.ok && (
@@ -1006,7 +1076,7 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
               } combinations meet the filters, showing the best ${outcome.builds.length}`}
             >
               {outcome.builds.length === 0
-                ? <Text size='sm' c='dimmed'>Nothing matched. Loosen the minimum stats or filters and search again.</Text>
+                ? <NoResults title='Nothing matched' causes={noResultCauses()} gearNoun='discs' />
                 : (
                   <ResultsGrid
                     key={outcome.builds.length + sortBy}
