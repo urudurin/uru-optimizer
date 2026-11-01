@@ -1,24 +1,19 @@
 import {
   IconArrowBigRightLines,
   IconAtom,
-  IconBattery3,
   IconBolt,
   IconDroplet,
-  IconFirstAidKit,
-  IconFlame,
   IconHammer,
-  IconHeart,
   IconMeteor,
-  IconShield,
   IconSparkles,
-  IconSword,
   IconSwords,
-  IconTarget,
   IconTargetArrow,
 } from '@tabler/icons-react'
+import { Stats } from 'lib/constants/constants'
+import { Assets } from 'lib/rendering/assets'
 import type { ReactNode } from 'react'
 
-// One icon per kind of stat, shared by the character pages' stat lists (like the icons on HSR's stat block)
+// One icon per kind of stat, shared by the character pages' stat lists (the icons on HSR's stat block)
 export type StatIconKind =
   | 'hp'
   | 'atk'
@@ -36,13 +31,17 @@ export type StatIconKind =
   | 'heal'
   | 'sheer'
 
+// HSR's in-game stat icons (rendering/assets.ts Assets.getStatIcon) for stats every game shares; tabler icons for the
+// rest, which HSR has no icon for
+const hsrIcon = (stat: string) => (size: number) => <img src={Assets.getStatIcon(stat)} alt='' width={size} height={size} draggable={false} />
+
 const ICONS: Record<StatIconKind, (size: number) => ReactNode> = {
-  hp: (size) => <IconHeart size={size} />,
-  atk: (size) => <IconSword size={size} />,
-  def: (size) => <IconShield size={size} />,
-  critRate: (size) => <IconTarget size={size} />,
-  critDmg: (size) => <IconFlame size={size} />,
-  energy: (size) => <IconBattery3 size={size} />,
+  hp: hsrIcon(Stats.HP),
+  atk: hsrIcon(Stats.ATK),
+  def: hsrIcon(Stats.DEF),
+  critRate: hsrIcon(Stats.CR),
+  critDmg: hsrIcon(Stats.CD),
+  energy: hsrIcon(Stats.ERR),
   mastery: (size) => <IconSparkles size={size} />,
   proficiency: (size) => <IconAtom size={size} />,
   impact: (size) => <IconHammer size={size} />,
@@ -50,7 +49,7 @@ const ICONS: Record<StatIconKind, (size: number) => ReactNode> = {
   pen: (size) => <IconArrowBigRightLines size={size} />,
   elementDmg: (size) => <IconDroplet size={size} />,
   dmgBonus: (size) => <IconMeteor size={size} />,
-  heal: (size) => <IconFirstAidKit size={size} />,
+  heal: hsrIcon(Stats.OHB),
   sheer: (size) => <IconSwords size={size} />,
 }
 

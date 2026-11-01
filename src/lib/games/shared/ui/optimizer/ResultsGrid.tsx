@@ -1,16 +1,28 @@
 import type {
   CellClassParams,
   ColDef,
+  NavigateToNextCellParams,
   RowClickedEvent,
 } from 'ag-grid-community'
 import { AgGridReact } from 'ag-grid-react'
 import chroma from 'chroma-js'
 import classes from 'lib/games/shared/ui/optimizer/OptimizerResults.module.css'
-import { useMemo } from 'react'
+import { useGridLocale } from 'lib/hooks/useGridLocale'
+import { arrowKeyGridNavigation } from 'lib/interactions/arrowKeyGridNavigation'
+import {
+  optimizerGridDefaultColDef,
+  optimizerGridOptions,
+} from 'lib/tabs/tabOptimizer/optimizerForm/grid/optimizerGridColumns'
+import {
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react'
 
 // The optimizer results of all three games, after Fribbels' HSR optimizer grid (lib/tabs/tabOptimizer/optimizerForm/
 // grid/OptimizerGrid.tsx): an ag-grid with one column per stat, each coloured from its worst to its best value among the
-// results (HSR's red-to-green scale), the build the character wears now pinned on top, and a click picks a build.
+// results (HSR's red-to-green scale), the build the character wears now pinned on top, and a click picks a build. Uses
+// HSR's column defaults, row height, grid locale and arrow-key navigation (Up / Down picks the next build).
 
 export type ResultColumn = {
   key: string,
@@ -40,6 +52,12 @@ export function ResultsGrid({ columns, rows, current, selected, onSelect }: {
   selected: number,
   onSelect: (index: number) => void,
 }) {
+  const gridRef = useRef<AgGridReact<ResultRow>>(null)
+  const { getLocaleText } = useGridLocale('optimizerTab', 'Grid')
+  const navigateToNextCell = useCallback(
+    (params: NavigateToNextCellParams) => arrowKeyGridNavigation(params, gridRef, (node) => node.data && !node.rowPinned && onSelect(rows.indexOf(node.data))),
+    [rows, onSelect],
+  )
   // Each column's range among the results, for its colours
   const ranges = useMemo(() => {
     const out: Record<string, { min: number, max: number }> = {}
@@ -74,13 +92,16 @@ export function ResultsGrid({ columns, rows, current, selected, onSelect }: {
   return (
     <div className={`ag-theme-balham-dark ${classes.grid}`}>
       <AgGridReact<ResultRow>
+        ref={gridRef}
         rowData={rows}
         pinnedTopRowData={current ? [current] : undefined}
         columnDefs={columnDefs}
-        defaultColDef={{ sortable: true, suppressHeaderMenuButton: true, sortingOrder: ['desc', 'asc', null], wrapHeaderText: true, autoHeaderHeight: true }}
+        defaultColDef={{ ...(optimizerGridDefaultColDef as unknown as ColDef<ResultRow>), suppressHeaderMenuButton: true, autoHeaderHeight: true }}
         getRowId={(p) => p.data.id}
-        rowHeight={30}
-        headerHeight={44}
+        rowHeight={optimizerGridOptions.rowHeight}
+        headerHeight={36}
+        getLocaleText={getLocaleText}
+        navigateToNextCell={navigateToNextCell}
         rowSelection={{ mode: 'singleRow', checkboxes: false, enableClickSelection: true }}
         onFirstDataRendered={(e) => e.api.getDisplayedRowAtIndex(selected)?.setSelected(true)}
         onRowClicked={(e: RowClickedEvent<ResultRow>) => {

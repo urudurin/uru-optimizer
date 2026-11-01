@@ -31,8 +31,10 @@ import {
   imageFromClipboard,
 } from 'lib/games/shared/ui/gear/GearEditor'
 import classes from 'lib/games/shared/ui/gear/GearInventory.module.css'
+import { useGridLocale } from 'lib/hooks/useGridLocale'
 import { Message } from 'lib/interactions/message'
 import { Gradient } from 'lib/rendering/gradient'
+import { defaultRelicsGridColDefs } from 'lib/tabs/tabRelics/columnDefs'
 import { FilterPill } from 'lib/tabs/tabRelics/topBar/FilterPill'
 import {
   useCallback,
@@ -86,6 +88,7 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
   onDelete: (ids: string[]) => void,
 }) {
   const gridRef = useRef<AgGridReact<Row<T>>>(null)
+  const { getLocaleText } = useGridLocale('relicsTab', 'RelicGrid')
   const [filters, setFilters] = useState<Filters>(NO_FILTERS)
   const [selected, setSelected] = useState<T[]>([])
   const [editing, setEditing] = useState<{ item?: T, draft: GearDraft, screenshot?: Blob } | undefined>()
@@ -353,7 +356,9 @@ export function GearInventory<T extends { id: string }>({ kind, items, onSave, o
           ref={gridRef}
           rowData={rows}
           columnDefs={columnDefs}
-          defaultColDef={{ sortable: true, wrapHeaderText: true, autoHeaderHeight: true, suppressHeaderMenuButton: true, sortingOrder: ['desc', 'asc'] }}
+          // HSR's relics grid column defaults (lib/tabs/tabRelics/columnDefs.ts), header style included
+          defaultColDef={defaultRelicsGridColDefs as unknown as ColDef<Row<T>>}
+          getLocaleText={getLocaleText}
           getRowId={(p) => p.data.id}
           rowHeight={33}
           headerHeight={48}
