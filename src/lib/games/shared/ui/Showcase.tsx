@@ -33,11 +33,9 @@ import {
   writeStorage,
 } from 'lib/games/shared/storage'
 import classes from 'lib/games/shared/ui/Showcase.module.css'
+import { useScreenshotAction } from 'lib/hooks/useScreenshotAction'
 import { Assets } from 'lib/rendering/assets'
-import {
-  ScreenshotAction,
-  screenshotElementById,
-} from 'lib/utils/screenshotUtils'
+import { ScreenshotAction } from 'lib/utils/screenshotUtils'
 import {
   createContext,
   type CSSProperties,
@@ -276,15 +274,8 @@ export function ShowcaseCard({ name, accent, portrait, portraitFit = 'cover', we
   }
   const seed = choice.mode === 'standard' ? STANDARD_COLOR : choice.mode === 'custom' && choice.color ? choice.color : auto
   const theme = resolveShowcaseTheme(seed, true)
-  const [shooting, setShooting] = useState<ScreenshotAction | undefined>()
-  const shoot = async (action: ScreenshotAction) => {
-    setShooting(action)
-    try {
-      await screenshotElementById(cardId, action, name)
-    } finally {
-      setShooting(undefined)
-    }
-  }
+  // HSR's screenshot hook: paints the spinner first, one action at a time, safe if the card unmounts
+  const { activeAction: shooting, trigger: shoot } = useScreenshotAction(cardId)
 
   const card = (
     <div
@@ -347,12 +338,12 @@ export function ShowcaseCard({ name, accent, portrait, portraitFit = 'cover', we
           <Text size='xs' fw={600} c='dimmed' ta='center'>Screenshot</Text>
           <Button.Group>
             <Tooltip label='Copy to clipboard'>
-              <ActionIcon size='lg' variant='filled' loading={shooting === ScreenshotAction.Clipboard} onClick={() => void shoot(ScreenshotAction.Clipboard)}>
+              <ActionIcon size='lg' variant='filled' loading={shooting === ScreenshotAction.Clipboard} onClick={() => shoot(ScreenshotAction.Clipboard, name)}>
                 <IconCamera size={18} />
               </ActionIcon>
             </Tooltip>
             <Tooltip label='Download'>
-              <ActionIcon size='lg' variant='filled' loading={shooting === ScreenshotAction.Download} onClick={() => void shoot(ScreenshotAction.Download)}>
+              <ActionIcon size='lg' variant='filled' loading={shooting === ScreenshotAction.Download} onClick={() => shoot(ScreenshotAction.Download, name)}>
                 <IconDownload size={18} />
               </ActionIcon>
             </Tooltip>

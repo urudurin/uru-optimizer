@@ -13,6 +13,7 @@ import {
   OrnamentSetToIndex,
   RelicSetToIndex,
 } from 'lib/sets/setConfigRegistry'
+import { SimScoreGrades } from 'lib/scoring/scoreScales'
 import { precisionRound } from 'lib/utils/mathUtils'
 import { type Nullable } from 'types/common'
 import type { SimulationMetadata } from 'types/metadata'
@@ -120,28 +121,7 @@ export function calculateOrnamentSets(ornamentSets: unknown[], nameProvided = tr
   return undefined
 }
 
-// Gradual scale
-export const SimScoreGrades = {
-  'AEON': 150, // Verified only
-  'WTF+': 140, // +10
-  'WTF': 130, // +9
-  'SSS+': 121, // +8
-  'SSS': 113, // +7
-  'SS+': 106, // +6
-  'SS': 100, // Benchmark
-  'S+': 95,
-  'S': 90,
-  'A+': 85,
-  'A': 80,
-  'B+': 75,
-  'B': 70,
-  'C+': 65,
-  'C': 60,
-  'D+': 55,
-  'D': 50,
-  'F+': 45,
-  'F': 40,
-}
+export { SimScoreGrades }
 
 // Score on 1.00 scale
 export function getSimScoreGrade(score: number, verified: boolean, numRelics: number, lightCone: boolean = true) {

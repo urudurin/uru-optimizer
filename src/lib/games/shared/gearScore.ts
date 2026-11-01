@@ -1,4 +1,6 @@
 import type { SubstatUpgrade } from 'lib/games/shared/analysis'
+import { pctToRating } from 'lib/relics/scoring/scoreFormatting'
+import { SimScoreGrades } from 'lib/scoring/scoreScales'
 
 // One piece of gear's score, after Fribbels' HSR relic score (lib/relics/scoring): its substats weighted by how much
 // the character wants each stat, as a percent of the best piece possible for that character, with HSR's grades
@@ -20,32 +22,10 @@ export type PieceRules = {
 // A substat in rolls of its maximum value: 1 = one max roll
 export type SubstatUnits = { stat: string, units: number }
 
-// HSR's grades, minus AEON (HSR only gives it to verified relics)
-const RATING_TIERS: [number, string][] = [
-  [0, 'F'],
-  [5, 'F+'],
-  [10, 'D'],
-  [15, 'D+'],
-  [20, 'C'],
-  [25, 'C+'],
-  [30, 'B'],
-  [35, 'B+'],
-  [40, 'A'],
-  [45, 'A+'],
-  [50, 'S'],
-  [55, 'S+'],
-  [60, 'SS'],
-  [65, 'SS+'],
-  [70, 'SSS'],
-  [75, 'SSS+'],
-  [80, 'WTF'],
-  [85, 'WTF+'],
-]
-
+// HSR's relic grades (relics/scoring/scoreFormatting.ts pctToRating): 5% of the ideal piece per grade, F to WTF+, '?'
+// for nothing useful
 export function ratingFor(percent: number): string {
-  if (!(percent > 0)) return '?'
-  for (let i = RATING_TIERS.length - 1; i >= 0; i--) if (percent >= RATING_TIERS[i][0]) return RATING_TIERS[i][1]
-  return '?'
+  return pctToRating(percent)
 }
 
 // The best a piece can score: its substats are the most wanted stats, and every upgrade lands on the most wanted one
@@ -128,29 +108,12 @@ export function weightsFromPriority(priority: string[]): Record<string, number> 
 // 62.3 gets 100.8% · SS from HSR's DPS Benchmark, and this scale gives the same 100.8%
 export const BENCHMARK_PIECE_PERCENT = 62
 
-const BENCHMARK_GRADES: [number, string][] = [
-  [140, 'WTF+'],
-  [130, 'WTF'],
-  [121, 'SSS+'],
-  [113, 'SSS'],
-  [106, 'SS+'],
-  [100, 'SS'],
-  [95, 'S+'],
-  [90, 'S'],
-  [85, 'A+'],
-  [80, 'A'],
-  [75, 'B+'],
-  [70, 'B'],
-  [65, 'C+'],
-  [60, 'C'],
-  [55, 'D+'],
-  [50, 'D'],
-  [45, 'F+'],
-  [40, 'F'],
-]
+// HSR's DPS score grades, best first; AEON is for verified HSR builds only
+const BENCHMARK_GRADES = Object.entries(SimScoreGrades).filter(([grade]) => grade !== 'AEON').sort((a, b) => b[1] - a[1])
 
 export function benchmarkRating(percent: number): string {
-  return BENCHMARK_GRADES.find(([min]) => percent >= min)?.[1] ?? 'F'
+  // Below HSR's lowest grade we still show F, where HSR shows '?'
+  return BENCHMARK_GRADES.find(([, min]) => percent >= min)?.[0] ?? 'F'
 }
 
 // An average piece score (0-100) on the benchmark scale (0-200). benchmark is the average piece score that counts as 100%

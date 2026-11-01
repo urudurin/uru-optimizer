@@ -9,6 +9,7 @@ import {
   type SortOptionKey,
 } from 'lib/optimization/sortOptions'
 import { getSimScoreGrade } from 'lib/scoring/dpsScore'
+import { calculateScorePercent } from 'lib/scoring/scoreScales'
 import { ScoringType } from 'lib/scoring/scoringTypes'
 import { currentLocale } from 'lib/utils/i18nUtils'
 import {
@@ -46,20 +47,7 @@ export function isSimScoreMode(scoringType: ScoringType | null | undefined): boo
     || scoringType === ScoringType.SHIELD_SCORE
 }
 
-export function calculateScorePercent(
-  score: number,
-  baseline: number,
-  benchmark: number,
-  perfection: number,
-): number {
-  const clampedPerfection = Math.max(perfection, benchmark)
-  if (score >= benchmark) {
-    const range = clampedPerfection - benchmark
-    return range > 0 ? 1 + (score - benchmark) / range : 1
-  }
-  const range = benchmark - baseline
-  return range > 0 ? (score - baseline) / range : 0
-}
+export { calculateScorePercent }
 
 export const CONFIG_DISPLAY_ORDER: ScoringConfigType[] = [
   ScoringConfigType.DPS,

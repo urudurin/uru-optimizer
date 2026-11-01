@@ -6,6 +6,7 @@ import {
   readStorage,
   writeStorage,
 } from 'lib/games/shared/storage'
+import { calculateScorePercent } from 'lib/scoring/scoreScales'
 
 // A build's rating by its rotation damage, after HSR's DPS score (lib/scoring/simScoringUtils.ts): the build's damage
 // is placed between three simulated builds that keep its main stats and sets but swap its substats for made-up ones.
@@ -49,17 +50,6 @@ export type DamageScore = GearScore & {
   baseline: number,
   benchmark: number,
   perfect: number,
-}
-
-// HSR's calculateScorePercent (lib/scoring/scoringConfig.ts): baseline 0, benchmark 1, perfection 2
-export function scorePercent(score: number, baseline: number, benchmark: number, perfection: number): number {
-  const clampedPerfection = Math.max(perfection, benchmark)
-  if (score >= benchmark) {
-    const range = clampedPerfection - benchmark
-    return range > 0 ? 1 + (score - benchmark) / range : 1
-  }
-  const range = benchmark - baseline
-  return range > 0 ? (score - baseline) / range : 0
 }
 
 // The extra stats that turn the build's substats into these rolls
@@ -113,7 +103,7 @@ export function damageScore(input: DamageScoreInput, params: DamageScoreParams):
   const perfect = simulateBuild(input, params.perfect, 'max')
   let result: DamageScore | undefined
   if (damage > 0 && benchmark > baseline) {
-    const percent = Math.floor(scorePercent(damage, baseline, benchmark, perfect) * 1000) / 10
+    const percent = Math.floor(calculateScorePercent(damage, baseline, benchmark, perfect) * 1000) / 10
     result = { percent, rating: benchmarkRating(percent), damage, baseline, benchmark, perfect }
   }
 

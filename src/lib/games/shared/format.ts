@@ -1,3 +1,5 @@
+import { currentLocale } from 'lib/utils/i18nUtils'
+
 // Number rounding and formatting shared by the non-HSR games
 
 export function roundHalfUp(value: number, digits = 0): number {
@@ -12,7 +14,7 @@ export function roundDown(value: number, digits = 0): number {
   return Math.floor(value * factor + 1e-6) / factor
 }
 
-// Thousands separators, the way the games show numbers
+// Thousands separators in the language HSR's picker chose (lib/utils/i18nUtils.ts currentLocale), up to 3 decimals
 export function formatNumber(value: number, suffix = ''): string {
-  return `${value.toLocaleString('en-US')}${suffix}`
+  return `${value.toLocaleString(currentLocale(), { maximumFractionDigits: 3 })}${suffix}`
 }

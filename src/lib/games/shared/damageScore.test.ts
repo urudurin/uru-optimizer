@@ -1,9 +1,9 @@
 import {
   damageScore,
   type DamageScoreInput,
-  scorePercent,
   simulateBuild,
 } from 'lib/games/shared/damageScore'
+import { calculateScorePercent } from 'lib/scoring/scoreScales'
 import {
   describe,
   expect,
@@ -29,12 +29,12 @@ const params = {
   perfect: { goal: 24, free: 0, maxPerSub: 10, deductionPerMain: 2 },
 }
 
-describe('scorePercent', () => {
+describe('calculateScorePercent (HSR)', () => {
   it('maps baseline, benchmark and perfection to 0, 1 and 2', () => {
-    expect(scorePercent(10, 10, 20, 40)).toBe(0)
-    expect(scorePercent(15, 10, 20, 40)).toBe(0.5)
-    expect(scorePercent(20, 10, 20, 40)).toBe(1)
-    expect(scorePercent(30, 10, 20, 40)).toBe(1.5)
+    expect(calculateScorePercent(10, 10, 20, 40)).toBe(0)
+    expect(calculateScorePercent(15, 10, 20, 40)).toBe(0.5)
+    expect(calculateScorePercent(20, 10, 20, 40)).toBe(1)
+    expect(calculateScorePercent(30, 10, 20, 40)).toBe(1.5)
   })
 })
 
