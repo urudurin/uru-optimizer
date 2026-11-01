@@ -23,6 +23,8 @@ import {
   cardTotalW,
   defaultGap,
   middleColumnWidth,
+  newLcHeight,
+  newLcMargin,
   parentH,
   parentW,
   relicCardH,
@@ -296,16 +298,27 @@ export function ShowcaseCard({ name, accent, portrait, portraitFit = 'cover', we
           <img src={portrait} alt='' draggable={false} />
         </div>
       )}
-      <div className={classes.portrait} style={{ width: parentW, height: parentH }}>
-        {portrait
-          ? <img src={portrait} alt={name} style={{ objectFit: portraitFit }} draggable={false} />
-          : <div className={classes.portraitFallback}>{initials(name)}</div>}
+      {
+        /* HSR's left column (characterPreviewController.ts): the portrait shrinks to make room for the weapon in its own box
+          below, newLcHeight tall with newLcMargin between, so the weapon never covers the art */
+      }
+      <div className={classes.portraitColumn} style={{ width: parentW, height: parentH, gap: newLcMargin }}>
+        <div className={classes.portrait} style={{ height: weapon ? parentH - newLcHeight - newLcMargin : parentH }}>
+          {portrait
+            ? <img src={portrait} alt={name} style={{ objectFit: portraitFit }} draggable={false} />
+            : <div className={classes.portraitFallback}>{initials(name)}</div>}
+        </div>
         {weapon && (
-          <div className={classes.weapon}>
-            {weapon.image && <img src={weapon.image} alt='' loading='lazy' />}
-            <div style={{ minWidth: 0 }}>
-              <Text size='sm' fw={600} truncate>{weapon.name}</Text>
-              <Text size='xs' c='dimmed'>{weapon.meta}</Text>
+          <div className={classes.weapon} style={{ height: newLcHeight }}>
+            {weapon.image && (
+              <div className={classes.weaponBlur} aria-hidden>
+                <img src={weapon.image} alt='' draggable={false} />
+              </div>
+            )}
+            {weapon.image && <img className={classes.weaponIcon} src={weapon.image} alt='' loading='lazy' draggable={false} />}
+            <div className={classes.weaponText}>
+              <Text size='md' fw={600} truncate>{weapon.name}</Text>
+              <Text size='sm' c='dimmed'>{weapon.meta}</Text>
             </div>
           </div>
         )}
