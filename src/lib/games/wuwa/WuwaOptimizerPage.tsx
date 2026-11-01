@@ -17,6 +17,7 @@ import {
   type DamagePart,
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
+import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
 import { formatNumber } from 'lib/games/shared/format'
 import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { todayString } from 'lib/games/shared/importedPresets'
@@ -65,6 +66,7 @@ import {
   CharacterPortrait,
   RankButtons,
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
+import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
 import {
   DEFAULT_RESULT_LIMIT,
@@ -159,6 +161,11 @@ import {
 } from 'lib/games/wuwa/stats/echoScore'
 import type { WuwaBuffSetting } from 'lib/games/wuwa/team/buffs'
 import {
+  withWuwaExtraBuffs,
+  WUWA_EXTRA_BUFFS,
+  wuwaExtraEnemy,
+} from 'lib/games/wuwa/team/extraBuffs'
+import {
   NO_WUWA_TEAM,
   wuwaTeamBuffsFor,
 } from 'lib/games/wuwa/team/teamBuffs'
@@ -234,6 +241,8 @@ type WuwaOptimizerSettings = {
   teammates: string[],
   // Rank, weapon and 4-piece changes per teammate, for the team buffs only (shared/teammateOverrides.ts)
   teammateOverrides: TeammateOverrides,
+  // Buffs typed in by hand, added to every build (shared/extraBuffs.ts)
+  extraBuffs: ExtraBuffs,
   teamSettings: Record<string, WuwaBuffSetting>,
   // The rotation damage target (damage/damage.ts): the enemy and the rotation
   enemy: EnemySettings,
@@ -260,6 +269,7 @@ function defaultSettings(charId: string): WuwaOptimizerSettings {
     teammates: [],
     teamSettings: {},
     teammateOverrides: {},
+    extraBuffs: {},
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(charId),
     combatSettings: {},
@@ -317,6 +327,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     teammates,
     teamSettings,
     teammateOverrides,
+    extraBuffs,
     enemy,
     rotation,
     combatSettings,
@@ -339,6 +350,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
   const setTeammateOverrides = fieldSetter(updateSettings, 'teammateOverrides')
+  const setExtraBuffs = fieldSetter(updateSettings, 'extraBuffs')
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
@@ -397,7 +409,10 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   // The main echo: the one the rotation picked, or the one worn now. Its main-slot buff counts like the kit's
   const wornEchoes = character.echoIds.flatMap((id) => echoes.find((e) => e.id === id) ?? [])
   const mainEcho = mainEchoBonus(rotation.echo?.id ?? wornEchoes[0]?.defId, character.charId)
-  const combatBonus = { ...teamResult.bonus }
+  // The team's bonus with the extra buffs, for every target; kit and main-echo buffs join it when ranking by damage
+  const teamBonus = withWuwaExtraBuffs(teamResult.bonus, extraBuffs, CHARACTER_INFO[character.charId]?.element ?? undefined)
+  const extraEnemy = wuwaExtraEnemy(extraBuffs)
+  const combatBonus = { ...teamBonus }
   if (byDamage) {
     for (const [stat, value] of [...Object.entries(kit.bonus), ...Object.entries(mainEcho.stats)] as [keyof typeof combatBonus, number][]) {
       combatBonus[stat] = (combatBonus[stat] ?? 0) + value
@@ -414,13 +429,18 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     charId: character.charId,
     characterLevel: character.level,
     rotation,
-    enemy: { ...enemy, defIgnore: enemy.defIgnore + kit.defIgnore + teamResult.defIgnore, resShred: enemy.resShred + kit.resShred + teamResult.resShred },
+    enemy: {
+      ...enemy,
+      defIgnore: enemy.defIgnore + kit.defIgnore + teamResult.defIgnore + extraEnemy.defIgnore,
+      resShred: enemy.resShred + kit.resShred + teamResult.resShred + extraEnemy.resShred,
+    },
     element: CHARACTER_INFO[character.charId]?.element ?? undefined,
     // The kit's and the team's DMG Amplified add up per kind
     amplify: Object.fromEntries(
-      [...new Set([...Object.keys(kit.amplify), ...Object.keys(teamResult.amplify)])].map((kind) => [
+      [...new Set([...Object.keys(kit.amplify), ...Object.keys(teamResult.amplify), ...(extraEnemy.amplify ? ['all'] : [])])].map((kind) => [
         kind,
-        (kit.amplify[kind as keyof typeof kit.amplify] ?? 0) + (teamResult.amplify[kind as keyof typeof teamResult.amplify] ?? 0),
+        (kit.amplify[kind as keyof typeof kit.amplify] ?? 0) + (teamResult.amplify[kind as keyof typeof teamResult.amplify] ?? 0)
+        + (kind === 'all' ? extraEnemy.amplify : 0),
       ]),
     ),
     typeBonus: { echo: mainEcho.echoDmg },
@@ -811,6 +831,14 @@ ${losing.join(', ')} ${
                   setResult(undefined)
                 }}
               />
+              <ExtraBuffsCard
+                defs={WUWA_EXTRA_BUFFS}
+                buffs={extraBuffs}
+                onChange={(next) => {
+                  setExtraBuffs(next)
+                  setResult(undefined)
+                }}
+              />
             </FormRow>
           </FormRows>
           <KitDisclaimer name={characterName(character.charId)} effects={KIT_EFFECTS[character.charId]} byDamage={byDamage} />
@@ -906,7 +934,7 @@ ${losing.join(', ')} ${
                 character,
                 build.echoes,
                 result.target,
-                result.target.kind === 'damage' ? withFullSets(combatBonus, build.echoes, fullSetBonus) : teamResult.bonus,
+                result.target.kind === 'damage' ? withFullSets(combatBonus, build.echoes, fullSetBonus) : teamBonus,
               )}
               breakdown={result.target.kind === 'damage' ? wuwaBreakdown(result.target.setup, build.stats) : undefined}
               scoreLabel={targetLabel(result.target)}

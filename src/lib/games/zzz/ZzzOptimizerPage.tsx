@@ -19,6 +19,7 @@ import {
 import {
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
+import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
 import { formatNumber } from 'lib/games/shared/format'
 import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { scoreBuild } from 'lib/games/shared/gearScore'
@@ -69,6 +70,7 @@ import {
   CharacterPortrait,
   RankButtons,
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
+import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
 import {
   DEFAULT_RESULT_LIMIT,
@@ -177,6 +179,11 @@ import {
   SET_4PC_BUFFS,
   type ZzzBuffSetting,
 } from 'lib/games/zzz/team/buffs'
+import {
+  withZzzExtraDebuffs,
+  ZZZ_EXTRA_BUFFS,
+  zzzExtraEffects,
+} from 'lib/games/zzz/team/extraBuffs'
 import { zzzTeamBuffsFor } from 'lib/games/zzz/team/teamBuffs'
 import {
   zzzTeamEntries,
@@ -227,6 +234,8 @@ type ZzzOptimizerSettings = {
   teammates: string[],
   // Rank, weapon and 4-piece changes per teammate, for the team buffs only (shared/teammateOverrides.ts)
   teammateOverrides: TeammateOverrides,
+  // Buffs typed in by hand, added to every build (shared/extraBuffs.ts)
+  extraBuffs: ExtraBuffs,
   teamSettings: Record<string, ZzzBuffSetting>,
   // The enemy and the rotation, for ranking by damage (damage/damage.ts)
   enemy: EnemySettings,
@@ -317,6 +326,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     teammates: [],
     teamSettings: {},
     teammateOverrides: {},
+    extraBuffs: {},
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(id),
     combatSettings: {},
@@ -340,6 +350,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     teammates,
     teamSettings,
     teammateOverrides,
+    extraBuffs,
     enemy,
     rotation,
     combatSettings,
@@ -367,6 +378,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
   const setTeammateOverrides = fieldSetter(updateSettings, 'teammateOverrides')
+  const setExtraBuffs = fieldSetter(updateSettings, 'extraBuffs')
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
@@ -394,7 +406,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   for (const [kind, value] of Object.entries(teamResult.kindBonus) as [keyof typeof kindBonus, number][]) {
     kindBonus[kind] = (kindBonus[kind] ?? 0) + value
   }
-  const combatEffects = byDamage ? [...teamResult.effects, ...kit.statEffects] : teamResult.effects
+  const combatEffects = [...teamResult.effects, ...zzzExtraEffects(extraBuffs), ...(byDamage ? kit.statEffects : [])]
   // The squad's attributes: Vortex lines, Windswept and Frostbite need a Wind or Ice agent
   const teamElements = [agent.element, ...teammates.map((id) => AGENTS[id]?.element ?? '')]
   // The rotation and enemy, for ranking by damage; the team's shred counts here
@@ -425,14 +437,14 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
       frostbite: !!enemy.frostbite && teamElements.includes('Ice'),
     },
     // The kit and gear's own RES and DEF ignore add to the team's shred
-    debuffs: {
+    debuffs: withZzzExtraDebuffs({
       ...teamResult.debuffs,
       defShred: teamResult.debuffs.defShred + kit.defIgnore,
       resShred: teamResult.debuffs.resShred + kit.resIgnore,
       dmgTaken: teamResult.debuffs.dmgTaken + kit.dmgTaken,
       // Stun multiplier bonuses from different agents add up (Nangong Yu's Misstep, Norma's Tech Divide)
       stunBonus: teamResult.debuffs.stunBonus + kit.stunBonus,
-    },
+    }, extraBuffs),
   })
   const damageSetup = setupFor(rotation)
   const teammateOptions = [...new Map(builds.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
@@ -971,6 +983,7 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
                 applied={kit.applied}
                 onSetting={(id, value) => setCombatSettings((current) => ({ ...current, [id]: value }))}
               />
+              <ExtraBuffsCard defs={ZZZ_EXTRA_BUFFS} buffs={extraBuffs} onChange={setExtraBuffs} />
             </FormRow>
           </FormRows>
           <KitDisclaimer name={agent.name} effects={KIT_EFFECTS[agent.id]} byDamage={byDamage} />

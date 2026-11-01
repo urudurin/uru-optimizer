@@ -78,6 +78,11 @@ import {
   type BuffSetting,
   SET_4PC_BUFFS,
 } from 'lib/games/genshin/team/buffs'
+import {
+  GENSHIN_EXTRA_BUFFS,
+  withGenshinExtraBuffs,
+  withGenshinExtraDebuffs,
+} from 'lib/games/genshin/team/extraBuffs'
 import { teamBuffsFor } from 'lib/games/genshin/team/teamBuffs'
 import {
   type Artifact,
@@ -110,6 +115,7 @@ import {
   type DamagePart,
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
+import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
 import { formatNumber } from 'lib/games/shared/format'
 import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { todayString } from 'lib/games/shared/importedPresets'
@@ -159,6 +165,7 @@ import {
   CharacterPortrait,
   RankButtons,
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
+import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
 import {
   DEFAULT_RESULT_LIMIT,
@@ -237,6 +244,8 @@ type GenshinOptimizerSettings = {
   onField: boolean,
   // Rank, weapon and 4-piece changes per teammate, for the team buffs only (shared/teammateOverrides.ts)
   teammateOverrides: TeammateOverrides,
+  // Buffs typed in by hand, added to every build (shared/extraBuffs.ts)
+  extraBuffs: ExtraBuffs,
   teamSettings: Record<string, BuffSetting>,
   // The rotation damage target (damage/damage.ts): the enemy and the rotation
   enemy: EnemySettings,
@@ -264,6 +273,7 @@ function defaultSettings(characterId: string): GenshinOptimizerSettings {
     onField: true,
     teamSettings: {},
     teammateOverrides: {},
+    extraBuffs: {},
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(characterId),
     combatSettings: {},
@@ -320,6 +330,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     onField,
     teamSettings,
     teammateOverrides,
+    extraBuffs,
     enemy,
     rotation,
     combatSettings,
@@ -343,6 +354,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const setOnField = fieldSetter(updateSettings, 'onField')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
   const setTeammateOverrides = fieldSetter(updateSettings, 'teammateOverrides')
+  const setExtraBuffs = fieldSetter(updateSettings, 'extraBuffs')
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
@@ -398,7 +410,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   // What the team gives this character, the same for every build
   const team = { teammates, onField, settings: teamSettings, overrides: keepOverridesFor(teammateOverrides, teammates) }
   const teamResult = teamBuffsFor(character, team, { characters, artifacts })
-  const teamBuffs = { premod: teamResult.premod, total: teamResult.total }
+  const teamBuffs = withGenshinExtraBuffs({ premod: teamResult.premod, total: teamResult.total }, extraBuffs)
   const talents = rotationTalents(character, rotation)
   // The Lunar and Stellar kinds this team can trigger; the page only offers those
   const reactionsInTeam = teamReactions([character.id, ...teammates])
@@ -409,13 +421,14 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     hexerei: hexereiCount([character.id, ...teammates]),
   }
   const resolvedCombat = resolveCombat(character, combat, setCountsOf(fourPieceSet ? Array(4).fill(fourPieceSet) : []))
-  const debuffs = {
+  const kitDebuffs = {
     defShred: teamResult.debuffs.defShred + resolvedCombat.debuffs.defShred,
     resShred: { ...teamResult.debuffs.resShred },
   }
-  for (const [element, value] of Object.entries(resolvedCombat.debuffs.resShred) as [keyof typeof debuffs.resShred, number][]) {
-    debuffs.resShred[element] = (debuffs.resShred[element] ?? 0) + value
+  for (const [element, value] of Object.entries(resolvedCombat.debuffs.resShred) as [keyof typeof kitDebuffs.resShred, number][]) {
+    kitDebuffs.resShred[element] = (kitDebuffs.resShred[element] ?? 0) + value
   }
+  const debuffs = withGenshinExtraDebuffs(kitDebuffs, extraBuffs)
   const damageSetup = {
     characterId: character.id,
     characterLevel: character.level,
@@ -829,6 +842,14 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
                 applied={resolvedCombat.applied}
                 onSetting={(id, value) => {
                   setCombatSettings((current) => ({ ...current, [id]: value }))
+                  setResult(undefined)
+                }}
+              />
+              <ExtraBuffsCard
+                defs={GENSHIN_EXTRA_BUFFS}
+                buffs={extraBuffs}
+                onChange={(next) => {
+                  setExtraBuffs(next)
                   setResult(undefined)
                 }}
               />
