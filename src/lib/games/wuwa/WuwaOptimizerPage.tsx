@@ -31,8 +31,7 @@ import {
 import {
   fieldSetter,
   migrateOptimizerSettings,
-  readOptimizerSettings,
-  rememberCharacter,
+  useActiveCharacter,
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import {
@@ -337,7 +336,8 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const teams = useWuwaStore((s) => s.teams)
   const priority = useWuwaStore((s) => s.priority)
   const equip = useWuwaStore((s) => s.equip)
-  const [characterId, setCharacterId] = useState<string | null>(() => readOptimizerSettings(SETTINGS_KEY).last ?? null)
+  // The open character, in the settings store (shared/optimizerSettings.ts)
+  const [characterId, setCharacterId] = useActiveCharacter(SETTINGS_KEY)
   const character = characters.find((c) => c.charId === characterId) ?? characters[0]
 
   // Saved per Resonator, see shared/optimizerSettings.ts
@@ -714,7 +714,6 @@ ${losing.join(', ')} ${
                   value={character.charId}
                   onChange={(value) => {
                     setCharacterId(value)
-                    rememberCharacter(SETTINGS_KEY, value)
                     setResult(undefined)
                   }}
                 />

@@ -3,7 +3,7 @@ import type {
   Element,
   GenshinStatKey,
 } from 'lib/games/genshin/types'
-import { readOptimizerSettings } from 'lib/games/shared/optimizerSettings'
+import { optimizerSettingsStore } from 'lib/games/shared/optimizerSettings'
 
 // What the Genshin optimizer can rank by, and each character's saved choice. The optimizer page and the artifact score
 // (stats/artifactScore.ts) both use them, so a score follows what the character is ranked by
@@ -32,6 +32,6 @@ export function genshinTarget(value: string, element: Element | undefined): Opti
 
 // What this character is ranked by in the optimizer, the average ATK hit until it's changed there
 export function savedGenshinTarget(characterId: string, element: Element | undefined): OptimizerTarget {
-  const value = readOptimizerSettings(GENSHIN_SETTINGS_KEY).byCharacter[characterId]?.targetValue
+  const value = optimizerSettingsStore(GENSHIN_SETTINGS_KEY).getState().saved.byCharacter[characterId]?.targetValue
   return genshinTarget(typeof value === 'string' ? value : 'avg:atk', element)
 }

@@ -1,5 +1,6 @@
 import { forgetPriority } from 'lib/games/shared/characterPriority'
 import { forgetGameSettings } from 'lib/games/shared/gameSettings'
+import { reloadOptimizerSettings } from 'lib/games/shared/optimizerSettings'
 import {
   readStorage,
   writeStorage,
@@ -85,9 +86,10 @@ export function restoreBackupSettings(game: string, text: string): number {
     const value = (settings as Record<string, unknown>)[key]
     if (value !== undefined && writeStorage(key, JSON.stringify(value))) restored++
   }
-  // The game settings and priority order are cached once read
+  // The game settings, priority order and optimizer settings are cached once read
   forgetGameSettings()
   forgetPriority()
+  reloadOptimizerSettings(`${game}-optimizer-settings`)
   return restored
 }
 

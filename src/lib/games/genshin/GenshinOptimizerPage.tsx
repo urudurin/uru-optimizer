@@ -134,8 +134,7 @@ import {
 import {
   fieldSetter,
   migrateOptimizerSettings,
-  readOptimizerSettings,
-  rememberCharacter,
+  useActiveCharacter,
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import {
@@ -341,7 +340,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const characters = useMemo(() => genshinRoster(savedCharacters, images), [savedCharacters, images])
   const saveCharacter = useGenshinStore((s) => s.saveCharacter)
   const usable = useMemo(() => characters.filter(hasStatData), [characters])
-  const [characterId, setCharacterId] = useState<string | null>(() => readOptimizerSettings(SETTINGS_KEY).last ?? null)
+  // The open character, in the settings store (shared/optimizerSettings.ts)
+  const [characterId, setCharacterId] = useActiveCharacter(SETTINGS_KEY)
   const character = usable.find((c) => c.id === characterId) ?? usable[0]
 
   // Saved per character, see shared/optimizerSettings.ts
@@ -736,7 +736,6 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
                   value={character.id}
                   onChange={(value) => {
                     setCharacterId(value)
-                    rememberCharacter(SETTINGS_KEY, value)
                     setResult(undefined)
                   }}
                 />

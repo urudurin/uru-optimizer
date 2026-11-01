@@ -34,8 +34,7 @@ import {
 import {
   fieldSetter,
   migrateOptimizerSettings,
-  readOptimizerSettings,
-  rememberCharacter,
+  useActiveCharacter,
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import {
@@ -330,7 +329,8 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const fallbackAgent = agents.find((a) => storeBuilds.some((b) => b.agentId === a.id)) ?? agents[0]
   // The last agent opened, even one from Enka's data, which loads after the first render: until it has, the page shows
   // the first agent with a build
-  const [agentId, setAgentId] = useState(() => readOptimizerSettings(SETTINGS_KEY).last ?? fallbackAgent.id)
+  const [lastAgentId, setAgentId] = useActiveCharacter(SETTINGS_KEY)
+  const agentId = lastAgentId ?? fallbackAgent.id
   const agent = AGENTS[agentId] ?? fallbackAgent
   // An agent nobody changed yet starts with the user's own W-Engine and the stat screen's conditions
   const defaultSettings = useCallback((id: string): ZzzOptimizerSettings => ({
@@ -594,7 +594,6 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   function changeAgent(id: string | null) {
     if (!id || !AGENTS[id]) return
     setAgentId(id)
-    rememberCharacter(SETTINGS_KEY, id)
     setResult(undefined)
   }
 

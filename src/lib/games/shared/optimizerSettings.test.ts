@@ -1,6 +1,9 @@
 import {
   mergeSettings,
+  migrateOptimizerSettings,
+  optimizerSettingsStore,
   readOptimizerSettings,
+  reloadOptimizerSettings,
 } from 'lib/games/shared/optimizerSettings'
 import {
   describe,
@@ -37,6 +40,33 @@ describe('optimizer settings', () => {
     expect(readOptimizerSettings('test-optimizer-settings')).toEqual({ byCharacter: {} })
     localStorage.setItem('test-optimizer-settings', JSON.stringify({ last: 'Venti', byCharacter: { Venti: { target: 'cv' } } }))
     expect(readOptimizerSettings('test-optimizer-settings')).toEqual({ last: 'Venti', byCharacter: { Venti: { target: 'cv' } } })
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps a store per key that writes through to storage and picks up direct writes', () => {
+    const storage = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    })
+    const key = 'test-store-optimizer-settings'
+    const store = optimizerSettingsStore(key)
+    expect(optimizerSettingsStore(key)).toBe(store)
+    expect(store.getState().saved).toEqual({ byCharacter: {} })
+
+    store.getState().write({ last: 'Venti', byCharacter: { Venti: { target: 'cv' } } })
+    expect(JSON.parse(storage.get(key)!)).toEqual({ last: 'Venti', byCharacter: { Venti: { target: 'cv' } } })
+
+    // A migration writes storage itself, then the store reads it again
+    migrateOptimizerSettings(key, 'test-migration', (_, saved) => ({ ...saved, target: 'damage' }))
+    expect(store.getState().saved.byCharacter.Venti).toEqual({ target: 'damage' })
+    expect(store.getState().saved.migrations).toEqual(['test-migration'])
+
+    // So does a restored backup
+    storage.set(key, JSON.stringify({ last: 'Bennett', byCharacter: {} }))
+    reloadOptimizerSettings(key)
+    expect(store.getState().saved).toEqual({ last: 'Bennett', byCharacter: {} })
     vi.unstubAllGlobals()
   })
 })

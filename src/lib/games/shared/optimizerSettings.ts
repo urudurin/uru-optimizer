@@ -2,15 +2,19 @@ import {
   readStorage,
   writeStorage,
 } from 'lib/games/shared/storage'
+import { useCallback } from 'react'
 import {
-  useCallback,
-  useReducer,
-} from 'react'
+  create,
+  type StoreApi,
+  type UseBoundStore,
+} from 'zustand'
 
 // Optimizer settings saved per character, like HSR's optimizer: going back to a character brings back their target,
 // sets, main stats, minimums and so on. Kept in this browser under one key per game ('<game>-optimizer-settings'),
 // with the character last opened. Saved values are only used where they match the defaults' shape, so a save from an
 // older version (or a broken one) falls back to defaults instead of breaking the page.
+// Like HSR's optimizer request store, a zustand store per key holds them (optimizerSettingsStore), so any component can
+// read the open character and their form; storage stays the saved copy, and writes go through the store.
 
 export type SavedOptimizerSettings = {
   last?: string,
@@ -32,6 +36,36 @@ export function readOptimizerSettings(storageKey: string): SavedOptimizerSetting
   } catch {
     return { byCharacter: {} }
   }
+}
+
+type SettingsStore = {
+  saved: SavedOptimizerSettings,
+  write: (next: SavedOptimizerSettings) => void,
+  // Reads storage again, after something wrote it directly (a migration, a restored backup)
+  reload: () => void,
+}
+
+const stores = new Map<string, UseBoundStore<StoreApi<SettingsStore>>>()
+
+// The store for one game's settings key, made on first use
+export function optimizerSettingsStore(storageKey: string): UseBoundStore<StoreApi<SettingsStore>> {
+  let store = stores.get(storageKey)
+  if (!store) {
+    store = create<SettingsStore>()((set) => ({
+      saved: readOptimizerSettings(storageKey),
+      write: (next) => {
+        writeStorage(storageKey, JSON.stringify(next))
+        set({ saved: next })
+      },
+      reload: () => set({ saved: readOptimizerSettings(storageKey) }),
+    }))
+    stores.set(storageKey, store)
+  }
+  return store
+}
+
+export function reloadOptimizerSettings(storageKey: string) {
+  stores.get(storageKey)?.getState().reload()
 }
 
 function kindOf(value: unknown): string {
@@ -61,24 +95,28 @@ export function useCharacterSettings<T extends object>(
   characterId: string,
   defaults: (characterId: string) => T,
 ): [T, (update: SettingsUpdate<T>) => void] {
-  const [, refresh] = useReducer((n: number) => n + 1, 0)
-  const settings = mergeSettings(defaults(characterId), readOptimizerSettings(storageKey).byCharacter[characterId])
+  const store = optimizerSettingsStore(storageKey)
+  const settings = mergeSettings(defaults(characterId), store((s) => s.saved.byCharacter[characterId]))
 
   const update = useCallback((change: SettingsUpdate<T>) => {
-    const saved = readOptimizerSettings(storageKey)
+    const { saved, write } = store.getState()
     const current = mergeSettings(defaults(characterId), saved.byCharacter[characterId])
     const next = { ...current, ...(typeof change === 'function' ? change(current) : change) }
-    writeStorage(storageKey, JSON.stringify({ ...saved, byCharacter: { ...saved.byCharacter, [characterId]: next } }))
-    refresh()
-  }, [storageKey, characterId, defaults])
+    write({ ...saved, byCharacter: { ...saved.byCharacter, [characterId]: next } })
+  }, [store, characterId, defaults])
 
   return [settings, update]
 }
 
-// Remembers which character the optimizer last had open
-export function rememberCharacter(storageKey: string, characterId: string) {
-  const saved = readOptimizerSettings(storageKey)
-  if (saved.last !== characterId) writeStorage(storageKey, JSON.stringify({ ...saved, last: characterId }))
+// The character the optimizer has open (undefined until one is picked), and a function to open another, which is saved
+export function useActiveCharacter(storageKey: string): [string | undefined, (characterId: string) => void] {
+  const store = optimizerSettingsStore(storageKey)
+  const last = store((s) => s.saved.last)
+  const open = useCallback((characterId: string) => {
+    const { saved, write } = store.getState()
+    if (saved.last !== characterId) write({ ...saved, last: characterId })
+  }, [store])
+  return [last, open]
 }
 
 // A setter for one field, taking a value or a function of the old value, like useState's
@@ -98,4 +136,5 @@ export function migrateOptimizerSettings(
   if (saved.migrations?.includes(id)) return
   const byCharacter = Object.fromEntries(Object.entries(saved.byCharacter).map(([characterId, settings]) => [characterId, change(characterId, settings)]))
   writeStorage(storageKey, JSON.stringify({ ...saved, byCharacter, migrations: [...(saved.migrations ?? []), id] }))
+  reloadOptimizerSettings(storageKey)
 }

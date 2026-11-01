@@ -1,4 +1,4 @@
-import { readOptimizerSettings } from 'lib/games/shared/optimizerSettings'
+import { optimizerSettingsStore } from 'lib/games/shared/optimizerSettings'
 import type { EchoTarget } from 'lib/games/wuwa/optimizer/echoOptimizer'
 import type { WuwaStats } from 'lib/games/wuwa/stats/computeStats'
 
@@ -27,6 +27,6 @@ export function wuwaTarget(value: string): EchoTarget {
 
 // What this Resonator is ranked by in the optimizer, the average ATK hit until it's changed there
 export function savedWuwaTarget(charId: string): EchoTarget {
-  const value = readOptimizerSettings(WUWA_SETTINGS_KEY).byCharacter[charId]?.targetValue
+  const value = optimizerSettingsStore(WUWA_SETTINGS_KEY).getState().saved.byCharacter[charId]?.targetValue
   return wuwaTarget(typeof value === 'string' ? value : 'avg:atk')
 }
