@@ -68,6 +68,7 @@ export function deserializeZzzData(text: string | null): ZzzData {
 export function equipZzzDiscs(
   data: ZzzData,
   agent: { id: string, name: string, element: string, specialty: string, level: number },
+  // An empty id means no W-Engine
   wEngine: { id: string, refinement: number },
   discs: Disc[],
   // Give a previous owner this agent's old disc (true) or leave their slot empty (shared/gameSettings.ts)
@@ -93,7 +94,7 @@ export function equipZzzDiscs(
       specialty: agent.specialty,
       level: agent.level,
       mindscapeLevel: 0,
-      wEngineId: wEngine.id,
+      wEngineId: wEngine.id || undefined,
       wEngineRefinement: wEngine.refinement,
       discIds: loadouts.get(agent.id) ?? {},
     })

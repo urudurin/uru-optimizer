@@ -72,7 +72,7 @@ export type RankKey = keyof FinalStats | 'damage'
 
 export type OptimizerRequest = {
   agent: AgentData,
-  wEngine: WEngineData,
+  wEngine?: WEngineData,
   wEngineRefinement: number,
   coreSkillLevel: number,
   conditions: ActiveConditions,
@@ -182,8 +182,8 @@ export function optimizeDiscs(request: OptimizerRequest): OptimizerOutcome {
 
   // Everything that doesn't depend on the discs
   const base = new Float64Array(STAT_COUNT)
-  addToVector(base, wEngine.subStat.stat, wEngine.subStat.value)
-  const passive = wEngine.passive(request.wEngineRefinement)
+  if (wEngine) addToVector(base, wEngine.subStat.stat, wEngine.subStat.value)
+  const passive = wEngine?.passive(request.wEngineRefinement) ?? []
   const core = agent.coreEffects[request.coreSkillLevel] ?? []
   const passiveVector = effectsVector(passive, agent, conditions)
   const coreVector = effectsVector(core, agent, conditions)

@@ -46,7 +46,9 @@ export function AgentForm({ initial, submitLabel, onSubmit, onCancel }: {
         <Select
           size='xs'
           label='W-Engine'
-          allowDeselect={false}
+          placeholder='No W-Engine'
+          searchable
+          clearable
           value={build.wEngineId ?? null}
           onChange={(value) => update({ wEngineId: value ?? undefined })}
           data={wEngineOptions(build.specialty)}
@@ -61,7 +63,7 @@ export function AgentForm({ initial, submitLabel, onSubmit, onCancel }: {
         />
       </Group>
       <Group gap={8}>
-        <Button size='xs' disabled={!build.wEngineId} onClick={() => onSubmit(build)}>{submitLabel}</Button>
+        <Button size='xs' onClick={() => onSubmit(build)}>{submitLabel}</Button>
         {onCancel && <Button size='xs' variant='subtle' onClick={onCancel}>Cancel</Button>}
       </Group>
     </Stack>

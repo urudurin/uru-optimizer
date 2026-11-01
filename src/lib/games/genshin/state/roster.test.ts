@@ -1,7 +1,6 @@
 import stats from 'lib/games/genshin/data/generated/stats.json'
 import type { GenshinImages } from 'lib/games/genshin/data/images'
 import {
-  bestGenshinWeapon,
   GENSHIN_ROSTER_IDS,
   genshinRoster,
 } from 'lib/games/genshin/state/roster'
@@ -17,12 +16,7 @@ const images: GenshinImages = {
   weapons: {},
   artifacts: {},
   characterInfo: { Xiangling: { name: 'Xiangling', element: 'Pyro', weaponType: 'Polearm', rarity: 4 } },
-  weaponInfo: {
-    TheCatch: { name: 'The Catch', weaponType: 'Polearm' },
-    StaffOfHoma: { name: 'Staff of Homa', weaponType: 'Polearm' },
-    WhiteTassel: { name: 'White Tassel', weaponType: 'Polearm' },
-    MistsplitterReforged: { name: 'Mistsplitter Reforged', weaponType: 'Sword' },
-  },
+  weaponInfo: {},
 }
 
 describe('genshinRoster', () => {
@@ -39,12 +33,13 @@ describe('genshinRoster', () => {
     expect(roster[0]).toBe(saved)
     expect(roster.filter((c) => c.id === 'Xiangling')).toHaveLength(1)
     expect(roster).toHaveLength(GENSHIN_ROSTER_IDS.length)
-    const traveler = roster.find((c) => c.id === 'TravelerPyro')!
-    expect(traveler).toMatchObject({ element: 'Pyro', level: 90, constellation: 0, weapon: { id: 'MistsplitterReforged', refinement: 1 } })
+    expect(roster.find((c) => c.id === 'TravelerPyro')).toMatchObject({ name: 'Traveler (Pyro)', element: 'Pyro', level: 90, constellation: 0 })
   })
 
-  it('picks the highest-rarity weapon of the type with the most base ATK', () => {
-    expect(bestGenshinWeapon('Polearm', images)).toMatchObject({ id: 'StaffOfHoma', rarity: 5, level: 90, refinement: 1 })
-    expect(bestGenshinWeapon(undefined, images)).toBeUndefined()
+  it('starts defaults with no weapon and no artifacts', () => {
+    for (const character of genshinRoster([], images)) {
+      expect(character.weapon).toBeUndefined()
+      expect(character.artifactIds).toEqual({})
+    }
   })
 })

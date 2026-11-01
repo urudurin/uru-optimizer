@@ -10,7 +10,8 @@ import type { Disc } from 'lib/games/zzz/types'
 // Everything the calculator needs from a saved build except the conditions and Core Skill level, which the user picks
 export type ResolvedBuild = {
   agent: AgentData,
-  wEngine: WEngineData,
+  // None until the user picks one (default builds, state/roster.ts)
+  wEngine?: WEngineData,
   wEngineRefinement: number,
   discs: Disc[],
 }
@@ -28,9 +29,8 @@ export function resolveBuild(build: ImportedBuild, allDiscs: Disc[]): ResolveRes
   const agent = AGENTS[build.agentId]
   if (!agent) return { ok: false, reason: `No data for agent "${build.name}" (id ${build.agentId}) yet` }
 
-  if (!build.wEngineId) return { ok: false, reason: 'This build has no W-Engine' }
-  const wEngine = W_ENGINES[build.wEngineId]
-  if (!wEngine) return { ok: false, reason: `No data for W-Engine id ${build.wEngineId} yet` }
+  const wEngine = build.wEngineId ? W_ENGINES[build.wEngineId] : undefined
+  if (build.wEngineId && !wEngine) return { ok: false, reason: `No data for W-Engine id ${build.wEngineId} yet` }
 
   const notes: string[] = []
   if (build.level !== agent.level) {

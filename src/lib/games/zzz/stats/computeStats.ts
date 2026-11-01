@@ -45,7 +45,8 @@ export type Contribution = {
 
 export type ComputeInput = {
   agent: AgentData,
-  wEngine: WEngineData,
+  // Optional: an agent can be looked at before a W-Engine is picked
+  wEngine?: WEngineData,
   wEngineRefinement: number,
   coreSkillLevel: number,
   discs: Disc[],
@@ -157,8 +158,10 @@ export function computeStats(input: ComputeInput): ComputeResult {
   }
 
   // W-Engine
-  contributions.push({ source: `${wEngine.name} advanced stat`, stat: wEngine.subStat.stat, value: wEngine.subStat.value })
-  addEffects(wEngine.passive(input.wEngineRefinement))
+  if (wEngine) {
+    contributions.push({ source: `${wEngine.name} advanced stat`, stat: wEngine.subStat.stat, value: wEngine.subStat.value })
+    addEffects(wEngine.passive(input.wEngineRefinement))
+  }
 
   // Core Skill
   const coreEffects = agent.coreEffects[input.coreSkillLevel]
@@ -207,10 +210,10 @@ export function emptyTotals(): StatTotals {
 }
 
 // The one place that turns bonus totals into final stats, shared by the calculator and the disc optimizer
-export function finalizeStats(agent: AgentData, wEngine: WEngineData, totals: StatTotals): FinalStats {
+export function finalizeStats(agent: AgentData, wEngine: WEngineData | undefined, totals: StatTotals): FinalStats {
   const base = agent.base
   const hp = base.hp * (1 + totals[I.HP_P] / 100) + totals[I.HP]
-  const atk = (base.atk + wEngine.baseAtk) * (1 + totals[I.ATK_P] / 100) + totals[I.ATK]
+  const atk = (base.atk + (wEngine?.baseAtk ?? 0)) * (1 + totals[I.ATK_P] / 100) + totals[I.ATK]
   // Each part is rounded down, without that a Yixuan screenshot comes out one point high
   const sheerForce = agent.sheerForce
     ? Math.floor(atk * agent.sheerForce.fromAtk) + Math.floor(hp * agent.sheerForce.fromHp) + totals[I.SHEER_FORCE_FLAT]

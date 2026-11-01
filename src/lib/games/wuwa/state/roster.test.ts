@@ -1,11 +1,5 @@
-import {
-  CHARACTERS,
-  WEAPONS,
-} from 'lib/games/wuwa/data/gameData'
-import {
-  bestWuwaWeapon,
-  wuwaRoster,
-} from 'lib/games/wuwa/state/roster'
+import { CHARACTERS } from 'lib/games/wuwa/data/gameData'
+import { wuwaRoster } from 'lib/games/wuwa/state/roster'
 import type { CharacterState } from 'lib/games/wuwa/types'
 import {
   describe,
@@ -19,13 +13,13 @@ describe('wuwaRoster', () => {
     const roster = wuwaRoster([saved])
     expect(roster[0]).toBe(saved)
     expect(roster).toHaveLength(Object.keys(CHARACTERS).length)
-    const other = roster.find((c) => c.charId === 'aalto')!
-    expect(other).toMatchObject({ level: 90, sequence: 0, refinement: 1, minorFortes: true, echoIds: [null, null, null, null, null] })
-    expect(WEAPONS[other.weaponId!].weaponType).toBe(CHARACTERS.aalto.weaponType)
+    expect(roster.find((c) => c.charId === 'aalto')).toMatchObject({ level: 90, sequence: 0, refinement: 1, minorFortes: true })
   })
 
-  it('picks a 5-star weapon of the type', () => {
-    for (const type of [1, 2, 3, 4, 5]) expect(WEAPONS[bestWuwaWeapon(type)!].rarity).toBe(5)
-    expect(bestWuwaWeapon(null)).toBeUndefined()
+  it('starts defaults with no weapon and no echoes', () => {
+    for (const character of wuwaRoster([])) {
+      expect(character.weaponId).toBeUndefined()
+      expect(character.echoIds).toEqual([null, null, null, null, null])
+    }
   })
 })

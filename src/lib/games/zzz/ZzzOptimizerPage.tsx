@@ -168,10 +168,7 @@ import {
 import { discSearch } from 'lib/games/zzz/optimizer/optimizerClient'
 import type { DiscWorkerResponse } from 'lib/games/zzz/optimizer/optimizerWorker'
 import { usePresetImportStore } from 'lib/games/zzz/state/presetImportStore'
-import {
-  bestWEngine,
-  zzzRoster,
-} from 'lib/games/zzz/state/roster'
+import { zzzRoster } from 'lib/games/zzz/state/roster'
 import { zzzPiecesTaken } from 'lib/games/zzz/state/zzzState'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
@@ -227,6 +224,7 @@ import {
 const MAX_IMPORT_WARNINGS = 6
 const MAIN_STAT_SLOTS: MainStatSlot[] = [4, 5, 6]
 
+// wEngineId '' is no W-Engine
 type Loadout = { wEngineId: string, refinement: string }
 
 const SETTINGS_KEY = 'zzz-optimizer-settings'
@@ -267,11 +265,10 @@ type ZzzOptimizerSettings = {
   combatSettings: Record<string, boolean | number>,
 }
 
-// The user's own W-Engine for this agent when it's supported, otherwise the best one of the agent's specialty
+// The user's own W-Engine for this agent when it's supported, otherwise none
 function defaultLoadout(agent: AgentData, builds: ImportedBuild[]): Loadout {
   const build = builds.find((b) => b.agentId === agent.id && b.wEngineId && W_ENGINES[b.wEngineId])
-  if (build?.wEngineId) return { wEngineId: build.wEngineId, refinement: String(build.wEngineRefinement) }
-  return { wEngineId: bestWEngine(agent.specialty) ?? '', refinement: '1' }
+  return { wEngineId: build?.wEngineId ?? '', refinement: String(build?.wEngineRefinement ?? 1) }
 }
 
 function setName(setId: string): string {
@@ -625,10 +622,10 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
 
   // The search runs in a web worker, so the page stays responsive while it works
   function run() {
-    if (!W_ENGINES[loadout.wEngineId]) return
+    if (loadout.wEngineId && !W_ENGINES[loadout.wEngineId]) return
     void search.start({
       agentId: agent.id,
-      wEngineId: loadout.wEngineId,
+      wEngineId: loadout.wEngineId || undefined,
       wEngineRefinement: Number(loadout.refinement),
       coreSkillLevel: Number(coreSkill),
       conditions,
@@ -681,7 +678,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const agentBuild = builds.find((b) => b.agentId === agent.id)
   // The settings on the page now, for the build analysis: the agent's current discs, and the picked build again
   const wEngine = W_ENGINES[loadout.wEngineId]
-  const computeInput = wEngine
+  const computeInput = wEngine || !loadout.wEngineId
     ? { agent, wEngine, wEngineRefinement: Number(loadout.refinement), coreSkillLevel: Number(coreSkill), conditions, teamEffects: combatEffects }
     : undefined
   const currentDiscs = agentBuild ? Object.values(agentBuild.discIds).flatMap((id) => discs.find((d) => d.id === id) ?? []) : []
@@ -707,7 +704,9 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const rankText = (
     build: { display: FinalStats, damage?: number },
   ) => (byDamage ? formatNumber(Math.round(build.damage ?? 0)) : formatStat(rankRow, build.display[sortBy as keyof FinalStats]))
-  const agentSummary = `${agent.name} · ${W_ENGINES[loadout.wEngineId]?.name ?? 'No W-Engine'} R${loadout.refinement} · ranked by ${rankLabel}`
+  const agentSummary = `${agent.name} · ${
+    W_ENGINES[loadout.wEngineId] ? `${W_ENGINES[loadout.wEngineId].name} R${loadout.refinement}` : 'No W-Engine'
+  } · ranked by ${rankLabel}`
   const mainFilters = MAIN_STAT_SLOTS.filter((slot) => mainStats[slot]?.length).length
   const conditionCount = Object.values(conditions).filter(Boolean).length
   const filterSummary = [
@@ -819,9 +818,11 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
                 />
                 <Select
                   label='W-Engine'
-                  allowDeselect={false}
-                  value={loadout.wEngineId}
-                  onChange={(value) => value && setLoadout((prev) => ({ ...prev, wEngineId: value }))}
+                  placeholder='No W-Engine'
+                  searchable
+                  clearable
+                  value={loadout.wEngineId || null}
+                  onChange={(value) => setLoadout((prev) => ({ ...prev, wEngineId: value ?? '' }))}
                   data={Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name }))}
                 />
                 <RankButtons

@@ -12,18 +12,18 @@ import {
 // sent to a worker, so the agent and W-Engine come as ids and are looked up here (after loading Enka's data for the
 // agents and W-Engines that aren't written by hand, see data/enkaGameData.ts)
 
-export type DiscWorkerRequest = Omit<OptimizerRequest, 'agent' | 'wEngine'> & { agentId: string, wEngineId: string }
+export type DiscWorkerRequest = Omit<OptimizerRequest, 'agent' | 'wEngine'> & { agentId: string, wEngineId?: string }
 export type DiscWorkerResponse = { outcome: OptimizerOutcome, ms: number }
 
 self.onmessage = async (e: MessageEvent<DiscWorkerRequest>) => {
   const started = performance.now()
   const { agentId, wEngineId, ...rest } = e.data
-  if (!AGENTS[agentId] || !W_ENGINES[wEngineId]) await loadZzzGameData()
+  if (!AGENTS[agentId] || (wEngineId && !W_ENGINES[wEngineId])) await loadZzzGameData()
   const agent = AGENTS[agentId]
-  const wEngine = W_ENGINES[wEngineId]
+  const wEngine = wEngineId ? W_ENGINES[wEngineId] : undefined
   let outcome: OptimizerOutcome
   try {
-    outcome = agent && wEngine
+    outcome = agent && (wEngine || !wEngineId)
       ? optimizeDiscs({ ...rest, agent, wEngine, onProgress: (progress) => self.postMessage({ progress } satisfies ProgressMessage) })
       : { ok: false, reason: `No data for ${agent ? `W-Engine ${wEngineId}` : `agent ${agentId}`}` }
   } catch (error) {
