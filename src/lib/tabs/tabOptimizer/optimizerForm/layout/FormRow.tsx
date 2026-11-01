@@ -1,19 +1,39 @@
 import {
   Accordion,
   Flex,
+  Text,
 } from '@mantine/core'
 import { useOptimizerDisplayStore } from 'lib/stores/optimizerUI/useOptimizerDisplayStore'
-import type { ReactNode } from 'react'
+import {
+  type ReactNode,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
-export function FormRow({ id, label, children }: { id: string, label?: string, children: ReactNode }) {
+// Optional for other callers (the ZZZ / Genshin / WuWa optimizers): summary is shown beside the label while the row is
+// closed, and openState replaces the optimizer display store as where the open / closed state is read and saved
+export type FormRowOpenState = { initial: boolean, save: (open: boolean) => void }
+
+export function FormRow({ id, label, summary, openState, children }: {
+  id: string,
+  label?: string,
+  summary?: string,
+  openState?: FormRowOpenState,
+  children: ReactNode,
+}) {
   const { t } = useTranslation('optimizerTab', { keyPrefix: 'FormRowLabels' })
-  const isOpen = useOptimizerDisplayStore((s) => s.menuState[id])
+  const storeOpen = useOptimizerDisplayStore((s) => s.menuState[id])
+  const [isOpen, setIsOpen] = useState(() => openState ? openState.initial : storeOpen)
 
   function onChange(value: string[]) {
+    const open = value.length > 0
+    setIsOpen(open)
+    if (openState) return openState.save(open)
     const { menuState, setMenuState } = useOptimizerDisplayStore.getState()
-    setMenuState({ ...menuState, [id]: value.length > 0 })
+    setMenuState({ ...menuState, [id]: open })
   }
+
+  const title = label ?? t(`${id}` as never)
 
   return (
     <Flex
@@ -37,7 +57,14 @@ export function FormRow({ id, label, children }: { id: string, label?: string, c
       >
         <Accordion.Item value={id}>
           <Accordion.Control>
-            {label ?? t(`${id}` as never)}
+            {summary === undefined
+              ? title
+              : (
+                <Flex align='baseline' gap={14} miw={0}>
+                  <span style={{ flexShrink: 0 }}>{title}</span>
+                  {!isOpen && <Text size='sm' c='dimmed' lineClamp={1}>{summary}</Text>}
+                </Flex>
+              )}
           </Accordion.Control>
           <Accordion.Panel>
             <Flex gap={10}>

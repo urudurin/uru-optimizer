@@ -41,8 +41,29 @@ export function FilterRow({ name, label, type, highlighted }: { name: string, la
     }
   }
 
-  const min = useBlurCommittedNumberInput(minValue, (v) => setFilter(minKey, v))
-  const max = useBlurCommittedNumberInput(maxValue, (v) => setFilter(maxKey, v))
+  return (
+    <FilterRowInputs
+      label={label}
+      highlighted={highlighted}
+      min={minValue}
+      max={maxValue}
+      onMin={(v) => setFilter(minKey, v)}
+      onMax={(v) => setFilter(maxKey, v)}
+    />
+  )
+}
+
+// The row without the optimizer request store, for other callers (the ZZZ / Genshin / WuWa stat filters)
+export function FilterRowInputs({ label, highlighted, min: minValue, max: maxValue, onMin, onMax }: {
+  label: string,
+  highlighted?: boolean,
+  min: number | undefined,
+  max: number | undefined,
+  onMin: (value: number | undefined) => void,
+  onMax: (value: number | undefined) => void,
+}) {
+  const min = useBlurCommittedNumberInput(minValue, onMin)
+  const max = useBlurCommittedNumberInput(maxValue, onMax)
 
   return (
     <Flex justify='space-between' style={{ margin: 0 }}>
@@ -50,6 +71,7 @@ export function FilterRow({ name, label, type, highlighted }: { name: string, la
         hideControls
         style={{ margin: 0, width: 63 }}
         styles={highlighted ? highlightedInputStyles : undefined}
+        aria-label={`${label} min`}
         value={min.value}
         onChange={min.onChange}
         onFocus={min.onFocus}
@@ -60,6 +82,7 @@ export function FilterRow({ name, label, type, highlighted }: { name: string, la
         hideControls
         style={{ margin: 0, width: 63 }}
         styles={highlighted ? highlightedInputStyles : undefined}
+        aria-label={`${label} max`}
         value={max.value}
         onChange={max.onChange}
         onFocus={max.onFocus}

@@ -1,21 +1,15 @@
-import {
-  Collapse,
-  Text,
-  UnstyledButton,
-} from '@mantine/core'
-import { IconChevronDown } from '@tabler/icons-react'
+import { Text } from '@mantine/core'
 import {
   readStorage,
   writeStorage,
 } from 'lib/games/shared/storage'
 import classes from 'lib/games/shared/ui/Optimizer.module.css'
-import {
-  type ReactNode,
-  useState,
-} from 'react'
+import { FormRow as HsrFormRow } from 'lib/tabs/tabOptimizer/optimizerForm/layout/FormRow'
+import type { ReactNode } from 'react'
 
-// Optimizer settings laid out like HSR's optimizer form: collapsible rows of cards side by side. Rows remember whether
-// they're open in this browser; a closed row shows a one-line summary instead. Shared by the ZZZ, Genshin and WuWa pages.
+// Optimizer settings laid out like HSR's optimizer form: rows of HSR's own FormRow accordion with cards side by side.
+// Rows remember whether they're open in this browser; a closed row shows a one-line summary instead. Shared by the ZZZ,
+// Genshin and WuWa pages.
 
 const OPEN_ROWS_KEY = 'uru-optimizer-rows'
 
@@ -28,33 +22,29 @@ function readClosedRows(): Set<string> {
   }
 }
 
+function saveRowOpen(id: string, open: boolean) {
+  const closed = readClosedRows()
+  if (open) closed.delete(id)
+  else closed.add(id)
+  writeStorage(OPEN_ROWS_KEY, JSON.stringify([...closed]))
+}
+
+// The rows' frame, as HSR's FilterContainer but full width instead of its fixed 1302px
 export function FormRows({ children }: { children: ReactNode }) {
   return <div className={classes.formRows}>{children}</div>
 }
 
 // id is unique across games ('zzz-agent', 'genshin-filters'...), it keys the open/closed state
 export function FormRow({ id, title, summary, children }: { id: string, title: string, summary?: string, children: ReactNode }) {
-  const [open, setOpen] = useState(() => !readClosedRows().has(id))
-
-  function toggle() {
-    const closed = readClosedRows()
-    if (open) closed.add(id)
-    else closed.delete(id)
-    writeStorage(OPEN_ROWS_KEY, JSON.stringify([...closed]))
-    setOpen(!open)
-  }
-
   return (
-    <div className={classes.formRow}>
-      <UnstyledButton className={classes.formRowHeader} onClick={toggle} aria-expanded={open}>
-        <Text fw={600} size='md'>{title}</Text>
-        {!open && summary && <Text size='xs' c='dimmed' lineClamp={1} className={classes.formRowSummary}>{summary}</Text>}
-        <IconChevronDown size={18} className={classes.formRowChevron} data-open={open || undefined} />
-      </UnstyledButton>
-      <Collapse expanded={open} transitionDuration={150}>
-        <div className={classes.formCards}>{children}</div>
-      </Collapse>
-    </div>
+    <HsrFormRow
+      id={id}
+      label={title}
+      summary={summary}
+      openState={{ initial: !readClosedRows().has(id), save: (open) => saveRowOpen(id, open) }}
+    >
+      <div className={classes.formCards}>{children}</div>
+    </HsrFormRow>
   )
 }
 

@@ -61,50 +61,26 @@
 
 /* Settings: rows of cards, like HSR's optimizer form */
 
+/* FormRows (OptimizerForm.tsx), as HSR's FilterContainer.module.css */
 .formRows {
-  border-radius: 8px;
-  background: var(--layer-1);
-  border: 1px solid rgba(255, 255, 255, 0.06);
   overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--layer-1);
+  box-shadow: var(--shadow-card-flat);
+  border: var(--border-subtle);
 }
 
-.formRow + .formRow {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+.formRows :global(.mantine-Accordion-control:hover) {
+  background-color: var(--layer-0);
 }
 
-.formRowHeader {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 14px;
-}
-
-.formRowHeader:hover {
-  background: var(--layer-0);
-}
-
-.formRowSummary {
+/* Inside HSR's FormRow panel, which is a non-wrapping flex row: our cards wrap and stretch instead of HSR's fixed widths */
+.formCards {
   flex: 1;
   min-width: 0;
-}
-
-.formRowChevron {
-  margin-left: auto;
-  flex-shrink: 0;
-  transform: rotate(-90deg);
-  transition: transform 150ms ease;
-}
-
-.formRowChevron[data-open] {
-  transform: none;
-}
-
-.formCards {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  padding: 0 14px 14px;
 }
 
 .formCard {
