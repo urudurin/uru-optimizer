@@ -156,6 +156,7 @@ import {
   WUWA_TARGETS as TARGETS,
   wuwaTarget,
 } from 'lib/games/wuwa/optimizer/targets'
+import { wuwaRoster } from 'lib/games/wuwa/state/roster'
 import { wuwaPiecesTaken } from 'lib/games/wuwa/state/wuwaState'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import {
@@ -323,7 +324,9 @@ function wuwaBreakdown(setup: DamageSetup, stats: WuwaStats): DamagePart[] {
 export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   useState(migrateSaves)
   const echoes = useWuwaStore((s) => s.echoes)
-  const characters = useWuwaStore((s) => s.characters)
+  const savedCharacters = useWuwaStore((s) => s.characters)
+  // Every Resonator, saved or not (state/roster.ts)
+  const characters = useMemo(() => wuwaRoster(savedCharacters), [savedCharacters])
   const art = useUserArt()
   const saveCharacter = useWuwaStore((s) => s.saveCharacter)
   const teams = useWuwaStore((s) => s.teams)
@@ -408,7 +411,8 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     [echoes],
   )
 
-  if (!character) {
+  // Every Resonator is always there (state/roster.ts), so the page waits for echoes instead
+  if (!character || echoes.length === 0) {
     return (
       <Stack gap='lg'>
         <PageHeader title='Optimizer' />
@@ -611,7 +615,7 @@ ${losing.join(', ')} ${
         confirmLabel: 'Equip',
       })
     ) return
-    equip(character.charId, build.echoes)
+    equip(character, build.echoes)
     Message.success('Equipped')
     // The "Now" row is this loadout from here on
     if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
@@ -653,7 +657,7 @@ ${losing.join(', ')} ${
   }
   function loadBuilds() {
     const piecesOf = (saved: SavedBuild) => saved.pieceIds.flatMap((id) => echoes.find((piece) => piece.id === id) ?? [])
-    const equipPieces = (pieces: Echo[]) => equip(character.charId, pieces)
+    const equipPieces = (pieces: Echo[]) => equip(character, pieces)
     openSavedBuildsModal({
       name: characterName(character.charId),
       builds: savedList,

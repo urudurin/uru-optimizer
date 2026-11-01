@@ -50,6 +50,7 @@ import {
   maxRoll,
   SUBSTAT_KEYS,
 } from 'lib/games/wuwa/echoStats'
+import { wuwaRoster } from 'lib/games/wuwa/state/roster'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
 import {
   computeWuwaStats,
@@ -84,16 +85,15 @@ import {
 } from 'react'
 
 // The Resonators page, after HSR's Characters page like ZZZ's Agents page: a roster of banners and one showcase card
-// (shared/ui/Showcase.tsx). The roster lists every Resonator in the datamine; ones not in the save are dimmed and can be
-// added by hand (level, sequence, weapon), since WuWa has no whole-account export like Genshin's GOOD files. Art is
+// (shared/ui/Showcase.tsx). The roster lists every Resonator in the datamine, like HSR: ones not in the save have a default
+// build (state/roster.ts) and are saved once changed (Edit, Equip...). Art is
 // whatever the user saved into wuwa/user-art/ (data/userArt.ts); without it, initials on the element's color.
 
 const accentOf = (element: ElementDmgKey | undefined) => element && `var(--mantine-color-${elementColor(element)}-6)`
 
-const NEW_RESONATOR: Omit<ResonatorDetails, 'charId'> = { level: 90, sequence: 0, weaponLevel: 90, refinement: 1, minorFortes: true }
-
-export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
-  const characters = useWuwaStore((s) => s.characters)
+export function WuwaCharactersPage() {
+  const saved = useWuwaStore((s) => s.characters)
+  const characters = useMemo(() => wuwaRoster(saved), [saved])
   const art = useUserArt()
   const [picked, setPicked] = useState<string | null>(null)
 
@@ -106,10 +106,10 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
   // Saved ones in priority order (shared/characterPriority.ts)
   const rankOrder = usePriority('wuwa')
   const rosterIds = useMemo(() => {
-    const saved = new Set(characters.map((c) => c.charId))
-    const others = Object.values(CHARACTERS).filter((c) => !saved.has(c.id)).sort((a, b) => a.name.localeCompare(b.name)).map((c) => c.id)
-    return [...orderByPriority(characters.map((c) => c.charId), rankOrder), ...others]
-  }, [characters, rankOrder])
+    const savedIds = new Set(saved.map((c) => c.charId))
+    const others = Object.values(CHARACTERS).filter((c) => !savedIds.has(c.id)).sort((a, b) => a.name.localeCompare(b.name)).map((c) => c.id)
+    return [...orderByPriority(saved.map((c) => c.charId), rankOrder), ...others]
+  }, [saved, rankOrder])
 
   const activeId = picked ?? rosterIds[0]
   const character = characters.find((c) => c.charId === activeId)
@@ -121,24 +121,21 @@ export function WuwaCharactersPage({ onImport }: { onImport: () => void }) {
         onPick={setPicked}
         groupColor={(group) => elementColor(elementByName.get(group))}
         entries={rosterIds.map((charId) => {
-          const c = characters.find((saved) => saved.charId === charId)
+          const c = characters.find((entry) => entry.charId === charId)
           const info = CHARACTER_INFO[charId]
           const w = c?.weaponId ? WEAPONS[c.weaponId] : undefined
           return {
             key: charId,
             name: characterName(charId),
-            meta: c ? `Lv ${c.level} · S${c.sequence} · ${w ? `${w.name} R${c.refinement}` : 'No weapon'}` : 'Not added',
+            meta: c ? `Lv ${c.level} · S${c.sequence} · ${w ? `${w.name} R${c.refinement}` : 'No weapon'}` : '',
             group: info ? elementName(info.element) : 'Unknown',
-            subgroup: w ? WEAPON_TYPES[w.weaponType] : undefined,
+            subgroup: WEAPON_TYPES[CHARACTERS[charId]?.weaponType ?? w?.weaponType ?? 0],
             portrait: art[charId]?.portrait,
             circle: art[charId]?.icon ?? art[charId]?.portrait,
-            dimmed: !c,
           }
         })}
       >
-        {character
-          ? <SavedResonator key={character.charId} character={character} art={art[character.charId]} />
-          : activeId && <NewResonator key={activeId} charId={activeId} art={art[activeId]} onImport={characters.length === 0 ? onImport : undefined} />}
+        {character && <SavedResonator key={character.charId} character={character} art={art[character.charId]} />}
       </RosterLayout>
     </Stack>
   )
@@ -214,7 +211,7 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
                           }),
                           b.pieceIds.length,
                         ),
-                      equip: (b) => equip(character.charId, b.pieceIds.flatMap((id) => echoById.get(id) ?? [])),
+                      equip: (b) => equip(character, b.pieceIds.flatMap((id) => echoById.get(id) ?? [])),
                     })}
                   savedCount={builds.saved.length}
                   onMoveToTop={() => writePriority('wuwa', moveToTop(characters.map((c) => c.charId), readPriority('wuwa'), character.charId))}
@@ -262,38 +259,6 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
       gear={loadout.length > 0
         ? loadout.map((echo) => <EchoCard key={echo.id} echo={echo} score={scoreEcho(echo, echoWeights)} />)
         : <Text size='sm' c='dimmed'>No echoes equipped. Pick some on the Optimizer page and equip them.</Text>}
-    />
-  )
-}
-
-// A Resonator who isn't in the save yet
-function NewResonator({ charId, art, onImport }: { charId: string, art?: ResonatorArt, onImport?: () => void }) {
-  const saveCharacter = useWuwaStore((s) => s.saveCharacter)
-  const element = CHARACTER_INFO[charId]?.element
-  const name = characterName(charId)
-
-  return (
-    <ShowcaseCard
-      sidePanel
-      colorKey={`wuwa:${charId}`}
-      name={name}
-      accent={accentOf(element)}
-      portrait={art?.portrait}
-      info={
-        <>
-          <div>
-            <Text size='xl' fw={700}>{name}</Text>
-            <Group gap={6} mt={4}>
-              {element && <Badge size='sm' variant='light' color={elementColor(element)}>{elementName(element)}</Badge>}
-              <Text size='xs' c='dimmed'>Not added</Text>
-            </Group>
-          </div>
-          <Text size='sm' c='dimmed'>Add their level, sequence and weapon to see their stats. Echoes come from an import or the Optimizer.</Text>
-          <ResonatorForm initial={{ ...NEW_RESONATOR, charId }} submitLabel='Add Resonator' onSubmit={saveCharacter} />
-          {onImport && <Button size='xs' variant='light' onClick={onImport}>Import data instead</Button>}
-        </>
-      }
-      gear={<Text size='sm' c='dimmed'>No echoes yet.</Text>}
     />
   )
 }

@@ -57,7 +57,7 @@ export function WuwaApp() {
         ? <SampleNotice onRemove={() => useWuwaStore.getState().clear()} onImport={() => setPage('data')} />
         : page !== 'data' && <BackupReminder game='wuwa' hasData={hasData} onSave={() => setPage('data')} />}
     >
-      {page === 'characters' && <WuwaCharactersPage onImport={goToImport} />}
+      {page === 'characters' && <WuwaCharactersPage />}
       {page === 'optimizer' && <WuwaOptimizerPage onImport={goToImport} />}
       {page === 'echoes' && <WuwaEchoesPage onImport={goToImport} />}
       {page === 'data' && <WuwaDataPage />}

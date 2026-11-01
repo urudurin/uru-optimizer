@@ -10,12 +10,13 @@
       "weapons",
       "echoes",
       "sets",
-      "characters (element, minorFortes)",
+      "characters (element, weaponType, minorFortes)",
+      "weapons.rarity",
       "weapons.passiveStats"
     ],
     "excluded": "Everything from Prydwen: character build profiles (sets, main stats, substat weights, targets, teams, weapons ranking, element) and minor fortes",
     "confidence": "sourced",
-    "characters": "Element (BinData/role/roleinfo.json ElementId) and minor fortes (BinData/skillTree/skilltree.json stat nodes) read directly from the datamine branch 3.7 by src/scripts/wuwa/extractCharacters.mjs on 2026-10-26",
+    "characters": "Element and weapon type (BinData/role/roleinfo.json ElementId, WeaponType), weapon rarity (BinData/weapon/weaponconf.json QualityId) and minor fortes (BinData/skillTree/skilltree.json stat nodes) read directly from the datamine branch 3.7 by src/scripts/wuwa/extractCharacters.mjs on 2026-11-01",
     "weaponPassives": "Always-on weapon passive bonuses per refinement, from the first sentence of each passive description and its values (BinData/weapon/weaponconf.json Desc, DescParams), branch 3.7, same script and date as characters"
   },
   "bases": {
@@ -27528,7 +27529,8 @@
         "5": {
           "energyRegen": 25.6
         }
-      }
+      },
+      "rarity": 5
     },
     "aether-strike": {
       "baseAtkByLevel": {
@@ -27720,7 +27722,8 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 4
     },
     "ages-of-harvest": {
       "baseAtkByLevel": {
@@ -27954,7 +27957,8 @@
           "spectroDmg": 24,
           "havocDmg": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "amity-accord": {
       "baseAtkByLevel": {
@@ -28146,7 +28150,8 @@
         },
         "stat": "defPct"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 4
     },
     "augment": {
       "baseAtkByLevel": {
@@ -28338,7 +28343,8 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 4
     },
     "aureate-zenith": {
       "baseAtkByLevel": {
@@ -28530,7 +28536,8 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 4
     },
     "autumntrace": {
       "baseAtkByLevel": {
@@ -28722,7 +28729,8 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 4
     },
     "azure-oath": {
       "baseAtkByLevel": {
@@ -28956,7 +28964,8 @@
           "spectroDmg": 24,
           "havocDmg": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "beguiling-melody": {
       "baseAtkByLevel": {
@@ -29148,7 +29157,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 3
     },
     "blazing-brilliance": {
       "baseAtkByLevel": {
@@ -29357,7 +29367,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "blazing-justice": {
       "baseAtkByLevel": {
@@ -29566,7 +29577,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "bloodpacts-pledge": {
       "baseAtkByLevel": {
@@ -29758,7 +29770,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 5
     },
     "blooming-jadehaven": {
       "baseAtkByLevel": {
@@ -29992,7 +30005,8 @@
           "spectroDmg": 24,
           "havocDmg": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "boson-astrolabe": {
       "baseAtkByLevel": {
@@ -30201,7 +30215,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "broadblade-of-night": {
       "baseAtkByLevel": {
@@ -30393,7 +30408,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 3
     },
     "broadblade-of-voyager": {
       "baseAtkByLevel": {
@@ -30585,7 +30601,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 3
     },
     "broadblade41": {
       "baseAtkByLevel": {
@@ -30777,7 +30794,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 4
     },
     "cadenza": {
       "baseAtkByLevel": {
@@ -30969,7 +30987,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 4
     },
     "call-of-the-abyss": {
       "baseAtkByLevel": {
@@ -31161,7 +31180,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 4
     },
     "celestial-spiral": {
       "baseAtkByLevel": {
@@ -31353,7 +31373,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 4
     },
     "comet-flare": {
       "baseAtkByLevel": {
@@ -31545,7 +31566,8 @@
         },
         "stat": "hpPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 4
     },
     "commando-of-conviction": {
       "baseAtkByLevel": {
@@ -31737,7 +31759,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 4
     },
     "cosmic-ripples": {
       "baseAtkByLevel": {
@@ -31946,7 +31969,8 @@
         "5": {
           "energyRegen": 25.6
         }
-      }
+      },
+      "rarity": 5
     },
     "dauntless-evernight": {
       "baseAtkByLevel": {
@@ -32138,7 +32162,8 @@
         },
         "stat": "defPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 4
     },
     "daybreakers-spine": {
       "baseAtkByLevel": {
@@ -32347,7 +32372,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "defiers-thorn": {
       "baseAtkByLevel": {
@@ -32539,7 +32565,8 @@
         },
         "stat": "hpPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 5
     },
     "discord": {
       "baseAtkByLevel": {
@@ -32731,7 +32758,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 4
     },
     "emerald-of-genesis": {
       "baseAtkByLevel": {
@@ -32940,7 +32968,8 @@
         "5": {
           "energyRegen": 25.6
         }
-      }
+      },
+      "rarity": 5
     },
     "emerald-sentence": {
       "baseAtkByLevel": {
@@ -33149,7 +33178,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "endless-collapse": {
       "baseAtkByLevel": {
@@ -33341,7 +33371,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 4
     },
     "everbright-polestar": {
       "baseAtkByLevel": {
@@ -33533,7 +33564,8 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 5
     },
     "fables-of-wisdom": {
       "baseAtkByLevel": {
@@ -33725,7 +33757,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 4
     },
     "feather-edge": {
       "baseAtkByLevel": {
@@ -33917,7 +33950,8 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 4
     },
     "firstlights-herald": {
       "baseAtkByLevel": {
@@ -34109,7 +34143,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 5
     },
     "forged-dwarf-star": {
       "baseAtkByLevel": {
@@ -34318,7 +34353,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "freeze-frame": {
       "baseAtkByLevel": {
@@ -34527,7 +34563,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "frostburn": {
       "baseAtkByLevel": {
@@ -34736,7 +34773,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "fusion-accretion": {
       "baseAtkByLevel": {
@@ -34928,7 +34966,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 4
     },
     "gauntlets-of-night": {
       "baseAtkByLevel": {
@@ -35120,7 +35159,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 3
     },
     "gauntlets-of-voyager": {
       "baseAtkByLevel": {
@@ -35312,7 +35352,8 @@
         },
         "stat": "defPct"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 3
     },
     "gauntlets21d": {
       "baseAtkByLevel": {
@@ -35504,7 +35545,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 4
     },
     "glint-of-clouds": {
       "baseAtkByLevel": {
@@ -35713,7 +35755,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "guardian-broadblade": {
       "baseAtkByLevel": {
@@ -35927,7 +35970,8 @@
           "basicDmg": 24,
           "heavyDmg": 24
         }
-      }
+      },
+      "rarity": 3
     },
     "guardian-gauntlets": {
       "baseAtkByLevel": {
@@ -36136,7 +36180,8 @@
         "5": {
           "libDmg": 24
         }
-      }
+      },
+      "rarity": 3
     },
     "guardian-pistols": {
       "baseAtkByLevel": {
@@ -36345,7 +36390,8 @@
         "5": {
           "skillDmg": 24
         }
-      }
+      },
+      "rarity": 3
     },
     "guardian-rectifier": {
       "baseAtkByLevel": {
@@ -36559,7 +36605,8 @@
           "basicDmg": 24,
           "heavyDmg": 24
         }
-      }
+      },
+      "rarity": 3
     },
     "guardian-sword": {
       "baseAtkByLevel": {
@@ -36768,7 +36815,8 @@
         "5": {
           "skillDmg": 24
         }
-      }
+      },
+      "rarity": 3
     },
     "helios-cleaver": {
       "baseAtkByLevel": {
@@ -36960,7 +37008,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 4
     },
     "hollow-mirage": {
       "baseAtkByLevel": {
@@ -37152,7 +37201,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 4
     },
     "jinzhou-keeper": {
       "baseAtkByLevel": {
@@ -37344,7 +37394,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 4
     },
     "kumokiri": {
       "baseAtkByLevel": {
@@ -37553,7 +37604,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "laser-shearer": {
       "baseAtkByLevel": {
@@ -37762,7 +37814,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "last-dance": {
       "baseAtkByLevel": {
@@ -37971,7 +38024,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "legend-of-drunken-hero": {
       "baseAtkByLevel": {
@@ -38163,7 +38217,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 4
     },
     "lethean-elegy": {
       "baseAtkByLevel": {
@@ -38372,7 +38427,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "lumingloss": {
       "baseAtkByLevel": {
@@ -38564,7 +38620,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 4
     },
     "luminous-hymn": {
       "baseAtkByLevel": {
@@ -38773,7 +38830,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "lunar-cutter": {
       "baseAtkByLevel": {
@@ -38965,7 +39023,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 4
     },
     "lustrous-razor": {
       "baseAtkByLevel": {
@@ -39174,7 +39233,8 @@
         "5": {
           "energyRegen": 25.6
         }
-      }
+      },
+      "rarity": 5
     },
     "lux-and-umbra": {
       "baseAtkByLevel": {
@@ -39383,7 +39443,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "marcato": {
       "baseAtkByLevel": {
@@ -39575,7 +39636,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 4
     },
     "meditations-on-mercy": {
       "baseAtkByLevel": {
@@ -39767,7 +39829,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 4
     },
     "moongazers-sigil": {
       "baseAtkByLevel": {
@@ -39976,7 +40039,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "novaburst": {
       "baseAtkByLevel": {
@@ -40168,7 +40232,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 4
     },
     "oceans-gift": {
       "baseAtkByLevel": {
@@ -40360,7 +40425,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 4
     },
     "originite-type-i": {
       "baseAtkByLevel": {
@@ -40552,7 +40618,8 @@
         },
         "stat": "defPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 3
     },
     "originite-type-ii": {
       "baseAtkByLevel": {
@@ -40744,7 +40811,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 3
     },
     "originite-type-iii": {
       "baseAtkByLevel": {
@@ -40936,7 +41004,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 3
     },
     "originite-type-iv": {
       "baseAtkByLevel": {
@@ -41128,7 +41197,8 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 3
     },
     "originite-type-v": {
       "baseAtkByLevel": {
@@ -41320,7 +41390,8 @@
         },
         "stat": "hpPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 3
     },
     "overture": {
       "baseAtkByLevel": {
@@ -41512,7 +41583,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 4
     },
     "phasic-homogenizer": {
       "baseAtkByLevel": {
@@ -41721,7 +41793,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "pistols-of-night": {
       "baseAtkByLevel": {
@@ -41913,7 +41986,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 3
     },
     "pistols-of-voyager": {
       "baseAtkByLevel": {
@@ -42105,7 +42179,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 3
     },
     "pistols26": {
       "baseAtkByLevel": {
@@ -42297,7 +42372,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 4
     },
     "pulsation-bracer": {
       "baseAtkByLevel": {
@@ -42506,7 +42582,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "radiance-cleaver": {
       "baseAtkByLevel": {
@@ -42715,7 +42792,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "radiant-dawn": {
       "baseAtkByLevel": {
@@ -42907,7 +42985,8 @@
         },
         "stat": "critDmg"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 4
     },
     "rectifier-of-night": {
       "baseAtkByLevel": {
@@ -43099,7 +43178,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 3
     },
     "rectifier-of-voyager": {
       "baseAtkByLevel": {
@@ -43291,7 +43371,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 3
     },
     "rectifier25": {
       "baseAtkByLevel": {
@@ -43483,7 +43564,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 4
     },
     "red-spring": {
       "baseAtkByLevel": {
@@ -43692,7 +43774,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "relativistic-jet": {
       "baseAtkByLevel": {
@@ -43884,7 +43967,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 4
     },
     "rime-draped-sprouts": {
       "baseAtkByLevel": {
@@ -44093,7 +44177,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "romance-in-farewell": {
       "baseAtkByLevel": {
@@ -44285,7 +44370,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 4
     },
     "skull-thrasher": {
       "baseAtkByLevel": {
@@ -44494,7 +44580,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "solar-flame": {
       "baseAtkByLevel": {
@@ -44686,7 +44773,8 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 4
     },
     "solsworn-ciphers": {
       "baseAtkByLevel": {
@@ -44895,7 +44983,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "somnoire-anchor": {
       "baseAtkByLevel": {
@@ -45087,7 +45176,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 4
     },
     "spectral-trigger": {
       "baseAtkByLevel": {
@@ -45296,7 +45386,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "spectrum-blaster": {
       "baseAtkByLevel": {
@@ -45505,7 +45596,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "starfield-calibrator": {
       "baseAtkByLevel": {
@@ -45697,7 +45789,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 5
     },
     "static-mist": {
       "baseAtkByLevel": {
@@ -45906,7 +45999,8 @@
         "5": {
           "energyRegen": 25.6
         }
-      }
+      },
+      "rarity": 5
     },
     "stellar-symphony": {
       "baseAtkByLevel": {
@@ -46115,7 +46209,8 @@
         "5": {
           "hpPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "stonard": {
       "baseAtkByLevel": {
@@ -46307,7 +46402,8 @@
         },
         "stat": "critRate"
       },
-      "weaponType": 4
+      "weaponType": 4,
+      "rarity": 4
     },
     "stringmaster": {
       "baseAtkByLevel": {
@@ -46541,7 +46637,8 @@
           "spectroDmg": 24,
           "havocDmg": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "sword-of-night": {
       "baseAtkByLevel": {
@@ -46733,7 +46830,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 3
     },
     "sword-of-voyager": {
       "baseAtkByLevel": {
@@ -46925,7 +47023,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 3
     },
     "sword18": {
       "baseAtkByLevel": {
@@ -47117,7 +47216,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 4
     },
     "thousandfold-deliverance": {
       "baseAtkByLevel": {
@@ -47351,7 +47451,8 @@
           "spectroDmg": 24,
           "havocDmg": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "thunderbolt": {
       "baseAtkByLevel": {
@@ -47543,7 +47644,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 4
     },
     "thunderflare-dominion": {
       "baseAtkByLevel": {
@@ -47752,7 +47854,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "tragicomedy": {
       "baseAtkByLevel": {
@@ -47961,7 +48064,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "training-broadblade": {
       "baseAtkByLevel": {
@@ -48170,7 +48274,8 @@
         "5": {
           "atkPct": 8
         }
-      }
+      },
+      "rarity": 1
     },
     "training-gauntlets": {
       "baseAtkByLevel": {
@@ -48379,7 +48484,8 @@
         "5": {
           "atkPct": 8
         }
-      }
+      },
+      "rarity": 1
     },
     "training-pistols": {
       "baseAtkByLevel": {
@@ -48588,7 +48694,8 @@
         "5": {
           "atkPct": 8
         }
-      }
+      },
+      "rarity": 1
     },
     "training-rectifier": {
       "baseAtkByLevel": {
@@ -48797,7 +48904,8 @@
         "5": {
           "atkPct": 8
         }
-      }
+      },
+      "rarity": 1
     },
     "training-sword": {
       "baseAtkByLevel": {
@@ -49006,7 +49114,8 @@
         "5": {
           "atkPct": 8
         }
-      }
+      },
+      "rarity": 1
     },
     "tyro-broadblade": {
       "baseAtkByLevel": {
@@ -49215,7 +49324,8 @@
         "5": {
           "atkPct": 10
         }
-      }
+      },
+      "rarity": 2
     },
     "tyro-gauntlets": {
       "baseAtkByLevel": {
@@ -49424,7 +49534,8 @@
         "5": {
           "atkPct": 10
         }
-      }
+      },
+      "rarity": 2
     },
     "tyro-pistols": {
       "baseAtkByLevel": {
@@ -49633,7 +49744,8 @@
         "5": {
           "atkPct": 10
         }
-      }
+      },
+      "rarity": 2
     },
     "tyro-rectifier": {
       "baseAtkByLevel": {
@@ -49842,7 +49954,8 @@
         "5": {
           "atkPct": 10
         }
-      }
+      },
+      "rarity": 2
     },
     "tyro-sword": {
       "baseAtkByLevel": {
@@ -50051,7 +50164,8 @@
         "5": {
           "atkPct": 10
         }
-      }
+      },
+      "rarity": 2
     },
     "undying-flame": {
       "baseAtkByLevel": {
@@ -50243,7 +50357,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 3
+      "weaponType": 3,
+      "rarity": 4
     },
     "unflickering-valor": {
       "baseAtkByLevel": {
@@ -50435,7 +50550,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 2
+      "weaponType": 2,
+      "rarity": 5
     },
     "unspoken-rue": {
       "baseAtkByLevel": {
@@ -50644,7 +50760,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "variation": {
       "baseAtkByLevel": {
@@ -50836,7 +50953,8 @@
         },
         "stat": "energyRegen"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 4
     },
     "verdant-summit": {
       "baseAtkByLevel": {
@@ -51070,7 +51188,8 @@
           "spectroDmg": 24,
           "havocDmg": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "veritys-handle": {
       "baseAtkByLevel": {
@@ -51304,7 +51423,8 @@
           "spectroDmg": 24,
           "havocDmg": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "waltz-in-masquerade": {
       "baseAtkByLevel": {
@@ -51496,7 +51616,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 5
+      "weaponType": 5,
+      "rarity": 4
     },
     "waning-redshift": {
       "baseAtkByLevel": {
@@ -51688,7 +51809,8 @@
         },
         "stat": "atkPct"
       },
-      "weaponType": 1
+      "weaponType": 1,
+      "rarity": 4
     },
     "whispers-of-sirens": {
       "baseAtkByLevel": {
@@ -51897,7 +52019,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "wildfire-mark": {
       "baseAtkByLevel": {
@@ -52106,7 +52229,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     },
     "woodland-aria": {
       "baseAtkByLevel": {
@@ -52315,7 +52439,8 @@
         "5": {
           "atkPct": 24
         }
-      }
+      },
+      "rarity": 5
     }
   },
   "echoes": {
@@ -54775,6 +54900,7 @@
       "id": "aalto",
       "name": "Aalto",
       "element": "aeroDmg",
+      "weaponType": 3,
       "minorFortes": {
         "aeroDmg": 12,
         "atkPct": 12
@@ -54784,6 +54910,7 @@
       "id": "aemeath",
       "name": "Aemeath",
       "element": "fusionDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54793,6 +54920,7 @@
       "id": "augusta",
       "name": "Augusta",
       "element": "electroDmg",
+      "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54802,6 +54930,7 @@
       "id": "baizhi",
       "name": "Baizhi",
       "element": "glacioDmg",
+      "weaponType": 5,
       "minorFortes": {
         "healingBonus": 12,
         "hpPct": 12
@@ -54811,6 +54940,7 @@
       "id": "brant",
       "name": "Brant",
       "element": "fusionDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54820,6 +54950,7 @@
       "id": "buling",
       "name": "Buling",
       "element": "electroDmg",
+      "weaponType": 5,
       "minorFortes": {
         "healingBonus": 12,
         "atkPct": 12
@@ -54829,6 +54960,7 @@
       "id": "calcharo",
       "name": "Calcharo",
       "element": "electroDmg",
+      "weaponType": 1,
       "minorFortes": {
         "atkPct": 12,
         "critDmg": 16
@@ -54838,6 +54970,7 @@
       "id": "camellya",
       "name": "Camellya",
       "element": "havocDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critDmg": 16,
         "atkPct": 12
@@ -54847,6 +54980,7 @@
       "id": "cantarella",
       "name": "Cantarella",
       "element": "havocDmg",
+      "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54856,6 +54990,7 @@
       "id": "carlotta",
       "name": "Carlotta",
       "element": "glacioDmg",
+      "weaponType": 3,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54865,6 +55000,7 @@
       "id": "cartethyia",
       "name": "Cartethyia",
       "element": "aeroDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
         "hpPct": 12
@@ -54874,6 +55010,7 @@
       "id": "changli",
       "name": "Changli",
       "element": "fusionDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54883,6 +55020,7 @@
       "id": "chisa",
       "name": "Chisa",
       "element": "havocDmg",
+      "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54892,6 +55030,7 @@
       "id": "chixia",
       "name": "Chixia",
       "element": "fusionDmg",
+      "weaponType": 3,
       "minorFortes": {
         "fusionDmg": 12,
         "atkPct": 12
@@ -54901,6 +55040,7 @@
       "id": "ciaccona",
       "name": "Ciaccona",
       "element": "aeroDmg",
+      "weaponType": 3,
       "minorFortes": {
         "critDmg": 16,
         "atkPct": 12
@@ -54910,6 +55050,7 @@
       "id": "danjin",
       "name": "Danjin",
       "element": "havocDmg",
+      "weaponType": 2,
       "minorFortes": {
         "havocDmg": 12,
         "atkPct": 12
@@ -54919,6 +55060,7 @@
       "id": "denia",
       "name": "Denia",
       "element": "fusionDmg",
+      "weaponType": 5,
       "minorFortes": {
         "critDmg": 16,
         "atkPct": 12
@@ -54928,6 +55070,7 @@
       "id": "encore",
       "name": "Encore",
       "element": "fusionDmg",
+      "weaponType": 5,
       "minorFortes": {
         "fusionDmg": 12,
         "atkPct": 12
@@ -54937,6 +55080,7 @@
       "id": "galbrena",
       "name": "Galbrena",
       "element": "fusionDmg",
+      "weaponType": 3,
       "minorFortes": {
         "critDmg": 16,
         "atkPct": 12
@@ -54946,6 +55090,7 @@
       "id": "hiyuki",
       "name": "Hiyuki",
       "element": "glacioDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54955,6 +55100,7 @@
       "id": "hsin",
       "name": "Hsin",
       "element": "electroDmg",
+      "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54964,6 +55110,7 @@
       "id": "iuno",
       "name": "Iuno",
       "element": "aeroDmg",
+      "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54973,6 +55120,7 @@
       "id": "jianxin",
       "name": "Jianxin",
       "element": "aeroDmg",
+      "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -54982,6 +55130,7 @@
       "id": "jingran",
       "name": "Jingran",
       "element": "fusionDmg",
+      "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
         "hpPct": 12
@@ -54991,6 +55140,7 @@
       "id": "jinhsi",
       "name": "Jinhsi",
       "element": "spectroDmg",
+      "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55000,6 +55150,7 @@
       "id": "jiyan",
       "name": "Jiyan",
       "element": "aeroDmg",
+      "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55009,6 +55160,7 @@
       "id": "lingyang",
       "name": "Lingyang",
       "element": "glacioDmg",
+      "weaponType": 4,
       "minorFortes": {
         "glacioDmg": 12,
         "atkPct": 12
@@ -55018,6 +55170,7 @@
       "id": "lucilla",
       "name": "Lucilla",
       "element": "glacioDmg",
+      "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55027,6 +55180,7 @@
       "id": "lucy",
       "name": "Lucy",
       "element": "spectroDmg",
+      "weaponType": 3,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55036,6 +55190,7 @@
       "id": "lumi",
       "name": "Lumi",
       "element": "electroDmg",
+      "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55045,6 +55200,7 @@
       "id": "lupa",
       "name": "Lupa",
       "element": "fusionDmg",
+      "weaponType": 1,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55054,6 +55210,7 @@
       "id": "luuk-herssen",
       "name": "Luuk Herssen",
       "element": "spectroDmg",
+      "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55063,6 +55220,7 @@
       "id": "lynae",
       "name": "Lynae",
       "element": "spectroDmg",
+      "weaponType": 3,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55072,6 +55230,7 @@
       "id": "mornye",
       "name": "Mornye",
       "element": "fusionDmg",
+      "weaponType": 1,
       "minorFortes": {
         "healingBonus": 12,
         "defPct": 15.2
@@ -55081,6 +55240,7 @@
       "id": "mortefi",
       "name": "Mortefi",
       "element": "fusionDmg",
+      "weaponType": 3,
       "minorFortes": {
         "fusionDmg": 12,
         "atkPct": 12
@@ -55090,6 +55250,7 @@
       "id": "phoebe",
       "name": "Phoebe",
       "element": "spectroDmg",
+      "weaponType": 5,
       "minorFortes": {
         "critDmg": 16,
         "atkPct": 12
@@ -55099,6 +55260,7 @@
       "id": "phrolova",
       "name": "Phrolova",
       "element": "havocDmg",
+      "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55108,6 +55270,7 @@
       "id": "qingxiao",
       "name": "Qingxiao",
       "element": "aeroDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critDmg": 16,
         "atkPct": 12
@@ -55117,6 +55280,7 @@
       "id": "qiuyuan",
       "name": "Qiuyuan",
       "element": "aeroDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55126,6 +55290,7 @@
       "id": "rebecca",
       "name": "Rebecca",
       "element": "electroDmg",
+      "weaponType": 3,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55135,6 +55300,7 @@
       "id": "roccia",
       "name": "Roccia",
       "element": "havocDmg",
+      "weaponType": 4,
       "minorFortes": {
         "critDmg": 16,
         "atkPct": 12
@@ -55144,6 +55310,7 @@
       "id": "rover-aero",
       "name": "Rover: Aero",
       "element": "aeroDmg",
+      "weaponType": 2,
       "minorFortes": {
         "healingBonus": 12,
         "atkPct": 12
@@ -55153,6 +55320,7 @@
       "id": "rover-electro",
       "name": "Rover: Electro",
       "element": "electroDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55162,6 +55330,7 @@
       "id": "rover-havoc",
       "name": "Rover: Havoc",
       "element": "havocDmg",
+      "weaponType": 2,
       "minorFortes": {
         "atkPct": 12,
         "havocDmg": 12
@@ -55171,6 +55340,7 @@
       "id": "rover-spectro",
       "name": "Rover: Spectro",
       "element": "spectroDmg",
+      "weaponType": 2,
       "minorFortes": {
         "spectroDmg": 12,
         "atkPct": 12
@@ -55180,6 +55350,7 @@
       "id": "sanhua",
       "name": "Sanhua",
       "element": "glacioDmg",
+      "weaponType": 2,
       "minorFortes": {
         "glacioDmg": 12,
         "atkPct": 12
@@ -55189,6 +55360,7 @@
       "id": "sigrika",
       "name": "Sigrika",
       "element": "aeroDmg",
+      "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55198,6 +55370,7 @@
       "id": "suisui",
       "name": "Suisui",
       "element": "glacioDmg",
+      "weaponType": 5,
       "minorFortes": {
         "healingBonus": 12,
         "hpPct": 12
@@ -55207,6 +55380,7 @@
       "id": "suoming",
       "name": "Suoming",
       "element": "electroDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55216,6 +55390,7 @@
       "id": "taoqi",
       "name": "Taoqi",
       "element": "havocDmg",
+      "weaponType": 1,
       "minorFortes": {
         "havocDmg": 12,
         "defPct": 15.2
@@ -55225,6 +55400,7 @@
       "id": "the-shorekeeper",
       "name": "Shorekeeper",
       "element": "spectroDmg",
+      "weaponType": 5,
       "minorFortes": {
         "healingBonus": 12,
         "hpPct": 12
@@ -55234,6 +55410,7 @@
       "id": "verina",
       "name": "Verina",
       "element": "spectroDmg",
+      "weaponType": 5,
       "minorFortes": {
         "healingBonus": 12,
         "atkPct": 12
@@ -55243,6 +55420,7 @@
       "id": "xiangli-yao",
       "name": "Xiangli Yao",
       "element": "electroDmg",
+      "weaponType": 4,
       "minorFortes": {
         "critDmg": 16,
         "atkPct": 12
@@ -55252,6 +55430,7 @@
       "id": "yangyang",
       "name": "Yangyang",
       "element": "aeroDmg",
+      "weaponType": 2,
       "minorFortes": {
         "atkPct": 12,
         "aeroDmg": 12
@@ -55261,6 +55440,7 @@
       "id": "yangyang-xuanling",
       "name": "Yangyang: Xuanling",
       "element": "havocDmg",
+      "weaponType": 2,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55270,6 +55450,7 @@
       "id": "yinlin",
       "name": "Yinlin",
       "element": "electroDmg",
+      "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55279,6 +55460,7 @@
       "id": "youhu",
       "name": "Youhu",
       "element": "glacioDmg",
+      "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55288,6 +55470,7 @@
       "id": "yuanwu",
       "name": "Yuanwu",
       "element": "electroDmg",
+      "weaponType": 4,
       "minorFortes": {
         "electroDmg": 12,
         "defPct": 15.2
@@ -55297,6 +55480,7 @@
       "id": "zani",
       "name": "Zani",
       "element": "spectroDmg",
+      "weaponType": 4,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12
@@ -55306,6 +55490,7 @@
       "id": "zhezhi",
       "name": "Zhezhi",
       "element": "glacioDmg",
+      "weaponType": 5,
       "minorFortes": {
         "critRate": 8,
         "atkPct": 12

@@ -57,7 +57,7 @@ export function ZzzApp() {
         ? <SampleNotice onRemove={() => useZzzStore.getState().clear()} onImport={() => setPage('data')} />
         : page !== 'data' && <BackupReminder game='zzz' hasData={hasData} onSave={() => setPage('data')} />}
     >
-      {page === 'agents' && <ZzzCharactersPage onImport={goToImport} />}
+      {page === 'agents' && <ZzzCharactersPage />}
       {page === 'optimizer' && <ZzzOptimizerPage onImport={goToImport} />}
       {page === 'discs' && <ZzzDiscsPage onImport={goToImport} />}
       {page === 'data' && <ZzzDataPage />}

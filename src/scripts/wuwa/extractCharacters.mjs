@@ -1,4 +1,5 @@
-// Adds each WuWa character's element and minor forte bonuses, and each weapon's always-on passive bonuses, to
+// Adds each WuWa character's element, weapon type and minor forte bonuses, and each weapon's rarity and always-on
+// passive bonuses, to
 // src/lib/games/wuwa/data/generated/datamine.json, read straight from the community datamine
 // Arikatsu/WutheringWaves_Data. Run by hand when the datamine updates:
 //
@@ -99,7 +100,7 @@ for (const role of read('BinData/role/roleinfo.json')) {
       minorFortes[converted.stat] = round((minorFortes[converted.stat] ?? 0) + converted.value)
     }
   }
-  characters[id] = { id, name, element: element ?? null, minorFortes }
+  characters[id] = { id, name, element: element ?? null, weaponType: role.WeaponType ?? null, minorFortes }
 }
 
 // Weapon passives: only a first sentence that is exactly one of these always-on phrasings is used. Anything with a
@@ -124,6 +125,7 @@ let weaponsWithPassive = 0
 for (const weapon of read('BinData/weapon/weaponconf.json')) {
   const name = text.get(weapon.WeaponName)
   const target = name ? data.weapons[slugify(name)] : undefined
+  if (target && weapon.QualityId) target.rarity = weapon.QualityId
   const description = text.get(weapon.Desc)
   if (!target || !description) continue
   const first = description.replace(/<[^>]+>/g, '').split(/(?<=\.)\s/)[0].trim()
@@ -139,11 +141,11 @@ for (const weapon of read('BinData/weapon/weaponconf.json')) {
 
 const missing = Object.keys(data.bases).filter((id) => !characters[id])
 data.characters = Object.fromEntries(Object.keys(characters).sort().map((id) => [id, characters[id]]))
-data.provenance.included = ['bases.baseByLevel', 'weapons', 'echoes', 'sets', 'characters (element, minorFortes)', 'weapons.passiveStats']
+data.provenance.included = ['bases.baseByLevel', 'weapons', 'echoes', 'sets', 'characters (element, weaponType, minorFortes)', 'weapons.rarity', 'weapons.passiveStats']
 data.provenance.weaponPassives =
   `Always-on weapon passive bonuses per refinement, from the first sentence of each passive description and its values (BinData/weapon/weaponconf.json Desc, DescParams), branch ${branch}, same script and date as characters`
 data.provenance.characters =
-  `Element (BinData/role/roleinfo.json ElementId) and minor fortes (BinData/skillTree/skilltree.json stat nodes) read directly from the datamine branch ${branch} by src/scripts/wuwa/extractCharacters.mjs on ${
+  `Element and weapon type (BinData/role/roleinfo.json ElementId, WeaponType), weapon rarity (BinData/weapon/weaponconf.json QualityId) and minor fortes (BinData/skillTree/skilltree.json stat nodes) read directly from the datamine branch ${branch} by src/scripts/wuwa/extractCharacters.mjs on ${
     new Date().toISOString().slice(0, 10)
   }`
 writeFileSync(OUTPUT, `${JSON.stringify(data, null, 2)}\n`)

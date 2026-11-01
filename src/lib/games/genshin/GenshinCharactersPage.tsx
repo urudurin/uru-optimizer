@@ -13,6 +13,7 @@ import {
 import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
 import { SUBSTAT_STATS } from 'lib/games/genshin/goodKeys'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
+import { genshinRoster } from 'lib/games/genshin/state/roster'
 import {
   defaultArtifactWeights,
   genshinArtifactWeights,
@@ -68,26 +69,23 @@ import {
 } from 'react'
 
 // The Characters page, after HSR's Characters page like ZZZ's Agents page: a roster of art banners and one showcase card
-// (shared/ui/Showcase.tsx). The roster lists every character with stat data; ones not in the save are dimmed and can be
-// added by hand (level, constellation, weapon). Art, names and weapon types come from Enka (data/images.ts); without
+// (shared/ui/Showcase.tsx). The roster lists every character with stat data, like HSR: ones not in the save have a default
+// build (state/roster.ts) and are saved once changed. Art, names and weapon types come from Enka (data/images.ts); without
 // them the page shows initials and names from GOOD keys.
 
-export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
-  const characters = useGenshinStore((s) => s.characters)
+export function GenshinCharactersPage() {
+  const saved = useGenshinStore((s) => s.characters)
   const images = useGenshinImages()
+  const characters = useMemo(() => genshinRoster(saved, images), [saved, images])
   const [picked, setPicked] = useState<string | null>(null)
 
-  // Saved characters first, then everyone else with stat data by name. The Traveler is listed once, until one is saved
-  // Saved ones in priority order (shared/characterPriority.ts)
+  // Saved characters first in priority order (shared/characterPriority.ts), then everyone else by name
   const rankOrder = usePriority('genshin')
   const rosterIds = useMemo(() => {
-    const saved = new Set(characters.map((c) => c.id))
-    const hasTraveler = characters.some((c) => c.id.startsWith('Traveler'))
-    const others = Object.keys(stats.characters)
-      .filter((id) => !saved.has(id) && !(id === 'Traveler' && hasTraveler))
-      .sort((a, b) => nameOf(a, images).localeCompare(nameOf(b, images)))
-    return [...orderByPriority(characters.map((c) => c.id), rankOrder), ...others]
-  }, [characters, images, rankOrder])
+    const savedIds = new Set(saved.map((c) => c.id))
+    const others = characters.filter((c) => !savedIds.has(c.id)).sort((x, y) => x.name.localeCompare(y.name)).map((c) => c.id)
+    return [...orderByPriority(saved.map((c) => c.id), rankOrder), ...others]
+  }, [saved, characters, rankOrder])
 
   const activeId = picked ?? rosterIds[0]
   const character = characters.find((c) => c.id === activeId)
@@ -99,22 +97,19 @@ export function GenshinCharactersPage({ onImport }: { onImport: () => void }) {
         onPick={setPicked}
         groupColor={(group) => elementColor(group as Element)}
         entries={rosterIds.map((id) => {
-          const c = characters.find((saved) => saved.id === id)
+          const c = characters.find((entry) => entry.id === id)
           return {
             key: id,
             name: c?.name ?? nameOf(id, images),
-            meta: c ? `Lv ${c.level} · C${c.constellation} · ${c.weapon ? `${c.weapon.name} R${c.weapon.refinement}` : 'No weapon'}` : 'Not added',
+            meta: c ? `Lv ${c.level} · C${c.constellation} · ${c.weapon ? `${c.weapon.name} R${c.weapon.refinement}` : 'No weapon'}` : '',
             group: c?.element ?? infoOf(id, images)?.element ?? 'Unknown',
             subgroup: infoOf(id, images)?.weaponType,
             portrait: images.characters[id]?.icon,
             circle: images.characters[id]?.icon,
-            dimmed: !c,
           }
         })}
       >
-        {character
-          ? <SavedCharacter key={character.id} character={character} images={images} />
-          : activeId && <NewCharacter key={activeId} id={activeId} images={images} onImport={characters.length === 0 ? onImport : undefined} />}
+        {character && <SavedCharacter key={character.id} character={character} images={images} />}
       </RosterLayout>
     </Stack>
   )
@@ -197,7 +192,7 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
                     builds.view({
                       name: character.name,
                       describe: (b) => describeSavedPieces(b.pieceIds.flatMap((id) => artifactById.get(id)?.setName ?? []), b.pieceIds.length),
-                      equip: (b) => equip(character.id, b.pieceIds.flatMap((id) => artifactById.get(id) ?? [])),
+                      equip: (b) => equip(character, b.pieceIds.flatMap((id) => artifactById.get(id) ?? [])),
                     })}
                   savedCount={builds.saved.length}
                   onMoveToTop={() => writePriority('genshin', moveToTop(characters.map((c) => c.id), readPriority('genshin'), character.id))}
@@ -263,47 +258,6 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
           />
         ))
         : <Text size='sm' c='dimmed'>No artifacts equipped. Pick some on the Optimizer page and equip them.</Text>}
-    />
-  )
-}
-
-// A character who isn't in the save yet
-function NewCharacter({ id, images, onImport }: { id: string, images: GenshinImages, onImport?: () => void }) {
-  const saveCharacter = useGenshinStore((s) => s.saveCharacter)
-  const info = infoOf(id, images)
-  const name = nameOf(id, images)
-  const isTraveler = id === 'Traveler'
-
-  return (
-    <ShowcaseCard
-      sidePanel
-      heading={{ stars: info?.rarity }}
-      colorKey={`genshin:${id}`}
-      name={name}
-      accent={info?.element ? ELEMENT_ACCENTS[info.element] : undefined}
-      portrait={images.characters[id]?.portrait}
-      info={
-        <>
-          <div>
-            <Text size='xl' fw={700}>{name}</Text>
-            <Group gap={6} mt={4}>
-              {info?.element && <Badge size='sm' variant='light' color={elementColor(info.element)}>{info.element}</Badge>}
-              <Text size='xs' c='dimmed'>Not added</Text>
-            </Group>
-          </div>
-          <Text size='sm' c='dimmed'>Add their level, constellation and weapon to see their stats. Artifacts come from an import or the Optimizer.</Text>
-          <CharacterForm
-            initial={{ id, name, element: info?.element, level: 90, constellation: 0 }}
-            weaponInfo={images.weaponInfo}
-            weaponType={info?.weaponType}
-            isTraveler={isTraveler}
-            submitLabel='Add character'
-            onSubmit={saveCharacter}
-          />
-          {onImport && <Button size='xs' variant='light' onClick={onImport}>Import data instead</Button>}
-        </>
-      }
-      gear={<Text size='sm' c='dimmed'>No artifacts yet.</Text>}
     />
   )
 }

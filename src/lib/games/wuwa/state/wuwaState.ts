@@ -170,6 +170,11 @@ export function assignWuwaEcho(data: WuwaData, echoId: string, charId: string | 
 }
 
 // Adds a Resonator by hand, or updates the details of one already saved. Their echoes stay as they are
+// Adds a Resonator the save doesn't have yet (a default one from state/roster.ts), so their echoes can be changed
+export function withWuwaCharacter(data: WuwaData, character: CharacterState): WuwaData {
+  return data.characters.some((c) => c.charId === character.charId) ? data : { ...data, characters: [...data.characters, character] }
+}
+
 export function saveWuwaCharacter(data: WuwaData, details: Omit<CharacterState, 'echoIds'>): WuwaData {
   const existing = data.characters.find((c) => c.charId === details.charId)
   if (existing) return { ...data, characters: data.characters.map((c) => (c === existing ? { ...existing, ...details } : c)) }

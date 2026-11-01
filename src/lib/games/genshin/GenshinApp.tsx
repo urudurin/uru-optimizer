@@ -58,7 +58,7 @@ export function GenshinApp() {
         : page !== 'data' && <BackupReminder game='genshin' hasData={hasData} onSave={() => setPage('data')} />}
     >
       {page === 'optimizer' && <GenshinOptimizerPage onImport={goToImport} />}
-      {page === 'characters' && <GenshinCharactersPage onImport={goToImport} />}
+      {page === 'characters' && <GenshinCharactersPage />}
       {page === 'artifacts' && <GenshinArtifactsPage onImport={goToImport} />}
       {page === 'data' && <GenshinDataPage />}
     </GameLayout>

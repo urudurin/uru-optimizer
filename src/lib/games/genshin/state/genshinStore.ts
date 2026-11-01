@@ -14,8 +14,12 @@ import {
   serializeGenshinData,
   switchGenshinArtifacts,
   unequipGenshinCharacter,
+  withGenshinCharacter,
 } from 'lib/games/genshin/state/genshinState'
-import type { Artifact } from 'lib/games/genshin/types'
+import type {
+  Artifact,
+  GenshinCharacter,
+} from 'lib/games/genshin/types'
 import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import {
   type ImportMode,
@@ -34,8 +38,9 @@ type GenshinStore = GenshinData & {
   // Warnings from the most recent import, not persisted
   lastWarnings: string[],
   importParsed: (parsed: GenshinData & { warnings: string[] }, mode: ImportMode) => void,
-  // Makes these the character's artifacts in this browser's save, see equipGenshinArtifacts
-  equip: (characterId: string, artifacts: Artifact[]) => void,
+  // Makes these the character's artifacts in this browser's save, see equipGenshinArtifacts. A character not in the save
+  // yet (a default one, state/roster.ts) is added first
+  equip: (character: GenshinCharacter, artifacts: Artifact[]) => void,
   // Adds a character by hand or changes their level, constellation or weapon, see saveGenshinCharacter
   saveCharacter: (details: GenshinCharacterDetails) => void,
   // The Characters page's Character menu: unequipGenshinCharacter / switchGenshinArtifacts / deleteGenshinCharacter
@@ -65,9 +70,9 @@ export const useGenshinStore = create<GenshinStore>()((set, get) => ({
     set({ ...data, lastWarnings: parsed.warnings })
   },
 
-  equip: (characterId, artifacts) => {
+  equip: (character, artifacts) => {
     const { artifacts: saved, characters } = get()
-    const data = equipGenshinArtifacts({ artifacts: saved, characters }, characterId, artifacts, swapsOnEquip('genshin'))
+    const data = equipGenshinArtifacts(withGenshinCharacter({ artifacts: saved, characters }, character), character.id, artifacts, swapsOnEquip('genshin'))
     save(data)
     set(data)
   },

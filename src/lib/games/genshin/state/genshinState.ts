@@ -114,6 +114,11 @@ export function equipGenshinArtifacts(data: GenshinData, characterId: string, ar
   }
 }
 
+// Adds a character the save doesn't have yet (a default one from state/roster.ts), so their gear can be changed
+export function withGenshinCharacter(data: GenshinData, character: GenshinCharacter): GenshinData {
+  return data.characters.some((c) => c.id === character.id) ? data : { ...data, characters: [...data.characters, character] }
+}
+
 // What a character added by hand has (or what can be changed on a saved one)
 export type GenshinCharacterDetails = Pick<GenshinCharacter, 'id' | 'name' | 'element' | 'level' | 'constellation' | 'weapon'>
 

@@ -93,6 +93,12 @@ function weaponBase(weapon: GenshinWeapon, bonus: Partial<Record<GenshinStatKey,
   return atLevel(data.atk, weapon.level) + (data.ascensionAtk[ascension] ?? 0)
 }
 
+// A weapon's base ATK at a level (ascension inferred), for picking the strongest one; undefined without stat data
+export function weaponBaseAtk(id: string, level: number): number | undefined {
+  const data = DATA.weapons[id]
+  return data ? atLevel(data.atk, level) + (data.ascensionAtk[inferAscension(level)] ?? 0) : undefined
+}
+
 // Buffs from teammates (team/teamBuffs.ts): premod ones are added with the other bonuses, total ones to the final stat
 export type TeamBuffTotals = {
   premod: Partial<Record<GenshinStatKey, number>>,

@@ -52,6 +52,7 @@ import {
 import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
 import { SUBSTAT_STATS } from 'lib/games/zzz/discStats'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
+import { defaultZzzBuild } from 'lib/games/zzz/state/roster'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
   CONDITION_LABELS,
@@ -71,7 +72,6 @@ import {
 import { resolveBuild } from 'lib/games/zzz/stats/resolveBuild'
 import {
   AgentForm,
-  defaultWEngine,
 } from 'lib/games/zzz/ui/AgentForm'
 import { zzzStatRows } from 'lib/games/zzz/ui/agentStats'
 import {
@@ -95,10 +95,11 @@ function presetOf(conditions: ActiveConditions): Preset {
   return same(statScreenConditions()) ? 'screen' : same(defaultConditions()) ? 'combat' : 'custom'
 }
 
-// One roster entry per agent, with every saved build of theirs (none for agents not in the save)
+// One roster entry per agent, with every saved build of theirs. Agents with stat data but no saved build get a default
+// one (state/roster.ts), like HSR where every character is available; agents without stat data have none
 type RosterAgent = { agentId: string, name: string, element: string, specialty: string, builds: ImportedBuild[] }
 
-export function ZzzCharactersPage({ onImport }: { onImport: () => void }) {
+export function ZzzCharactersPage() {
   const builds = useZzzStore((s) => s.builds)
   const images = useZzzImages()
   // Every agent and W-Engine, once Enka's data has loaded (data/enkaGameData.ts)
@@ -120,7 +121,11 @@ export function ZzzCharactersPage({ onImport }: { onImport: () => void }) {
       ...Object.values(AGENTS).map((agent) => ({ agentId: agent.id, name: agent.name, element: agent.element, specialty: agent.specialty, builds: [] })),
     ]
     const others = new Map<string, RosterAgent>()
-    for (const agent of known) if (!byAgent.has(agent.agentId) && !others.has(agent.agentId)) others.set(agent.agentId, agent)
+    for (const agent of known) {
+      if (byAgent.has(agent.agentId) || others.has(agent.agentId)) continue
+      const data = AGENTS[agent.agentId]
+      others.set(agent.agentId, data ? { ...agent, builds: [defaultZzzBuild(data)] } : agent)
+    }
     return [
       ...orderByPriority([...byAgent.keys()], rankOrder).map((id) => byAgent.get(id)!),
       ...[...others.values()].sort((a, b) => a.name.localeCompare(b.name)),
@@ -138,9 +143,7 @@ export function ZzzCharactersPage({ onImport }: { onImport: () => void }) {
         entries={roster.map((agent) => {
           const first = agent.builds[0]
           const engine = first?.wEngineId ? W_ENGINES[first.wEngineId] : undefined
-          const meta = !first
-            ? AGENTS[agent.agentId] ? 'Not added' : 'Not added · no stat data yet'
-            : !AGENTS[agent.agentId]
+          const meta = !first || !AGENTS[agent.agentId]
             ? `${agent.specialty} · no stat data yet`
             : `${agent.specialty} · ${engine ? `${engine.name} R${first.wEngineRefinement}` : 'No W-Engine'}`
           return {
@@ -151,14 +154,13 @@ export function ZzzCharactersPage({ onImport }: { onImport: () => void }) {
             subgroup: agent.specialty,
             portrait: images.agents[agent.agentId]?.portrait,
             circle: images.agents[agent.agentId]?.circle,
-            dimmed: !first,
+            // Agents without stat data can't be used yet
+            dimmed: !AGENTS[agent.agentId],
           }
         })}
       >
-        {entry && (AGENTS[entry.agentId]
-          ? entry.builds.length > 0
-            ? <SavedAgent key={entry.agentId} entry={entry} images={images} />
-            : <NewAgent key={entry.agentId} entry={entry} images={images} onImport={builds.length === 0 ? onImport : undefined} />
+        {entry && (AGENTS[entry.agentId] && entry.builds.length > 0
+          ? <SavedAgent key={entry.agentId} entry={entry} images={images} />
           : <NoDataAgent key={entry.agentId} entry={entry} images={images} />)}
       </RosterLayout>
     </Stack>
@@ -385,45 +387,6 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
   )
 }
 
-// An agent with stat data who isn't in the save yet
-function NewAgent({ entry, images, onImport }: { entry: RosterAgent, images: ZzzImages, onImport?: () => void }) {
-  const saveBuild = useZzzStore((s) => s.saveBuild)
-  const agent = AGENTS[entry.agentId]
-  const art = images.agents[entry.agentId]
-  const initial: ImportedBuild = {
-    id: `uru-${agent.id}`,
-    agentId: agent.id,
-    name: agent.name,
-    element: agent.element,
-    specialty: agent.specialty,
-    level: agent.level,
-    mindscapeLevel: 0,
-    wEngineId: defaultWEngine(agent.specialty),
-    wEngineRefinement: 1,
-    discIds: {},
-  }
-
-  return (
-    <ShowcaseCard
-      sidePanel
-      heading={{ rank: images.agentInfo[entry.agentId]?.rank }}
-      colorKey={`zzz:${entry.agentId}`}
-      name={agent.name}
-      accent={art?.accent}
-      portrait={art?.portrait}
-      info={
-        <>
-          <AgentHeading entry={entry} status='Not added' />
-          <Text size='sm' c='dimmed'>Add their Mindscape and W-Engine to see their stats. Discs come from an import or the Optimizer.</Text>
-          <AgentForm initial={initial} submitLabel='Add agent' onSubmit={saveBuild} />
-          {onImport && <Button size='xs' variant='light' onClick={onImport}>Import data instead</Button>}
-        </>
-      }
-      gear={<Text size='sm' c='dimmed'>No discs yet.</Text>}
-    />
-  )
-}
-
 // An agent this site has no stat data for yet, saved or not
 function NoDataAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }) {
   const art = images.agents[entry.agentId]
@@ -437,7 +400,7 @@ function NoDataAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages 
       portrait={art?.portrait}
       info={
         <>
-          <AgentHeading entry={entry} status={entry.builds.length > 0 ? 'Saved' : 'Not added'} />
+          <AgentHeading entry={entry} status='No stat data yet' />
           <Text size='sm' c='dimmed'>
             {`No stat data for ${entry.name}: it comes from Enka.Network's game data, which hasn't loaded (or doesn't have them yet).`}
           </Text>

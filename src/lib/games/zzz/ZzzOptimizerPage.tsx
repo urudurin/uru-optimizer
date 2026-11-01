@@ -168,6 +168,10 @@ import {
 import { discSearch } from 'lib/games/zzz/optimizer/optimizerClient'
 import type { DiscWorkerResponse } from 'lib/games/zzz/optimizer/optimizerWorker'
 import { usePresetImportStore } from 'lib/games/zzz/state/presetImportStore'
+import {
+  bestWEngine,
+  zzzRoster,
+} from 'lib/games/zzz/state/roster'
 import { zzzPiecesTaken } from 'lib/games/zzz/state/zzzState'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
@@ -263,12 +267,11 @@ type ZzzOptimizerSettings = {
   combatSettings: Record<string, boolean | number>,
 }
 
-// The user's own W-Engine for this agent when it's supported, otherwise the first one of the agent's specialty
+// The user's own W-Engine for this agent when it's supported, otherwise the best one of the agent's specialty
 function defaultLoadout(agent: AgentData, builds: ImportedBuild[]): Loadout {
   const build = builds.find((b) => b.agentId === agent.id && b.wEngineId && W_ENGINES[b.wEngineId])
   if (build?.wEngineId) return { wEngineId: build.wEngineId, refinement: String(build.wEngineRefinement) }
-  const engine = Object.values(W_ENGINES).find((w) => w.specialty === agent.specialty) ?? Object.values(W_ENGINES)[0]
-  return { wEngineId: engine.id, refinement: '1' }
+  return { wEngineId: bestWEngine(agent.specialty) ?? '', refinement: '1' }
 }
 
 function setName(setId: string): string {
@@ -315,13 +318,15 @@ function migrateSaves() {
 export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   useState(migrateSaves)
   const discs = useZzzStore((s) => s.discs)
-  const builds = useZzzStore((s) => s.builds)
+  const storeBuilds = useZzzStore((s) => s.builds)
   const images = useZzzImages()
   // Every agent and W-Engine, once Enka's data has loaded (data/enkaGameData.ts)
-  useZzzGameData()
+  const gameData = useZzzGameData()
+  // A build for every agent, saved or a default one (state/roster.ts), so any agent can be a teammate
+  const builds = useMemo(() => zzzRoster(storeBuilds), [storeBuilds, gameData])
 
   const agents = Object.values(AGENTS)
-  const fallbackAgent = agents.find((a) => builds.some((b) => b.agentId === a.id)) ?? agents[0]
+  const fallbackAgent = agents.find((a) => storeBuilds.some((b) => b.agentId === a.id)) ?? agents[0]
   // The last agent opened, even one from Enka's data, which loads after the first render: until it has, the page shows
   // the first agent with a build
   const [agentId, setAgentId] = useState(() => readOptimizerSettings(SETTINGS_KEY).last ?? fallbackAgent.id)

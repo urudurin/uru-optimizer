@@ -21,11 +21,6 @@ function wEngineOptions(specialty: string) {
   ].filter((group) => group.items.length > 0)
 }
 
-export function defaultWEngine(specialty: string): string | undefined {
-  const all = Object.values(W_ENGINES)
-  return (all.find((e) => e.specialty === specialty) ?? all[0])?.id
-}
-
 // Mindscape and W-Engine for an agent added by hand (or a saved build, to change them). Agents are always level 60:
 // that's what the agent data is for
 export function AgentForm({ initial, submitLabel, onSubmit, onCancel }: {

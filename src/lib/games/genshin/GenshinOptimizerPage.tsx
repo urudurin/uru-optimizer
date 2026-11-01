@@ -65,6 +65,7 @@ import {
 } from 'lib/games/genshin/optimizer/targets'
 import { genshinPiecesTaken } from 'lib/games/genshin/state/genshinState'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
+import { genshinRoster } from 'lib/games/genshin/state/roster'
 import {
   genshinArtifactWeights,
   genshinBuildScore,
@@ -330,8 +331,10 @@ function genshinBreakdown(setup: DamageSetup, stats: Partial<Record<GenshinStatK
 export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   useState(migrateSaves)
   const artifacts = useGenshinStore((s) => s.artifacts)
-  const characters = useGenshinStore((s) => s.characters)
+  const savedCharacters = useGenshinStore((s) => s.characters)
   const images = useGenshinImages()
+  // Every character, saved or not (state/roster.ts)
+  const characters = useMemo(() => genshinRoster(savedCharacters, images), [savedCharacters, images])
   const saveCharacter = useGenshinStore((s) => s.saveCharacter)
   const usable = useMemo(() => characters.filter(hasStatData), [characters])
   const [characterId, setCharacterId] = useState<string | null>(() => readOptimizerSettings(SETTINGS_KEY).last ?? null)
@@ -495,7 +498,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     return [...names].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
   }, [artifacts])
 
-  if (!character) {
+  // Every character is always there (state/roster.ts), so the page waits for artifacts instead
+  if (!character || artifacts.length === 0) {
     return (
       <Stack gap='lg'>
         <PageHeader title='Optimizer' />
@@ -638,7 +642,7 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
     if (!await confirmAction('Equip build', `Equip build #${selected + 1} on ${character.name} in this browser's save?${swap}`, { confirmLabel: 'Equip' })) {
       return
     }
-    equip(character.id, build.artifacts)
+    equip(character, build.artifacts)
     Message.success('Equipped')
     // The "Now" row is this build from here on
     if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
@@ -680,7 +684,7 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
   }
   function loadBuilds() {
     const piecesOf = (saved: SavedBuild) => saved.pieceIds.flatMap((id) => artifacts.find((piece) => piece.id === id) ?? [])
-    const equipPieces = (pieces: Artifact[]) => equip(character.id, pieces)
+    const equipPieces = (pieces: Artifact[]) => equip(character, pieces)
     openSavedBuildsModal({
       name: character.name,
       builds: savedList,

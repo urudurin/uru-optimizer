@@ -32,6 +32,8 @@ export type WeaponData = {
   name: string,
   // Datamine weapon type id
   weaponType: number,
+  // Datamine QualityId, 1-5 stars
+  rarity?: number,
   baseAtkByLevel: Record<string, number>,
   secondary: { stat: StatKey, byLevel: Record<string, number> },
   // Always-on passive bonuses by refinement (1-5), only for passives without a trigger
@@ -60,6 +62,8 @@ export type CharacterData = {
   id: string,
   name: string,
   element: ElementDmgKey | null,
+  // Datamine weapon type id of the weapons they use (see ui/ResonatorForm.tsx WEAPON_TYPES)
+  weaponType: number | null,
   minorFortes: Partial<Record<StatKey, number>>,
 }
 

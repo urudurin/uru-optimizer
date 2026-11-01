@@ -18,6 +18,7 @@ import {
   serializeWuwaData,
   switchWuwaEchoes,
   unequipWuwaCharacter,
+  withWuwaCharacter,
   WUWA_STATE_KEY,
   type WuwaData,
 } from 'lib/games/wuwa/state/wuwaState'
@@ -38,7 +39,8 @@ type WuwaStore = WuwaData & {
   lastWarnings: string[],
   importParsed: (parsed: ParsedWuwaData, mode: ImportMode) => void,
   // Makes these the Resonator's echoes in this browser's save, see equipWuwaEchoes
-  equip: (charId: string, echoes: Echo[]) => void,
+  // A Resonator not in the save yet (a default one, state/roster.ts) is added first
+  equip: (character: CharacterState, echoes: Echo[]) => void,
   // Adds a Resonator by hand or changes their level, sequence and weapon, see saveWuwaCharacter
   saveCharacter: (details: Omit<CharacterState, 'echoIds'>) => void,
   // The Resonators page's Character menu: unequipWuwaCharacter / switchWuwaEchoes / deleteWuwaCharacter
@@ -68,9 +70,9 @@ export const useWuwaStore = create<WuwaStore>()((set, get) => ({
     set({ ...data, lastWarnings: parsed.warnings })
   },
 
-  equip: (charId, echoes) => {
+  equip: (character, echoes) => {
     const { echoes: saved, characters, teams, priority } = get()
-    const data = equipWuwaEchoes({ echoes: saved, characters, teams, priority }, charId, echoes, swapsOnEquip('wuwa'))
+    const data = equipWuwaEchoes(withWuwaCharacter({ echoes: saved, characters, teams, priority }, character), character.charId, echoes, swapsOnEquip('wuwa'))
     save(data)
     set(data)
   },
