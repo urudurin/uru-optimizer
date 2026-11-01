@@ -1,13 +1,13 @@
 import {
   Button,
   Group,
-  NumberInput,
   Select,
   Stack,
   Switch,
   Text,
 } from '@mantine/core'
 import { formatNumber } from 'lib/games/shared/format'
+import { CommittedNumberInput } from 'lib/games/shared/ui/CommittedNumberInput'
 import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
 import { SavedRotations } from 'lib/games/shared/ui/optimizer/SavedRotations'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
@@ -67,12 +67,12 @@ export function EnemyCard({ enemy, debuffs, teamElements = [], onChange }: {
   return (
     <FormCard title='Enemy' size='narrow' description='DEF and RES of the enemy you fight. The team row adds its shred on top.'>
       <Group grow gap='xs'>
-        <NumberInput size='xs' label='DEF' min={0} value={enemy.def} onChange={(value) => set({ def: Number(value) || 0 })} />
-        <NumberInput size='xs' label='RES %' value={enemy.res} onChange={(value) => set({ res: Number(value) || 0 })} />
+        <CommittedNumberInput size='xs' label='DEF' min={0} value={enemy.def} onChange={(value) => set({ def: Number(value) || 0 })} />
+        <CommittedNumberInput size='xs' label='RES %' value={enemy.res} onChange={(value) => set({ res: Number(value) || 0 })} />
       </Group>
       <Switch size='xs' label='Stunned' checked={enemy.stunned} onChange={(event) => set({ stunned: event.currentTarget.checked })} />
       {enemy.stunned && (
-        <NumberInput
+        <CommittedNumberInput
           size='xs'
           label='Stun DMG multiplier %'
           min={100}
@@ -168,7 +168,7 @@ export function RotationCard({ agentId, element, teamElements = [], scaling = 'A
               <div key={hitKey(hit)} className={classes.hitRow}>
                 <Text size='xs' className={classes.hitLabel} title={hit.label}>{hit.aftershock ? `${hit.label} (Aftershock)` : hit.label}</Text>
                 <Text size='xs' c='dimmed' ta='right'>{`${hitMultiplier(hit, rotation.skillLevel).toFixed(1)}%`}</Text>
-                <NumberInput
+                <CommittedNumberInput
                   size='xs'
                   min={0}
                   max={99}
@@ -191,7 +191,7 @@ export function RotationCard({ agentId, element, teamElements = [], scaling = 'A
                 <Text size='xs' c='dimmed' ta='right'>
                   {anomalyText(agentId, element, hit, rotation)}
                 </Text>
-                <NumberInput
+                <CommittedNumberInput
                   size='xs'
                   min={0}
                   max={99}
@@ -203,7 +203,7 @@ export function RotationCard({ agentId, element, teamElements = [], scaling = 'A
                 />
               </div>
             ))}
-            <NumberInput
+            <CommittedNumberInput
               size='xs'
               label={hasVortex ? 'Disorder / Vortex after (seconds of the anomaly)' : 'Disorder after (seconds of the anomaly)'}
               min={0}
@@ -251,7 +251,7 @@ export function KitEffectsCard({ name, applied, onSetting }: {
                   />
                 )}
                 {effect.toggle?.kind === 'stacks' && (
-                  <NumberInput
+                  <CommittedNumberInput
                     size='xs'
                     w={150}
                     label={effect.toggle.label}

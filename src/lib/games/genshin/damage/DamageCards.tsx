@@ -1,7 +1,6 @@
 import {
   Button,
   Group,
-  NumberInput,
   Select,
   Stack,
   Switch,
@@ -31,6 +30,7 @@ import type {
   GenshinCharacter,
 } from 'lib/games/genshin/types'
 import { formatNumber } from 'lib/games/shared/format'
+import { CommittedNumberInput } from 'lib/games/shared/ui/CommittedNumberInput'
 import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
 import { SavedRotations } from 'lib/games/shared/ui/optimizer/SavedRotations'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
@@ -55,8 +55,8 @@ export function EnemyCard({ enemy, debuffs, onChange }: {
   return (
     <FormCard title='Enemy' size='narrow' description='Level and RES of the enemy you fight (most have 10%). The team row adds its shred on top.'>
       <Group grow gap='xs'>
-        <NumberInput size='xs' label='Level' min={1} max={200} value={enemy.level} onChange={(value) => set({ level: Number(value) || 1 })} />
-        <NumberInput size='xs' label='RES %' value={enemy.res} onChange={(value) => set({ res: Number(value) || 0 })} />
+        <CommittedNumberInput size='xs' label='Level' min={1} max={200} value={enemy.level} onChange={(value) => set({ level: Number(value) || 1 })} />
+        <CommittedNumberInput size='xs' label='RES %' value={enemy.res} onChange={(value) => set({ res: Number(value) || 0 })} />
       </Group>
       <Text size='xs' c='dimmed'>{fromTeam.length ? `From the team: ${fromTeam.join(', ')}` : 'No shred from the team'}</Text>
     </FormCard>
@@ -142,7 +142,7 @@ export function RotationCard({ character, rotation, talents, damage, team, onCha
               data={(['none', ...reactions] as Reaction[]).map((reaction) => ({ value: reaction, label: REACTION_LABELS[reaction] }))}
             />
             {rotation.reaction !== 'none' && (
-              <NumberInput
+              <CommittedNumberInput
                 size='xs'
                 w={150}
                 label={`${element} hits that react %`}
@@ -163,7 +163,7 @@ export function RotationCard({ character, rotation, talents, damage, team, onCha
               onChange={(event) => onChange({ ...rotation, polestar: { hits: rotation.polestar?.hits ?? 12, active: event.currentTarget.checked } })}
             />
             {rotation.polestar?.active && (
-              <NumberInput
+              <CommittedNumberInput
                 size='xs'
                 w={130}
                 label='Field hits recorded'
@@ -191,7 +191,7 @@ export function RotationCard({ character, rotation, talents, damage, team, onCha
                   {hit.physical && !rotation.infusion ? `${hit.label} (Physical)` : hit.label}
                 </Text>
                 <Text size='xs' c='dimmed' ta='right'>{describeMultiplier(hitMultiplier(hit, talents))}</Text>
-                <NumberInput
+                <CommittedNumberInput
                   size='xs'
                   min={0}
                   max={99}
@@ -214,7 +214,7 @@ export function RotationCard({ character, rotation, talents, damage, team, onCha
                 <Text size='xs' c='dimmed' ta='right' title='Before Elemental Mastery and RES'>
                   {`${formatNumber(Math.round(transformativeBase(line.reaction, character.level)))} base`}
                 </Text>
-                <NumberInput
+                <CommittedNumberInput
                   size='xs'
                   min={0}
                   max={99}
@@ -271,7 +271,7 @@ export function EffectsCard({ name, fourPieceSet, applied, onSetting }: {
                   />
                 )}
                 {effect.toggle?.kind === 'stacks' && (
-                  <NumberInput
+                  <CommittedNumberInput
                     size='xs'
                     w={150}
                     label={effect.toggle.label}

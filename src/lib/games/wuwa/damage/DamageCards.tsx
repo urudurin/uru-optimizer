@@ -1,13 +1,13 @@
 import {
   Button,
   Group,
-  NumberInput,
   Select,
   Stack,
   Switch,
   Text,
 } from '@mantine/core'
 import { formatNumber } from 'lib/games/shared/format'
+import { CommittedNumberInput } from 'lib/games/shared/ui/CommittedNumberInput'
 import classes from 'lib/games/shared/ui/optimizer/RotationHits.module.css'
 import { SavedRotations } from 'lib/games/shared/ui/optimizer/SavedRotations'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
@@ -42,14 +42,21 @@ export function EnemyCard({ enemy, onChange }: { enemy: EnemySettings, onChange:
       description='Level and RES of the enemy you fight. Teammates&apos; DEF ignore, RES shred and DMG Amplified aren&apos;t worked out yet: add them here.'
     >
       <Group grow gap='xs'>
-        <NumberInput size='xs' label='Level' min={1} max={150} value={enemy.level} onChange={(value) => set({ level: number(value) || 1 })} />
-        <NumberInput size='xs' label='RES %' value={enemy.res} onChange={(value) => set({ res: number(value) })} />
+        <CommittedNumberInput size='xs' label='Level' min={1} max={150} value={enemy.level} onChange={(value) => set({ level: number(value) || 1 })} />
+        <CommittedNumberInput size='xs' label='RES %' value={enemy.res} onChange={(value) => set({ res: number(value) })} />
       </Group>
       <Group grow gap='xs'>
-        <NumberInput size='xs' label='DEF ignore %' min={0} max={100} value={enemy.defIgnore} onChange={(value) => set({ defIgnore: number(value) })} />
-        <NumberInput size='xs' label='RES shred %' value={enemy.resShred} onChange={(value) => set({ resShred: number(value) })} />
+        <CommittedNumberInput
+          size='xs'
+          label='DEF ignore %'
+          min={0}
+          max={100}
+          value={enemy.defIgnore}
+          onChange={(value) => set({ defIgnore: number(value) })}
+        />
+        <CommittedNumberInput size='xs' label='RES shred %' value={enemy.resShred} onChange={(value) => set({ resShred: number(value) })} />
       </Group>
-      <NumberInput size='xs' label='DMG Amplified %' min={0} value={enemy.amplify} onChange={(value) => set({ amplify: number(value) })} />
+      <CommittedNumberInput size='xs' label='DMG Amplified %' min={0} value={enemy.amplify} onChange={(value) => set({ amplify: number(value) })} />
       <Text size='xs' c='dimmed'>DMG Amplified is the same for every loadout: it changes the damage shown, never the ranking.</Text>
     </FormCard>
   )
@@ -119,7 +126,7 @@ export function RotationCard({ charId, rotation, mainEcho, damage, onChange }: {
               <div key={hit.key} className={classes.hitRow}>
                 <Text size='xs' className={classes.hitLabel} title={`${hit.label} (${describeHit(hit)})`}>{hit.label}</Text>
                 <Text size='xs' c='dimmed' ta='right'>{`${hitMultiplier(hit, rotation.skillLevel).toFixed(1)}%`}</Text>
-                <NumberInput
+                <CommittedNumberInput
                   size='xs'
                   min={0}
                   max={99}
@@ -179,7 +186,7 @@ function EchoSkillLines({ charId, rotation, mainEcho, onChange }: {
         <div key={hit.key} className={classes.hitRow}>
           <Text size='xs' className={classes.hitLabel} title={text}>{`Hit ${i + 1} (${hit.stat.toUpperCase()}${hit.element ? `, ${hit.element}` : ''})`}</Text>
           <Text size='xs' c='dimmed' ta='right'>{`${hit.multiplier.toFixed(1)}%`}</Text>
-          <NumberInput
+          <CommittedNumberInput
             size='xs'
             min={0}
             max={99}
@@ -228,7 +235,7 @@ export function KitEffectsCard({ name, applied, onSetting, title = 'Own effects'
                   />
                 )}
                 {effect.toggle?.kind === 'stacks' && (
-                  <NumberInput
+                  <CommittedNumberInput
                     size='xs'
                     w={150}
                     label={effect.toggle.label}

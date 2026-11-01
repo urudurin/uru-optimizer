@@ -1,7 +1,6 @@
 import {
   Button,
   Group,
-  NumberInput,
   SimpleGrid,
   Stack,
   Text,
@@ -12,6 +11,7 @@ import {
   type ExtraBuffs,
   setExtraBuff,
 } from 'lib/games/shared/extraBuffs'
+import { CommittedNumberInput } from 'lib/games/shared/ui/CommittedNumberInput'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 import { useTranslation } from 'react-i18next'
 
@@ -26,7 +26,7 @@ export function ExtraBuffsCard({ defs, buffs, onChange }: { defs: ExtraBuffDef[]
       <Stack gap='xs'>
         <SimpleGrid cols={2} spacing='xs' verticalSpacing={6}>
           {defs.map((def) => (
-            <NumberInput
+            <CommittedNumberInput
               key={def.key}
               size='xs'
               label={def.label}

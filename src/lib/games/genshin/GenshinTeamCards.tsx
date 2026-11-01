@@ -1,7 +1,6 @@
 import {
   Group,
   MultiSelect,
-  NumberInput,
   Select,
   Stack,
   Switch,
@@ -25,6 +24,7 @@ import {
   type GenshinStatKey,
   statLabel,
 } from 'lib/games/genshin/types'
+import { CommittedNumberInput } from 'lib/games/shared/ui/CommittedNumberInput'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 
 // The Team row of the Genshin optimizer, after HSR's teammates row and Genshin Optimizer's team setup: who the
@@ -68,7 +68,7 @@ function BuffControl({ entry, onChange }: { entry: AppliedBuff, onChange: (value
   if (toggle.kind === 'stacks') {
     const max = entry.giver ? toggle.max(entry.giver) : 0
     return (
-      <NumberInput
+      <CommittedNumberInput
         size='xs'
         w={150}
         label={toggle.label}

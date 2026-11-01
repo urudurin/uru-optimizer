@@ -1,11 +1,11 @@
 import {
   Group,
   MultiSelect,
-  NumberInput,
   Stack,
   Switch,
   Text,
 } from '@mantine/core'
+import { CommittedNumberInput } from 'lib/games/shared/ui/CommittedNumberInput'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
 
 // The Team row of the ZZZ and WuWa optimizers, after HSR's teammates row (genshin/GenshinTeamCards.tsx is the Genshin
@@ -32,7 +32,7 @@ function EntryControl({ entry, onChange }: { entry: TeamEntry, onChange: (value:
     return <Switch size='xs' label={toggle.label} checked={entry.setting !== false} onChange={(event) => onChange(event.currentTarget.checked)} />
   }
   return (
-    <NumberInput
+    <CommittedNumberInput
       size='xs'
       w={170}
       label={toggle.label}

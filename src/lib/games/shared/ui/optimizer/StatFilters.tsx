@@ -1,7 +1,7 @@
 import {
-  NumberInput,
   Text,
 } from '@mantine/core'
+import { CommittedNumberInput } from 'lib/games/shared/ui/CommittedNumberInput'
 import classes from 'lib/games/shared/ui/optimizer/StatFilters.module.css'
 
 // Minimum and maximum for each stat, after HSR's optimizer stat filters (lib/tabs/tabOptimizer/optimizerForm/layout/
@@ -27,7 +27,7 @@ export function StatFilters({ rows, min, max, onMin, onMax }: {
         return (
           <div key={row.key} className={classes.row}>
             <Text size='xs' className={classes.label}>{row.label}</Text>
-            <NumberInput
+            <CommittedNumberInput
               size='xs'
               placeholder='0'
               min={0}
@@ -36,7 +36,7 @@ export function StatFilters({ rows, min, max, onMin, onMax }: {
               value={min[row.key] ?? ''}
               onChange={(value) => onMin(set(min, row.key, value))}
             />
-            <NumberInput
+            <CommittedNumberInput
               size='xs'
               placeholder='∞'
               min={0}
