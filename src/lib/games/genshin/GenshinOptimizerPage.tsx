@@ -57,10 +57,7 @@ import {
   type OptimizerTarget,
   targetLabel,
 } from 'lib/games/genshin/optimizer/artifactOptimizer'
-import {
-  cancelOptimizer,
-  runOptimizer,
-} from 'lib/games/genshin/optimizer/optimizerClient'
+import { artifactSearch } from 'lib/games/genshin/optimizer/optimizerClient'
 import {
   GENSHIN_SETTINGS_KEY as SETTINGS_KEY,
   GENSHIN_TARGETS as TARGETS,
@@ -124,6 +121,7 @@ import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { todayString } from 'lib/games/shared/importedPresets'
 import {
   type FilterCause,
+  optionCandidates,
   type PoolCandidate,
   poolCauses,
   statLimitCauses,
@@ -135,7 +133,6 @@ import {
   rememberCharacter,
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
-import type { SearchProgress } from 'lib/games/shared/progress'
 import {
   deleteSavedBuild,
   saveBuild,
@@ -181,6 +178,7 @@ import {
   NoBuildPanel,
   NoResults,
 } from 'lib/games/shared/ui/optimizer/NoResults'
+import { OptimizerOptionsCard } from 'lib/games/shared/ui/optimizer/OptimizerOptionsCard'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -197,6 +195,7 @@ import {
   StatFilters,
 } from 'lib/games/shared/ui/optimizer/StatFilters'
 import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
+import { useOptimizerRun } from 'lib/games/shared/ui/optimizer/useOptimizerRun'
 import {
   FormCard,
   FormRow,
@@ -390,10 +389,9 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
-  const [running, setRunning] = useState(false)
-  const [progress, setProgress] = useState<SearchProgress | undefined>()
-  const [result, setResult] = useState<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget } | undefined>()
-  const [selected, setSelected] = useState(0)
+  // The search (shared/ui/optimizer/useOptimizerRun.ts), its result kept with the target it was ranked by
+  const search = useOptimizerRun<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget }, typeof artifactSearch>(artifactSearch)
+  const { running, progress, result, setResult, selected, setSelected } = search
   const pins = usePinnedBuilds(character?.id ?? '')
   // Results columns: in-combat stats (team, kit and set buffs) or the stat screen, after HSR's stat view
   const [statView, setStatView] = useState<StatView>('combat')
@@ -471,51 +469,15 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
         apply: () => (setTwoPieceSets([]), clear()),
       })
     }
-    if (excludeEquippedByOthers) {
-      candidates.push({
-        key: 'worn',
-        label: 'Leave out artifacts others are wearing',
-        fixLabel: 'Allow them',
-        without: { ...filters, excludeEquippedByOthers: false },
-        apply: () => (setExcludeEquippedByOthers(false), clear()),
-      })
-    }
-    if (excludeOwners?.length) {
-      candidates.push({
-        key: 'priority',
-        label: 'Character priority filter',
-        fixLabel: 'Turn off',
-        without: { ...filters, excludeOwners: undefined },
-        apply: () => (setPriorityFilter(false), clear()),
-      })
-    }
-    if (keepCurrent) {
-      candidates.push({
-        key: 'keep',
-        label: 'Keep current artifacts',
-        fixLabel: 'Turn off',
-        without: { ...filters, keep: undefined },
-        apply: () => (setKeepCurrent(false), clear()),
-      })
-    }
-    if (minLevel > 0) {
-      candidates.push({
-        key: 'level',
-        label: `Minimum level +${minLevel}`,
-        fixLabel: 'Clear',
-        without: { ...filters, minLevel: 0 },
-        apply: () => (setMinLevel(0), clear()),
-      })
-    }
-    if (minRarity) {
-      candidates.push({
-        key: 'rarity',
-        label: `Minimum rarity ${minRarity}★`,
-        fixLabel: 'Clear',
-        without: { ...filters, minRarity: 0 },
-        apply: () => (setMinRarity(0), clear()),
-      })
-    }
+    candidates.push(...optionCandidates(filters, {
+      gearNoun: 'artifacts',
+      clear,
+      setExcludeWorn: setExcludeEquippedByOthers,
+      setPriority: setPriorityFilter,
+      setKeep: setKeepCurrent,
+      setMinLevel,
+      rarity: { label: `Minimum rarity ${minRarity}★`, reset: () => setMinRarity(0) },
+    }))
     const poolEmpty = (f: typeof filters) => filterPools({ character, artifacts: searchArtifacts, filters: f }).some((pool) => pool.length === 0)
     return [
       ...poolCauses(candidates, poolEmpty, poolSizes.some((size) => size === 0)),
@@ -628,10 +590,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   // The current artifacts' DPS score when ranking by damage (shared/damageScore.ts), kept for the Characters page
   const currentDpsScore = byDamage ? genshinDamageScore(character, worn, target, teamBuffs, combat) : undefined
 
-  async function run() {
-    setRunning(true)
-    setProgress(undefined)
-    const response = await runOptimizer({
+  function run() {
+    void search.start({
       character,
       artifacts: searchArtifacts,
       filters,
@@ -642,18 +602,11 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
       teamBuffs,
       // Combat effects only count for rotation damage; the stat targets stay on the stat screen
       combat: byDamage ? combat : undefined,
-    }, setProgress)
-    // undefined: cancelled, or replaced by a newer search that is still running
-    if (response) {
-      setResult({ ...response, target })
-      setSelected(0)
-      setRunning(false)
-    }
+    }, (response) => ({ ...response, target }))
   }
 
   function cancel() {
-    cancelOptimizer()
-    setRunning(false)
+    search.cancel()
   }
 
   const outcome = result?.outcome
@@ -847,51 +800,28 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
                 />
                 <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
               </FormCard>
-              <FormCard title='Optimizer options' size='narrow'>
-                <Switch
-                  label='Leave out artifacts other characters are wearing'
-                  checked={excludeEquippedByOthers}
-                  onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
-                />
-                <Switch
-                  label='Character priority filter'
-                  description='Leave out artifacts worn by characters ranked above this one on the Characters page'
-                  disabled={excludeEquippedByOthers}
-                  checked={priorityFilter && !excludeEquippedByOthers}
-                  onChange={(event) => setPriorityFilter(event.currentTarget.checked)}
-                />
-                <Switch
-                  label='Keep current artifacts'
-                  description={`Each slot only uses the artifact ${character.name} wears now`}
-                  checked={keepCurrent}
-                  onChange={(event) => setKeepCurrent(event.currentTarget.checked)}
-                />
-                <Select
-                  label='Minimum level'
-                  size='xs'
-                  allowDeselect={false}
-                  value={String(minLevel)}
-                  onChange={(value) => value !== null && setMinLevel(Number(value))}
-                  data={[{ value: '0', label: '+0' }, { value: '4', label: '+4' }, { value: '8', label: '+8' }, { value: '12', label: '+12' }, {
-                    value: '16',
-                    label: '+16',
-                  }, { value: '20', label: '+20' }]}
-                />
-                <Select
-                  label='Minimum rarity'
-                  size='xs'
-                  allowDeselect={false}
-                  value={String(minRarity)}
-                  onChange={(value) => value !== null && setMinRarity(Number(value))}
-                  data={[{ value: '0', label: 'Any' }, { value: '4', label: '4★' }, { value: '5', label: '5★' }]}
-                />
-                <Switch
-                  label='Boost main stats to max level'
-                  description='Artifacts below max level count with their max-level main stat'
-                  checked={boostMain}
-                  onChange={(event) => setBoostMain(event.currentTarget.checked)}
-                />
-              </FormCard>
+              <OptimizerOptionsCard
+                gearNoun='artifacts'
+                ownerNoun='characters'
+                rosterPage='Characters'
+                excludeWorn={excludeEquippedByOthers}
+                onExcludeWorn={setExcludeEquippedByOthers}
+                priority={priorityFilter}
+                onPriority={setPriorityFilter}
+                keep={{ checked: keepCurrent, description: `Each slot only uses the artifact ${character.name} wears now`, onChange: setKeepCurrent }}
+                levels={[0, 4, 8, 12, 16, 20]}
+                minLevel={minLevel}
+                onMinLevel={setMinLevel}
+                rarity={{
+                  label: 'Minimum rarity',
+                  value: String(minRarity),
+                  options: [{ value: '0', label: 'Any' }, { value: '4', label: '4★' }, { value: '5', label: '5★' }],
+                  onChange: (value) => setMinRarity(Number(value)),
+                }}
+                boost={boostMain}
+                boostDescription='Artifacts below max level count with their max-level main stat'
+                onBoost={setBoostMain}
+              />
             </FormRow>
 
             <FormRow id='genshin-filters' title='Artifact & stat filters' summary={filterSummary}>

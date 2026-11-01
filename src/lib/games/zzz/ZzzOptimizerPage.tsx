@@ -26,6 +26,7 @@ import { scoreBuild } from 'lib/games/shared/gearScore'
 import { todayString } from 'lib/games/shared/importedPresets'
 import {
   type FilterCause,
+  optionCandidates,
   type PoolCandidate,
   poolCauses,
   statLimitCauses,
@@ -37,7 +38,6 @@ import {
   rememberCharacter,
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
-import type { SearchProgress } from 'lib/games/shared/progress'
 import {
   deleteSavedBuild,
   saveBuild,
@@ -83,6 +83,7 @@ import {
   NoBuildPanel,
   NoResults,
 } from 'lib/games/shared/ui/optimizer/NoResults'
+import { OptimizerOptionsCard } from 'lib/games/shared/ui/optimizer/OptimizerOptionsCard'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -100,6 +101,7 @@ import {
 } from 'lib/games/shared/ui/optimizer/StatFilters'
 import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
 import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
+import { useOptimizerRun } from 'lib/games/shared/ui/optimizer/useOptimizerRun'
 import {
   FormCard,
   FormRow,
@@ -163,10 +165,8 @@ import {
   type OptimizerOutcome,
   type RankKey,
 } from 'lib/games/zzz/optimizer/discOptimizer'
-import {
-  cancelDiscOptimizer,
-  runDiscOptimizer,
-} from 'lib/games/zzz/optimizer/optimizerClient'
+import { discSearch } from 'lib/games/zzz/optimizer/optimizerClient'
+import type { DiscWorkerResponse } from 'lib/games/zzz/optimizer/optimizerWorker'
 import { usePresetImportStore } from 'lib/games/zzz/state/presetImportStore'
 import { zzzPiecesTaken } from 'lib/games/zzz/state/zzzState'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
@@ -480,17 +480,16 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const damageSetup = setupFor(rotation)
   const teammateOptions = [...new Map(builds.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
     .map(([value, label]) => ({ value, label }))
-  const [outcome, setOutcome] = useState<OptimizerOutcome | null>(null)
-  const [selected, setSelected] = useState(0)
+  // The search (shared/ui/optimizer/useOptimizerRun.ts); its result is the worker's response
+  const search = useOptimizerRun<DiscWorkerResponse, typeof discSearch>(discSearch)
+  const { running, progress, result, setResult, selected, setSelected } = search
+  const outcome: OptimizerOutcome | null = result?.outcome ?? null
   const pins = usePinnedBuilds(agent.id)
   // Results columns: in-combat stats (team, kit and set buffs) or the stat screen, after HSR's stat view
   const [statView, setStatView] = useState<StatView>('combat')
   // Saved builds of this character; bumped after a save or delete to read them again
   const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
   const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('zzz', agent.id) : []), [agent.id, buildsVersion])
-  const [running, setRunning] = useState(false)
-  const [progress, setProgress] = useState<SearchProgress | undefined>()
-  const [searchSeconds, setSearchSeconds] = useState(0)
   const equip = useZzzStore((s) => s.equip)
 
   const storedImport = usePresetImportStore((s) => s.stored)
@@ -539,7 +538,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const emptySlots = pools.flatMap((pool, i) => pool.length === 0 ? [i + 1] : [])
   // What to loosen when nothing matches (shared/noResults.ts): pool filters, checked for emptying a slot, then stat limits
   const noResultCauses = (): FilterCause[] => {
-    const clear = () => setOutcome(null)
+    const clear = () => setResult(undefined)
     const candidates: PoolCandidate<OptimizerFilters>[] = []
     for (const slot of [4, 5, 6] as MainStatSlot[]) {
       const allowed = mainStats[slot] ?? []
@@ -570,51 +569,15 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
         apply: () => (setTwoPieceSet(null), clear()),
       })
     }
-    if (excludeEquippedByOthers) {
-      candidates.push({
-        key: 'worn',
-        label: 'Leave out discs others are wearing',
-        fixLabel: 'Allow them',
-        without: { ...filters, excludeEquippedByOthers: false },
-        apply: () => (setExcludeEquippedByOthers(false), clear()),
-      })
-    }
-    if (excludeOwners?.length) {
-      candidates.push({
-        key: 'priority',
-        label: 'Character priority filter',
-        fixLabel: 'Turn off',
-        without: { ...filters, excludeOwners: undefined },
-        apply: () => (setPriorityFilter(false), clear()),
-      })
-    }
-    if (keepCurrent) {
-      candidates.push({
-        key: 'keep',
-        label: 'Keep current discs',
-        fixLabel: 'Turn off',
-        without: { ...filters, keep: undefined },
-        apply: () => (setKeepCurrent(false), clear()),
-      })
-    }
-    if (minLevel > 0) {
-      candidates.push({
-        key: 'level',
-        label: `Minimum level +${minLevel}`,
-        fixLabel: 'Clear',
-        without: { ...filters, minLevel: 0 },
-        apply: () => (setMinLevel(0), clear()),
-      })
-    }
-    if (minRarity) {
-      candidates.push({
-        key: 'rarity',
-        label: `Minimum rank ${minRarity}`,
-        fixLabel: 'Clear',
-        without: { ...filters, minRarity: undefined },
-        apply: () => (setMinRarity(''), clear()),
-      })
-    }
+    candidates.push(...optionCandidates(filters, {
+      gearNoun: 'discs',
+      clear,
+      setExcludeWorn: setExcludeEquippedByOthers,
+      setPriority: setPriorityFilter,
+      setKeep: setKeepCurrent,
+      setMinLevel,
+      rarity: { label: `Minimum rank ${minRarity}`, reset: () => setMinRarity('') },
+    }))
     const poolEmpty = (f: OptimizerFilters) => filterPools({ agent, discs: searchDiscs, filters: f }).some((pool) => pool.length === 0)
     return [
       ...poolCauses(candidates, poolEmpty, emptySlots.length > 0),
@@ -626,7 +589,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     if (!id || !AGENTS[id]) return
     setAgentId(id)
     rememberCharacter(SETTINGS_KEY, id)
-    setOutcome(null)
+    setResult(undefined)
   }
 
   // Fills the filters and ranking from the preset, minimum stats and conditions are left as they are
@@ -639,7 +602,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
       sortBy: preset.rankBy,
       thenBy: preset.thenBy.filter((key) => statRows.some((row) => row.key === key)),
     })
-    setOutcome(null)
+    setResult(undefined)
   }
 
   async function handlePresetFile(file: File | null) {
@@ -656,11 +619,9 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   }
 
   // The search runs in a web worker, so the page stays responsive while it works
-  async function run() {
+  function run() {
     if (!W_ENGINES[loadout.wEngineId]) return
-    setRunning(true)
-    setProgress(undefined)
-    const response = await runDiscOptimizer({
+    void search.start({
       agentId: agent.id,
       wEngineId: loadout.wEngineId,
       wEngineRefinement: Number(loadout.refinement),
@@ -675,19 +636,11 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
       sortBy,
       thenBy,
       limit: resultLimitOf(resultLimit),
-    }, setProgress)
-    // undefined: cancelled, or replaced by a newer search that is still running
-    if (response) {
-      setOutcome(response.outcome)
-      setSearchSeconds(response.ms / 1000)
-      setSelected(0)
-      setRunning(false)
-    }
+    }, (response) => response)
   }
 
   function cancel() {
-    cancelDiscOptimizer()
-    setRunning(false)
+    search.cancel()
   }
 
   if (discs.length === 0) {
@@ -982,51 +935,28 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
                 <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
               </FormCard>
 
-              <FormCard title='Optimizer options' size='narrow'>
-                <Switch
-                  label='Leave out discs other agents are wearing'
-                  checked={excludeEquippedByOthers}
-                  onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
-                />
-                <Switch
-                  label='Character priority filter'
-                  description='Leave out discs worn by agents ranked above this one on the Agents page'
-                  disabled={excludeEquippedByOthers}
-                  checked={priorityFilter && !excludeEquippedByOthers}
-                  onChange={(event) => setPriorityFilter(event.currentTarget.checked)}
-                />
-                <Switch
-                  label='Keep current discs'
-                  description={`Each slot only uses the disc in ${agent.name}'s build`}
-                  checked={keepCurrent}
-                  onChange={(event) => setKeepCurrent(event.currentTarget.checked)}
-                />
-                <Select
-                  label='Minimum level'
-                  size='xs'
-                  allowDeselect={false}
-                  value={String(minLevel)}
-                  onChange={(value) => value !== null && setMinLevel(Number(value))}
-                  data={[{ value: '0', label: '+0' }, { value: '3', label: '+3' }, { value: '6', label: '+6' }, { value: '9', label: '+9' }, {
-                    value: '12',
-                    label: '+12',
-                  }, { value: '15', label: '+15' }]}
-                />
-                <Select
-                  label='Minimum rank'
-                  size='xs'
-                  allowDeselect={false}
-                  value={minRarity || 'any'}
-                  onChange={(value) => value !== null && setMinRarity(value === 'any' ? '' : value as DiscRarity)}
-                  data={[{ value: 'any', label: 'Any' }, { value: 'A', label: 'A-rank' }, { value: 'S', label: 'S-rank' }]}
-                />
-                <Switch
-                  label='Boost main stats to max level'
-                  description='S-rank discs below +15 count with their +15 main stat'
-                  checked={boostMain}
-                  onChange={(event) => setBoostMain(event.currentTarget.checked)}
-                />
-              </FormCard>
+              <OptimizerOptionsCard
+                gearNoun='discs'
+                ownerNoun='agents'
+                rosterPage='Agents'
+                excludeWorn={excludeEquippedByOthers}
+                onExcludeWorn={setExcludeEquippedByOthers}
+                priority={priorityFilter}
+                onPriority={setPriorityFilter}
+                keep={{ checked: keepCurrent, description: `Each slot only uses the disc in ${agent.name}'s build`, onChange: setKeepCurrent }}
+                levels={[0, 3, 6, 9, 12, 15]}
+                minLevel={minLevel}
+                onMinLevel={setMinLevel}
+                rarity={{
+                  label: 'Minimum rank',
+                  value: minRarity || 'any',
+                  options: [{ value: 'any', label: 'Any' }, { value: 'A', label: 'A-rank' }, { value: 'S', label: 'S-rank' }],
+                  onChange: (value) => setMinRarity(value === 'any' ? '' : value as DiscRarity),
+                }}
+                boost={boostMain}
+                boostDescription='S-rank discs below +15 count with their +15 main stat'
+                onBoost={setBoostMain}
+              />
             </FormRow>
 
             <FormRow id='zzz-filters' title='Disc & stat filters' summary={filterSummary}>
@@ -1271,12 +1201,12 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
           progress={progress}
           onStart={run}
           onCancel={cancel}
-          results={outcome?.ok ? { count: outcome.builds.length, seconds: searchSeconds } : undefined}
+          results={outcome?.ok ? { count: outcome.builds.length, seconds: (result?.ms ?? 0) / 1000 } : undefined}
           equip={best ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
           statView={{ value: statView, onChange: setStatView }}
           onReset={() => {
             updateSettings(defaultSettings(agent.id))
-            setOutcome(null)
+            setResult(undefined)
           }}
           pins={{
             onPin: best ? () => pins.pin(`#${selected + 1} · ${rankText(best)}`, pinnedCells(analysisRows)) : undefined,

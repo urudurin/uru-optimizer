@@ -5,10 +5,11 @@ import { createWorkerRunner } from 'lib/games/shared/workerRunner'
 
 // The artifact search in a web worker, one at a time, see shared/workerRunner.ts
 
-const runner = createWorkerRunner<OptimizerRequest, OptimizerWorkerResponse>(
+// The runner itself, for shared/ui/optimizer/useOptimizerRun.ts
+export const artifactSearch = createWorkerRunner<OptimizerRequest, OptimizerWorkerResponse>(
   () => new OptimizerWorker(),
   (message) => ({ outcome: { ok: false, reason: `The search failed: ${message}` }, ms: 0 }),
 )
 
-export const runOptimizer = runner.run
-export const cancelOptimizer = runner.cancel
+export const runOptimizer = artifactSearch.run
+export const cancelOptimizer = artifactSearch.cancel

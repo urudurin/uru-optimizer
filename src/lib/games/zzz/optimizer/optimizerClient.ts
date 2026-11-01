@@ -7,10 +7,11 @@ import OptimizerWorker from 'lib/games/zzz/optimizer/optimizerWorker.ts?worker'
 
 // The disc search in a web worker, one at a time, see shared/workerRunner.ts
 
-const runner = createWorkerRunner<DiscWorkerRequest, DiscWorkerResponse>(
+// The runner itself, for shared/ui/optimizer/useOptimizerRun.ts
+export const discSearch = createWorkerRunner<DiscWorkerRequest, DiscWorkerResponse>(
   () => new OptimizerWorker(),
   (message) => ({ outcome: { ok: false, reason: `The search failed: ${message}` }, ms: 0 }),
 )
 
-export const runDiscOptimizer = runner.run
-export const cancelDiscOptimizer = runner.cancel
+export const runDiscOptimizer = discSearch.run
+export const cancelDiscOptimizer = discSearch.cancel

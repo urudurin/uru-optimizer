@@ -23,6 +23,7 @@ import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { todayString } from 'lib/games/shared/importedPresets'
 import {
   type FilterCause,
+  optionCandidates,
   type PoolCandidate,
   poolCauses,
   statLimitCauses,
@@ -34,7 +35,6 @@ import {
   rememberCharacter,
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
-import type { SearchProgress } from 'lib/games/shared/progress'
 import {
   deleteSavedBuild,
   saveBuild,
@@ -79,6 +79,7 @@ import {
   NoBuildPanel,
   NoResults,
 } from 'lib/games/shared/ui/optimizer/NoResults'
+import { OptimizerOptionsCard } from 'lib/games/shared/ui/optimizer/OptimizerOptionsCard'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -96,6 +97,7 @@ import {
 } from 'lib/games/shared/ui/optimizer/StatFilters'
 import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
 import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
+import { useOptimizerRun } from 'lib/games/shared/ui/optimizer/useOptimizerRun'
 import {
   FormCard,
   FormRow,
@@ -148,10 +150,7 @@ import {
   withFullSets,
   wuwaStatLabel,
 } from 'lib/games/wuwa/optimizer/echoOptimizer'
-import {
-  cancelEchoOptimizer,
-  runEchoOptimizer,
-} from 'lib/games/wuwa/optimizer/optimizerClient'
+import { echoSearch } from 'lib/games/wuwa/optimizer/optimizerClient'
 import {
   WUWA_SETTINGS_KEY as SETTINGS_KEY,
   WUWA_TARGETS as TARGETS,
@@ -389,10 +388,9 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     ? wuwaTeamBuffsFor(character, { teammates, settings: teamSettings, overrides: teamOverrides }, { characters, echoes })
     : NO_WUWA_TEAM
   const teammateOptions = characters.filter((c) => c.charId !== character?.charId).map((c) => ({ value: c.charId, label: characterName(c.charId) }))
-  const [running, setRunning] = useState(false)
-  const [progress, setProgress] = useState<SearchProgress | undefined>()
-  const [result, setResult] = useState<{ outcome: EchoOutcome, ms: number, target: EchoTarget } | undefined>()
-  const [selected, setSelected] = useState(0)
+  // The search (shared/ui/optimizer/useOptimizerRun.ts), its result kept with the target it was ranked by
+  const search = useOptimizerRun<{ outcome: EchoOutcome, ms: number, target: EchoTarget }, typeof echoSearch>(echoSearch)
+  const { running, progress, result, setResult, selected, setSelected } = search
   const pins = usePinnedBuilds(character?.charId ?? '')
   // Results columns: in-combat stats (team, kit and set buffs) or the stat screen, after HSR's stat view
   const [statView, setStatView] = useState<StatView>('combat')
@@ -541,33 +539,13 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
         apply: () => (setTwoPieceSets([]), clear()),
       })
     }
-    if (excludeEquippedByOthers) {
-      candidates.push({
-        key: 'worn',
-        label: 'Leave out echoes others are wearing',
-        fixLabel: 'Allow them',
-        without: { ...filters, excludeEquippedByOthers: false },
-        apply: () => (setExcludeEquippedByOthers(false), clear()),
-      })
-    }
-    if (excludeOwners?.length) {
-      candidates.push({
-        key: 'priority',
-        label: 'Character priority filter',
-        fixLabel: 'Turn off',
-        without: { ...filters, excludeOwners: undefined },
-        apply: () => (setPriorityFilter(false), clear()),
-      })
-    }
-    if (minLevel > 0) {
-      candidates.push({
-        key: 'level',
-        label: `Minimum level +${minLevel}`,
-        fixLabel: 'Clear',
-        without: { ...filters, minLevel: 0 },
-        apply: () => (setMinLevel(0), clear()),
-      })
-    }
+    candidates.push(...optionCandidates(filters, {
+      gearNoun: 'echoes',
+      clear,
+      setExcludeWorn: setExcludeEquippedByOthers,
+      setPriority: setPriorityFilter,
+      setMinLevel,
+    }))
     const poolEmpty = (f: typeof filters) => filterPool({ character, characters, echoes: searchEchoes, filters: f }).length === 0
     return [
       ...poolCauses(candidates, poolEmpty, pool.length === 0),
@@ -581,10 +559,8 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     ]
   }
 
-  async function run() {
-    setRunning(true)
-    setProgress(undefined)
-    const response = await runEchoOptimizer({
+  function run() {
+    void search.start({
       character,
       characters,
       echoes: searchEchoes,
@@ -595,18 +571,11 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
       fullSetBonus,
       target,
       limit: resultLimitOf(resultLimit),
-    }, setProgress)
-    // undefined: cancelled, or replaced by a newer search that is still running
-    if (response) {
-      setResult({ ...response, target })
-      setSelected(0)
-      setRunning(false)
-    }
+    }, (response) => ({ ...response, target }))
   }
 
   function cancel() {
-    cancelEchoOptimizer()
-    setRunning(false)
+    search.cancel()
   }
 
   const outcome = result?.outcome
@@ -801,37 +770,21 @@ ${losing.join(', ')} ${
                 />
                 <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
               </FormCard>
-              <FormCard title='Optimizer options' size='narrow'>
-                <Switch
-                  label='Leave out echoes other Resonators are wearing'
-                  checked={excludeEquippedByOthers}
-                  onChange={(event) => setExcludeEquippedByOthers(event.currentTarget.checked)}
-                />
-                <Switch
-                  label='Character priority filter'
-                  description='Leave out echoes worn by Resonators ranked above this one on the Resonators page'
-                  disabled={excludeEquippedByOthers}
-                  checked={priorityFilter && !excludeEquippedByOthers}
-                  onChange={(event) => setPriorityFilter(event.currentTarget.checked)}
-                />
-                <Select
-                  label='Minimum level'
-                  size='xs'
-                  allowDeselect={false}
-                  value={String(minLevel)}
-                  onChange={(value) => value !== null && setMinLevel(Number(value))}
-                  data={[{ value: '0', label: '+0' }, { value: '5', label: '+5' }, { value: '10', label: '+10' }, { value: '15', label: '+15' }, {
-                    value: '20',
-                    label: '+20',
-                  }, { value: '25', label: '+25' }]}
-                />
-                <Switch
-                  label='Boost main stats to max level'
-                  description='Echoes below +25 count with their +25 main stats'
-                  checked={boostMain}
-                  onChange={(event) => setBoostMain(event.currentTarget.checked)}
-                />
-              </FormCard>
+              <OptimizerOptionsCard
+                gearNoun='echoes'
+                ownerNoun='Resonators'
+                rosterPage='Resonators'
+                excludeWorn={excludeEquippedByOthers}
+                onExcludeWorn={setExcludeEquippedByOthers}
+                priority={priorityFilter}
+                onPriority={setPriorityFilter}
+                levels={[0, 5, 10, 15, 20, 25]}
+                minLevel={minLevel}
+                onMinLevel={setMinLevel}
+                boost={boostMain}
+                boostDescription='Echoes below +25 count with their +25 main stats'
+                onBoost={setBoostMain}
+              />
             </FormRow>
 
             <FormRow id='wuwa-filters' title='Echo & stat filters' summary={filterSummary}>

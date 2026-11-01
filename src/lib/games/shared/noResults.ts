@@ -21,6 +21,80 @@ export function poolCauses<F>(candidates: PoolCandidate<F>[], poolEmpty: (filter
     .sort((a, b) => Number(b.blocking) - Number(a.blocking))
 }
 
+// The pool filters every game's Optimizer options card sets (shared/ui/optimizer/OptimizerOptionsCard.tsx)
+export type OptionFilters = {
+  excludeEquippedByOthers: boolean,
+  excludeOwners?: string[],
+  keep?: unknown,
+  minLevel?: number,
+  minRarity?: unknown,
+}
+
+// The Optimizer options that are set, as pool candidates: worn gear, priority, keep current, minimum level and rarity.
+// Each fix turns its option off and then calls clear (which drops the old results)
+export function optionCandidates<F extends OptionFilters>(filters: F, options: {
+  // 'artifacts', 'discs', 'echoes'
+  gearNoun: string,
+  clear: () => void,
+  setExcludeWorn: (value: boolean) => void,
+  setPriority: (value: boolean) => void,
+  setKeep?: (value: boolean) => void,
+  setMinLevel: (value: number) => void,
+  // The rarity filter as the card names it, e.g. 'Minimum rarity 5★', and how to reset it
+  rarity?: { label: string, reset: () => void },
+}): PoolCandidate<F>[] {
+  const { gearNoun, clear } = options
+  const candidates: PoolCandidate<F>[] = []
+  if (filters.excludeEquippedByOthers) {
+    candidates.push({
+      key: 'worn',
+      label: `Leave out ${gearNoun} others are wearing`,
+      fixLabel: 'Allow them',
+      without: { ...filters, excludeEquippedByOthers: false },
+      apply: () => (options.setExcludeWorn(false), clear()),
+    })
+  }
+  if (filters.excludeOwners?.length) {
+    candidates.push({
+      key: 'priority',
+      label: 'Character priority filter',
+      fixLabel: 'Turn off',
+      without: { ...filters, excludeOwners: undefined },
+      apply: () => (options.setPriority(false), clear()),
+    })
+  }
+  if (options.setKeep && filters.keep !== undefined) {
+    const setKeep = options.setKeep
+    candidates.push({
+      key: 'keep',
+      label: `Keep current ${gearNoun}`,
+      fixLabel: 'Turn off',
+      without: { ...filters, keep: undefined },
+      apply: () => (setKeep(false), clear()),
+    })
+  }
+  if ((filters.minLevel ?? 0) > 0) {
+    candidates.push({
+      key: 'level',
+      label: `Minimum level +${filters.minLevel}`,
+      fixLabel: 'Clear',
+      without: { ...filters, minLevel: 0 },
+      apply: () => (options.setMinLevel(0), clear()),
+    })
+  }
+  if (options.rarity && filters.minRarity) {
+    const rarity = options.rarity
+    candidates.push({
+      key: 'rarity',
+      label: rarity.label,
+      fixLabel: 'Clear',
+      without: { ...filters, minRarity: undefined },
+      apply: () => (rarity.reset(), clear()),
+    })
+  }
+  return candidates
+}
+
 // One cause per minimum and maximum that's set, in the stat filter's row order
 export function statLimitCauses(
   rows: { key: string, label: string }[],

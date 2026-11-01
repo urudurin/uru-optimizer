@@ -5,10 +5,11 @@ import OptimizerWorker from 'lib/games/wuwa/optimizer/optimizerWorker.ts?worker'
 
 // The echo search in a web worker, one at a time, see shared/workerRunner.ts
 
-const runner = createWorkerRunner<EchoRequest, EchoWorkerResponse>(
+// The runner itself, for shared/ui/optimizer/useOptimizerRun.ts
+export const echoSearch = createWorkerRunner<EchoRequest, EchoWorkerResponse>(
   () => new OptimizerWorker(),
   (message) => ({ outcome: { ok: false, reason: `The search failed: ${message}` }, ms: 0 }),
 )
 
-export const runEchoOptimizer = runner.run
-export const cancelEchoOptimizer = runner.cancel
+export const runEchoOptimizer = echoSearch.run
+export const cancelEchoOptimizer = echoSearch.cancel
