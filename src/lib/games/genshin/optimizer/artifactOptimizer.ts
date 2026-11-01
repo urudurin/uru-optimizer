@@ -77,6 +77,11 @@ export type OptimizerFilters = {
   excludeEquippedByOthers: boolean,
   // Characters whose artifacts are left out (the priority filter: those ranked above, shared/characterPriority.ts)
   excludeOwners?: string[],
+  // HSR's Keep current: these slots only use the artifact the character wears
+  keep?: Partial<Record<ArtifactSlot, string>>,
+  // HSR's Min enhance and Min rarity: leave out artifacts below this level (0-20) or rarity (stars)
+  minLevel?: number,
+  minRarity?: number,
 }
 
 export type OptimizerRequest = {
@@ -234,6 +239,9 @@ export function filterPools(request: Pick<OptimizerRequest, 'character' | 'artif
   return ARTIFACT_SLOTS.map((slot) =>
     artifacts.filter((artifact) => {
       if (artifact.slot !== slot) return false
+      const kept = filters.keep?.[slot]
+      if (kept) return artifact.id === kept
+      if (artifact.level < (filters.minLevel ?? 0) || artifact.rarity < (filters.minRarity ?? 0)) return false
       if (filters.excludeEquippedByOthers && artifact.equippedBy && artifact.equippedBy !== character.id) return false
       if (artifact.equippedBy && artifact.equippedBy !== character.id && filters.excludeOwners?.includes(artifact.equippedBy)) return false
       const allowed = slot === 'sands' || slot === 'goblet' || slot === 'circlet' ? filters.mainStats[slot] : undefined

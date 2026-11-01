@@ -69,6 +69,8 @@ export type EchoFilters = {
   excludeEquippedByOthers: boolean,
   // Resonators whose echoes are left out (the priority filter: those ranked above, shared/characterPriority.ts)
   excludeOwners?: string[],
+  // HSR's Min enhance: leave out echoes below this level (0-25)
+  minLevel?: number,
 }
 
 export type EchoRequest = {
@@ -233,6 +235,7 @@ export function filterPool(request: Pick<EchoRequest, 'character' | 'characters'
   for (const c of characters) for (const id of c.echoIds) if (id) wornBy.set(id, c.charId)
   return echoes.filter((echo) => {
     const owner = wornBy.get(echo.id)
+    if (echo.level < (filters.minLevel ?? 0)) return false
     if (filters.excludeEquippedByOthers && owner && owner !== character.charId) return false
     if (owner && owner !== character.charId && filters.excludeOwners?.includes(owner)) return false
     const allowed = filters.mainStats[echo.cost]

@@ -35,6 +35,7 @@ import {
 } from 'lib/games/zzz/stats/computeStats'
 import type {
   Disc,
+  DiscRarity,
   DiscSlot,
   MainStatSlot,
   ZzzStatsValues,
@@ -57,7 +58,14 @@ export type OptimizerFilters = {
   excludeEquippedByOthers: boolean,
   // Agents whose discs are left out (the priority filter: those ranked above, shared/characterPriority.ts)
   excludeOwners?: string[],
+  // HSR's Keep current: these slots only use the disc in the agent's build
+  keep?: Partial<Record<DiscSlot, string>>,
+  // HSR's Min enhance and Min rarity: leave out discs below this level (0-15) or rank
+  minLevel?: number,
+  minRarity?: DiscRarity,
 }
+
+const RARITY_ORDER: Record<DiscRarity, number> = { B: 1, A: 2, S: 3 }
 
 // What builds are ranked by: a stat, or the rotation's damage
 export type RankKey = keyof FinalStats | 'damage'
@@ -109,6 +117,10 @@ export function filterPools(request: Pick<OptimizerRequest, 'agent' | 'discs' | 
   return SLOTS.map((slot) =>
     discs.filter((disc) => {
       if (disc.slot !== slot) return false
+      const kept = filters.keep?.[slot]
+      if (kept) return disc.id === kept
+      if (disc.level < (filters.minLevel ?? 0)) return false
+      if (filters.minRarity && RARITY_ORDER[disc.rarity] < RARITY_ORDER[filters.minRarity]) return false
       if (filters.excludeEquippedByOthers && disc.equippedBy && disc.equippedBy !== agent.id) return false
       if (disc.equippedBy && disc.equippedBy !== agent.id && filters.excludeOwners?.includes(disc.equippedBy)) return false
       const allowed = slot >= 4 ? filters.mainStats[slot as MainStatSlot] : undefined

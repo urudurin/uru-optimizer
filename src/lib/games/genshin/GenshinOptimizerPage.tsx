@@ -43,6 +43,9 @@ import {
   teamSummary,
 } from 'lib/games/genshin/GenshinTeamCards'
 import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
+import { loadEnkaGenshinStore } from 'lib/games/genshin/importer/enkaClient'
+import type { EnkaGenshinStore } from 'lib/games/genshin/importer/enkaParser'
+import { mainStatValue } from 'lib/games/genshin/importer/goodParser'
 import {
   genshinDamageScore,
   genshinSubstatUpgrades,
@@ -203,6 +206,7 @@ import type { StatView } from 'lib/games/shared/ui/OptimizerSidebar'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import { Message } from 'lib/interactions/message'
 import {
+  useEffect,
   useMemo,
   useReducer,
   useState,
@@ -247,6 +251,11 @@ type GenshinOptimizerSettings = {
   excludeEquippedByOthers: boolean,
   // HSR's character priority filter: leave out gear worn by characters ranked above (shared/characterPriority.ts)
   priorityFilter: boolean,
+  // HSR's Keep current, Min enhance, Min rarity and Boost main stat (Optimizer options)
+  keepCurrent: boolean,
+  minLevel: number,
+  minRarity: number,
+  boostMain: boolean,
   resultLimit: number,
   minStats: Partial<Record<GenshinStatKey, number>>,
   maxStats: Partial<Record<GenshinStatKey, number>>,
@@ -277,6 +286,10 @@ function defaultSettings(characterId: string): GenshinOptimizerSettings {
     twoPieceSets: [],
     excludeEquippedByOthers: true,
     priorityFilter: false,
+    keepCurrent: false,
+    minLevel: 0,
+    minRarity: 0,
+    boostMain: false,
     resultLimit: DEFAULT_RESULT_LIMIT,
     minStats: {},
     maxStats: {},
@@ -334,6 +347,10 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     twoPieceSets,
     excludeEquippedByOthers,
     priorityFilter,
+    keepCurrent,
+    minLevel,
+    minRarity,
+    boostMain,
     resultLimit,
     minStats,
     maxStats,
@@ -352,6 +369,10 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
   const setPriorityFilter = fieldSetter(updateSettings, 'priorityFilter')
+  const setKeepCurrent = fieldSetter(updateSettings, 'keepCurrent')
+  const setMinLevel = fieldSetter(updateSettings, 'minLevel')
+  const setMinRarity = fieldSetter(updateSettings, 'minRarity')
+  const setBoostMain = fieldSetter(updateSettings, 'boostMain')
   // Gear worn by characters ranked above is left out when the priority filter is on (and worn gear is otherwise allowed)
   const rankOrder = usePriority('genshin')
   const excludeOwners = useMemo(
@@ -383,13 +404,38 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
   const equip = useGenshinStore((s) => s.equip)
   const filters = useMemo(
-    () => ({ mainStats, fourPieceSet: fourPieceSet ?? undefined, twoPieceSets, excludeEquippedByOthers, excludeOwners }),
-    [mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, excludeOwners],
+    () => ({
+      mainStats,
+      fourPieceSet: fourPieceSet ?? undefined,
+      twoPieceSets,
+      excludeEquippedByOthers,
+      excludeOwners,
+      keep: keepCurrent ? character?.artifactIds : undefined,
+      minLevel,
+      minRarity,
+    }),
+    [mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, excludeOwners, keepCurrent, character?.artifactIds, minLevel, minRarity],
+  )
+  // Boost main stat: low-level artifacts searched with their max-level main stat (values from Enka's relic levels)
+  const [enkaStore, setEnkaStore] = useState<EnkaGenshinStore | undefined>()
+  useEffect(() => {
+    if (!boostMain || enkaStore) return
+    let live = true
+    void loadEnkaGenshinStore().then((loaded) => {
+      if (live && loaded.ok) setEnkaStore(loaded.data)
+    })
+    return () => {
+      live = false
+    }
+  }, [boostMain, enkaStore])
+  const searchArtifacts = useMemo(
+    () => (boostMain && enkaStore ? artifacts.map((artifact) => boostArtifact(artifact, enkaStore)) : artifacts),
+    [boostMain, enkaStore, artifacts],
   )
   // Artifacts per slot after the filters, live as the filters change
   const poolSizes = useMemo(
-    () => (character ? filterPools({ character, artifacts, filters }).map((pool) => pool.length) : []),
-    [character, artifacts, filters],
+    () => (character ? filterPools({ character, artifacts: searchArtifacts, filters }).map((pool) => pool.length) : []),
+    [character, searchArtifacts, filters],
   )
   // What to loosen when nothing matches (shared/noResults.ts): pool filters, checked for emptying a slot, then stat limits
   const noResultCauses = (): FilterCause[] => {
@@ -443,7 +489,34 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
         apply: () => (setPriorityFilter(false), clear()),
       })
     }
-    const poolEmpty = (f: typeof filters) => filterPools({ character, artifacts, filters: f }).some((pool) => pool.length === 0)
+    if (keepCurrent) {
+      candidates.push({
+        key: 'keep',
+        label: 'Keep current artifacts',
+        fixLabel: 'Turn off',
+        without: { ...filters, keep: undefined },
+        apply: () => (setKeepCurrent(false), clear()),
+      })
+    }
+    if (minLevel > 0) {
+      candidates.push({
+        key: 'level',
+        label: `Minimum level +${minLevel}`,
+        fixLabel: 'Clear',
+        without: { ...filters, minLevel: 0 },
+        apply: () => (setMinLevel(0), clear()),
+      })
+    }
+    if (minRarity) {
+      candidates.push({
+        key: 'rarity',
+        label: `Minimum rarity ${minRarity}★`,
+        fixLabel: 'Clear',
+        without: { ...filters, minRarity: 0 },
+        apply: () => (setMinRarity(0), clear()),
+      })
+    }
+    const poolEmpty = (f: typeof filters) => filterPools({ character, artifacts: searchArtifacts, filters: f }).some((pool) => pool.length === 0)
     return [
       ...poolCauses(candidates, poolEmpty, poolSizes.some((size) => size === 0)),
       ...statLimitCauses(
@@ -560,7 +633,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     setProgress(undefined)
     const response = await runOptimizer({
       character,
-      artifacts,
+      artifacts: searchArtifacts,
       filters,
       minStats,
       maxStats,
@@ -786,6 +859,37 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
                   disabled={excludeEquippedByOthers}
                   checked={priorityFilter && !excludeEquippedByOthers}
                   onChange={(event) => setPriorityFilter(event.currentTarget.checked)}
+                />
+                <Switch
+                  label='Keep current artifacts'
+                  description={`Each slot only uses the artifact ${character.name} wears now`}
+                  checked={keepCurrent}
+                  onChange={(event) => setKeepCurrent(event.currentTarget.checked)}
+                />
+                <Select
+                  label='Minimum level'
+                  size='xs'
+                  allowDeselect={false}
+                  value={String(minLevel)}
+                  onChange={(value) => value !== null && setMinLevel(Number(value))}
+                  data={[{ value: '0', label: '+0' }, { value: '4', label: '+4' }, { value: '8', label: '+8' }, { value: '12', label: '+12' }, {
+                    value: '16',
+                    label: '+16',
+                  }, { value: '20', label: '+20' }]}
+                />
+                <Select
+                  label='Minimum rarity'
+                  size='xs'
+                  allowDeselect={false}
+                  value={String(minRarity)}
+                  onChange={(value) => value !== null && setMinRarity(Number(value))}
+                  data={[{ value: '0', label: 'Any' }, { value: '4', label: '4★' }, { value: '5', label: '5★' }]}
+                />
+                <Switch
+                  label='Boost main stats to max level'
+                  description='Artifacts below max level count with their max-level main stat'
+                  checked={boostMain}
+                  onChange={(event) => setBoostMain(event.currentTarget.checked)}
                 />
               </FormCard>
             </FormRow>
@@ -1084,4 +1188,12 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
       </div>
     </Stack>
   )
+}
+
+// An artifact below max level with its max-level main stat (+20 for 5-star, +16 for 4-star), for Boost main stat
+function boostArtifact(artifact: Artifact, store: EnkaGenshinStore): Artifact {
+  const maxLevel = artifact.rarity * 4
+  if (artifact.level >= maxLevel) return artifact
+  const value = mainStatValue(store, artifact.rarity, maxLevel, artifact.main.stat as Parameters<typeof mainStatValue>[3])
+  return value === undefined ? artifact : { ...artifact, main: { ...artifact.main, value } }
 }

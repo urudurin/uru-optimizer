@@ -200,15 +200,18 @@ import {
   zzzTeamEntries,
   zzzTeamSummary,
 } from 'lib/games/zzz/team/teamEntries'
-import type {
-  Disc,
-  ZzzStatsValues,
+import {
+  type Disc,
+  type DiscRarity,
+  MAX_DISC_LEVEL,
+  type ZzzStatsValues,
 } from 'lib/games/zzz/types'
 import { zzzStatRows } from 'lib/games/zzz/ui/agentStats'
 import {
   DiscCard,
   elementColor,
 } from 'lib/games/zzz/ui/DiscCard'
+import { sMainValue } from 'lib/games/zzz/ui/discKind'
 import { Message } from 'lib/interactions/message'
 import {
   useCallback,
@@ -240,6 +243,11 @@ type ZzzOptimizerSettings = {
   excludeEquippedByOthers: boolean,
   // HSR's character priority filter: leave out gear worn by characters ranked above (shared/characterPriority.ts)
   priorityFilter: boolean,
+  // HSR's Keep current, Min enhance, Min rarity and Boost main stat (Optimizer options)
+  keepCurrent: boolean,
+  minLevel: number,
+  minRarity: '' | DiscRarity,
+  boostMain: boolean,
   resultLimit: number,
   // Agent ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
   teammates: string[],
@@ -333,6 +341,10 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     maxStats: {},
     excludeEquippedByOthers: false,
     priorityFilter: false,
+    keepCurrent: false,
+    minLevel: 0,
+    minRarity: '',
+    boostMain: false,
     resultLimit: DEFAULT_RESULT_LIMIT,
     teammates: [],
     teamSettings: {},
@@ -357,6 +369,10 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     maxStats,
     excludeEquippedByOthers,
     priorityFilter,
+    keepCurrent,
+    minLevel,
+    minRarity,
+    boostMain,
     resultLimit,
     teammates,
     teamSettings,
@@ -379,6 +395,10 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
   const setPriorityFilter = fieldSetter(updateSettings, 'priorityFilter')
+  const setKeepCurrent = fieldSetter(updateSettings, 'keepCurrent')
+  const setMinLevel = fieldSetter(updateSettings, 'minLevel')
+  const setMinRarity = fieldSetter(updateSettings, 'minRarity')
+  const setBoostMain = fieldSetter(updateSettings, 'boostMain')
   // Gear worn by characters ranked above is left out when the priority filter is on (and worn gear is otherwise allowed)
   const rankOrder = usePriority('zzz')
   const excludeOwners = useMemo(
@@ -502,8 +522,19 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
     twoPieceSet: twoPieceSet ?? undefined,
     excludeEquippedByOthers,
     excludeOwners,
+    keep: keepCurrent ? builds.find((b) => b.agentId === agent.id)?.discIds : undefined,
+    minLevel,
+    minRarity: minRarity || undefined,
   }
-  const pools = filterPools({ agent, discs, filters })
+  // Boost main stat: S-rank discs below +15 searched with their +15 main stat
+  const searchDiscs = boostMain
+    ? discs.map((disc) =>
+      disc.rarity === 'S' && disc.level < MAX_DISC_LEVEL
+        ? { ...disc, main: { ...disc.main, value: sMainValue(disc.main.stat, MAX_DISC_LEVEL) ?? disc.main.value } }
+        : disc
+    )
+    : discs
+  const pools = filterPools({ agent, discs: searchDiscs, filters })
   const combinations = countCombinations(pools)
   const emptySlots = pools.flatMap((pool, i) => pool.length === 0 ? [i + 1] : [])
   // What to loosen when nothing matches (shared/noResults.ts): pool filters, checked for emptying a slot, then stat limits
@@ -557,7 +588,34 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
         apply: () => (setPriorityFilter(false), clear()),
       })
     }
-    const poolEmpty = (f: OptimizerFilters) => filterPools({ agent, discs, filters: f }).some((pool) => pool.length === 0)
+    if (keepCurrent) {
+      candidates.push({
+        key: 'keep',
+        label: 'Keep current discs',
+        fixLabel: 'Turn off',
+        without: { ...filters, keep: undefined },
+        apply: () => (setKeepCurrent(false), clear()),
+      })
+    }
+    if (minLevel > 0) {
+      candidates.push({
+        key: 'level',
+        label: `Minimum level +${minLevel}`,
+        fixLabel: 'Clear',
+        without: { ...filters, minLevel: 0 },
+        apply: () => (setMinLevel(0), clear()),
+      })
+    }
+    if (minRarity) {
+      candidates.push({
+        key: 'rarity',
+        label: `Minimum rank ${minRarity}`,
+        fixLabel: 'Clear',
+        without: { ...filters, minRarity: undefined },
+        apply: () => (setMinRarity(''), clear()),
+      })
+    }
+    const poolEmpty = (f: OptimizerFilters) => filterPools({ agent, discs: searchDiscs, filters: f }).some((pool) => pool.length === 0)
     return [
       ...poolCauses(candidates, poolEmpty, emptySlots.length > 0),
       ...statLimitCauses(statRows, minStats, maxStats, (next) => (setMinStats(next), clear()), (next) => (setMaxStats(next), clear())),
@@ -608,7 +666,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
       wEngineRefinement: Number(loadout.refinement),
       coreSkillLevel: Number(coreSkill),
       conditions,
-      discs,
+      discs: searchDiscs,
       filters,
       minStats,
       maxStats,
@@ -936,6 +994,37 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
                   disabled={excludeEquippedByOthers}
                   checked={priorityFilter && !excludeEquippedByOthers}
                   onChange={(event) => setPriorityFilter(event.currentTarget.checked)}
+                />
+                <Switch
+                  label='Keep current discs'
+                  description={`Each slot only uses the disc in ${agent.name}'s build`}
+                  checked={keepCurrent}
+                  onChange={(event) => setKeepCurrent(event.currentTarget.checked)}
+                />
+                <Select
+                  label='Minimum level'
+                  size='xs'
+                  allowDeselect={false}
+                  value={String(minLevel)}
+                  onChange={(value) => value !== null && setMinLevel(Number(value))}
+                  data={[{ value: '0', label: '+0' }, { value: '3', label: '+3' }, { value: '6', label: '+6' }, { value: '9', label: '+9' }, {
+                    value: '12',
+                    label: '+12',
+                  }, { value: '15', label: '+15' }]}
+                />
+                <Select
+                  label='Minimum rank'
+                  size='xs'
+                  allowDeselect={false}
+                  value={minRarity || 'any'}
+                  onChange={(value) => value !== null && setMinRarity(value === 'any' ? '' : value as DiscRarity)}
+                  data={[{ value: 'any', label: 'Any' }, { value: 'A', label: 'A-rank' }, { value: 'S', label: 'S-rank' }]}
+                />
+                <Switch
+                  label='Boost main stats to max level'
+                  description='S-rank discs below +15 count with their +15 main stat'
+                  checked={boostMain}
+                  onChange={(event) => setBoostMain(event.currentTarget.checked)}
                 />
               </FormCard>
             </FormRow>

@@ -187,6 +187,7 @@ import {
 import {
   type Cost,
   type Echo,
+  MAX_ECHO_LEVEL,
   MAX_LOADOUT_COST,
   type StatKey,
   statLabel,
@@ -245,6 +246,11 @@ type WuwaOptimizerSettings = {
   excludeEquippedByOthers: boolean,
   // HSR's character priority filter: leave out gear worn by characters ranked above (shared/characterPriority.ts)
   priorityFilter: boolean,
+  // HSR's Keep current, Min enhance, Min rarity and Boost main stat (Optimizer options)
+  keepCurrent: boolean,
+  minLevel: number,
+  minRarity: number,
+  boostMain: boolean,
   resultLimit: number,
   minStats: Partial<Record<keyof WuwaStats, number>>,
   maxStats: Partial<Record<keyof WuwaStats, number>>,
@@ -274,6 +280,10 @@ function defaultSettings(charId: string): WuwaOptimizerSettings {
     twoPieceSets: [],
     excludeEquippedByOthers: true,
     priorityFilter: false,
+    keepCurrent: false,
+    minLevel: 0,
+    minRarity: 0,
+    boostMain: false,
     resultLimit: DEFAULT_RESULT_LIMIT,
     minStats: {},
     maxStats: {},
@@ -332,6 +342,10 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     twoPieceSets,
     excludeEquippedByOthers,
     priorityFilter,
+    keepCurrent,
+    minLevel,
+    minRarity,
+    boostMain,
     resultLimit,
     minStats,
     maxStats,
@@ -349,6 +363,10 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const setTwoPieceSets = fieldSetter(updateSettings, 'twoPieceSets')
   const setExcludeEquippedByOthers = fieldSetter(updateSettings, 'excludeEquippedByOthers')
   const setPriorityFilter = fieldSetter(updateSettings, 'priorityFilter')
+  const setKeepCurrent = fieldSetter(updateSettings, 'keepCurrent')
+  const setMinLevel = fieldSetter(updateSettings, 'minLevel')
+  const setMinRarity = fieldSetter(updateSettings, 'minRarity')
+  const setBoostMain = fieldSetter(updateSettings, 'boostMain')
   // Gear worn by characters ranked above is left out when the priority filter is on (and worn gear is otherwise allowed)
   const rankOrder = usePriority('wuwa')
   const excludeOwners = useMemo(
@@ -479,9 +497,18 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     cost: costOf(b.echoes),
   })
 
-  const filters = { mainStats, fullSet: fullSet ?? undefined, twoPieceSets: twoPieceSets.slice(0, maxTwoPiece), excludeEquippedByOthers, excludeOwners }
+  const filters = {
+    mainStats,
+    fullSet: fullSet ?? undefined,
+    twoPieceSets: twoPieceSets.slice(0, maxTwoPiece),
+    excludeEquippedByOthers,
+    excludeOwners,
+    minLevel,
+  }
   // Echoes per cost after the filters, and the loadouts they make, live as the filters change
-  const pool = filterPool({ character, characters, echoes, filters })
+  // Boost main stat: echoes below +25 searched with their +25 main stats (main stat values follow the level)
+  const searchEchoes = boostMain ? echoes.map((echo) => (echo.level < MAX_ECHO_LEVEL ? { ...echo, level: MAX_ECHO_LEVEL } : echo)) : echoes
+  const pool = filterPool({ character, characters, echoes: searchEchoes, filters })
   // What to loosen when nothing matches (shared/noResults.ts): pool filters, checked for emptying the pool, then stat limits
   const noResultCauses = (): FilterCause[] => {
     const clear = () => setResult(undefined)
@@ -532,7 +559,16 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
         apply: () => (setPriorityFilter(false), clear()),
       })
     }
-    const poolEmpty = (f: typeof filters) => filterPool({ character, characters, echoes, filters: f }).length === 0
+    if (minLevel > 0) {
+      candidates.push({
+        key: 'level',
+        label: `Minimum level +${minLevel}`,
+        fixLabel: 'Clear',
+        without: { ...filters, minLevel: 0 },
+        apply: () => (setMinLevel(0), clear()),
+      })
+    }
+    const poolEmpty = (f: typeof filters) => filterPool({ character, characters, echoes: searchEchoes, filters: f }).length === 0
     return [
       ...poolCauses(candidates, poolEmpty, pool.length === 0),
       ...statLimitCauses(
@@ -551,7 +587,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
     const response = await runEchoOptimizer({
       character,
       characters,
-      echoes,
+      echoes: searchEchoes,
       filters,
       minStats,
       maxStats,
@@ -777,6 +813,23 @@ ${losing.join(', ')} ${
                   disabled={excludeEquippedByOthers}
                   checked={priorityFilter && !excludeEquippedByOthers}
                   onChange={(event) => setPriorityFilter(event.currentTarget.checked)}
+                />
+                <Select
+                  label='Minimum level'
+                  size='xs'
+                  allowDeselect={false}
+                  value={String(minLevel)}
+                  onChange={(value) => value !== null && setMinLevel(Number(value))}
+                  data={[{ value: '0', label: '+0' }, { value: '5', label: '+5' }, { value: '10', label: '+10' }, { value: '15', label: '+15' }, {
+                    value: '20',
+                    label: '+20',
+                  }, { value: '25', label: '+25' }]}
+                />
+                <Switch
+                  label='Boost main stats to max level'
+                  description='Echoes below +25 count with their +25 main stats'
+                  checked={boostMain}
+                  onChange={(event) => setBoostMain(event.currentTarget.checked)}
                 />
               </FormCard>
             </FormRow>
