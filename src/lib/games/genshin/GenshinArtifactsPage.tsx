@@ -30,8 +30,8 @@ const maxArtifactLevel = (artifact: Artifact) => (artifact.rarity >= 3 ? artifac
 export function GenshinArtifactsPage({ onImport }: { onImport: () => void }) {
   const artifacts = useGenshinStore((s) => s.artifacts)
   const characters = useGenshinStore((s) => s.characters)
-  const saveArtifact = useGenshinStore((s) => s.saveArtifact)
-  const deleteArtifacts = useGenshinStore((s) => s.deleteArtifacts)
+  const saveArtifact = useGenshinStore((s) => s.saveGear)
+  const deleteArtifacts = useGenshinStore((s) => s.deleteGear)
   const images = useGenshinImages()
   const [store, setStore] = useState<EnkaGenshinStore | undefined>()
 

@@ -20,108 +20,35 @@ import type {
   Artifact,
   GenshinCharacter,
 } from 'lib/games/genshin/types'
-import { swapsOnEquip } from 'lib/games/shared/gameSettings'
-import {
-  type ImportMode,
-  readStorage,
-  writeStorage,
-} from 'lib/games/shared/storage'
-import { create } from 'zustand'
+import { createGearStore } from 'lib/games/shared/gearStore'
 
-function save(data: GenshinData) {
-  if (!writeStorage(GENSHIN_STATE_KEY, serializeGenshinData(data))) {
-    console.error('Failed to save Genshin data (storage blocked or quota exceeded?)')
-  }
-}
-
-type GenshinStore = GenshinData & {
-  // Warnings from the most recent import, not persisted
-  lastWarnings: string[],
-  importParsed: (parsed: GenshinData & { warnings: string[] }, mode: ImportMode) => void,
+// The Genshin save in this browser (genshin-state) on the shared gear store (shared/gearStore.ts): saveGear / deleteGear
+// are artifacts, unequipOwner / switchGear / deleteOwner are characters (the Characters page's Character menu)
+export const useGenshinStore = createGearStore<GenshinData, Artifact, GenshinData & { warnings: string[] }, string, {
   // Makes these the character's artifacts in this browser's save, see equipGenshinArtifacts. A character not in the save
   // yet (a default one, state/roster.ts) is added first
   equip: (character: GenshinCharacter, artifacts: Artifact[]) => void,
   // Adds a character by hand or changes their level, constellation or weapon, see saveGenshinCharacter
   saveCharacter: (details: GenshinCharacterDetails) => void,
-  // The Characters page's Character menu: unequipGenshinCharacter / switchGenshinArtifacts / deleteGenshinCharacter
-  unequipCharacter: (id: string) => void,
-  switchGear: (a: string, b: string) => void,
-  deleteCharacter: (id: string) => void,
-  // Adds or edits an artifact by hand, or deletes artifacts, see saveGenshinArtifact / deleteGenshinArtifacts
-  // owner (the editor's Equipped by): a character id puts it on them, null takes it off, undefined leaves it
-  saveArtifact: (artifact: Artifact, owner?: string | null) => void,
-  deleteArtifacts: (ids: string[]) => void,
-  clear: () => void,
-}
-
-export const useGenshinStore = create<GenshinStore>()((set, get) => ({
-  ...deserializeGenshinData(readStorage(GENSHIN_STATE_KEY)),
-  lastWarnings: [],
-
-  importParsed: (parsed, mode) => {
-    // An import that found nothing never wipes existing data, even in replace mode
-    if (parsed.artifacts.length === 0 && parsed.characters.length === 0) {
-      set({ lastWarnings: parsed.warnings })
-      return
-    }
-    const { artifacts, characters } = get()
-    const data = mergeGenshinData({ artifacts, characters }, parsed, mode)
-    save(data)
-    set({ ...data, lastWarnings: parsed.warnings })
+}>(
+  {
+    game: 'genshin',
+    storageKey: GENSHIN_STATE_KEY,
+    empty: EMPTY_GENSHIN_DATA,
+    serialize: serializeGenshinData,
+    deserialize: deserializeGenshinData,
+    isEmptyImport: (parsed) => parsed.artifacts.length === 0 && parsed.characters.length === 0,
+    merge: mergeGenshinData,
+    saveGear: saveGenshinArtifact,
+    deleteGear: deleteGenshinArtifacts,
+    assignGear: assignGenshinArtifact,
+    unequipOwner: unequipGenshinCharacter,
+    switchGear: switchGenshinArtifacts,
+    deleteOwner: deleteGenshinCharacter,
+    itemId: (artifact) => artifact.id,
   },
-
-  equip: (character, artifacts) => {
-    const { artifacts: saved, characters } = get()
-    const data = equipGenshinArtifacts(withGenshinCharacter({ artifacts: saved, characters }, character), character.id, artifacts, swapsOnEquip('genshin'))
-    save(data)
-    set(data)
-  },
-
-  unequipCharacter: (id) => {
-    const { artifacts, characters } = get()
-    const data = unequipGenshinCharacter({ artifacts, characters }, id)
-    save(data)
-    set(data)
-  },
-
-  switchGear: (a, b) => {
-    const { artifacts, characters } = get()
-    const data = switchGenshinArtifacts({ artifacts, characters }, a, b)
-    save(data)
-    set(data)
-  },
-
-  deleteCharacter: (id) => {
-    const { artifacts, characters } = get()
-    const data = deleteGenshinCharacter({ artifacts, characters }, id)
-    save(data)
-    set(data)
-  },
-
-  saveCharacter: (details) => {
-    const { artifacts, characters } = get()
-    const data = saveGenshinCharacter({ artifacts, characters }, details)
-    save(data)
-    set(data)
-  },
-
-  saveArtifact: (artifact, owner) => {
-    const { artifacts, characters } = get()
-    const saved = saveGenshinArtifact({ artifacts, characters }, artifact)
-    const data = owner === undefined ? saved : assignGenshinArtifact(saved, artifact.id, owner, swapsOnEquip('genshin'))
-    save(data)
-    set(data)
-  },
-
-  deleteArtifacts: (ids) => {
-    const { artifacts, characters } = get()
-    const data = deleteGenshinArtifacts({ artifacts, characters }, ids)
-    save(data)
-    set(data)
-  },
-
-  clear: () => {
-    save(EMPTY_GENSHIN_DATA)
-    set({ ...EMPTY_GENSHIN_DATA, lastWarnings: [] })
-  },
-}))
+  (apply) => ({
+    equip: (character, artifacts) => apply((data, swap) => equipGenshinArtifacts(withGenshinCharacter(data, character), character.id, artifacts, swap)),
+    saveCharacter: (details) => apply((data) => saveGenshinCharacter(data, details)),
+  }),
+)

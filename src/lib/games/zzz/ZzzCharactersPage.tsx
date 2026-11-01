@@ -176,7 +176,7 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
   const [editing, setEditing] = useState(false)
   // The Character menu (after HSR's), on the build shown: other saved builds to switch with, and saved builds
   const allBuilds = useZzzStore((s) => s.builds)
-  const { unequipBuild, switchGear, deleteBuild, equip } = useZzzStore.getState()
+  const { unequipOwner: unequipBuild, switchGear, deleteOwner: deleteBuild, equip } = useZzzStore.getState()
   const savedBuilds = useSavedBuilds('zzz', entry.agentId)
   // Re-render when scoring weights are saved
   useScoreWeightsVersion()

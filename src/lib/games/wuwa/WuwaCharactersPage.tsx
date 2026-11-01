@@ -147,7 +147,7 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
   const [editing, setEditing] = useState(false)
   // The Character menu (after HSR's): every other saved Resonator to switch with, and saved builds
   const characters = useWuwaStore((s) => s.characters)
-  const { unequipCharacter, switchGear, deleteCharacter, equip } = useWuwaStore.getState()
+  const { unequipOwner: unequipCharacter, switchGear, deleteOwner: deleteCharacter, equip } = useWuwaStore.getState()
   const builds = useSavedBuilds('wuwa', character.charId)
   // Re-render when scoring weights are saved
   useScoreWeightsVersion()

@@ -28,8 +28,8 @@ const maxDiscLevel = () => MAX_DISC_LEVEL
 export function ZzzDiscsPage({ onImport }: { onImport: () => void }) {
   const discs = useZzzStore((s) => s.discs)
   const builds = useZzzStore((s) => s.builds)
-  const saveDisc = useZzzStore((s) => s.saveDisc)
-  const deleteDiscs = useZzzStore((s) => s.deleteDiscs)
+  const saveDisc = useZzzStore((s) => s.saveGear)
+  const deleteDiscs = useZzzStore((s) => s.deleteGear)
   const images = useZzzImages()
   const gameData = useZzzGameData()
 

@@ -1,10 +1,5 @@
-import { swapsOnEquip } from 'lib/games/shared/gameSettings'
-import {
-  type ImportMode,
-  mergeById,
-  readStorage,
-  writeStorage,
-} from 'lib/games/shared/storage'
+import { createGearStore } from 'lib/games/shared/gearStore'
+import { mergeById } from 'lib/games/shared/storage'
 import type {
   ImportedBuild,
   ParsedZzzExport,
@@ -22,110 +17,36 @@ import {
   switchZzzDiscs,
   unequipZzzBuild,
   ZZZ_STATE_KEY,
+  type ZzzData,
 } from 'lib/games/zzz/state/zzzState'
 import type { Disc } from 'lib/games/zzz/types'
-import { create } from 'zustand'
 
-function save(discs: Disc[], builds: ImportedBuild[]) {
-  if (!writeStorage(ZZZ_STATE_KEY, serializeZzzData({ discs, builds }))) {
-    console.error('Failed to save ZZZ data (storage blocked or quota exceeded?)')
-  }
-}
-
-type ZzzStore = {
-  discs: Disc[],
-  builds: ImportedBuild[],
-  // Warnings from the most recent import, not persisted
-  lastWarnings: ParseWarning[],
-  importParsed: (parsed: ParsedZzzExport, mode: ImportMode) => void,
-  // Makes these the agent's discs in this browser's save, see equipZzzDiscs
-  equip: (...args: Parameters<typeof equipZzzDiscs> extends [unknown, ...infer Rest] ? Rest : never) => void,
+// The ZZZ save in this browser (zzz-state) on the shared gear store (shared/gearStore.ts): saveGear / deleteGear are
+// discs, unequipOwner / switchGear / deleteOwner take a build id (the Agents page's Character menu)
+export const useZzzStore = createGearStore<ZzzData, Disc, ParsedZzzExport, ParseWarning, {
+  // Makes these the agent's discs in this browser's save, see equipZzzDiscs (which adds a build for an agent without one)
+  equip: (agent: Parameters<typeof equipZzzDiscs>[1], wEngine: Parameters<typeof equipZzzDiscs>[2], discs: Disc[]) => void,
   // Adds an agent by hand or changes a saved build's Mindscape and W-Engine, see saveZzzBuild
   saveBuild: (build: ImportedBuild) => void,
-  // The Agents page's Character menu, by build id: unequipZzzBuild / switchZzzDiscs / deleteZzzBuild
-  unequipBuild: (buildId: string) => void,
-  switchGear: (a: string, b: string) => void,
-  deleteBuild: (buildId: string) => void,
-  // Adds or edits a disc by hand, or deletes discs, see saveZzzDisc / deleteZzzDiscs
-  // owner (the editor's Equipped by): an agent id puts it on them, null takes it off, undefined leaves it
-  saveDisc: (disc: Disc, owner?: string | null) => void,
-  deleteDiscs: (ids: string[]) => void,
-  clear: () => void,
-}
-
-const initial = deserializeZzzData(readStorage(ZZZ_STATE_KEY))
-
-export const useZzzStore = create<ZzzStore>()((set, get) => ({
-  discs: initial.discs,
-  builds: initial.builds,
-  lastWarnings: [],
-
-  importParsed: (parsed, mode) => {
-    // An import that found nothing never wipes existing data, even in replace mode
-    if (parsed.discs.length === 0 && parsed.builds.length === 0) {
-      set({ lastWarnings: parsed.warnings })
-      return
-    }
-
-    const state = get()
-    const discs = mergeById(state.discs, parsed.discs, mode)
-    const builds = mergeById(state.builds, parsed.builds, mode)
-    save(discs, builds)
-    set({ discs, builds, lastWarnings: parsed.warnings })
+}>(
+  {
+    game: 'zzz',
+    storageKey: ZZZ_STATE_KEY,
+    empty: { discs: [], builds: [] },
+    serialize: serializeZzzData,
+    deserialize: deserializeZzzData,
+    isEmptyImport: (parsed) => parsed.discs.length === 0 && parsed.builds.length === 0,
+    merge: (data, parsed, mode) => ({ discs: mergeById(data.discs, parsed.discs, mode), builds: mergeById(data.builds, parsed.builds, mode) }),
+    saveGear: saveZzzDisc,
+    deleteGear: deleteZzzDiscs,
+    assignGear: assignZzzDisc,
+    unequipOwner: unequipZzzBuild,
+    switchGear: switchZzzDiscs,
+    deleteOwner: deleteZzzBuild,
+    itemId: (disc) => disc.id,
   },
-
-  equip: (agent, wEngine, discs) => {
-    const state = get()
-    const data = equipZzzDiscs({ discs: state.discs, builds: state.builds }, agent, wEngine, discs, swapsOnEquip('zzz'))
-    save(data.discs, data.builds)
-    set(data)
-  },
-
-  unequipBuild: (buildId) => {
-    const state = get()
-    const data = unequipZzzBuild({ discs: state.discs, builds: state.builds }, buildId)
-    save(data.discs, data.builds)
-    set(data)
-  },
-
-  switchGear: (a, b) => {
-    const state = get()
-    const data = switchZzzDiscs({ discs: state.discs, builds: state.builds }, a, b)
-    save(data.discs, data.builds)
-    set(data)
-  },
-
-  deleteBuild: (buildId) => {
-    const state = get()
-    const data = deleteZzzBuild({ discs: state.discs, builds: state.builds }, buildId)
-    save(data.discs, data.builds)
-    set(data)
-  },
-
-  saveBuild: (build) => {
-    const state = get()
-    const data = saveZzzBuild({ discs: state.discs, builds: state.builds }, build)
-    save(data.discs, data.builds)
-    set(data)
-  },
-
-  saveDisc: (disc, owner) => {
-    const state = get()
-    const saved = saveZzzDisc({ discs: state.discs, builds: state.builds }, disc)
-    const data = owner === undefined ? saved : assignZzzDisc(saved, disc.id, owner, swapsOnEquip('zzz'))
-    save(data.discs, data.builds)
-    set(data)
-  },
-
-  deleteDiscs: (ids) => {
-    const state = get()
-    const data = deleteZzzDiscs({ discs: state.discs, builds: state.builds }, ids)
-    save(data.discs, data.builds)
-    set(data)
-  },
-
-  clear: () => {
-    save([], [])
-    set({ discs: [], builds: [], lastWarnings: [] })
-  },
-}))
+  (apply) => ({
+    equip: (agent, wEngine, discs) => apply((data, swap) => equipZzzDiscs(data, agent, wEngine, discs, swap)),
+    saveBuild: (build) => apply((data) => saveZzzBuild(data, build)),
+  }),
+)

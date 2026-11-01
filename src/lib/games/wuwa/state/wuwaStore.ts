@@ -1,9 +1,4 @@
-import { swapsOnEquip } from 'lib/games/shared/gameSettings'
-import {
-  type ImportMode,
-  readStorage,
-  writeStorage,
-} from 'lib/games/shared/storage'
+import { createGearStore } from 'lib/games/shared/gearStore'
 import type { ParsedWuwaData } from 'lib/games/wuwa/importer/userDataParser'
 import {
   assignWuwaEcho,
@@ -26,102 +21,34 @@ import type {
   CharacterState,
   Echo,
 } from 'lib/games/wuwa/types'
-import { create } from 'zustand'
 
-function save(data: WuwaData) {
-  if (!writeStorage(WUWA_STATE_KEY, serializeWuwaData(data))) {
-    console.error('Failed to save WuWa data (storage blocked or quota exceeded?)')
-  }
-}
-
-type WuwaStore = WuwaData & {
-  // Warnings from the most recent import, not persisted
-  lastWarnings: string[],
-  importParsed: (parsed: ParsedWuwaData, mode: ImportMode) => void,
+// The WuWa save in this browser (wuwa-state) on the shared gear store (shared/gearStore.ts): saveGear / deleteGear are
+// echoes, unequipOwner / switchGear / deleteOwner are Resonators (the Resonators page's Character menu)
+export const useWuwaStore = createGearStore<WuwaData, Echo, ParsedWuwaData, string, {
   // Makes these the Resonator's echoes in this browser's save, see equipWuwaEchoes
   // A Resonator not in the save yet (a default one, state/roster.ts) is added first
   equip: (character: CharacterState, echoes: Echo[]) => void,
   // Adds a Resonator by hand or changes their level, sequence and weapon, see saveWuwaCharacter
   saveCharacter: (details: Omit<CharacterState, 'echoIds'>) => void,
-  // The Resonators page's Character menu: unequipWuwaCharacter / switchWuwaEchoes / deleteWuwaCharacter
-  unequipCharacter: (charId: string) => void,
-  switchGear: (a: string, b: string) => void,
-  deleteCharacter: (charId: string) => void,
-  // Adds or edits an echo by hand, or deletes echoes, see saveWuwaEcho / deleteWuwaEchoes
-  // owner (the editor's Equipped by): a Resonator id puts it on them, null takes it off, undefined leaves it
-  saveEcho: (echo: Echo, owner?: string | null) => void,
-  deleteEchoes: (ids: string[]) => void,
-  clear: () => void,
-}
-
-export const useWuwaStore = create<WuwaStore>()((set, get) => ({
-  ...deserializeWuwaData(readStorage(WUWA_STATE_KEY)),
-  lastWarnings: [],
-
-  importParsed: (parsed, mode) => {
-    // An import that found nothing never wipes existing data, even in replace mode
-    if (parsed.echoes.length === 0 && parsed.characters.length === 0) {
-      set({ lastWarnings: parsed.warnings })
-      return
-    }
-    const { echoes, characters, teams, priority } = get()
-    const data = mergeWuwaData({ echoes, characters, teams, priority }, parsed, mode)
-    save(data)
-    set({ ...data, lastWarnings: parsed.warnings })
+}>(
+  {
+    game: 'wuwa',
+    storageKey: WUWA_STATE_KEY,
+    empty: EMPTY_WUWA_DATA,
+    serialize: serializeWuwaData,
+    deserialize: deserializeWuwaData,
+    isEmptyImport: (parsed) => parsed.echoes.length === 0 && parsed.characters.length === 0,
+    merge: mergeWuwaData,
+    saveGear: saveWuwaEcho,
+    deleteGear: deleteWuwaEchoes,
+    assignGear: assignWuwaEcho,
+    unequipOwner: unequipWuwaCharacter,
+    switchGear: switchWuwaEchoes,
+    deleteOwner: deleteWuwaCharacter,
+    itemId: (echo) => echo.id,
   },
-
-  equip: (character, echoes) => {
-    const { echoes: saved, characters, teams, priority } = get()
-    const data = equipWuwaEchoes(withWuwaCharacter({ echoes: saved, characters, teams, priority }, character), character.charId, echoes, swapsOnEquip('wuwa'))
-    save(data)
-    set(data)
-  },
-
-  unequipCharacter: (charId) => {
-    const { echoes, characters, teams, priority } = get()
-    const data = unequipWuwaCharacter({ echoes, characters, teams, priority }, charId)
-    save(data)
-    set(data)
-  },
-
-  switchGear: (a, b) => {
-    const { echoes, characters, teams, priority } = get()
-    const data = switchWuwaEchoes({ echoes, characters, teams, priority }, a, b)
-    save(data)
-    set(data)
-  },
-
-  deleteCharacter: (charId) => {
-    const { echoes, characters, teams, priority } = get()
-    const data = deleteWuwaCharacter({ echoes, characters, teams, priority }, charId)
-    save(data)
-    set(data)
-  },
-
-  saveCharacter: (details) => {
-    const { echoes, characters, teams, priority } = get()
-    const data = saveWuwaCharacter({ echoes, characters, teams, priority }, details)
-    save(data)
-    set(data)
-  },
-
-  saveEcho: (echo, owner) => {
-    const { echoes, characters, teams, priority } = get()
-    const saved = saveWuwaEcho({ echoes, characters, teams, priority }, echo)
-    const data = owner === undefined ? saved : assignWuwaEcho(saved, echo.id, owner, swapsOnEquip('wuwa'))
-    save(data)
-    set(data)
-  },
-
-  deleteEchoes: (ids) => {
-    const { echoes, characters, teams, priority } = get()
-    const data = deleteWuwaEchoes({ echoes, characters, teams, priority }, ids)
-    save(data)
-    set(data)
-  },
-
-  clear: () => {
-    save(EMPTY_WUWA_DATA)
-    set({ ...EMPTY_WUWA_DATA, lastWarnings: [] })
-  },
-}))
+  (apply) => ({
+    equip: (character, echoes) => apply((data, swap) => equipWuwaEchoes(withWuwaCharacter(data, character), character.charId, echoes, swap)),
+    saveCharacter: (details) => apply((data) => saveWuwaCharacter(data, details)),
+  }),
+)

@@ -124,7 +124,7 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
   const [editing, setEditing] = useState(false)
   // The Character menu (after HSR's): every other saved character to switch with, and saved builds
   const characters = useGenshinStore((s) => s.characters)
-  const { unequipCharacter, switchGear, deleteCharacter, equip } = useGenshinStore.getState()
+  const { unequipOwner: unequipCharacter, switchGear, deleteOwner: deleteCharacter, equip } = useGenshinStore.getState()
   const builds = useSavedBuilds('genshin', character.id)
   // Re-render when scoring weights are saved
   useScoreWeightsVersion()

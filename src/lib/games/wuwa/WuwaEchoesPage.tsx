@@ -25,8 +25,8 @@ const maxEchoLevel = () => MAX_ECHO_LEVEL
 export function WuwaEchoesPage({ onImport }: { onImport: () => void }) {
   const echoes = useWuwaStore((s) => s.echoes)
   const characters = useWuwaStore((s) => s.characters)
-  const saveEcho = useWuwaStore((s) => s.saveEcho)
-  const deleteEchoes = useWuwaStore((s) => s.deleteEchoes)
+  const saveEcho = useWuwaStore((s) => s.saveGear)
+  const deleteEchoes = useWuwaStore((s) => s.deleteGear)
 
   // Saved scoring weights change the Score column
   const weightsVersion = useScoreWeightsVersion()
