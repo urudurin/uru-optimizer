@@ -3,13 +3,13 @@ import type {
   DiscWorkerRequest,
   DiscWorkerResponse,
 } from 'lib/games/zzz/optimizer/optimizerWorker'
-import OptimizerWorker from 'lib/games/zzz/optimizer/optimizerWorker.ts?worker'
+import { WorkerType } from 'lib/worker/workerUtils'
 
-// The disc search in a web worker, one at a time, see shared/workerRunner.ts
+// The disc search in HSR's worker pool, one at a time, see shared/workerRunner.ts
 
 // The runner itself, for shared/ui/optimizer/useOptimizerRun.ts
 export const discSearch = createWorkerRunner<DiscWorkerRequest, DiscWorkerResponse>(
-  () => new OptimizerWorker(),
+  WorkerType.ZZZ_DISC_SEARCH,
   (message) => ({ outcome: { ok: false, reason: `The search failed: ${message}` }, ms: 0 }),
 )
 

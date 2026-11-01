@@ -1,3 +1,6 @@
+import type { GenshinArtifactWorkerInput } from 'lib/games/genshin/optimizer/optimizerWorker'
+import type { WuwaEchoWorkerInput } from 'lib/games/wuwa/optimizer/optimizerWorker'
+import type { ZzzDiscWorkerInput } from 'lib/games/zzz/optimizer/optimizerWorker'
 import type { ComputeOptimalSimulationWorkerInput } from 'lib/worker/computeOptimalSimulationWorkerRunner'
 import type { EstTbpWorkerInput } from 'lib/worker/estTbpWorkerRunner'
 import type { OptimizerWorkerInput } from 'lib/worker/optimizerWorker'
@@ -34,6 +37,21 @@ async function handleMessage(e: MessageEvent<BaseWorkerInput>) {
     case WorkerType.COMPUTE_OPTIMAL_SIMULATION: {
       const { computeOptimalSimulationWorker } = await import('lib/worker/computeOptimalSimulationWorker')
       computeOptimalSimulationWorker(e as MessageEvent<ComputeOptimalSimulationWorkerInput>)
+      break
+    }
+    case WorkerType.ZZZ_DISC_SEARCH: {
+      const { zzzDiscSearchWorker } = await import('lib/games/zzz/optimizer/optimizerWorker')
+      await zzzDiscSearchWorker(e as MessageEvent<ZzzDiscWorkerInput>)
+      break
+    }
+    case WorkerType.GENSHIN_ARTIFACT_SEARCH: {
+      const { genshinArtifactSearchWorker } = await import('lib/games/genshin/optimizer/optimizerWorker')
+      genshinArtifactSearchWorker(e as MessageEvent<GenshinArtifactWorkerInput>)
+      break
+    }
+    case WorkerType.WUWA_ECHO_SEARCH: {
+      const { wuwaEchoSearchWorker } = await import('lib/games/wuwa/optimizer/optimizerWorker')
+      wuwaEchoSearchWorker(e as MessageEvent<WuwaEchoWorkerInput>)
       break
     }
     default:

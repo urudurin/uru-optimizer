@@ -27,6 +27,11 @@ interface RunTaskOptions<TIn extends BaseWorkerInput> {
   prepareInput?: (input: TIn) => void
   /** Max retry attempts on worker error. Default 0 (no retry). */
   maxRetries?: number
+  /** Optional, for workers that post messages before their result (e.g. progress in the ZZZ / Genshin / WuWa searches):
+   *  return true for a message that isn't the result, and the task keeps running */
+  onInterimMessage?: (data: unknown) => boolean
+  /** Optional: aborting rejects the task with WorkerCancelledError, removing it from the queue or replacing its worker */
+  signal?: AbortSignal
 }
 
 interface QueuedTask<TIn extends BaseWorkerInput, TOut extends BaseWorkerOutput> {
@@ -37,6 +42,8 @@ interface QueuedTask<TIn extends BaseWorkerInput, TOut extends BaseWorkerOutput>
   prepareInput?: (input: TIn) => void
   maxRetries: number
   attempts: number
+  onInterimMessage?: (data: unknown) => boolean
+  signal?: AbortSignal
 }
 
 export class WorkerPool {
@@ -82,8 +89,14 @@ export class WorkerPool {
     const transferables = options?.transferables
     const prepareInput = options?.prepareInput
     const maxRetries = options?.maxRetries ?? 0
+    const onInterimMessage = options?.onInterimMessage
+    const signal = options?.signal
 
     return new Promise<TOut>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new WorkerCancelledError())
+        return
+      }
       if (this.available.length > 0) {
         const workerIndex = this.available.shift()!
         this.runTaskOnWorker(
@@ -95,9 +108,11 @@ export class WorkerPool {
           prepareInput as ((input: BaseWorkerInput) => void) | undefined,
           maxRetries,
           0,
+          onInterimMessage,
+          signal,
         )
       } else {
-        this.queue.push({
+        const task: QueuedTask<BaseWorkerInput, BaseWorkerOutput> = {
           input: input as BaseWorkerInput,
           resolve: resolve as (value: BaseWorkerOutput) => void,
           reject,
@@ -105,7 +120,17 @@ export class WorkerPool {
           prepareInput: prepareInput as ((input: BaseWorkerInput) => void) | undefined,
           maxRetries,
           attempts: 0,
-        })
+          onInterimMessage,
+          signal,
+        }
+        this.queue.push(task)
+        // Aborted while still queued: drop it (once running, runTaskOnWorker handles the abort)
+        signal?.addEventListener('abort', () => {
+          const at = this.queue.indexOf(task)
+          if (at < 0) return
+          this.queue.splice(at, 1)
+          reject(new WorkerCancelledError())
+        }, { once: true })
       }
     })
   }
@@ -225,20 +250,36 @@ export class WorkerPool {
     prepareInput?: (input: BaseWorkerInput) => void,
     maxRetries: number = 0,
     attempts: number = 0,
+    onInterimMessage?: (data: unknown) => boolean,
+    signal?: AbortSignal,
   ): void {
     const worker = this.workers[workerIndex]
     if (!worker) {
       reject(new Error(`Worker ${workerIndex} is null`))
       return
     }
+    if (signal?.aborted) {
+      reject(new WorkerCancelledError())
+      this.workerDone(workerIndex)
+      return
+    }
 
     const cleanup = () => {
       worker.removeEventListener('message', messageHandler)
       worker.removeEventListener('error', errorHandler)
+      signal?.removeEventListener('abort', abortHandler)
       this.inFlightRejects.delete(workerIndex)
     }
 
+    // The task can't be stopped inside the worker, so the worker is replaced
+    const abortHandler = () => {
+      cleanup()
+      reject(new WorkerCancelledError())
+      this.replaceWorker(workerIndex)
+    }
+
     const messageHandler = (e: MessageEvent) => {
+      if (onInterimMessage?.(e.data)) return
       cleanup()
       resolve(e.data as BaseWorkerOutput)
       this.workerDone(workerIndex)
@@ -260,6 +301,8 @@ export class WorkerPool {
           prepareInput,
           maxRetries,
           attempts: attempts + 1,
+          onInterimMessage,
+          signal,
         })
       } else {
         reject(e)
@@ -271,6 +314,7 @@ export class WorkerPool {
 
     worker.addEventListener('message', messageHandler)
     worker.addEventListener('error', errorHandler)
+    signal?.addEventListener('abort', abortHandler, { once: true })
 
     // Track in-flight reject so terminate() can clean up hanging promises
     this.inFlightRejects.set(workerIndex, reject)
@@ -308,6 +352,8 @@ export class WorkerPool {
         task.prepareInput,
         task.maxRetries,
         task.attempts,
+        task.onInterimMessage,
+        task.signal,
       )
     } else {
       this.available.push(workerIndex)
@@ -327,6 +373,8 @@ export class WorkerPool {
         task.prepareInput,
         task.maxRetries,
         task.attempts,
+        task.onInterimMessage,
+        task.signal,
       )
     }
   }

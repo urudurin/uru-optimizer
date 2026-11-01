@@ -1,13 +1,13 @@
 import { createWorkerRunner } from 'lib/games/shared/workerRunner'
 import type { EchoRequest } from 'lib/games/wuwa/optimizer/echoOptimizer'
 import type { EchoWorkerResponse } from 'lib/games/wuwa/optimizer/optimizerWorker'
-import OptimizerWorker from 'lib/games/wuwa/optimizer/optimizerWorker.ts?worker'
+import { WorkerType } from 'lib/worker/workerUtils'
 
-// The echo search in a web worker, one at a time, see shared/workerRunner.ts
+// The echo search in HSR's worker pool, one at a time, see shared/workerRunner.ts
 
 // The runner itself, for shared/ui/optimizer/useOptimizerRun.ts
 export const echoSearch = createWorkerRunner<EchoRequest, EchoWorkerResponse>(
-  () => new OptimizerWorker(),
+  WorkerType.WUWA_ECHO_SEARCH,
   (message) => ({ outcome: { ok: false, reason: `The search failed: ${message}` }, ms: 0 }),
 )
 

@@ -2,9 +2,15 @@ import {
   isProgressMessage,
   type ProgressCallback,
 } from 'lib/games/shared/progress'
+import {
+  WorkerCancelledError,
+  workerPool,
+} from 'lib/worker/workerPool'
+import type { WorkerType } from 'lib/worker/workerUtils'
 
-// Runs one search at a time in a web worker, shared by the gear optimizers. Starting a new search (or cancelling) stops
-// the old worker, so its result never arrives. The worker posts progress messages (see progress.ts) while it works,
+// Runs one search at a time in HSR's worker pool (lib/worker/workerPool.ts), shared by the gear optimizers, so they
+// queue, cancel and fail like HSR's own workers. Starting a new search (or cancelling) aborts the old task, whose worker
+// the pool replaces, so its result never arrives. The worker posts progress messages (see progress.ts) while it works,
 // then one message with the result.
 
 export type WorkerRunner<Request, Response> = {
@@ -13,37 +19,36 @@ export type WorkerRunner<Request, Response> = {
   cancel: () => void,
 }
 
-export function createWorkerRunner<Request, Response>(
-  createWorker: () => Worker,
+export function createWorkerRunner<Request extends object, Response>(
+  workerType: WorkerType,
   onError: (message: string) => Response,
 ): WorkerRunner<Request, Response> {
-  let running: { worker: Worker, resolve: (value: Response | undefined) => void } | undefined
+  let running: AbortController | undefined
 
   const cancel = () => {
-    if (!running) return
-    running.worker.terminate()
-    running.resolve(undefined)
+    running?.abort()
     running = undefined
   }
 
-  const run = (request: Request, onProgress?: ProgressCallback) => {
+  const run = async (request: Request, onProgress?: ProgressCallback) => {
     cancel()
-    return new Promise<Response | undefined>((resolve) => {
-      const worker = createWorker()
-      const current = { worker, resolve }
-      running = current
-      const finish = (response: Response | undefined) => {
-        worker.terminate()
-        if (running === current) running = undefined
-        resolve(response)
-      }
-      worker.onmessage = (e: MessageEvent<unknown>) => {
-        if (isProgressMessage(e.data)) onProgress?.(e.data.progress)
-        else finish(e.data as Response)
-      }
-      worker.onerror = (e) => finish(onError(e.message))
-      worker.postMessage(request)
-    })
+    const controller = new AbortController()
+    running = controller
+    try {
+      return await workerPool.runTask<Request & { workerType: WorkerType }, Response & object>({ ...request, workerType }, {
+        signal: controller.signal,
+        onInterimMessage: (data) => {
+          if (!isProgressMessage(data)) return false
+          onProgress?.(data.progress)
+          return true
+        },
+      })
+    } catch (error) {
+      if (error instanceof WorkerCancelledError) return undefined
+      return onError(error instanceof ErrorEvent ? error.message : error instanceof Error ? error.message : String(error))
+    } finally {
+      if (running === controller) running = undefined
+    }
   }
 
   return { run, cancel }

@@ -7,17 +7,20 @@ import {
   type OptimizerOutcome,
   type OptimizerRequest,
 } from 'lib/games/zzz/optimizer/discOptimizer'
+import type { BaseWorkerInput } from 'lib/worker/workerPool'
 
-// Runs the disc search off the main thread, see optimizerClient.ts. W-Engine passives are functions, which can't be
-// sent to a worker, so the agent and W-Engine come as ids and are looked up here (after loading Enka's data for the
-// agents and W-Engines that aren't written by hand, see data/enkaGameData.ts)
+// Runs the disc search in one of HSR's pooled workers (lib/worker/baseWorker.ts loads this on first use), see
+// optimizerClient.ts. W-Engine passives are functions, which can't be sent to a worker, so the agent and W-Engine come
+// as ids and are looked up here (after loading Enka's data for the agents and W-Engines that aren't written by hand,
+// see data/enkaGameData.ts)
 
 export type DiscWorkerRequest = Omit<OptimizerRequest, 'agent' | 'wEngine'> & { agentId: string, wEngineId?: string }
+export type ZzzDiscWorkerInput = DiscWorkerRequest & BaseWorkerInput
 export type DiscWorkerResponse = { outcome: OptimizerOutcome, ms: number }
 
-self.onmessage = async (e: MessageEvent<DiscWorkerRequest>) => {
+export async function zzzDiscSearchWorker(e: MessageEvent<ZzzDiscWorkerInput>) {
   const started = performance.now()
-  const { agentId, wEngineId, ...rest } = e.data
+  const { workerType: _, agentId, wEngineId, ...rest } = e.data
   if (!AGENTS[agentId] || (wEngineId && !W_ENGINES[wEngineId])) await loadZzzGameData()
   const agent = AGENTS[agentId]
   const wEngine = wEngineId ? W_ENGINES[wEngineId] : undefined
