@@ -20,6 +20,7 @@ const namespaces = [
   'common',
   'conditionals',
   'gameData',
+  'games',
   'getStartedTab',
   'hint',
   'hometab',

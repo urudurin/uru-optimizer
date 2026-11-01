@@ -1,0 +1,107 @@
+Gear:
+  discs: discs
+  artifacts: artifacts
+  echoes: echoes
+Layout:
+  Settings: Settings
+  Footer: Personal, non-commercial use. Not affiliated with the game's publisher.
+Pages:
+  Optimizer: Optimizer
+  Discs: Discs
+  Agents: Agents
+  Artifacts: Artifacts
+  Characters: Characters
+  Echoes: Echoes
+  Resonators: Resonators
+  ImportSave: Import / Save
+  Optimization: Optimization
+Settings:
+  Title: Settings
+  EquipBehavior:
+    Label: Equipping {{gear}} from another character
+    Replace: 'Default: Replace {{gear}} without swapping'
+    Swap: Swap {{gear}} with the previous owner
+    Help: "Used by the optimizer's Equip, saved builds and the editor's Equipped by. Replace leaves the other character's slot empty; swap gives them this character's old piece."
+    HelpWuwa: "Used by the optimizer's Equip, saved builds and the editor's Equipped by. Replace leaves the other character's slot empty; swap gives them this character's old piece (an echo of the same cost, when there is one)."
+  AnalysisPosition:
+    Label: Optimizer build analysis position
+    Below: 'Default: Show the build analysis below the build preview'
+    Above: Show the build analysis above the build preview
+  Kept: Settings are kept in this browser and in backups.
+Sidebar:
+  Search: Search
+  Controls: Controls
+  Results: Results
+  Build: Build
+  Builds: Builds
+  Combinations: Combinations
+  Start: Start optimizer
+  Cancel: Cancel
+  Checked: '{{seconds}}s · {{count}} checked'
+  Elapsed: '{{seconds}}s'
+  CombatStats: Combat stats
+  BasicStats: Basic stats
+  Reset: Reset
+  ResetTitle: Reset all filters?
+  ResetBody: All filters will be reset to their default values.
+  Found: '{{count}} found in {{seconds}}s'
+  PinBuild: Pin build
+  ClearPins: Clear pins
+  Equipped: Equipped
+  Equip: Equip {{label}}
+  EquipNote: Saves it as the current build in this browser. Your game doesn't change.
+  Save: Save
+  Load: Load
+  LoadCount: Load ({{count}})
+BackupReminder:
+  Never: You haven't saved a backup yet.
+  DaysAgo: Your last backup was {{days}} days ago.
+  BrowserOnly: Your data is kept in this browser only, so clearing site data or switching browsers would lose it.
+  Save: Save a backup
+  Later: Later
+SampleNotice:
+  Text: You're looking at made-up sample data. Import your own to optimize your real gear.
+  Import: Import your own
+  Remove: Remove sample data
+NoResults:
+  NothingMatched: Nothing matched
+  NoFullBuild: No full build with these filters
+  NoLoadout: No loadout with these filters
+  SlotEmpty: A slot has no {{gear}} left, so the search can't start.
+  PoolEmpty: No {{gear}} are left, so the search can't start.
+  NoFilters: No filters are set, so there may not be enough {{gear}} for a full build yet. Import more, or add them by hand.
+  BlockingHelp: 'A filter marked "Blocking" is enough on its own: turning it off fills every slot again.'
+  Help: These filters are set; loosening one may let builds through.
+  Blocking: Blocking
+ExtraBuffs:
+  Title: Extra combat buffs
+  Description: Buffs the optimizer doesn't know about (a teammate or weapon it doesn't cover, an event buff), added to every build. Percents as shown in game.
+  NoneSet: None set
+  CountSet: '{{count}} set'
+  Clear: Clear
+TeammateOverrides:
+  Title: Teammate overrides
+  Description: Change a teammate for the team buffs only; their saved character stays as it is.
+  Changed: Changed
+  NoWeapon: No {{weapon}}
+  NoFourPiece: No 4-piece set
+  Sync: Sync from roster
+DamageCharts:
+  Breakdown: Combo Breakdown
+  Distribution: Combo Distribution
+  MoreLines: '{{count}} more lines'
+  Other: Other
+  Total: Total
+BuildAnalysis:
+  Title: Build analysis
+  Description: '{{build}}, compared with the current build and what would improve it next.'
+  Compared: Compared with current
+  Stat: Stat
+  Now: Now
+  Build: Build
+  Change: Change
+  NoCurrent: No current build to compare with.
+  Upgrades: Substat upgrades
+  UpgradesHelp: One more average roll of each substat on this build, and how much it raises {{score}}.
+  NoUpgrade: No substat raises {{score}}.
+  Substat: Substat

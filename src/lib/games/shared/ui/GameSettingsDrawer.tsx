@@ -10,6 +10,7 @@ import {
   useGameSettings,
   writeGameSettings,
 } from 'lib/games/shared/gameSettings'
+import { useTranslation } from 'react-i18next'
 
 // A game's Settings, after HSR's Settings drawer (lib/overlays/drawers/SettingsDrawer.tsx): a right-side drawer opened
 // from the sidebar's Settings entry, each setting a labelled select with the default marked "Default:"
@@ -21,35 +22,34 @@ export function GameSettingsDrawer({ game, gearNoun, opened, onClose }: {
   onClose: () => void,
 }) {
   const settings = useGameSettings(game)
+  const { t } = useTranslation('games', { keyPrefix: 'Settings' })
+  const { t: tGear } = useTranslation('games', { keyPrefix: 'Gear' })
+  const gear = tGear(gearNoun as never)
   return (
-    <Drawer opened={opened} onClose={onClose} position='right' title='Settings' size='md'>
+    <Drawer opened={opened} onClose={onClose} position='right' title={t('Title')} size='md'>
       <Stack gap='lg'>
         <Select
-          label={`Equipping ${gearNoun} from another character`}
+          label={t('EquipBehavior.Label', { gear })}
           allowDeselect={false}
           value={settings.equipBehavior}
           onChange={(value) => value && writeGameSettings(game, { equipBehavior: value as EquipBehavior })}
           data={[
-            { value: 'replace', label: `Default: Replace ${gearNoun} without swapping` },
-            { value: 'swap', label: `Swap ${gearNoun} with the previous owner` },
+            { value: 'replace', label: t('EquipBehavior.Replace', { gear }) },
+            { value: 'swap', label: t('EquipBehavior.Swap', { gear }) },
           ]}
         />
-        <Text size='xs' c='dimmed'>
-          {`Used by the optimizer's Equip, saved builds and the editor's Equipped by. Replace leaves the other character's slot empty; swap gives them this character's old piece${
-            game === 'wuwa' ? ' (an echo of the same cost, when there is one)' : ''
-          }.`}
-        </Text>
+        <Text size='xs' c='dimmed'>{game === 'wuwa' ? t('EquipBehavior.HelpWuwa') : t('EquipBehavior.Help')}</Text>
         <Select
-          label='Optimizer build analysis position'
+          label={t('AnalysisPosition.Label')}
           allowDeselect={false}
           value={settings.analysisPosition}
           onChange={(value) => value && writeGameSettings(game, { analysisPosition: value as AnalysisPosition })}
           data={[
-            { value: 'below', label: 'Default: Show the build analysis below the build preview' },
-            { value: 'above', label: 'Show the build analysis above the build preview' },
+            { value: 'below', label: t('AnalysisPosition.Below') },
+            { value: 'above', label: t('AnalysisPosition.Above') },
           ]}
         />
-        <Text size='xs' c='dimmed'>Settings are kept in this browser and in backups.</Text>
+        <Text size='xs' c='dimmed'>{t('Kept')}</Text>
       </Stack>
     </Drawer>
   )

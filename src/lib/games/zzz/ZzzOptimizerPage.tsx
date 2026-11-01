@@ -79,7 +79,10 @@ import {
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
-import { NoResults } from 'lib/games/shared/ui/optimizer/NoResults'
+import {
+  NoBuildPanel,
+  NoResults,
+} from 'lib/games/shared/ui/optimizer/NoResults'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -1061,11 +1064,7 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
             </Panel>
           )}
 
-          {!running && emptySlots.length > 0 && (
-            <Panel title='No full build with these filters' description='A slot has no discs left, so the search can&apos;t start.'>
-              <NoResults causes={noResultCauses()} gearNoun='discs' />
-            </Panel>
-          )}
+          {!running && emptySlots.length > 0 && <NoBuildPanel causes={noResultCauses()} gearNoun='discs' empty='slot' />}
 
           {outcome && !outcome.ok && <Notices messages={[outcome.reason]} />}
 
@@ -1077,7 +1076,7 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
               } combinations meet the filters, showing the best ${outcome.builds.length}`}
             >
               {outcome.builds.length === 0
-                ? <NoResults title='Nothing matched' causes={noResultCauses()} gearNoun='discs' />
+                ? <NoResults heading causes={noResultCauses()} gearNoun='discs' />
                 : (
                   <ResultsGrid
                     key={outcome.builds.length + sortBy}

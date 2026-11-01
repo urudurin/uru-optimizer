@@ -16,6 +16,7 @@ import {
   type TeammateRoster,
 } from 'lib/games/shared/teammateOverrides'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
+import { useTranslation } from 'react-i18next'
 
 // Each teammate's rank, weapon and 4-piece set for the team buffs, after HSR's teammate cards; Sync from roster drops
 // every change (shared/teammateOverrides.ts). Used by all three optimizers' Teammates rows.
@@ -43,10 +44,11 @@ export function TeammateOverrideCard({ members, overrides, rankPrefix, weaponLab
   refinementPrefix: string,
   onChange: (overrides: TeammateOverrides) => void,
 }) {
+  const { t } = useTranslation('games', { keyPrefix: 'TeammateOverrides' })
   if (members.length === 0) return null
   const edited = members.some((member) => overrides[member.id])
   return (
-    <FormCard title='Teammate overrides' size='normal' description='Change a teammate for the team buffs only; their saved character stays as it is.'>
+    <FormCard title={t('Title')} size='normal' description={t('Description')}>
       <Stack gap='sm'>
         {members.map((member) => {
           const shown = resolveTeammate(member.roster, overrides[member.id])
@@ -56,7 +58,7 @@ export function TeammateOverrideCard({ members, overrides, rankPrefix, weaponLab
             <Stack key={member.id} gap={4}>
               <Group gap={6}>
                 <Text size='xs' fw={600}>{member.name}</Text>
-                {overrides[member.id] && <Badge size='xs' variant='light'>Changed</Badge>}
+                {overrides[member.id] && <Badge size='xs' variant='light'>{t('Changed')}</Badge>}
               </Group>
               <Group gap='xs' wrap='nowrap'>
                 <Select
@@ -72,7 +74,7 @@ export function TeammateOverrideCard({ members, overrides, rankPrefix, weaponLab
                   size='xs'
                   style={{ flex: 1, minWidth: 0 }}
                   aria-label={`${member.name} ${weaponLabel}`}
-                  placeholder={`No ${weaponLabel}`}
+                  placeholder={t('NoWeapon', { weapon: weaponLabel })}
                   searchable
                   allowDeselect={false}
                   value={shown.weaponId ?? null}
@@ -98,7 +100,7 @@ export function TeammateOverrideCard({ members, overrides, rankPrefix, weaponLab
                   allowDeselect={false}
                   value={shown.fourPiece ?? NO_SET}
                   onChange={(value) => value !== null && update('fourPiece', value)}
-                  data={[{ value: NO_SET, label: 'No 4-piece set' }, ...member.sets]}
+                  data={[{ value: NO_SET, label: t('NoFourPiece') }, ...member.sets]}
                 />
               )}
             </Stack>
@@ -106,7 +108,7 @@ export function TeammateOverrideCard({ members, overrides, rankPrefix, weaponLab
         })}
         <Group justify='flex-end'>
           <Button size='xs' variant='default' leftSection={<IconRefresh size={14} />} disabled={!edited} onClick={() => onChange({})}>
-            Sync from roster
+            {t('Sync')}
           </Button>
         </Group>
       </Stack>

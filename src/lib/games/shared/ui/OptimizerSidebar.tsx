@@ -25,6 +25,7 @@ import {
   useEffect,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 
 // The optimizer controls that stay in view while the settings and results scroll, after HSR's optimizer sidebar:
 // how big the search is, Start / Cancel with progress, what the last search found, and Equip for the picked build.
@@ -86,10 +87,11 @@ function useElapsedSeconds(running: boolean): number {
 export function OptimizerSidebar(props: OptimizerSidebarProps) {
   const { pools, combinations, running, progress, results, equip } = props
   const elapsed = useElapsedSeconds(running)
+  const { t } = useTranslation('games', { keyPrefix: 'Sidebar' })
 
   return (
     <aside className={classes.sidebar}>
-      <SidebarSection title='Search'>
+      <SidebarSection title={t('Search')}>
         <div className={classes.sidebarPools}>
           {pools.map((pool) => (
             <Group key={pool.label} justify='space-between' gap={4} wrap='nowrap'>
@@ -99,29 +101,31 @@ export function OptimizerSidebar(props: OptimizerSidebarProps) {
           ))}
         </div>
         <Group justify='space-between' gap={4} mt={6} wrap='nowrap'>
-          <Text size='xs' fw={600}>{props.combinationsLabel ?? 'Combinations'}</Text>
+          <Text size='xs' fw={600}>{props.combinationsLabel ?? t('Combinations')}</Text>
           <Text size='xs' fw={600}>{formatNumber(combinations)}</Text>
         </Group>
       </SidebarSection>
 
-      <SidebarSection title='Controls'>
+      <SidebarSection title={t('Controls')}>
         <Stack gap={6}>
           {running
             ? (
               <Button size='sm' variant='default' leftSection={<IconPlayerStop size={16} />} onClick={props.onCancel}>
-                Cancel
+                {t('Cancel')}
               </Button>
             )
             : (
               <Button size='sm' leftSection={<IconSearch size={16} />} onClick={props.onStart} disabled={!props.canStart}>
-                Start optimizer
+                {t('Start')}
               </Button>
             )}
           {running && (
             <>
               <Progress value={(progress?.fraction ?? 0) * 100} size='sm' animated striped />
               <Text size='xs' c='dimmed'>
-                {`${elapsed.toFixed(1)}s${progress ? ` · ${formatNumber(progress.visited)} checked` : ''}`}
+                {progress
+                  ? t('Checked', { seconds: elapsed.toFixed(1), count: formatNumber(progress.visited) as never })
+                  : t('Elapsed', { seconds: elapsed.toFixed(1) })}
               </Text>
             </>
           )}
@@ -132,7 +136,7 @@ export function OptimizerSidebar(props: OptimizerSidebarProps) {
               fullWidth
               value={props.statView.value}
               onChange={(value) => props.statView?.onChange(value as StatView)}
-              data={[{ value: 'combat', label: 'Combat stats' }, { value: 'basic', label: 'Basic stats' }]}
+              data={[{ value: 'combat', label: t('CombatStats') }, { value: 'basic', label: t('BasicStats') }]}
             />
           )}
           {props.onReset && (
@@ -143,28 +147,28 @@ export function OptimizerSidebar(props: OptimizerSidebarProps) {
               leftSection={<IconRefresh size={14} />}
               disabled={running}
               onClick={async () => {
-                if (await confirmAction('Reset all filters?', 'All filters will be reset to their default values.', { confirmLabel: 'Reset' })) {
+                if (await confirmAction(t('ResetTitle'), t('ResetBody'), { confirmLabel: t('Reset') })) {
                   props.onReset?.()
                 }
               }}
             >
-              Reset
+              {t('Reset')}
             </Button>
           )}
         </Stack>
       </SidebarSection>
 
       {results && (
-        <SidebarSection title='Results'>
-          <Text size='xs'>{`${results.count} found in ${results.seconds.toFixed(1)}s`}</Text>
+        <SidebarSection title={t('Results')}>
+          <Text size='xs'>{t('Found', { count: results.count, seconds: results.seconds.toFixed(1) })}</Text>
           {results.note && <Text size='xs' c='yellow' mt={4}>{results.note}</Text>}
           {props.pins && (
             <Group gap={6} mt={6} grow>
               <Button size='xs' variant='light' leftSection={<IconPin size={14} />} disabled={!props.pins.onPin} onClick={props.pins.onPin}>
-                Pin build
+                {t('PinBuild')}
               </Button>
               <Button size='xs' variant='default' leftSection={<IconPinnedOff size={14} />} disabled={props.pins.count === 0} onClick={props.pins.onClear}>
-                Clear pins
+                {t('ClearPins')}
               </Button>
             </Group>
           )}
@@ -172,7 +176,7 @@ export function OptimizerSidebar(props: OptimizerSidebarProps) {
       )}
 
       {equip && (
-        <SidebarSection title='Build'>
+        <SidebarSection title={t('Build')}>
           <Stack gap={6}>
             <Button
               size='sm'
@@ -182,21 +186,21 @@ export function OptimizerSidebar(props: OptimizerSidebarProps) {
               onClick={equip.onEquip}
               disabled={equip.equipped}
             >
-              {equip.equipped ? 'Equipped' : `Equip ${equip.label}`}
+              {equip.equipped ? t('Equipped') : t('Equip', { label: equip.label })}
             </Button>
-            <Text size='xs' c='dimmed'>Saves it as the current build in this browser. Your game doesn't change.</Text>
+            <Text size='xs' c='dimmed'>{t('EquipNote')}</Text>
           </Stack>
         </SidebarSection>
       )}
 
       {props.builds && (
-        <SidebarSection title='Builds'>
+        <SidebarSection title={t('Builds')}>
           <Group gap={6} grow>
             <Button size='xs' variant='light' leftSection={<IconDeviceFloppy size={14} />} disabled={!props.builds.onSave} onClick={props.builds.onSave}>
-              Save
+              {t('Save')}
             </Button>
             <Button size='xs' variant='default' leftSection={<IconFolderOpen size={14} />} onClick={props.builds.onLoad}>
-              {props.builds.count ? `Load (${props.builds.count})` : 'Load'}
+              {props.builds.count ? t('LoadCount', { count: props.builds.count }) : t('Load')}
             </Button>
           </Group>
         </SidebarSection>

@@ -13,6 +13,7 @@ import {
   type CSSProperties,
   useMemo,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Bar,
   BarChart,
@@ -114,6 +115,7 @@ function BarTooltip({ active, payload }: { active?: boolean, payload?: { payload
 }
 
 export function ComboBreakdown({ parts }: { parts: DamagePart[] }) {
+  const { t } = useTranslation('games', { keyPrefix: 'DamageCharts' })
   const { rows, maxDamage } = useMemo(() => {
     const colors = groupColors(parts)
     const shown = parts.slice(0, SHOWN_LINES)
@@ -129,11 +131,11 @@ export function ComboBreakdown({ parts }: { parts: DamagePart[] }) {
       }
     })
     if (rest.length > 0) {
-      const title = `${rest.length} more lines`
-      rows.push({ name: `${rows.length + 1}. ${title}`, title, group: 'Other', damage: rest.reduce((sum, p) => sum + p.damage, 0), color: OTHER_COLOR })
+      const title = t('MoreLines', { count: rest.length })
+      rows.push({ name: `${rows.length + 1}. ${title}`, title, group: t('Other'), damage: rest.reduce((sum, p) => sum + p.damage, 0), color: OTHER_COLOR })
     }
     return { rows, maxDamage: Math.max(0, ...rows.map((r) => r.damage)) }
-  }, [parts])
+  }, [parts, t])
 
   if (rows.length === 0) return null
 
@@ -156,7 +158,7 @@ export function ComboBreakdown({ parts }: { parts: DamagePart[] }) {
 
   return (
     <div className='pre-font' style={{ ...CARD_STYLE, flex: 2 }}>
-      <ChartTitle>Combo Breakdown</ChartTitle>
+      <ChartTitle>{t('Breakdown')}</ChartTitle>
       <div style={{ width: '100%', height: rows.length * BAR_HEIGHT + CHART_PADDING }}>
         <ResponsiveContainer>
           <BarChart layout='vertical' data={rows} margin={{ top: 10, right: 60, bottom: 10, left: 10 }} barCategoryGap='15%'>
@@ -201,6 +203,7 @@ const CELL: CSSProperties = { textAlign: 'right', fontSize: 13, paddingTop: 4, p
 const FOOT_CELL: CSSProperties = { ...CELL, paddingTop: 6, borderTop: '1px solid var(--border-default)' }
 
 export function ComboDistribution({ parts }: { parts: DamagePart[] }) {
+  const { t } = useTranslation('games', { keyPrefix: 'DamageCharts' })
   const slices = useMemo(() => {
     const colors = groupColors(parts)
     const total = parts.reduce((sum, part) => sum + part.damage, 0)
@@ -212,7 +215,7 @@ export function ComboDistribution({ parts }: { parts: DamagePart[] }) {
 
   return (
     <div className='pre-font' style={{ ...CARD_STYLE, flex: 1, minWidth: 260 }}>
-      <ChartTitle>Combo Distribution</ChartTitle>
+      <ChartTitle>{t('Distribution')}</ChartTitle>
       <PieChart width={PIE_SIZE} height={PIE_SIZE}>
         <Pie
           data={slices}
@@ -257,7 +260,7 @@ export function ComboDistribution({ parts }: { parts: DamagePart[] }) {
         </tbody>
         <tfoot>
           <tr>
-            <td style={{ ...FOOT_CELL, textAlign: 'left', color: '#8899aa', paddingLeft: 18 }}>Total</td>
+            <td style={{ ...FOOT_CELL, textAlign: 'left', color: '#8899aa', paddingLeft: 18 }}>{t('Total')}</td>
             <td style={{ ...FOOT_CELL, color: chartColor }}>{localeNumberComma(Math.floor(total))}</td>
             <td style={{ ...FOOT_CELL, color: '#8899aa', paddingLeft: 20 }}>100.0%</td>
           </tr>

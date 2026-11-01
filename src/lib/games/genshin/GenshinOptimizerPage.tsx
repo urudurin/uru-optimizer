@@ -174,7 +174,10 @@ import {
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
-import { NoResults } from 'lib/games/shared/ui/optimizer/NoResults'
+import {
+  NoBuildPanel,
+  NoResults,
+} from 'lib/games/shared/ui/optimizer/NoResults'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -939,11 +942,7 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
             </Panel>
           )}
 
-          {!running && poolSizes.some((size) => size === 0) && (
-            <Panel title='No full build with these filters' description='A slot has no artifacts left, so the search can&apos;t start.'>
-              <NoResults causes={noResultCauses()} gearNoun='artifacts' />
-            </Panel>
-          )}
+          {!running && poolSizes.some((size) => size === 0) && <NoBuildPanel causes={noResultCauses()} gearNoun='artifacts' empty='slot' />}
 
           {outcome && !outcome.ok && <Notices messages={[outcome.reason]} />}
 
@@ -962,7 +961,7 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
                   </Text>
                 )}
                 {outcome.builds.length === 0
-                  ? <NoResults title='Nothing matched' causes={noResultCauses()} gearNoun='artifacts' />
+                  ? <NoResults heading causes={noResultCauses()} gearNoun='artifacts' />
                   : (
                     <ResultsGrid
                       key={outcome.builds.length + result.target.kind}

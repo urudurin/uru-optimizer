@@ -15,6 +15,7 @@ import {
 } from 'lib/games/shared/ui/optimizer/DamageCharts'
 import tableClasses from 'lib/tabs/tabOptimizer/analysis/UpgradeTable.module.css'
 import type { ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 // The analysis under an optimizer's picked build, after HSR's expanded data panel: its stats next to the current
 // build's, HSR's substat upgrades table (what one more roll of each substat adds to its score, and as a percent), and
@@ -71,23 +72,24 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
   breakdown?: DamagePart[],
 }) {
   const helpful = upgrades.filter((u) => u.gain > 1e-9)
+  const { t } = useTranslation('games', { keyPrefix: 'BuildAnalysis' })
   const hasCurrent = rows.some((row) => row.current !== undefined)
 
   return (
     <Panel
-      title='Build analysis'
-      description={`${buildLabel}, compared with the current build and what would improve it next.`}
+      title={t('Title')}
+      description={t('Description', { build: buildLabel })}
     >
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing='lg'>
         <div>
-          <Text size='sm' fw={600} mb={6}>Compared with current</Text>
+          <Text size='sm' fw={600} mb={6}>{t('Compared')}</Text>
           <Table verticalSpacing={4} horizontalSpacing='xs'>
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Stat</Table.Th>
-                <Table.Th ta='right'>Now</Table.Th>
-                <Table.Th ta='right'>Build</Table.Th>
-                <Table.Th ta='right'>Change</Table.Th>
+                <Table.Th>{t('Stat')}</Table.Th>
+                <Table.Th ta='right'>{t('Now')}</Table.Th>
+                <Table.Th ta='right'>{t('Build')}</Table.Th>
+                <Table.Th ta='right'>{t('Change')}</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
@@ -109,19 +111,19 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
               ))}
             </Table.Tbody>
           </Table>
-          {!hasCurrent && <Text size='xs' c='dimmed' mt={6}>No current build to compare with.</Text>}
+          {!hasCurrent && <Text size='xs' c='dimmed' mt={6}>{t('NoCurrent')}</Text>}
         </div>
 
         <div>
-          <Text size='sm' fw={600}>Substat upgrades</Text>
-          <Text size='xs' c='dimmed' mb={8}>{`One more average roll of each substat on this build, and how much it raises ${scoreLabel}.`}</Text>
+          <Text size='sm' fw={600}>{t('Upgrades')}</Text>
+          <Text size='xs' c='dimmed' mb={8}>{t('UpgradesHelp', { score: scoreLabel })}</Text>
           {helpful.length === 0
-            ? <Text size='xs' c='dimmed'>{`No substat raises ${scoreLabel}.`}</Text>
+            ? <Text size='xs' c='dimmed'>{t('NoUpgrade', { score: scoreLabel })}</Text>
             : (
               <Table className={tableClasses.upgradeTable} verticalSpacing={4}>
                 <Table.Thead>
                   <Table.Tr>
-                    <Table.Th className={tableClasses.substatHeader}>Substat</Table.Th>
+                    <Table.Th className={tableClasses.substatHeader}>{t('Substat')}</Table.Th>
                     <Table.Th className={tableClasses.columnHeader}>Δ %</Table.Th>
                     <Table.Th className={tableClasses.columnHeader} title={scoreLabel}>Δ</Table.Th>
                   </Table.Tr>

@@ -32,7 +32,7 @@ const GROUPS: GameNavGroup<ZzzPage>[] = [
       { key: 'optimizer', label: 'Optimizer', icon: <IconTrendingUp size={ICON_SIZE} /> },
       { key: 'discs', label: 'Discs', icon: <IconCards size={ICON_SIZE} /> },
       { key: 'agents', label: 'Agents', icon: <IconUser size={ICON_SIZE} /> },
-      { key: 'data', label: 'Import / Save', icon: <IconUpload size={ICON_SIZE} /> },
+      { key: 'data', label: 'ImportSave', icon: <IconUpload size={ICON_SIZE} /> },
     ],
   },
 ]

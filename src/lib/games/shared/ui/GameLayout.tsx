@@ -33,19 +33,23 @@ import {
   ErrorBoundary,
   type FallbackProps,
 } from 'react-error-boundary'
+import { useTranslation } from 'react-i18next'
 
 // Page shell, page header and building blocks shared by the ZZZ and WuWa pages, styled after HSR's sidebar and panels
 
+// Sidebar labels, keys of the games namespace's Pages (public/locales/<language>/games.yaml)
+export type GamePageLabel = 'Optimizer' | 'Discs' | 'Agents' | 'Artifacts' | 'Characters' | 'Echoes' | 'Resonators' | 'ImportSave' | 'Optimization'
+
 export type GameNavItem<K extends string> = {
   key: K,
-  label: string,
+  label: GamePageLabel,
   icon: ReactNode,
   // Small tag next to the label, e.g. "Soon"
   badge?: string,
 }
 
 export type GameNavGroup<K extends string> = {
-  label: string,
+  label: GamePageLabel,
   items: GameNavItem<K>[],
 }
 
@@ -65,6 +69,7 @@ type GameLayoutProps<K extends string> = {
 export function GameLayout<K extends string>({ gameName, tagline, groups, active, onNavigate, notice, settings, children }: GameLayoutProps<K>) {
   const items = groups.flatMap((group) => group.items)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const { t } = useTranslation('games')
 
   return (
     <div className={classes.shell}>
@@ -76,7 +81,7 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
           </div>
           {groups.map((group) => (
             <div key={group.label} className={classes.group}>
-              <div className={classes.groupLabel}>{group.label}</div>
+              <div className={classes.groupLabel}>{t(`Pages.${group.label}`)}</div>
               {group.items.map((item) => (
                 <UnstyledButton
                   key={item.key}
@@ -85,7 +90,7 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
                   onClick={() => onNavigate(item.key)}
                 >
                   <span className={classes.itemIcon}>{item.icon}</span>
-                  {item.label}
+                  {t(`Pages.${item.label}`)}
                   {item.badge && <Badge className={classes.itemBadge} size='xs' variant='light'>{item.badge}</Badge>}
                 </UnstyledButton>
               ))}
@@ -94,12 +99,12 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
                   <span className={classes.itemIcon}>
                     <IconSettings size={18} />
                   </span>
-                  Settings
+                  {t('Layout.Settings')}
                 </UnstyledButton>
               )}
             </div>
           ))}
-          <div className={classes.asideFooter}>Personal, non-commercial use. Not affiliated with the game's publisher.</div>
+          <div className={classes.asideFooter}>{t('Layout.Footer')}</div>
         </div>
       </aside>
 
@@ -112,13 +117,13 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
             onClick={() => onNavigate(item.key)}
           >
             {item.icon}
-            {item.label}
+            {t(`Pages.${item.label}`)}
           </UnstyledButton>
         ))}
         {settings && (
           <UnstyledButton className={classes.mobileItem} onClick={() => setSettingsOpen(true)}>
             <IconSettings size={18} />
-            Settings
+            {t('Layout.Settings')}
           </UnstyledButton>
         )}
       </nav>

@@ -75,7 +75,10 @@ import {
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
-import { NoResults } from 'lib/games/shared/ui/optimizer/NoResults'
+import {
+  NoBuildPanel,
+  NoResults,
+} from 'lib/games/shared/ui/optimizer/NoResults'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -921,11 +924,7 @@ ${losing.join(', ')} ${
             </Panel>
           )}
 
-          {!running && pool.length === 0 && echoes.length > 0 && (
-            <Panel title='No loadout with these filters' description='No echoes are left, so the search can&apos;t start.'>
-              <NoResults causes={noResultCauses()} gearNoun='echoes' />
-            </Panel>
-          )}
+          {!running && pool.length === 0 && echoes.length > 0 && <NoBuildPanel causes={noResultCauses()} gearNoun='echoes' empty='pool' />}
 
           {outcome && !outcome.ok && <Notices messages={[outcome.reason]} />}
 
@@ -946,7 +945,7 @@ ${losing.join(', ')} ${
                   </Text>
                 )}
                 {outcome.builds.length === 0
-                  ? <NoResults title='Nothing matched' causes={noResultCauses()} gearNoun='echoes' />
+                  ? <NoResults heading causes={noResultCauses()} gearNoun='echoes' />
                   : (
                     <ResultsGrid
                       key={outcome.builds.length + result.target.kind}

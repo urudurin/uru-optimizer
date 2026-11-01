@@ -13,18 +13,16 @@ import {
   setExtraBuff,
 } from 'lib/games/shared/extraBuffs'
 import { FormCard } from 'lib/games/shared/ui/OptimizerForm'
+import { useTranslation } from 'react-i18next'
 
 // HSR's Extra combat buffs drawer as a card in the Damage row (shared/extraBuffs.ts): one number per buff, all added
 // to every build; Clear empties them
 
 export function ExtraBuffsCard({ defs, buffs, onChange }: { defs: ExtraBuffDef[], buffs: ExtraBuffs, onChange: (buffs: ExtraBuffs) => void }) {
   const active = activeExtraBuffs(defs, buffs)
+  const { t } = useTranslation('games', { keyPrefix: 'ExtraBuffs' })
   return (
-    <FormCard
-      title='Extra combat buffs'
-      size='normal'
-      description='Buffs the optimizer doesn&apos;t know about (a teammate or weapon it doesn&apos;t cover, an event buff), added to every build. Percents as shown in game.'
-    >
+    <FormCard title={t('Title')} size='normal' description={t('Description')}>
       <Stack gap='xs'>
         <SimpleGrid cols={2} spacing='xs' verticalSpacing={6}>
           {defs.map((def) => (
@@ -41,8 +39,8 @@ export function ExtraBuffsCard({ defs, buffs, onChange }: { defs: ExtraBuffDef[]
           ))}
         </SimpleGrid>
         <Group justify='space-between'>
-          <Text size='xs' c='dimmed'>{active.length === 0 ? 'None set' : `${active.length} set`}</Text>
-          <Button size='xs' variant='default' disabled={active.length === 0} onClick={() => onChange({})}>Clear</Button>
+          <Text size='xs' c='dimmed'>{active.length === 0 ? t('NoneSet') : t('CountSet', { count: active.length })}</Text>
+          <Button size='xs' variant='default' disabled={active.length === 0} onClick={() => onChange({})}>{t('Clear')}</Button>
         </Group>
       </Stack>
     </FormCard>
