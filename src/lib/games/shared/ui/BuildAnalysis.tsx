@@ -1,4 +1,5 @@
 import {
+  Button,
   SimpleGrid,
   Table,
   Text,
@@ -7,6 +8,7 @@ import type { SubstatUpgrade } from 'lib/games/shared/analysis'
 import type { DamagePart } from 'lib/games/shared/damageBreakdown'
 import { formatNumber } from 'lib/games/shared/format'
 import { useGameSettings } from 'lib/games/shared/gameSettings'
+import type { TeammateUpgrades } from 'lib/games/shared/teammateUpgrades'
 import { Panel } from 'lib/games/shared/ui/GameLayout'
 import type { PinnedCell } from 'lib/games/shared/ui/optimizer/BuildCompare'
 import {
@@ -14,7 +16,10 @@ import {
   ComboDistribution,
 } from 'lib/games/shared/ui/optimizer/DamageCharts'
 import tableClasses from 'lib/tabs/tabOptimizer/analysis/UpgradeTable.module.css'
-import type { ReactNode } from 'react'
+import {
+  type ReactNode,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 
 // The analysis under an optimizer's picked build, after HSR's expanded data panel: its stats next to the current
@@ -40,8 +45,9 @@ function Change({ row }: { row: StatDiffRow }) {
 
 // What a roll adds to the score: whole numbers for damage-sized scores, decimals for small ones (Crit Value, a stat)
 function formatGain(gain: number): string {
-  if (gain >= 100) return formatNumber(Math.round(gain))
-  return gain.toFixed(gain >= 10 ? 1 : 2)
+  const size = Math.abs(gain)
+  if (size >= 100) return formatNumber(Math.round(gain))
+  return gain.toFixed(size >= 10 ? 1 : 2)
 }
 
 // The build preview and its analysis, in the order the game's Settings pick (shared/gameSettings.ts analysisPosition),
@@ -60,7 +66,7 @@ export function pinnedCells(rows: StatDiffRow[]): PinnedCell[] {
   return rows.map((row) => ({ key: row.key, label: row.label, value: row.build, text: row.format(row.build) }))
 }
 
-export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRoll, breakdown }: {
+export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRoll, breakdown, teammateUpgrades }: {
   // e.g. 'Build #2'
   buildLabel: string,
   rows: StatDiffRow[],
@@ -70,7 +76,10 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
   formatRoll: (upgrade: SubstatUpgrade) => string,
   // The rotation's lines and their damage on this build (shared/damageBreakdown.ts), when ranking by damage
   breakdown?: DamagePart[],
+  // Other squad 4-piece sets on teammates (shared/teammateUpgrades.ts), when ranking by damage; setName names a set
+  teammateUpgrades?: { ranked: TeammateUpgrades, setName: (id: string) => string },
 }) {
+  const [showSwaps, setShowSwaps] = useState(false)
   const helpful = upgrades.filter((u) => u.gain > 1e-9)
   const { t } = useTranslation('games', { keyPrefix: 'BuildAnalysis' })
   const hasCurrent = rows.some((row) => row.current !== undefined)
@@ -146,6 +155,55 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
                 </Table.Tbody>
               </Table>
             )}
+          {teammateUpgrades && teammateUpgrades.ranked.bySet.length > 0 && (
+            <>
+              <Text size='sm' fw={600} mt='md'>{t('TeammateUpgrades')}</Text>
+              <Text size='xs' c='dimmed' mb={8}>{t('TeammateUpgradesHelp')}</Text>
+              <Table className={tableClasses.upgradeTable} verticalSpacing={4}>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th className={tableClasses.substatHeader}>{t('Set')}</Table.Th>
+                    <Table.Th className={tableClasses.columnHeader}>Δ %</Table.Th>
+                    <Table.Th className={tableClasses.columnHeader} title={scoreLabel}>Δ</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
+                  {(showSwaps ? teammateUpgrades.ranked.swaps : teammateUpgrades.ranked.bySet).map((row) => (
+                    <Table.Tr key={`${row.teammateId}:${row.to}`}>
+                      <Table.Td className={tableClasses.centeredCell}>
+                        <Text size='xs' span>
+                          {showSwaps
+                            ? t('Swap', {
+                              teammate: row.teammateName,
+                              from: row.from ? teammateUpgrades.setName(row.from) : t('NoSet'),
+                              to: teammateUpgrades.setName(row.to),
+                            })
+                            : teammateUpgrades.setName(row.to)}
+                        </Text>
+                        {!showSwaps && <Text size='xs' span c='dimmed'>{` ${row.teammateName}`}</Text>}
+                      </Table.Td>
+                      <Table.Td className={tableClasses.centeredCell}>
+                        <Text size='xs' c={row.delta < 0 ? 'red' : undefined}>{`${row.percent.toFixed(2)}%`}</Text>
+                      </Table.Td>
+                      <Table.Td className={tableClasses.centeredCell}>
+                        <Text size='xs' c={row.delta < 0 ? 'red' : undefined}>{formatGain(row.delta)}</Text>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+              {teammateUpgrades.ranked.swaps.length > teammateUpgrades.ranked.bySet.length && (
+                <Button
+                  size='compact-xs'
+                  variant='subtle'
+                  mt={4}
+                  onClick={() => setShowSwaps(!showSwaps)}
+                >
+                  {showSwaps ? t('TeammateUpgrades') : t('AllSwaps', { count: teammateUpgrades.ranked.swaps.length })}
+                </Button>
+              )}
+            </>
+          )}
         </div>
       </SimpleGrid>
       {breakdown && breakdown.length > 0 && (

@@ -105,3 +105,9 @@ BuildAnalysis:
   UpgradesHelp: One more average roll of each substat on this build, and how much it raises {{score}}.
   NoUpgrade: No substat raises {{score}}.
   Substat: Substat
+  TeammateUpgrades: Teammate set upgrades
+  TeammateUpgradesHelp: This build's rotation damage with one teammate wearing a different squad 4-piece set instead.
+  Set: Set
+  AllSwaps: All swaps ({{count}})
+  Swap: '{{teammate}}: {{from}} → {{to}}'
+  NoSet: no 4-piece

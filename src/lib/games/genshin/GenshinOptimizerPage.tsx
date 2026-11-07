@@ -90,6 +90,7 @@ import {
   withGenshinExtraDebuffs,
 } from 'lib/games/genshin/team/extraBuffs'
 import { teamBuffsFor } from 'lib/games/genshin/team/teamBuffs'
+import type { TeamBuffResult } from 'lib/games/genshin/team/teamBuffs'
 import {
   type Artifact,
   ARTIFACT_SLOTS,
@@ -142,8 +143,13 @@ import {
 import {
   fourPieceSetsOf,
   keepOverridesFor,
+  NO_SET,
   type TeammateOverrides,
 } from 'lib/games/shared/teammateOverrides'
+import {
+  rankTeammateUpgrades,
+  teammateSetTries,
+} from 'lib/games/shared/teammateUpgrades'
 import {
   BuildAnalysis,
   pinnedCells,
@@ -531,55 +537,59 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
     hexerei: hexereiCount([character.id, ...teammates]),
   }
   const resolvedCombat = resolveCombat(character, combat, setCountsOf(fourPieceSet ? Array(4).fill(fourPieceSet) : []))
-  const kitDebuffs = {
-    defShred: teamResult.debuffs.defShred + resolvedCombat.debuffs.defShred,
-    resShred: { ...teamResult.debuffs.resShred },
-  }
-  for (const [element, value] of Object.entries(resolvedCombat.debuffs.resShred) as [keyof typeof kitDebuffs.resShred, number][]) {
-    kitDebuffs.resShred[element] = (kitDebuffs.resShred[element] ?? 0) + value
-  }
-  const debuffs = withGenshinExtraDebuffs(kitDebuffs, extraBuffs)
-  const damageSetup = {
-    characterId: character.id,
-    characterLevel: character.level,
-    element: character.element,
-    rotation,
-    talents,
-    enemy,
-    debuffs,
-    // Lunar Reaction DMG from the team (Moonsign: Ascendant Gleam) adds to every Lunar kind
-    reactionBonus: {
-      ...resolvedCombat.reactions,
-      // Bloom DMG from teammates (Nilou's Bountiful Cores)
-      ...(teamResult.bloomBonus ? { bloom: (resolvedCombat.reactions.bloom ?? 0) + teamResult.bloomBonus } : {}),
-      ...(teamResult.vaporizeBonus ? { vaporize: (resolvedCombat.reactions.vaporize ?? 0) + teamResult.vaporizeBonus } : {}),
-      ...Object.fromEntries((['lunarcharged', 'lunarbloom', 'lunarcrystallize'] as const).map((kind) => [
-        kind,
-        (resolvedCombat.reactions[kind] ?? 0) + teamResult.lunarBonus,
-      ])),
-      // One kind's DMG Bonus from teammates (Baizhu, Mona, Ifa...)
-      ...Object.fromEntries(
-        Object.entries(teamResult.specialBonus).map(([kind, value]) => [
+  // The damage setup for a team's buffs; Teammate set upgrades try it with other teammate sets
+  const damageSetupFor = (teamResult: TeamBuffResult) => {
+    const kitDebuffs = {
+      defShred: teamResult.debuffs.defShred + resolvedCombat.debuffs.defShred,
+      resShred: { ...teamResult.debuffs.resShred },
+    }
+    for (const [element, value] of Object.entries(resolvedCombat.debuffs.resShred) as [keyof typeof kitDebuffs.resShred, number][]) {
+      kitDebuffs.resShred[element] = (kitDebuffs.resShred[element] ?? 0) + value
+    }
+    const debuffs = withGenshinExtraDebuffs(kitDebuffs, extraBuffs)
+    return {
+      characterId: character.id,
+      characterLevel: character.level,
+      element: character.element,
+      rotation,
+      talents,
+      enemy,
+      debuffs,
+      // Lunar Reaction DMG from the team (Moonsign: Ascendant Gleam) adds to every Lunar kind
+      reactionBonus: {
+        ...resolvedCombat.reactions,
+        // Bloom DMG from teammates (Nilou's Bountiful Cores)
+        ...(teamResult.bloomBonus ? { bloom: (resolvedCombat.reactions.bloom ?? 0) + teamResult.bloomBonus } : {}),
+        ...(teamResult.vaporizeBonus ? { vaporize: (resolvedCombat.reactions.vaporize ?? 0) + teamResult.vaporizeBonus } : {}),
+        ...Object.fromEntries((['lunarcharged', 'lunarbloom', 'lunarcrystallize'] as const).map((kind) => [
           kind,
-          (resolvedCombat.reactions[kind as keyof typeof resolvedCombat.reactions] ?? 0)
-          + (kind.startsWith('lunar') ? teamResult.lunarBonus : 0) + value,
-        ]),
-      ),
-    },
-    hitBuffs: resolvedCombat.hitBuffs,
-    teamReactions: reactionsInTeam,
-    baseBonus: teamResult.baseBonus,
-    elevation: resolvedCombat.elevation,
-    hitFlats: teamResult.hitFlats,
-    reactionBonusPerEm: resolvedCombat.reactionsPerEm,
-    specialFlat: teamResult.specialFlat,
-    specialFlatHits: teamResult.specialFlatHits,
-    specialCrit: teamResult.specialCrit,
-    // Teammates who can trigger Stellar Swirl, ranked against for its contribution
-    stellarContributors: teamResult.members
-      .filter((member) => member.element === 'Anemo' || member.element === 'Cryo')
-      .map((member) => stellarContribution(member.level, member.stats)),
+          (resolvedCombat.reactions[kind] ?? 0) + teamResult.lunarBonus,
+        ])),
+        // One kind's DMG Bonus from teammates (Baizhu, Mona, Ifa...)
+        ...Object.fromEntries(
+          Object.entries(teamResult.specialBonus).map(([kind, value]) => [
+            kind,
+            (resolvedCombat.reactions[kind as keyof typeof resolvedCombat.reactions] ?? 0)
+            + (kind.startsWith('lunar') ? teamResult.lunarBonus : 0) + value,
+          ]),
+        ),
+      },
+      hitBuffs: resolvedCombat.hitBuffs,
+      teamReactions: reactionsInTeam,
+      baseBonus: teamResult.baseBonus,
+      elevation: resolvedCombat.elevation,
+      hitFlats: teamResult.hitFlats,
+      reactionBonusPerEm: resolvedCombat.reactionsPerEm,
+      specialFlat: teamResult.specialFlat,
+      specialFlatHits: teamResult.specialFlatHits,
+      specialCrit: teamResult.specialCrit,
+      // Teammates who can trigger Stellar Swirl, ranked against for its contribution
+      stellarContributors: teamResult.members
+        .filter((member) => member.element === 'Anemo' || member.element === 'Cryo')
+        .map((member) => stellarContribution(member.level, member.stats)),
+    }
   }
+  const damageSetup = damageSetupFor(teamResult)
   const byDamage = targetValue === DAMAGE_TARGET && hasTalentData(character.id)
   const target: OptimizerTarget = byDamage ? { kind: 'damage', setup: damageSetup } : genshinTarget(targetValue, character.element)
   // The current artifacts' rotation damage, for the Rotation card
@@ -648,6 +658,31 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
       pieceIds: build.artifacts.map((a) => a.id),
       rolls: rollsFromTotals(GENSHIN_SIM_ROLLS, substatTotals(build.artifacts.flatMap((a) => a.substats))),
     }
+    : undefined
+
+  // Teammate set upgrades (shared/teammateUpgrades.ts, after HSR's): the picked build's rotation damage with each teammate
+  // on each squad 4-piece instead, through their 4-piece override
+  const teammateUpgrades = byDamage && build
+    ? (() => {
+      const damageWith = (overrides: typeof team.overrides) => {
+        const variant = teamBuffsFor(character, { ...team, overrides }, { characters, artifacts })
+        const buffs = withGenshinExtraBuffs({ premod: variant.premod, total: variant.total }, extraBuffs)
+        return rotationDamage(computeGenshinStats(character, build.artifacts, {}, buffs, combat).stats, damageSetupFor(variant))
+      }
+      const mates = teammates.flatMap((id) => {
+        const mate = characters.find((c) => c.id === id)
+        if (!mate || id === character.id) return []
+        const override = team.overrides[id]?.fourPiece
+        const wornSets = Object.values(mate.artifactIds).flatMap((artifactId) => artifacts.find((a) => a.id === artifactId)?.setId ?? [])
+        return [{ id, name: mate.name, fourPiece: override === NO_SET ? undefined : override ?? fourPieceSetsOf(wornSets)[0] }]
+      })
+      const tries = teammateSetTries(
+        mates,
+        Object.keys(SET_4PC_BUFFS),
+        (id, set) => damageWith({ ...team.overrides, [id]: { ...team.overrides[id], fourPiece: set } }),
+      )
+      return rankTeammateUpgrades(damageWith(team.overrides), tries)
+    })()
     : undefined
 
   // The picked build's analysis rows, for Build analysis and Pin build
@@ -889,7 +924,7 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
           >
             <EnemyCard
               enemy={enemy}
-              debuffs={debuffs}
+              debuffs={damageSetup.debuffs}
               onChange={(next) => {
                 setEnemy(next)
                 setResult(undefined)
@@ -1057,6 +1092,7 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
 
           {build && result && (
             <BuildAnalysis
+              teammateUpgrades={teammateUpgrades && { ranked: teammateUpgrades, setName }}
               buildLabel={`Build #${selected + 1}`}
               rows={analysisRows}
               upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs, result.target.kind === 'damage' ? combat : undefined)}
