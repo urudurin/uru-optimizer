@@ -37,6 +37,7 @@ import {
   ELEMENT_ACCENTS,
   genshinStatRows,
 } from 'lib/games/genshin/ui/characterStats'
+import { GenshinScoring } from 'lib/games/genshin/ui/GenshinScoring'
 import {
   orderByPriority,
   usePriority,
@@ -146,6 +147,8 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
 
   const artifactById = useMemo(() => new Map(artifacts.map((a) => [a.id, a])), [artifacts])
   const worn = GENSHIN_CHARACTER_KIND.wornBy(character, artifactById)
+  // Every character, for the DPS score's teammates
+  const roster = useMemo(() => genshinRoster(characters, images), [characters, images])
   // Scored for this character, see stats/artifactScore.ts
   const artifactWeights = genshinArtifactWeights(character)
   const weapon = character.weapon
@@ -224,7 +227,14 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
                 No stats yet. Put this character in your in-game showcase and import from Enka.Network to see their stat screen numbers.
               </Text>
             )}
-          <CharacterBuildRating kind={GENSHIN_CHARACTER_KIND} owner={character} worn={worn} />
+          <GenshinScoring
+            character={character}
+            worn={worn}
+            roster={roster}
+            artifacts={artifacts}
+            images={images}
+            fallback={<CharacterBuildRating kind={GENSHIN_CHARACTER_KIND} owner={character} worn={worn} />}
+          />
           {computed?.missing.map((note) => <Text key={note} size='xs' c='yellow'>{note}</Text>)}
         </>
       }

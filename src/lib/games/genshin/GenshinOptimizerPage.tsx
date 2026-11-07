@@ -5,26 +5,17 @@ import {
   Select,
   Text,
 } from '@mantine/core'
-import {
-  type CombatSetup,
-  resolveCombat,
-  setCountsOf,
-} from 'lib/games/genshin/damage/combatEffects'
 import { KIT_EFFECTS } from 'lib/games/genshin/damage/combatEffects'
 import {
   type DamageSetup,
   DEFAULT_ENEMY,
   defaultRotation,
-  type EnemySettings,
   hasTalentData,
-  hexereiCount,
   migrateRotationCounts,
   type Rotation,
   rotationDamage,
   rotationLines,
-  rotationTalents,
   singleLineRotation,
-  stellarContribution,
   teamReactions,
 } from 'lib/games/genshin/damage/damage'
 import {
@@ -62,6 +53,11 @@ import {
   scoreStats,
   targetLabel,
 } from 'lib/games/genshin/optimizer/artifactOptimizer'
+import {
+  genshinDamageDefaults,
+  type GenshinDamageSettings,
+  genshinDamageSetup,
+} from 'lib/games/genshin/optimizer/damageSetup'
 import { artifactSearch } from 'lib/games/genshin/optimizer/optimizerClient'
 import {
   GENSHIN_SETTINGS_KEY as SETTINGS_KEY,
@@ -80,17 +76,12 @@ import {
   computeGenshinStats,
   hasStatData,
 } from 'lib/games/genshin/stats/computeStats'
-import {
-  type BuffSetting,
-  SET_4PC_BUFFS,
-} from 'lib/games/genshin/team/buffs'
+import { SET_4PC_BUFFS } from 'lib/games/genshin/team/buffs'
 import {
   GENSHIN_EXTRA_BUFFS,
   withGenshinExtraBuffs,
-  withGenshinExtraDebuffs,
 } from 'lib/games/genshin/team/extraBuffs'
 import { teamBuffsFor } from 'lib/games/genshin/team/teamBuffs'
-import type { TeamBuffResult } from 'lib/games/genshin/team/teamBuffs'
 import {
   type Artifact,
   ARTIFACT_SLOTS,
@@ -122,7 +113,6 @@ import {
   type DamagePart,
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
-import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
 import { formatNumber } from 'lib/games/shared/format'
 import {
   type FilterCause,
@@ -142,9 +132,7 @@ import {
 } from 'lib/games/shared/statSimulation'
 import {
   fourPieceSetsOf,
-  keepOverridesFor,
   NO_SET,
-  type TeammateOverrides,
 } from 'lib/games/shared/teammateOverrides'
 import {
   rankTeammateUpgrades,
@@ -234,7 +222,8 @@ function statsToShow(character: GenshinCharacter): GenshinStatKey[] {
   return [...SHOWN_STATS, ...(character.element ? [ELEMENT_DMG_STAT[character.element]] : [])]
 }
 
-type GenshinOptimizerSettings = {
+// The optimizer settings saved per character: the damage setup (optimizer/damageSetup.ts) plus the search's own
+type GenshinOptimizerSettings = GenshinDamageSettings & {
   targetValue: string,
   mainStats: Partial<Record<MainStatSlot, GenshinStatKey[]>>,
   fourPieceSet: string | null,
@@ -250,19 +239,6 @@ type GenshinOptimizerSettings = {
   resultLimit: number,
   minStats: Partial<Record<GenshinStatKey, number>>,
   maxStats: Partial<Record<GenshinStatKey, number>>,
-  // The team (team/teamBuffs.ts): teammate ids, whether this character is on the field, buff toggles
-  teammates: string[],
-  onField: boolean,
-  // Rank, weapon and 4-piece changes per teammate, for the team buffs only (shared/teammateOverrides.ts)
-  teammateOverrides: TeammateOverrides,
-  // Buffs typed in by hand, added to every build (shared/extraBuffs.ts)
-  extraBuffs: ExtraBuffs,
-  teamSettings: Record<string, BuffSetting>,
-  // The rotation damage target (damage/damage.ts): the enemy and the rotation
-  enemy: EnemySettings,
-  rotation: Rotation,
-  // Toggles of the character's own combat effects (damage/combatEffects.ts)
-  combatSettings: Record<string, BuffSetting>,
   // Stat simulation (shared/statSimulation.ts)
   simulations: StatSimulation[],
 }
@@ -286,14 +262,7 @@ function defaultSettings(characterId: string): GenshinOptimizerSettings {
     resultLimit: DEFAULT_RESULT_LIMIT,
     minStats: {},
     maxStats: {},
-    teammates: [],
-    onField: true,
-    teamSettings: {},
-    teammateOverrides: {},
-    extraBuffs: {},
-    enemy: DEFAULT_ENEMY,
-    rotation: defaultRotation(characterId),
-    combatSettings: {},
+    ...genshinDamageDefaults(characterId),
     simulations: [],
   }
 }
@@ -523,73 +492,13 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
     return [...names].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
   }, [artifacts])
 
-  // What the team gives this character, the same for every build
-  const team = { teammates, onField, settings: teamSettings, overrides: keepOverridesFor(teammateOverrides, teammates) }
-  const teamResult = teamBuffsFor(character, team, { characters, artifacts })
-  const teamBuffs = withGenshinExtraBuffs({ premod: teamResult.premod, total: teamResult.total }, extraBuffs)
-  const talents = rotationTalents(character, rotation)
-  // The Lunar and Stellar kinds this team can trigger; the page only offers those
-  const reactionsInTeam = teamReactions([character.id, ...teammates])
-  // The character's own combat effects: their kit, and the 4-piece filter's set (every build has it)
-  const combat: CombatSetup = {
-    sets: fourPieceSet ? [fourPieceSet] : [],
-    settings: combatSettings,
-    hexerei: hexereiCount([character.id, ...teammates]),
-  }
-  const resolvedCombat = resolveCombat(character, combat, setCountsOf(fourPieceSet ? Array(4).fill(fourPieceSet) : []))
-  // The damage setup for a team's buffs; Teammate set upgrades try it with other teammate sets
-  const damageSetupFor = (teamResult: TeamBuffResult) => {
-    const kitDebuffs = {
-      defShred: teamResult.debuffs.defShred + resolvedCombat.debuffs.defShred,
-      resShred: { ...teamResult.debuffs.resShred },
-    }
-    for (const [element, value] of Object.entries(resolvedCombat.debuffs.resShred) as [keyof typeof kitDebuffs.resShred, number][]) {
-      kitDebuffs.resShred[element] = (kitDebuffs.resShred[element] ?? 0) + value
-    }
-    const debuffs = withGenshinExtraDebuffs(kitDebuffs, extraBuffs)
-    return {
-      characterId: character.id,
-      characterLevel: character.level,
-      element: character.element,
-      rotation,
-      talents,
-      enemy,
-      debuffs,
-      // Lunar Reaction DMG from the team (Moonsign: Ascendant Gleam) adds to every Lunar kind
-      reactionBonus: {
-        ...resolvedCombat.reactions,
-        // Bloom DMG from teammates (Nilou's Bountiful Cores)
-        ...(teamResult.bloomBonus ? { bloom: (resolvedCombat.reactions.bloom ?? 0) + teamResult.bloomBonus } : {}),
-        ...(teamResult.vaporizeBonus ? { vaporize: (resolvedCombat.reactions.vaporize ?? 0) + teamResult.vaporizeBonus } : {}),
-        ...Object.fromEntries((['lunarcharged', 'lunarbloom', 'lunarcrystallize'] as const).map((kind) => [
-          kind,
-          (resolvedCombat.reactions[kind] ?? 0) + teamResult.lunarBonus,
-        ])),
-        // One kind's DMG Bonus from teammates (Baizhu, Mona, Ifa...)
-        ...Object.fromEntries(
-          Object.entries(teamResult.specialBonus).map(([kind, value]) => [
-            kind,
-            (resolvedCombat.reactions[kind as keyof typeof resolvedCombat.reactions] ?? 0)
-            + (kind.startsWith('lunar') ? teamResult.lunarBonus : 0) + value,
-          ]),
-        ),
-      },
-      hitBuffs: resolvedCombat.hitBuffs,
-      teamReactions: reactionsInTeam,
-      baseBonus: teamResult.baseBonus,
-      elevation: resolvedCombat.elevation,
-      hitFlats: teamResult.hitFlats,
-      reactionBonusPerEm: resolvedCombat.reactionsPerEm,
-      specialFlat: teamResult.specialFlat,
-      specialFlatHits: teamResult.specialFlatHits,
-      specialCrit: teamResult.specialCrit,
-      // Teammates who can trigger Stellar Swirl, ranked against for its contribution
-      stellarContributors: teamResult.members
-        .filter((member) => member.element === 'Anemo' || member.element === 'Cryo')
-        .map((member) => stellarContribution(member.level, member.stats)),
-    }
-  }
-  const damageSetup = damageSetupFor(teamResult)
+  // What the team gives this character and the damage setup, the same for every build (optimizer/damageSetup.ts)
+  const { team, teamResult, teamBuffs, talents, reactionsInTeam, combat, resolvedCombat, damageSetupFor, damageSetup } = genshinDamageSetup(
+    character,
+    settings,
+    fourPieceSet ?? undefined,
+    { characters, artifacts },
+  )
   const byDamage = targetValue === DAMAGE_TARGET && hasTalentData(character.id)
   const target: OptimizerTarget = byDamage ? { kind: 'damage', setup: damageSetup } : genshinTarget(targetValue, character.element)
   // The current artifacts' rotation damage, for the Rotation card
