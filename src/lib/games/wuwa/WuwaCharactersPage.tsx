@@ -1,32 +1,22 @@
 import {
   Badge,
-  Button,
   Group,
   Stack,
   Text,
 } from '@mantine/core'
 import {
-  moveToTop,
   orderByPriority,
-  readPriority,
   usePriority,
-  writePriority,
 } from 'lib/games/shared/characterPriority'
-import { rememberedDamageScore } from 'lib/games/shared/damageScore'
 import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import {
-  BuildRating,
-  DPS_SCORE_LABEL,
-} from 'lib/games/shared/ui/BuildRating'
-import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
+  CharacterBuildRating,
+  type CharacterKind,
+  CharacterKindMenu,
+} from 'lib/games/shared/ui/CharacterKind'
 import {
   Notices,
 } from 'lib/games/shared/ui/GameLayout'
-import {
-  describeSavedPieces,
-  useSavedBuilds,
-} from 'lib/games/shared/ui/optimizer/SavedBuilds'
-import { openScoringModal } from 'lib/games/shared/ui/ScoringModal'
 import {
   RosterLayout,
   ShowcaseCard,
@@ -64,6 +54,7 @@ import {
 } from 'lib/games/wuwa/stats/echoScore'
 import {
   type CharacterState,
+  type Echo,
   type ElementDmgKey,
   MAX_LOADOUT_COST,
   statLabel,
@@ -74,7 +65,6 @@ import {
   elementName,
 } from 'lib/games/wuwa/ui/EchoCard'
 import {
-  type ResonatorDetails,
   ResonatorForm,
   WEAPON_TYPES,
 } from 'lib/games/wuwa/ui/ResonatorForm'
@@ -141,24 +131,39 @@ export function WuwaCharactersPage() {
   )
 }
 
+// The Character menu's game parts (shared/ui/CharacterKind.tsx)
+const WUWA_CHARACTER_KIND: CharacterKind<CharacterState, Echo> = {
+  game: 'wuwa',
+  gearNoun: 'echoes',
+  ownerId: (character) => character.charId,
+  characterId: (character) => character.charId,
+  ownerLabel: (character) => characterName(character.charId),
+  wornBy: (character, byId) => character.echoIds.flatMap((id) => (id ? byId.get(id) ?? [] : [])),
+  setNameOf: (echo) => SONATA_SETS[echo.setId]?.name ?? echo.setId,
+  buildScore: wuwaBuildScore,
+  buildScoreLabel: 'Echo score',
+  scoring: (character) => ({
+    stats: SUBSTAT_KEYS.map((stat) => ({ value: stat, label: statLabel(stat) })),
+    current: wuwaEchoWeights(character),
+    defaults: defaultEchoWeights(character),
+  }),
+  switchGear: (a, b) => useWuwaStore.getState().switchGear(a, b),
+  unequipOwner: (id) => useWuwaStore.getState().unequipOwner(id),
+  deleteOwner: (id) => useWuwaStore.getState().deleteOwner(id),
+  equip: (character, pieces) => useWuwaStore.getState().equip(character, pieces),
+}
+
 function SavedResonator({ character, art }: { character: CharacterState, art?: ResonatorArt }) {
   const echoes = useWuwaStore((s) => s.echoes)
   const saveCharacter = useWuwaStore((s) => s.saveCharacter)
   const [editing, setEditing] = useState(false)
   // The Character menu (after HSR's): every other saved Resonator to switch with, and saved builds
   const characters = useWuwaStore((s) => s.characters)
-  const { unequipOwner: unequipCharacter, switchGear, deleteOwner: deleteCharacter, equip } = useWuwaStore.getState()
-  const builds = useSavedBuilds('wuwa', character.charId)
   // Re-render when scoring weights are saved
   useScoreWeightsVersion()
 
   const echoById = useMemo(() => new Map(echoes.map((echo) => [echo.id, echo])), [echoes])
-  const loadout = character.echoIds.flatMap((id) => {
-    const echo = id ? echoById.get(id) : undefined
-    return echo ? [echo] : []
-  })
-  // The optimizer's DPS score for these echoes when it has one (shared/damageScore.ts), the echo score otherwise
-  const dpsScore = rememberedDamageScore('wuwa', character.charId, loadout.map((e) => e.id))
+  const loadout = WUWA_CHARACTER_KIND.wornBy(character, echoById)
   // Scored for this Resonator, see stats/echoScore.ts
   const echoWeights = wuwaEchoWeights(character)
   const { stats, warnings } = computeWuwaStats(character, loadout)
@@ -191,46 +196,13 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
             <Group justify='space-between' wrap='nowrap'>
               <Text size='xl' fw={700}>{name}</Text>
               {!editing && (
-                <CharacterMenu
+                <CharacterKindMenu
+                  kind={WUWA_CHARACTER_KIND}
+                  owner={character}
                   name={name}
-                  gearNoun='echoes'
-                  others={characters.filter((c) => c.charId !== character.charId).map((c) => ({ value: c.charId, label: characterName(c.charId) }))}
+                  owners={characters}
+                  gearById={echoById}
                   onEdit={() => setEditing(true)}
-                  onSwitch={(other) => switchGear(character.charId, other)}
-                  onUnequip={() => unequipCharacter(character.charId)}
-                  onDelete={() => deleteCharacter(character.charId)}
-                  onSaveBuild={loadout.length > 0 ? () => builds.save(loadout.map((e) => e.id)) : undefined}
-                  onViewBuilds={() =>
-                    builds.view({
-                      name,
-                      describe: (b) =>
-                        describeSavedPieces(
-                          b.pieceIds.flatMap((id) => {
-                            const echo = echoById.get(id)
-                            return echo ? [SONATA_SETS[echo.setId]?.name ?? echo.setId] : []
-                          }),
-                          b.pieceIds.length,
-                        ),
-                      equip: (b) => equip(character, b.pieceIds.flatMap((id) => echoById.get(id) ?? [])),
-                    })}
-                  savedCount={builds.saved.length}
-                  onMoveToTop={() => writePriority('wuwa', moveToTop(characters.map((c) => c.charId), readPriority('wuwa'), character.charId))}
-                  onSortByScore={() => {
-                    const scored = characters.map((c) => ({
-                      id: c.charId,
-                      score: wuwaBuildScore(c, c.echoIds.flatMap((id) => (id && echoById.get(id) ? [echoById.get(id)!] : [])))?.percent ?? 0,
-                    }))
-                    writePriority('wuwa', scored.sort((a, b) => b.score - a.score).map((s) => s.id))
-                  }}
-                  onScoring={() =>
-                    openScoringModal({
-                      game: 'wuwa',
-                      characterId: character.charId,
-                      name,
-                      stats: SUBSTAT_KEYS.map((stat) => ({ value: stat, label: statLabel(stat) })),
-                      current: wuwaEchoWeights(character),
-                      defaults: defaultEchoWeights(character),
-                    })}
                 />
               )}
             </Group>
@@ -251,7 +223,7 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
             />
           )}
           <StatList rows={rows} />
-          <BuildRating score={dpsScore ?? wuwaBuildScore(character, loadout)} label={dpsScore ? DPS_SCORE_LABEL : 'Echo score'} />
+          <CharacterBuildRating kind={WUWA_CHARACTER_KIND} owner={character} worn={loadout} />
           <Text size='xs' c={cost > MAX_LOADOUT_COST ? 'red' : 'dimmed'}>{`Echo cost ${cost} / ${MAX_LOADOUT_COST} · main echo first`}</Text>
           <Notices messages={[...warnings, ...validateLoadout(loadout)]} />
         </>

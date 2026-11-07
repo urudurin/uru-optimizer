@@ -1,6 +1,5 @@
 import {
   Badge,
-  Button,
   Group,
   Stack,
   Text,
@@ -22,6 +21,7 @@ import {
 } from 'lib/games/genshin/stats/artifactScore'
 import { computeGenshinStats } from 'lib/games/genshin/stats/computeStats'
 import {
+  type Artifact,
   ARTIFACT_SLOTS,
   type Element,
   formatStatValue,
@@ -38,25 +38,15 @@ import {
   genshinStatRows,
 } from 'lib/games/genshin/ui/characterStats'
 import {
-  moveToTop,
   orderByPriority,
-  readPriority,
   usePriority,
-  writePriority,
 } from 'lib/games/shared/characterPriority'
-import { rememberedDamageScore } from 'lib/games/shared/damageScore'
 import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import {
-  BuildRating,
-  DPS_SCORE_LABEL,
-} from 'lib/games/shared/ui/BuildRating'
-import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
-import { PageHeader } from 'lib/games/shared/ui/GameLayout'
-import {
-  describeSavedPieces,
-  useSavedBuilds,
-} from 'lib/games/shared/ui/optimizer/SavedBuilds'
-import { openScoringModal } from 'lib/games/shared/ui/ScoringModal'
+  CharacterBuildRating,
+  type CharacterKind,
+  CharacterKindMenu,
+} from 'lib/games/shared/ui/CharacterKind'
 import {
   RosterLayout,
   ShowcaseCard,
@@ -118,25 +108,44 @@ export function GenshinCharactersPage() {
 const infoOf = (id: string, images: GenshinImages) => images.characterInfo[id.startsWith('Traveler') ? 'Traveler' : id] ?? images.characterInfo[id]
 const nameOf = (id: string, images: GenshinImages) => (id === 'Traveler' ? 'Traveler' : images.characterInfo[id]?.name ?? nameFromGoodKey(id))
 
+// The Character menu's game parts (shared/ui/CharacterKind.tsx)
+const GENSHIN_CHARACTER_KIND: CharacterKind<GenshinCharacter, Artifact> = {
+  game: 'genshin',
+  gearNoun: 'artifacts',
+  ownerId: (character) => character.id,
+  characterId: (character) => character.id,
+  ownerLabel: (character) => character.name,
+  wornBy: (character, byId) =>
+    ARTIFACT_SLOTS.flatMap((slot) => {
+      const id = character.artifactIds[slot]
+      const artifact = id ? byId.get(id) : undefined
+      return artifact ? [artifact] : []
+    }),
+  setNameOf: (artifact) => artifact.setName,
+  buildScore: genshinBuildScore,
+  buildScoreLabel: 'Artifact score',
+  scoring: (character) => ({
+    stats: SUBSTAT_STATS.map((stat) => ({ value: stat, label: statLabel(stat) })),
+    current: genshinArtifactWeights(character),
+    defaults: defaultArtifactWeights(character),
+  }),
+  switchGear: (a, b) => useGenshinStore.getState().switchGear(a, b),
+  unequipOwner: (id) => useGenshinStore.getState().unequipOwner(id),
+  deleteOwner: (id) => useGenshinStore.getState().deleteOwner(id),
+  equip: (character, pieces) => useGenshinStore.getState().equip(character, pieces),
+}
+
 function SavedCharacter({ character, images }: { character: GenshinCharacter, images: GenshinImages }) {
   const artifacts = useGenshinStore((s) => s.artifacts)
   const saveCharacter = useGenshinStore((s) => s.saveCharacter)
   const [editing, setEditing] = useState(false)
   // The Character menu (after HSR's): every other saved character to switch with, and saved builds
   const characters = useGenshinStore((s) => s.characters)
-  const { unequipOwner: unequipCharacter, switchGear, deleteOwner: deleteCharacter, equip } = useGenshinStore.getState()
-  const builds = useSavedBuilds('genshin', character.id)
   // Re-render when scoring weights are saved
   useScoreWeightsVersion()
 
   const artifactById = useMemo(() => new Map(artifacts.map((a) => [a.id, a])), [artifacts])
-  const worn = ARTIFACT_SLOTS.flatMap((slot) => {
-    const id = character.artifactIds[slot]
-    const artifact = id ? artifactById.get(id) : undefined
-    return artifact ? [artifact] : []
-  })
-  // The optimizer's DPS score for these artifacts when it has one (shared/damageScore.ts), the artifact score otherwise
-  const dpsScore = rememberedDamageScore('genshin', character.id, worn.map((a) => a.id))
+  const worn = GENSHIN_CHARACTER_KIND.wornBy(character, artifactById)
   // Scored for this character, see stats/artifactScore.ts
   const artifactWeights = genshinArtifactWeights(character)
   const weapon = character.weapon
@@ -179,42 +188,13 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
             <Group justify='space-between' wrap='nowrap'>
               <Text size='xl' fw={700}>{character.name}</Text>
               {!editing && (
-                <CharacterMenu
+                <CharacterKindMenu
+                  kind={GENSHIN_CHARACTER_KIND}
+                  owner={character}
                   name={character.name}
-                  gearNoun='artifacts'
-                  others={characters.filter((c) => c.id !== character.id).map((c) => ({ value: c.id, label: c.name }))}
+                  owners={characters}
+                  gearById={artifactById}
                   onEdit={() => setEditing(true)}
-                  onSwitch={(other) => switchGear(character.id, other)}
-                  onUnequip={() => unequipCharacter(character.id)}
-                  onDelete={() => deleteCharacter(character.id)}
-                  onSaveBuild={worn.length > 0 ? () => builds.save(worn.map((a) => a.id)) : undefined}
-                  onViewBuilds={() =>
-                    builds.view({
-                      name: character.name,
-                      describe: (b) => describeSavedPieces(b.pieceIds.flatMap((id) => artifactById.get(id)?.setName ?? []), b.pieceIds.length),
-                      equip: (b) => equip(character, b.pieceIds.flatMap((id) => artifactById.get(id) ?? [])),
-                    })}
-                  savedCount={builds.saved.length}
-                  onMoveToTop={() => writePriority('genshin', moveToTop(characters.map((c) => c.id), readPriority('genshin'), character.id))}
-                  onSortByScore={() => {
-                    const wornBy = (c: GenshinCharacter) =>
-                      ARTIFACT_SLOTS.flatMap((slot) => {
-                        const id = c.artifactIds[slot]
-                        const artifact = id ? artifactById.get(id) : undefined
-                        return artifact ? [artifact] : []
-                      })
-                    const scored = characters.map((c) => ({ id: c.id, score: genshinBuildScore(c, wornBy(c))?.percent ?? 0 }))
-                    writePriority('genshin', scored.sort((a, b) => b.score - a.score).map((s) => s.id))
-                  }}
-                  onScoring={() =>
-                    openScoringModal({
-                      game: 'genshin',
-                      characterId: character.id,
-                      name: character.name,
-                      stats: SUBSTAT_STATS.map((stat) => ({ value: stat, label: statLabel(stat) })),
-                      current: genshinArtifactWeights(character),
-                      defaults: defaultArtifactWeights(character),
-                    })}
                 />
               )}
             </Group>
@@ -244,7 +224,7 @@ function SavedCharacter({ character, images }: { character: GenshinCharacter, im
                 No stats yet. Put this character in your in-game showcase and import from Enka.Network to see their stat screen numbers.
               </Text>
             )}
-          <BuildRating score={dpsScore ?? genshinBuildScore(character, worn)} label={dpsScore ? DPS_SCORE_LABEL : 'Artifact score'} />
+          <CharacterBuildRating kind={GENSHIN_CHARACTER_KIND} owner={character} worn={worn} />
           {computed?.missing.map((note) => <Text key={note} size='xs' c='yellow'>{note}</Text>)}
         </>
       }

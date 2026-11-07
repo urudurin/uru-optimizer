@@ -11,28 +11,19 @@ import {
   Text,
 } from '@mantine/core'
 import {
-  moveToTop,
   orderByPriority,
-  readPriority,
   usePriority,
-  writePriority,
 } from 'lib/games/shared/characterPriority'
-import { rememberedDamageScore } from 'lib/games/shared/damageScore'
 import { scoreBuild } from 'lib/games/shared/gearScore'
 import { useScoreWeightsVersion } from 'lib/games/shared/scoreWeights'
 import {
-  BuildRating,
-  DPS_SCORE_LABEL,
-} from 'lib/games/shared/ui/BuildRating'
-import { CharacterMenu } from 'lib/games/shared/ui/CharacterMenu'
+  CharacterBuildRating,
+  type CharacterKind,
+  CharacterKindMenu,
+} from 'lib/games/shared/ui/CharacterKind'
 import {
   Notices,
 } from 'lib/games/shared/ui/GameLayout'
-import {
-  describeSavedPieces,
-  useSavedBuilds,
-} from 'lib/games/shared/ui/optimizer/SavedBuilds'
-import { openScoringModal } from 'lib/games/shared/ui/ScoringModal'
 import {
   RosterLayout,
   ShowcaseCard,
@@ -70,6 +61,7 @@ import {
   zzzDiscWeights,
 } from 'lib/games/zzz/stats/discScore'
 import { resolveBuild } from 'lib/games/zzz/stats/resolveBuild'
+import type { Disc } from 'lib/games/zzz/types'
 import {
   AgentForm,
 } from 'lib/games/zzz/ui/AgentForm'
@@ -167,6 +159,34 @@ export function ZzzCharactersPage() {
   )
 }
 
+// The Character menu's game parts (shared/ui/CharacterKind.tsx); owners are builds, an agent can have several
+const ZZZ_CHARACTER_KIND: CharacterKind<ImportedBuild, Disc> = {
+  game: 'zzz',
+  gearNoun: 'discs',
+  ownerId: (build) => build.id,
+  characterId: (build) => build.agentId,
+  ownerLabel: (build) => build.name,
+  wornBy: (build, byId) => Object.values(build.discIds).flatMap((id) => (id ? byId.get(id) ?? [] : [])),
+  setNameOf: (disc) => disc.setName,
+  buildScore: (build, worn) => {
+    const agent = AGENTS[build.agentId]
+    return agent ? scoreBuild(worn.map((disc) => scoreDisc(disc, zzzDiscWeights(agent))), 6) : undefined
+  },
+  buildScoreLabel: 'Disc score',
+  scoring: (build) => {
+    const agent = AGENTS[build.agentId]
+    return {
+      stats: SUBSTAT_STATS.map((stat) => ({ value: stat, label: stat })),
+      current: zzzDiscWeights(agent),
+      defaults: defaultDiscWeights(agent),
+    }
+  },
+  switchGear: (a, b) => useZzzStore.getState().switchGear(a, b),
+  unequipOwner: (id) => useZzzStore.getState().unequipOwner(id),
+  deleteOwner: (id) => useZzzStore.getState().deleteOwner(id),
+  equip: (build, pieces) => useZzzStore.getState().equip(AGENTS[build.agentId], { id: build.wEngineId ?? '', refinement: build.wEngineRefinement }, pieces),
+}
+
 function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }) {
   const discs = useZzzStore((s) => s.discs)
   const saveBuild = useZzzStore((s) => s.saveBuild)
@@ -176,8 +196,7 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
   const [editing, setEditing] = useState(false)
   // The Character menu (after HSR's), on the build shown: other saved builds to switch with, and saved builds
   const allBuilds = useZzzStore((s) => s.builds)
-  const { unequipOwner: unequipBuild, switchGear, deleteOwner: deleteBuild, equip } = useZzzStore.getState()
-  const savedBuilds = useSavedBuilds('zzz', entry.agentId)
+  const discById = useMemo(() => new Map(discs.map((disc) => [disc.id, disc])), [discs])
   // Re-render when scoring weights are saved
   useScoreWeightsVersion()
 
@@ -195,8 +214,6 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
   const notes = [...(resolved.ok ? resolved.notes : []), ...(computed?.warnings ?? [])]
   const discWeights = agent ? zzzDiscWeights(agent) : {}
   const worn = resolved.ok ? resolved.build.discs : []
-  // The optimizer's DPS score for these discs when it has one (shared/damageScore.ts), the disc score otherwise
-  const dpsScore = rememberedDamageScore('zzz', entry.agentId, worn.map((d) => d.id))
 
   const form = editing && (
     <AgentForm
@@ -240,48 +257,13 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
                 <Group justify='space-between' wrap='nowrap'>
                   <Text size='xl' fw={700}>{agent.name}</Text>
                   {!editing && (
-                    <CharacterMenu
+                    <CharacterKindMenu
+                      kind={ZZZ_CHARACTER_KIND}
+                      owner={build}
                       name={agent.name}
-                      gearNoun='discs'
-                      others={allBuilds.filter((b) => b.id !== build.id).map((b) => ({ value: b.id, label: b.name }))}
+                      owners={allBuilds}
+                      gearById={discById}
                       onEdit={() => setEditing(true)}
-                      onSwitch={(other) => switchGear(build.id, other)}
-                      onUnequip={() => unequipBuild(build.id)}
-                      onDelete={() => deleteBuild(build.id)}
-                      onSaveBuild={worn.length > 0 ? () => savedBuilds.save(worn.map((d) => d.id)) : undefined}
-                      onViewBuilds={() =>
-                        savedBuilds.view({
-                          name: agent.name,
-                          describe: (b) => describeSavedPieces(b.pieceIds.flatMap((id) => discs.find((d) => d.id === id)?.setName ?? []), b.pieceIds.length),
-                          equip: (b) =>
-                            equip(
-                              agent,
-                              { id: build.wEngineId ?? '', refinement: build.wEngineRefinement },
-                              b.pieceIds.flatMap((id) => discs.find((d) => d.id === id) ?? []),
-                            ),
-                        })}
-                      savedCount={savedBuilds.saved.length}
-                      onMoveToTop={() => writePriority('zzz', moveToTop([...new Set(allBuilds.map((b) => b.agentId))], readPriority('zzz'), entry.agentId))}
-                      onSortByScore={() => {
-                        // Each agent by their first saved build's disc score
-                        const firstBuild = new Map<string, (typeof allBuilds)[number]>()
-                        for (const b of allBuilds) if (!firstBuild.has(b.agentId)) firstBuild.set(b.agentId, b)
-                        const scored = [...firstBuild].map(([id, b]) => {
-                          const data = AGENTS[id]
-                          const worn = Object.values(b.discIds).flatMap((discId) => discs.find((d) => d.id === discId) ?? [])
-                          return { id, score: data ? scoreBuild(worn.map((d) => scoreDisc(d, zzzDiscWeights(data))), 6)?.percent ?? 0 : 0 }
-                        })
-                        writePriority('zzz', scored.sort((a, b) => b.score - a.score).map((s) => s.id))
-                      }}
-                      onScoring={() =>
-                        openScoringModal({
-                          game: 'zzz',
-                          characterId: agent.id,
-                          name: agent.name,
-                          stats: SUBSTAT_STATS.map((stat) => ({ value: stat, label: stat })),
-                          current: zzzDiscWeights(agent),
-                          defaults: defaultDiscWeights(agent),
-                        })}
                     />
                   )}
                 </Group>
@@ -307,10 +289,7 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
               )}
 
               <StatList rows={zzzStatRows(display, entry.specialty)} />
-              <BuildRating
-                score={dpsScore ?? scoreBuild(worn.map((disc) => scoreDisc(disc, discWeights)), 6)}
-                label={dpsScore ? DPS_SCORE_LABEL : 'Disc score'}
-              />
+              <CharacterBuildRating kind={ZZZ_CHARACTER_KIND} owner={build} worn={worn} />
 
               <SegmentedControl
                 size='xs'
