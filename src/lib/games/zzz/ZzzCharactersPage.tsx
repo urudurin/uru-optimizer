@@ -44,6 +44,7 @@ import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
 import { SUBSTAT_STATS } from 'lib/games/zzz/discStats'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import { defaultZzzBuild } from 'lib/games/zzz/state/roster'
+import { zzzRoster } from 'lib/games/zzz/state/roster'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
 import {
   CONDITION_LABELS,
@@ -70,6 +71,7 @@ import {
   DiscCard,
   elementColor,
 } from 'lib/games/zzz/ui/DiscCard'
+import { ZzzScoring } from 'lib/games/zzz/ui/ZzzScoring'
 import {
   useMemo,
   useState,
@@ -196,6 +198,8 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
   const [editing, setEditing] = useState(false)
   // The Character menu (after HSR's), on the build shown: other saved builds to switch with, and saved builds
   const allBuilds = useZzzStore((s) => s.builds)
+  // Every agent's build, for the DPS score's squad
+  const roster = useMemo(() => zzzRoster(allBuilds), [allBuilds])
   const discById = useMemo(() => new Map(discs.map((disc) => [disc.id, disc])), [discs])
   // Re-render when scoring weights are saved
   useScoreWeightsVersion()
@@ -289,7 +293,21 @@ function SavedAgent({ entry, images }: { entry: RosterAgent, images: ZzzImages }
               )}
 
               <StatList rows={zzzStatRows(display, entry.specialty)} />
-              <CharacterBuildRating kind={ZZZ_CHARACTER_KIND} owner={build} worn={worn} />
+              {agent
+                ? (
+                  <ZzzScoring
+                    agent={agent}
+                    wEngine={wEngine}
+                    build={build}
+                    worn={worn}
+                    coreSkill={Number(coreSkill)}
+                    roster={roster}
+                    discs={discs}
+                    images={images}
+                    fallback={<CharacterBuildRating kind={ZZZ_CHARACTER_KIND} owner={build} worn={worn} />}
+                  />
+                )
+                : <CharacterBuildRating kind={ZZZ_CHARACTER_KIND} owner={build} worn={worn} />}
 
               <SegmentedControl
                 size='xs'

@@ -14,7 +14,6 @@ import {
 import {
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
-import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
 import { formatNumber } from 'lib/games/shared/format'
 import { scoreBuild } from 'lib/games/shared/gearScore'
 import {
@@ -34,9 +33,7 @@ import {
 } from 'lib/games/shared/statSimulation'
 import {
   fourPieceSetsOf,
-  keepOverridesFor,
   NO_SET,
-  type TeammateOverrides,
 } from 'lib/games/shared/teammateOverrides'
 import {
   rankTeammateUpgrades,
@@ -95,21 +92,12 @@ import {
   FormRow,
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
-import { resolveZzzCombat } from 'lib/games/zzz/damage/combatEffects'
 import { KIT_EFFECTS } from 'lib/games/zzz/damage/combatEffects'
 import {
-  addAnomalyBonuses,
   agentHits,
-  type DamageSetup,
-  DEFAULT_ENEMY,
-  defaultRotation,
-  type EnemySettings,
   type Rotation,
-  rotationAnomaly,
   rotationDamage,
-  rotationFlatHp,
   rotationLines,
-  rotationSkills,
   singleLineRotation,
 } from 'lib/games/zzz/damage/damage'
 import {
@@ -119,7 +107,6 @@ import {
 } from 'lib/games/zzz/damage/DamageCards'
 import { AGENTS } from 'lib/games/zzz/data/agents'
 import type {
-  ActiveConditions,
   AgentData,
   Condition,
 } from 'lib/games/zzz/data/dataTypes'
@@ -150,6 +137,11 @@ import {
   zzzDamageScore,
   zzzSubstatUpgrades,
 } from 'lib/games/zzz/optimizer/analysis'
+import {
+  zzzDamageDefaults,
+  type ZzzDamageSettings,
+  zzzDamageSetup,
+} from 'lib/games/zzz/optimizer/damageSetup'
 import {
   countCombinations,
   filterPools,
@@ -182,19 +174,9 @@ import {
   scoreDisc,
   zzzDiscWeights,
 } from 'lib/games/zzz/stats/discScore'
-import {
-  SET_4PC_BUFFS,
-  type ZzzBuffSetting,
-} from 'lib/games/zzz/team/buffs'
-import {
-  withZzzExtraDebuffs,
-  ZZZ_EXTRA_BUFFS,
-  zzzExtraEffects,
-} from 'lib/games/zzz/team/extraBuffs'
-import {
-  zzzTeamBuffsFor,
-  type ZzzTeamResult,
-} from 'lib/games/zzz/team/teamBuffs'
+import { SET_4PC_BUFFS } from 'lib/games/zzz/team/buffs'
+import { ZZZ_EXTRA_BUFFS } from 'lib/games/zzz/team/extraBuffs'
+import { zzzTeamBuffsFor } from 'lib/games/zzz/team/teamBuffs'
 import {
   zzzTeamEntries,
   zzzTeamSummary,
@@ -230,10 +212,10 @@ type Loadout = { wEngineId: string, refinement: string }
 const SETTINGS_KEY = 'zzz-optimizer-settings'
 
 // Everything on the page that's saved per agent, see shared/optimizerSettings.ts
-type ZzzOptimizerSettings = {
+// The optimizer settings saved per agent: the damage setup (optimizer/damageSetup.ts) plus the search's own
+type ZzzOptimizerSettings = ZzzDamageSettings & {
   loadout: Loadout,
   coreSkill: string,
-  conditions: ActiveConditions,
   sortBy: RankKey,
   thenBy: (keyof FinalStats)[],
   presetChoice: string,
@@ -251,18 +233,6 @@ type ZzzOptimizerSettings = {
   minRarity: '' | DiscRarity,
   boostMain: boolean,
   resultLimit: number,
-  // Agent ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
-  teammates: string[],
-  // Rank, weapon and 4-piece changes per teammate, for the team buffs only (shared/teammateOverrides.ts)
-  teammateOverrides: TeammateOverrides,
-  // Buffs typed in by hand, added to every build (shared/extraBuffs.ts)
-  extraBuffs: ExtraBuffs,
-  teamSettings: Record<string, ZzzBuffSetting>,
-  // The enemy and the rotation, for ranking by damage (damage/damage.ts)
-  enemy: EnemySettings,
-  rotation: Rotation,
-  // Toggles of the agent's own kit effects (damage/combatEffects.ts)
-  combatSettings: Record<string, boolean | number>,
   // Stat simulation (shared/statSimulation.ts)
   simulations: StatSimulation[],
 }
@@ -341,7 +311,7 @@ function defaultSettings(id: string, data: ZzzOptimizerData): ZzzOptimizerSettin
   return {
     loadout: defaultLoadout(AGENTS[id] ?? data.characters[0], data.builds),
     coreSkill: '6',
-    conditions: statScreenConditions(),
+    ...zzzDamageDefaults(id),
     sortBy: defaultRank(id),
     thenBy: [],
     presetChoice: '0',
@@ -357,13 +327,6 @@ function defaultSettings(id: string, data: ZzzOptimizerData): ZzzOptimizerSettin
     minRarity: '',
     boostMain: false,
     resultLimit: DEFAULT_RESULT_LIMIT,
-    teammates: [],
-    teamSettings: {},
-    teammateOverrides: {},
-    extraBuffs: {},
-    enemy: DEFAULT_ENEMY,
-    rotation: defaultRotation(id),
-    combatSettings: {},
     simulations: [],
   }
 }
@@ -464,76 +427,16 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
   const setSimulations = fieldSetter(updateSettings, 'simulations')
-  // What the squad gives this agent, the same for every build
-  const team = { teammates, settings: teamSettings, overrides: keepOverridesFor(teammateOverrides, teammates) }
-  const teamResult = zzzTeamBuffsFor(agent.id, team, { builds, discs }, fourPieceSet ?? undefined)
   // The agent's own kit effects, counted only when ranking by rotation damage
   const byDamage = sortBy === 'damage'
-  // Gear effects on some hits only: the W-Engine picked for the search and the sets the set filters pick
-  const combatGear = {
-    wEngineId: loadout.wEngineId,
-    refinement: Number(loadout.refinement),
-    sets: [
-      ...(fourPieceSet ? [{ setId: fourPieceSet, pieces: 4 as const }] : []),
-      ...(twoPieceSet && twoPieceSet !== fourPieceSet ? [{ setId: twoPieceSet, pieces: 2 as const }] : []),
-    ],
-    specialty: agent.specialty,
-    element: agent.element,
-  }
-  const kit = resolveZzzCombat(agent.id, builds.find((b) => b.agentId === agent.id)?.mindscapeLevel ?? 0, combatSettings, combatGear, enemy.stunned)
-  // The squad's attributes: Vortex lines, Windswept and Frostbite need a Wind or Ice agent
-  const teamElements = [agent.element, ...teammates.map((id) => AGENTS[id]?.element ?? '')]
-  // The combat effects and damage setup for a squad's buffs; Teammate set upgrades try them with other teammate sets
-  const teamPartsFor = (teamResult: ZzzTeamResult) => {
-    // The agent's kit and gear plus what teammates give some hits only (Pulchra's Aftershock DMG)
-    // The kit's anomaly bonuses plus the squad's (Remielle's Refringe)
-    const anomalyBonus = addAnomalyBonuses(addAnomalyBonuses({}, kit.anomalyBonus), teamResult.anomalyBonus)
-    const kindBonus = { ...kit.kindBonus }
-    for (const [kind, value] of Object.entries(teamResult.kindBonus) as [keyof typeof kindBonus, number][]) {
-      kindBonus[kind] = (kindBonus[kind] ?? 0) + value
-    }
-    const combatEffects = [...teamResult.effects, ...zzzExtraEffects(extraBuffs), ...(byDamage ? kit.statEffects : [])]
-    // The rotation and enemy, for ranking by damage; the team's shred counts here
-    const setupFor = (lines: Rotation): DamageSetup => ({
-      ...rotationSkills(
-        agent.id,
-        lines,
-        kindBonus,
-        kit.skillBonus,
-        {
-          critDmgFromCritDmg: kit.aftershockCritDmg,
-          defIgnore: kit.aftershockDefIgnore,
-        },
-        { defIgnore: kit.kindDefIgnore, critDmg: kit.kindCritDmg, critRate: kit.kindCritRate, resIgnore: kit.kindResIgnore, scale: kit.hitScale },
-      ),
-      ...(kit.veilVulnerabilityCap > 0 ? { veilVulnerabilityCap: kit.veilVulnerabilityCap } : {}),
-      scaling: agent.specialty === 'Rupture' ? 'sheer' : agent.specialty === 'Armorer' ? 'sharp' : 'atk',
-      lacerationDmg: 150 + kit.lacerationBonus + teamResult.lacerationDmg,
-      flatHp: rotationFlatHp(agent.id, lines, kit.flatHp),
-      critRateFromCritDmg: kit.critRateFromCritDmg,
-      sheerDmg: kit.sheerDmg + teamResult.sheerDmg,
-      sharpDmg: kit.sharpDmg,
-      ...rotationAnomaly(agent.id, agent.element, lines, teamElements, anomalyBonus),
-      agentLevel: agent.level,
-      enemy: {
-        ...enemy,
-        windswept: !!enemy.windswept && teamElements.includes('Wind'),
-        frostbite: !!enemy.frostbite && teamElements.includes('Ice'),
-      },
-      // The kit and gear's own RES and DEF ignore add to the team's shred
-      debuffs: withZzzExtraDebuffs({
-        ...teamResult.debuffs,
-        defShred: teamResult.debuffs.defShred + kit.defIgnore,
-        resShred: teamResult.debuffs.resShred + kit.resIgnore,
-        dmgTaken: teamResult.debuffs.dmgTaken + kit.dmgTaken,
-        // Stun multiplier bonuses from different agents add up (Nangong Yu's Misstep, Norma's Tech Divide)
-        stunBonus: teamResult.debuffs.stunBonus + kit.stunBonus,
-      }, extraBuffs),
-    })
-    return { combatEffects, setupFor }
-  }
-  const { combatEffects, setupFor } = teamPartsFor(teamResult)
-  const damageSetup = setupFor(rotation)
+  // What the squad gives this agent and the damage setup, the same for every build (optimizer/damageSetup.ts)
+  const { team, teamResult, kit, teamElements, teamPartsFor, combatEffects, setupFor, damageSetup } = zzzDamageSetup(
+    agent,
+    settings,
+    { wEngineId: loadout.wEngineId, refinement: Number(loadout.refinement), fourPieceSet: fourPieceSet ?? undefined, twoPieceSet: twoPieceSet ?? undefined },
+    byDamage,
+    { builds, discs },
+  )
   const teammateOptions = [...new Map(builds.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
     .map(([value, label]) => ({ value, label }))
   const storedImport = usePresetImportStore((s) => s.stored)

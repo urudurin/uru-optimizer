@@ -69,6 +69,7 @@ import {
   WEAPON_TYPES,
 } from 'lib/games/wuwa/ui/ResonatorForm'
 import { wuwaStatRows } from 'lib/games/wuwa/ui/resonatorStats'
+import { WuwaScoring } from 'lib/games/wuwa/ui/WuwaScoring'
 import {
   useMemo,
   useState,
@@ -125,7 +126,7 @@ export function WuwaCharactersPage() {
           }
         })}
       >
-        {character && <SavedResonator key={character.charId} character={character} art={art[character.charId]} />}
+        {character && <SavedResonator key={character.charId} character={character} art={art[character.charId]} allArt={art} />}
       </RosterLayout>
     </Stack>
   )
@@ -153,12 +154,14 @@ const WUWA_CHARACTER_KIND: CharacterKind<CharacterState, Echo> = {
   equip: (character, pieces) => useWuwaStore.getState().equip(character, pieces),
 }
 
-function SavedResonator({ character, art }: { character: CharacterState, art?: ResonatorArt }) {
+function SavedResonator({ character, art, allArt }: { character: CharacterState, art?: ResonatorArt, allArt: Record<string, ResonatorArt> }) {
   const echoes = useWuwaStore((s) => s.echoes)
   const saveCharacter = useWuwaStore((s) => s.saveCharacter)
   const [editing, setEditing] = useState(false)
   // The Character menu (after HSR's): every other saved Resonator to switch with, and saved builds
   const characters = useWuwaStore((s) => s.characters)
+  // Every Resonator, for the DPS score's team
+  const roster = useMemo(() => wuwaRoster(characters), [characters])
   // Re-render when scoring weights are saved
   useScoreWeightsVersion()
 
@@ -223,7 +226,14 @@ function SavedResonator({ character, art }: { character: CharacterState, art?: R
             />
           )}
           <StatList rows={rows} />
-          <CharacterBuildRating kind={WUWA_CHARACTER_KIND} owner={character} worn={loadout} />
+          <WuwaScoring
+            character={character}
+            worn={loadout}
+            roster={roster}
+            echoes={echoes}
+            art={allArt}
+            fallback={<CharacterBuildRating kind={WUWA_CHARACTER_KIND} owner={character} worn={loadout} />}
+          />
           <Text size='xs' c={cost > MAX_LOADOUT_COST ? 'red' : 'dimmed'}>{`Echo cost ${cost} / ${MAX_LOADOUT_COST} · main echo first`}</Text>
           <Notices messages={[...warnings, ...validateLoadout(loadout)]} />
         </>

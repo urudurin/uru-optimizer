@@ -9,7 +9,6 @@ import {
   type DamagePart,
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
-import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
 import { formatNumber } from 'lib/games/shared/format'
 import {
   type FilterCause,
@@ -27,10 +26,7 @@ import {
   type StatSimulation,
   substatTotals,
 } from 'lib/games/shared/statSimulation'
-import {
-  keepOverridesFor,
-  type TeammateOverrides,
-} from 'lib/games/shared/teammateOverrides'
+import { keepOverridesFor } from 'lib/games/shared/teammateOverrides'
 import {
   BuildAnalysis,
   pinnedCells,
@@ -79,18 +75,10 @@ import {
   FormRow,
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
-import {
-  resolveWuwaCombat,
-  resolveWuwaSetEffects,
-} from 'lib/games/wuwa/damage/combatEffects'
 import { KIT_EFFECTS } from 'lib/games/wuwa/damage/combatEffects'
 import {
   type DamageSetup,
-  DEFAULT_ENEMY,
-  defaultRotation,
-  type EnemySettings,
   hasSkillData,
-  mainEchoBonus,
   migrateRotationCounts,
   type Rotation,
   rotationDamage,
@@ -121,6 +109,11 @@ import {
   wuwaDamageScore,
   wuwaSubstatUpgrades,
 } from 'lib/games/wuwa/optimizer/analysis'
+import {
+  wuwaDamageDefaults,
+  type WuwaDamageSettings,
+  wuwaDamageSetup,
+} from 'lib/games/wuwa/optimizer/damageSetup'
 import { scoreStats } from 'lib/games/wuwa/optimizer/echoOptimizer'
 import {
   countLoadouts,
@@ -151,16 +144,7 @@ import {
   wuwaBuildScore,
   wuwaEchoWeights,
 } from 'lib/games/wuwa/stats/echoScore'
-import type { WuwaBuffSetting } from 'lib/games/wuwa/team/buffs'
-import {
-  withWuwaExtraBuffs,
-  WUWA_EXTRA_BUFFS,
-  wuwaExtraEnemy,
-} from 'lib/games/wuwa/team/extraBuffs'
-import {
-  NO_WUWA_TEAM,
-  wuwaTeamBuffsFor,
-} from 'lib/games/wuwa/team/teamBuffs'
+import { WUWA_EXTRA_BUFFS } from 'lib/games/wuwa/team/extraBuffs'
 import {
   wuwaTeamEntries,
   wuwaTeamSummary,
@@ -220,7 +204,8 @@ function costOf(echoes: Echo[]): number {
   return echoes.reduce((sum, echo) => sum + echo.cost, 0)
 }
 
-type WuwaOptimizerSettings = {
+// The optimizer settings saved per Resonator: the damage setup (optimizer/damageSetup.ts) plus the search's own
+type WuwaOptimizerSettings = WuwaDamageSettings & {
   targetValue: string,
   mainStats: Partial<Record<Cost, StatKey[]>>,
   fullSet: string | null,
@@ -236,18 +221,6 @@ type WuwaOptimizerSettings = {
   resultLimit: number,
   minStats: Partial<Record<keyof WuwaStats, number>>,
   maxStats: Partial<Record<keyof WuwaStats, number>>,
-  // Character ids, and the team buffs' toggles and stack counts (team/teamBuffs.ts)
-  teammates: string[],
-  // Rank, weapon and 4-piece changes per teammate, for the team buffs only (shared/teammateOverrides.ts)
-  teammateOverrides: TeammateOverrides,
-  // Buffs typed in by hand, added to every build (shared/extraBuffs.ts)
-  extraBuffs: ExtraBuffs,
-  teamSettings: Record<string, WuwaBuffSetting>,
-  // The rotation damage target (damage/damage.ts): the enemy and the rotation
-  enemy: EnemySettings,
-  rotation: Rotation,
-  // Toggles of the Resonator's own kit effects (damage/combatEffects.ts)
-  combatSettings: Record<string, boolean | number>,
   // Stat simulation (shared/statSimulation.ts)
   simulations: StatSimulation[],
 }
@@ -271,13 +244,7 @@ function defaultSettings(charId: string): WuwaOptimizerSettings {
     resultLimit: DEFAULT_RESULT_LIMIT,
     minStats: {},
     maxStats: {},
-    teammates: [],
-    teamSettings: {},
-    teammateOverrides: {},
-    extraBuffs: {},
-    enemy: DEFAULT_ENEMY,
-    rotation: defaultRotation(charId),
-    combatSettings: {},
+    ...wuwaDamageDefaults(charId),
     simulations: [],
   }
 }
@@ -411,11 +378,6 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
   const setSimulations = fieldSetter(updateSettings, 'simulations')
-  // What the team gives this Resonator, the same for every loadout (nothing before anything is imported)
-  const teamOverrides = keepOverridesFor(teammateOverrides, teammates)
-  const teamResult = character
-    ? wuwaTeamBuffsFor(character, { teammates, settings: teamSettings, overrides: teamOverrides }, { characters, echoes })
-    : NO_WUWA_TEAM
   const teammateOptions = characters.filter((c) => c.charId !== character?.charId).map((c) => ({ value: c.charId, label: characterName(c.charId) }))
   const ownerOf = useMemo(() => {
     const owners = new Map<string, string>()
@@ -428,49 +390,21 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
   )
 
   const byDamage = targetValue === DAMAGE_TARGET && hasSkillData(character.charId)
-  // The Resonator's own kit effects, counted only when ranking by rotation damage
-  const kit = resolveWuwaCombat(character.charId, character.sequence, combatSettings)
-  // The main echo: the one the rotation picked, or the one worn now. Its main-slot buff counts like the kit's
   const wornEchoes = character.echoIds.flatMap((id) => echoes.find((e) => e.id === id) ?? [])
-  const mainEcho = mainEchoBonus(rotation.echo?.id ?? wornEchoes[0]?.defId, character.charId)
-  // The team's bonus with the extra buffs, for every target; kit and main-echo buffs join it when ranking by damage
-  const teamBonus = withWuwaExtraBuffs(teamResult.bonus, extraBuffs, CHARACTER_INFO[character.charId]?.element ?? undefined)
-  const extraEnemy = wuwaExtraEnemy(extraBuffs)
-  const combatBonus = { ...teamBonus }
-  if (byDamage) {
-    for (const [stat, value] of [...Object.entries(kit.bonus), ...Object.entries(mainEcho.stats)] as [keyof typeof combatBonus, number][]) {
-      combatBonus[stat] = (combatBonus[stat] ?? 0) + value
-    }
-  }
   // Full-set Sonata effects: every set's bonus goes to the search (loadouts that complete it get it); the card shows the
   // Full set filter's set and the complete sets in the current and picked loadouts
   const completeSets = (list: Echo[]) => [...setPieceCounts(list)].filter(([id, count]) => count >= (SONATA_SETS[id]?.fullPieces ?? 5)).map(([id]) => id)
   const pickedEchoes = result?.outcome.ok ? result.outcome.builds[selected]?.echoes ?? [] : []
   const shownSets = [...new Set([...(fullSet ? [fullSet] : []), ...completeSets(wornEchoes), ...completeSets(pickedEchoes)])]
-  const setEffects = resolveWuwaSetEffects(shownSets, character.sequence, combatSettings)
-  const fullSetBonus = byDamage ? setEffects.bonusBySet : undefined
-  const damageSetup = {
-    charId: character.charId,
-    characterLevel: character.level,
-    rotation,
-    enemy: {
-      ...enemy,
-      defIgnore: enemy.defIgnore + kit.defIgnore + teamResult.defIgnore + extraEnemy.defIgnore,
-      resShred: enemy.resShred + kit.resShred + teamResult.resShred + extraEnemy.resShred,
-    },
-    element: CHARACTER_INFO[character.charId]?.element ?? undefined,
-    // The kit's and the team's DMG Amplified add up per kind
-    amplify: Object.fromEntries(
-      [...new Set([...Object.keys(kit.amplify), ...Object.keys(teamResult.amplify), ...(extraEnemy.amplify ? ['all'] : [])])].map((kind) => [
-        kind,
-        (kit.amplify[kind as keyof typeof kit.amplify] ?? 0) + (teamResult.amplify[kind as keyof typeof teamResult.amplify] ?? 0)
-        + (kind === 'all' ? extraEnemy.amplify : 0),
-      ]),
-    ),
-    typeBonus: { echo: mainEcho.echoDmg },
-    coordinatedDmg: mainEcho.coordinatedDmg,
-    lineScale: kit.lineScale,
-  }
+  // What the team gives this Resonator and the damage setup, the same for every loadout (optimizer/damageSetup.ts)
+  const { teamResult, kit, combatBonus, teamBonus, setEffects, fullSetBonus, damageSetup } = wuwaDamageSetup(
+    character,
+    settings,
+    shownSets,
+    rotation.echo?.id ?? wornEchoes[0]?.defId,
+    byDamage,
+    { characters, echoes },
+  )
   const target: EchoTarget = byDamage ? { kind: 'damage', setup: damageSetup } : wuwaTarget(targetValue)
   // The current loadout's rotation damage, for the Rotation card
   const currentDamage = hasSkillData(character.charId) && wornEchoes.length > 0
@@ -804,7 +738,7 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
               rankPrefix='S'
               weaponLabel='weapon'
               refinementPrefix='R'
-              overrides={teamOverrides}
+              overrides={keepOverridesFor(teammateOverrides, teammates)}
               onChange={setTeammateOverrides}
               members={teammates.flatMap((id) => {
                 const mate = characters.find((c) => c.charId === id)
