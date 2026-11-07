@@ -63,8 +63,10 @@ export function EnemyCard({ enemy, debuffs, onChange }: {
   )
 }
 
-export function RotationCard({ character, rotation, talents, damage, team, onChange }: {
+export function RotationCard({ character, rotation, talents, damage, team, teamElements, onChange }: {
   character: GenshinCharacter,
+  // The teammates' elements, for the default rotation's Swirl
+  teamElements?: Element[],
   // The Lunar and Stellar kinds the team can trigger: other ones aren't offered
   team: SpecialKind[],
   rotation: Rotation,
@@ -114,7 +116,7 @@ export function RotationCard({ character, rotation, talents, damage, team, onCha
             data={Array.from({ length: 15 }, (_, i) => String(i + 1))}
           />
         ))}
-        <Button size='xs' variant='light' onClick={() => onChange(defaultRotation(character.id))}>Default</Button>
+        <Button size='xs' variant='light' onClick={() => onChange(defaultRotation(character.id, teamElements))}>Default</Button>
         <Button size='xs' variant='subtle' onClick={() => onChange({ ...rotation, counts: {} })}>Clear</Button>
         <SavedRotations game='genshin' characterId={character.id} rotation={rotation} onLoad={onChange} />
       </Group>

@@ -94,6 +94,14 @@ describe('Genshin damage', () => {
     expect(Object.keys(defaultRotation('Furina').counts).every((key) => !key.startsWith('auto'))).toBe(true)
   })
 
+  it('adds Swirl to Mizuki\'s default rotation, of a teammate\'s element when one can be swirled', () => {
+    expect(defaultRotation('YumemizukiMizuki').counts['reaction:swirl:Pyro']).toBe(4)
+    const withTeam = defaultRotation('YumemizukiMizuki', ['Anemo', 'Geo', 'Hydro']).counts
+    expect(withTeam['reaction:swirl:Hydro']).toBe(4)
+    expect(withTeam['reaction:swirl:Pyro']).toBeUndefined()
+    expect(Object.keys(defaultRotation('Furina').counts).some((key) => key.startsWith('reaction:'))).toBe(false)
+  })
+
   it('multiplies every factor like genshin-optimizer\'s formula', () => {
     const crit = 1 + 0.6 * 1.5
     const def = 190 / (190 + 200)

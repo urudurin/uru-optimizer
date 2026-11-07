@@ -935,6 +935,7 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
               rotation={rotation}
               talents={talents}
               team={reactionsInTeam}
+              teamElements={teamResult.members.flatMap((member) => member.element ?? [])}
               damage={currentDamage}
               onChange={(next) => {
                 setRotation(next)

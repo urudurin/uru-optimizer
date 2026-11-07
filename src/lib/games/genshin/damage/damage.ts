@@ -333,10 +333,23 @@ export function rotationTalents(character: GenshinCharacter, rotation: Rotation)
   return rotation.talents ?? boostedTalents(character)
 }
 
-// Every Elemental Skill and Burst hit once
-export function defaultRotation(characterId: string): Rotation {
+// Transformative reactions in a character's default rotation, for characters whose damage is mostly a reaction
+// (count per rotation; unverified estimates, edit them on the Rotation card)
+const DEFAULT_REACTIONS: Record<string, { reaction: TransformativeReaction, count: number }[]> = {
+  // Mizuki: Dreamdrifter's Swirls (Swirl DMG + a share per point of her EM), about 4 per Dreamdrifter with Anemo ICD
+  YumemizukiMizuki: [{ reaction: 'swirl', count: 4 }],
+}
+
+// Every Elemental Skill and Burst hit once, plus the character's default reactions. Swirl takes the first teammate
+// element it can swirl (teamElements), Pyro otherwise.
+export function defaultRotation(characterId: string, teamElements: Element[] = []): Rotation {
   const counts: Record<string, number> = {}
   for (const hit of characterHits(characterId)) if (hit.talent !== 'auto') counts[hit.key] = 1
+  for (const { reaction, count } of DEFAULT_REACTIONS[characterId] ?? []) {
+    const { variants } = TRANSFORMATIVE[reaction]
+    const variant = (teamElements as DamageElement[]).find((element) => variants.includes(element)) ?? variants[0]
+    counts[variants.length > 1 ? `reaction:${reaction}:${variant}` : `reaction:${reaction}`] = count
+  }
   return { counts, infusion: false, reaction: 'none', reactionShare: 100 }
 }
 
