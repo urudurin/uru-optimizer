@@ -1,7 +1,9 @@
 import {
+  inPartition,
   nestedFraction,
   PROGRESS_CHECK_MASK,
   type ProgressCallback,
+  type SearchPartition,
   throttleProgress,
 } from 'lib/games/shared/progress'
 import {
@@ -91,6 +93,8 @@ export type EchoRequest = {
   limit: number,
   // Called now and then while searching (added by the worker, never sent to it)
   onProgress?: ProgressCallback,
+  // Search only part of the first position's echoes (shared/progress.ts), for a search split across workers
+  partition?: SearchPartition,
 }
 
 export type EchoBuild = {
@@ -457,6 +461,7 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
       // Within one cost, echoes are picked in list order so each loadout is visited once
       const start = depth > 0 && positions[depth - 1] === cost ? from + 1 : 0
       for (let p = start; p < list.length; p++) {
+        if (depth === 0 && !inPartition(p, request.partition)) continue
         if (depth < 2) {
           at[depth] = p
           lengths[depth] = list.length
@@ -490,5 +495,19 @@ export function optimizeEchoes(request: EchoRequest): EchoOutcome {
     prunedSize,
     visited,
     truncated,
+  }
+}
+
+// The whole search's outcome from its parts (request.partition): their loadouts together, best first, the visits added
+// up, truncated if any part was. Every loadout has one first echo, so no part repeats another's
+export function mergeEchoOutcomes(parts: EchoOutcome[], limit: number): EchoOutcome {
+  const failed = parts.find((part) => !part.ok)
+  if (failed || parts.length === 0) return failed ?? { ok: false, reason: 'The search returned nothing' }
+  const ok = parts as Extract<EchoOutcome, { ok: true }>[]
+  return {
+    ...ok[0],
+    builds: ok.flatMap((part) => part.builds).sort((a, b) => b.score - a.score).slice(0, limit),
+    visited: ok.reduce((sum, part) => sum + part.visited, 0),
+    truncated: ok.some((part) => part.truncated),
   }
 }

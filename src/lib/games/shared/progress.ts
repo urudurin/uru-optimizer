@@ -36,3 +36,12 @@ export function nestedFraction(outer: number, outerLength: number, inner: number
   if (outerLength === 0) return 0
   return Math.min(1, (outer + (innerLength > 0 ? inner / innerLength : 0)) / outerLength)
 }
+
+// One part of a search split across workers (shared/workerRunner.ts): the part searches only the first slot's pieces at
+// positions index, index + count, index + 2 count... of its sorted list. Every build has exactly one first piece, so the
+// parts' top results together hold the whole search's top results
+export type SearchPartition = { index: number, count: number }
+
+export function inPartition(position: number, partition: SearchPartition | undefined): boolean {
+  return !partition || position % partition.count === partition.index
+}

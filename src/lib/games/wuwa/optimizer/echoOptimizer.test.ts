@@ -9,6 +9,7 @@ import {
   type EchoFilters,
   type EchoTarget,
   filterPool,
+  mergeEchoOutcomes,
   optimizeEchoes,
   scoreStats,
   withFullSets,
@@ -132,6 +133,20 @@ describe('optimizeEchoes', () => {
     ],
     ['Element DMG with 2+2 sets', { kind: 'stat', stat: 'elementDmg' }, {}, { ...noFilters, twoPieceSets: ['void-thunder', 'lingering-tunes'] }],
   ]
+
+  for (const [name, target, minStats, filters] of cases) {
+    it(`finds the same top 5 when split across workers: ${name}`, () => {
+      const request = { character: hsin, characters: [hsin], echoes, filters, minStats, target, limit: 5 }
+      const whole = optimizeEchoes(request)
+      if (!whole.ok) throw new Error(whole.reason)
+      for (const count of [3, 4]) {
+        const parts = Array.from({ length: count }, (_, index) => optimizeEchoes({ ...request, partition: { index, count } }))
+        const merged = mergeEchoOutcomes(parts, 5)
+        if (!merged.ok) throw new Error(merged.reason)
+        expect(merged.builds.map((b) => b.score)).toEqual(whole.builds.map((b) => expect.closeTo(b.score, 6)))
+      }
+    })
+  }
 
   for (const [name, target, minStats, filters] of cases) {
     it(`finds the same top 5 as trying every loadout: ${name}`, () => {

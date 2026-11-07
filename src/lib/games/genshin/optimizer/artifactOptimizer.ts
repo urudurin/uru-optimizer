@@ -32,9 +32,11 @@ import {
   STAT_LABELS,
 } from 'lib/games/genshin/types'
 import {
+  inPartition,
   nestedFraction,
   PROGRESS_CHECK_MASK,
   type ProgressCallback,
+  type SearchPartition,
   throttleProgress,
 } from 'lib/games/shared/progress'
 import {
@@ -100,6 +102,8 @@ export type OptimizerRequest = {
   combat?: CombatSetup,
   // Called now and then while searching (added by the worker, never sent to it)
   onProgress?: ProgressCallback,
+  // Search only part of the first slot (shared/progress.ts), for a search split across workers
+  partition?: SearchPartition,
 }
 
 export type OptimizerBuild = {
@@ -576,8 +580,10 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
     })
   }
 
-  // 3c. The full search, with the first pass's builds already setting the bar
-  if (candidates.every((list) => list.length > 0)) search(candidates, true)
+  // 3c. The full search, with the first pass's builds already setting the bar. A split search's part only takes its share
+  // of the first slot; the first pass and the pruning above are the same in every part
+  const full = [candidates[0].filter((_, position) => inPartition(position, request.partition)), ...candidates.slice(1)]
+  if (full.every((list) => list.length > 0)) search(full, true)
 
   const builds = top.map((candidate): OptimizerBuild => {
     const chosen = candidate.item.map((a, slot) => pools[slot][a])
@@ -593,5 +599,29 @@ export function optimizeArtifacts(request: OptimizerRequest): OptimizerOutcome {
     prunedSizes: ARTIFACT_SLOTS.map((_, slot) => candidates[order.indexOf(slot)].length),
     visited,
     truncated,
+  }
+}
+
+// The whole search's outcome from its parts (request.partition): their builds together, best first without repeats (the
+// first pass can find the same build in every part), the visits added up, truncated if any part was
+export function mergeArtifactOutcomes(parts: OptimizerOutcome[], limit: number): OptimizerOutcome {
+  const failed = parts.find((part) => !part.ok)
+  if (failed || parts.length === 0) return failed ?? { ok: false, reason: 'The search returned nothing' }
+  const ok = parts as Extract<OptimizerOutcome, { ok: true }>[]
+  const seen = new Set<string>()
+  const builds = ok.flatMap((part) => part.builds)
+    .sort((a, b) => b.score - a.score)
+    .filter((build) => {
+      const key = build.artifacts.map((a) => a.id).join('|')
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .slice(0, limit)
+  return {
+    ...ok[0],
+    builds,
+    visited: ok.reduce((sum, part) => sum + part.visited, 0),
+    truncated: ok.some((part) => part.truncated),
   }
 }
