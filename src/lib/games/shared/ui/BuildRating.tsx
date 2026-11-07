@@ -12,7 +12,7 @@ export const DPS_SCORE_LABEL = 'DPS score'
 const GEAR_TITLE = 'The equipped pieces against a benchmark build, on the HSR scale: 100% is the benchmark (SS), 200% perfect. Empty slots count as 0'
 const DPS_TITLE = 'Rotation damage against simulated builds with the same main stats and sets, after HSR\'s DPS score: 0% has only a few '
   + 'spread-out substat rolls, 100% (SS) the benchmark number of average rolls placed where they add the most damage, 200% every roll '
-  + 'a max roll'
+  + 'a max roll. The line under it is the rotation damage as a share of the benchmark build\'s: the grade stretches small damage gaps'
 
 export function BuildRating({ score, label }: { score?: GearScore, label: string }) {
   if (!score) return null
@@ -20,6 +20,7 @@ export function BuildRating({ score, label }: { score?: GearScore, label: string
     <div className={gear.buildRating} title={label === DPS_SCORE_LABEL ? DPS_TITLE : GEAR_TITLE}>
       <div className={gear.buildRatingValue}>{`${score.percent.toFixed(1)}% · ${score.rating}`}</div>
       <div className={gear.buildRatingLabel}>{label}</div>
+      {score.ofBenchmark !== undefined && <div className={gear.buildRatingNote}>{`${score.ofBenchmark.toFixed(1)}% of the benchmark's damage`}</div>}
     </div>
   )
 }
@@ -34,9 +35,10 @@ export function RememberDamageScore({ game, characterId, pieceIds, score }: {
 }) {
   const percent = score?.percent
   const rating = score?.rating
+  const ofBenchmark = score?.ofBenchmark
   const gearKey = pieceIds.join(',')
   useEffect(() => {
-    if (percent !== undefined) rememberDamageScore(game, characterId, gearKey ? gearKey.split(',') : [], { percent, rating: rating ?? '' })
-  }, [game, characterId, gearKey, percent, rating])
+    if (percent !== undefined) rememberDamageScore(game, characterId, gearKey ? gearKey.split(',') : [], { percent, rating: rating ?? '', ofBenchmark })
+  }, [game, characterId, gearKey, percent, rating, ofBenchmark])
   return null
 }

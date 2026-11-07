@@ -128,3 +128,10 @@
 .buildRatingLabel {
   font-size: 14px;
 }
+
+.buildRatingNote {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--mantine-color-dimmed);
+}

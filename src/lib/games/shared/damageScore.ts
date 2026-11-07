@@ -104,7 +104,10 @@ export function damageScore(input: DamageScoreInput, params: DamageScoreParams):
   let result: DamageScore | undefined
   if (damage > 0 && benchmark > baseline) {
     const percent = Math.floor(calculateScorePercent(damage, baseline, benchmark, perfect) * 1000) / 10
-    result = { percent, rating: benchmarkRating(percent), damage, baseline, benchmark, perfect }
+    // The grade stretches small damage gaps (an EM character's substats move her Swirls a few percent), so the plain
+    // damage share is shown next to it
+    const ofBenchmark = Math.round((damage / benchmark) * 1000) / 10
+    result = { percent, rating: benchmarkRating(percent), ofBenchmark, damage, baseline, benchmark, perfect }
   }
 
   memo.set(key, result)
@@ -116,7 +119,7 @@ export function damageScore(input: DamageScoreInput, params: DamageScoreParams):
 // rotation setup of their own. Kept in localStorage `<game>-dps-scores` with the worn piece ids it was worked out for:
 // once the gear changes it no longer shows. A cache only, so it isn't in backups.
 
-type RememberedScores = Record<string, { gear: string, percent: number, rating: string }>
+type RememberedScores = Record<string, { gear: string, percent: number, rating: string, ofBenchmark?: number }>
 
 const scoresKey = (game: string) => `${game}-dps-scores`
 const gearKey = (pieceIds: string[]) => [...pieceIds].sort().join(',')
@@ -134,8 +137,8 @@ export function rememberDamageScore(game: string, characterId: string, pieceIds:
   const scores = readScores(game)
   const gear = gearKey(pieceIds)
   const old = scores[characterId]
-  if (score && old?.gear === gear && old.percent === score.percent) return
-  if (score) scores[characterId] = { gear, percent: score.percent, rating: score.rating }
+  if (score && old?.gear === gear && old.percent === score.percent && old.ofBenchmark === score.ofBenchmark) return
+  if (score) scores[characterId] = { gear, percent: score.percent, rating: score.rating, ofBenchmark: score.ofBenchmark }
   else if (old) delete scores[characterId]
   else return
   writeStorage(scoresKey(game), JSON.stringify(scores))
@@ -144,5 +147,5 @@ export function rememberDamageScore(game: string, characterId: string, pieceIds:
 export function rememberedDamageScore(game: string, characterId: string, pieceIds: string[]): GearScore | undefined {
   const entry = readScores(game)[characterId]
   if (!entry || entry.gear !== gearKey(pieceIds) || typeof entry.percent !== 'number') return undefined
-  return { percent: entry.percent, rating: entry.rating }
+  return { percent: entry.percent, rating: entry.rating, ...(typeof entry.ofBenchmark === 'number' ? { ofBenchmark: entry.ofBenchmark } : {}) }
 }

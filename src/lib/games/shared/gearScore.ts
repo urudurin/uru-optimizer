@@ -7,7 +7,8 @@ import { SimScoreGrades } from 'lib/scoring/scoreScales'
 // (each grade is 5% of a perfect piece). The main stat isn't scored, like HSR's current-score.
 // Shared by ZZZ discs, Genshin artifacts and WuWa echoes; each game says how its substats roll.
 
-export type GearScore = { percent: number, rating: string }
+// ofBenchmark: DPS scores only, the build's damage as a percent of the benchmark build's (shared/damageScore.ts)
+export type GearScore = { percent: number, rating: string, ofBenchmark?: number }
 
 // How a piece's substats roll
 export type PieceRules = {

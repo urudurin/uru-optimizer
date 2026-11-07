@@ -70,6 +70,9 @@ describe('damageScore', () => {
     expect(strong.percent).toBeGreaterThan(95)
     expect(strong.benchmark).toBeGreaterThan(strong.baseline)
     expect(strong.perfect).toBeGreaterThan(strong.benchmark)
+    // The plain damage share, one decimal
+    expect(strong.ofBenchmark).toBeCloseTo(Math.round((strong.damage / strong.benchmark) * 1000) / 10, 6)
+    expect(empty.ofBenchmark).toBeLessThan(100)
   })
 
   it('reuses the result while the build and its setup are unchanged', () => {
