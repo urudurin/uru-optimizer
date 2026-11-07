@@ -32,7 +32,10 @@ import {
   EnemyCard,
   RotationCard,
 } from 'lib/games/genshin/damage/DamageCards'
-import { useGenshinImages } from 'lib/games/genshin/data/images'
+import {
+  type GenshinImages,
+  useGenshinImages,
+} from 'lib/games/genshin/data/images'
 import { genshinSampleData } from 'lib/games/genshin/data/sampleData'
 import {
   GenshinTeamCards,
@@ -124,8 +127,6 @@ import {
 import {
   fieldSetter,
   migrateOptimizerSettings,
-  useActiveCharacter,
-  useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import {
   fourPieceSetsOf,
@@ -142,20 +143,21 @@ import {
   RememberDamageScore,
 } from 'lib/games/shared/ui/BuildRating'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
-import { usePinnedBuilds } from 'lib/games/shared/ui/optimizer/BuildCompare'
 import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
 import {
   CharacterPortrait,
   RankButtons,
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
+import {
+  GameOptimizerPage,
+  type OptimizerData,
+  type OptimizerPageKind,
+  type OptimizerView,
+  type OptimizerViewContext,
+} from 'lib/games/shared/ui/optimizer/GameOptimizerPage'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
 import { OptimizerOptionsCard } from 'lib/games/shared/ui/optimizer/OptimizerOptionsCard'
-import {
-  OptimizerImportFirst,
-  OptimizerPageShell,
-  OptimizerResults,
-} from 'lib/games/shared/ui/optimizer/OptimizerPage'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -172,14 +174,11 @@ import {
   useBuildActions,
   useExcludeOwners,
 } from 'lib/games/shared/ui/optimizer/useBuildActions'
-import { useOptimizerRun } from 'lib/games/shared/ui/optimizer/useOptimizerRun'
 import {
   FormCard,
   FormRow,
   FormRows,
 } from 'lib/games/shared/ui/OptimizerForm'
-import type { StatView } from 'lib/games/shared/ui/OptimizerSidebar'
-import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
 import {
   useEffect,
   useMemo,
@@ -310,21 +309,55 @@ const GENSHIN_OPTIMIZER_KIND: OptimizerKind<Artifact> = {
   takenNote: (name, swap) => (swap ? `will get ${name}'s current pieces in exchange` : 'will lose them (Settings: replace)'),
 }
 
-export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
-  useState(migrateSaves)
+type GenshinResult = { outcome: OptimizerOutcome, ms: number, target: OptimizerTarget }
+type GenshinOptimizerData = OptimizerData<GenshinCharacter, Artifact> & { roster: GenshinCharacter[], images: GenshinImages }
+
+function useGenshinOptimizerData(): GenshinOptimizerData {
   const artifacts = useGenshinStore((s) => s.artifacts)
   const savedCharacters = useGenshinStore((s) => s.characters)
   const images = useGenshinImages()
-  // Every character, saved or not (state/roster.ts)
-  const characters = useMemo(() => genshinRoster(savedCharacters, images), [savedCharacters, images])
-  const saveCharacter = useGenshinStore((s) => s.saveCharacter)
-  const usable = useMemo(() => characters.filter(hasStatData), [characters])
-  // The open character, in the settings store (shared/optimizerSettings.ts)
-  const [characterId, setCharacterId] = useActiveCharacter(SETTINGS_KEY)
-  const character = usable.find((c) => c.id === characterId) ?? usable[0]
+  // Every character, saved or not (state/roster.ts); the optimizer opens the ones with stat data
+  const roster = useMemo(() => genshinRoster(savedCharacters, images), [savedCharacters, images])
+  const characters = useMemo(() => roster.filter(hasStatData), [roster])
+  return { characters, roster, gear: artifacts, images }
+}
 
-  // Saved per character, see shared/optimizerSettings.ts
-  const [settings, updateSettings] = useCharacterSettings(SETTINGS_KEY, character?.id ?? '', () => defaultSettings(character?.id ?? ''))
+// The Genshin optimizer on the shared page (shared/ui/optimizer/GameOptimizerPage.tsx)
+const GENSHIN_PAGE_KIND: OptimizerPageKind<GenshinCharacter, Artifact, GenshinOptimizerSettings, GenshinResult, typeof artifactSearch, GenshinOptimizerData> = {
+  ...GENSHIN_OPTIMIZER_KIND,
+  settingsKey: SETTINGS_KEY,
+  gearNoun: 'artifacts',
+  description:
+    'Searches your artifacts for the 5-piece builds that score highest, with stats worked out like the Characters page. Rotation damage counts talent multipliers, the enemy, team shred and Vaporize, Melt, Aggravate or Spread; set minimums (such as Energy Recharge) for anything else the character needs.',
+  importText: 'A GOOD file from an artifact scanner brings in your whole inventory, which the optimizer searches for the best 5-piece builds.',
+  loadSample: () => useGenshinStore.getState().importParsed(genshinSampleData(), 'replace'),
+  migrateSaves,
+  runner: artifactSearch,
+  useData: useGenshinOptimizerData,
+  idOf: (character) => character.id,
+  nameOf: (character) => character.name,
+  defaultSettings: (id) => defaultSettings(id),
+  equip: (character, pieces) => useGenshinStore.getState().equip(character, pieces),
+  useView: useGenshinOptimizerView,
+}
+
+export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
+  return <GameOptimizerPage kind={GENSHIN_PAGE_KIND} onImport={onImport} />
+}
+
+function useGenshinOptimizerView({ character, data, settings, update: updateSettings, openCharacter, search, statView, buildActions }: OptimizerViewContext<
+  GenshinCharacter,
+  Artifact,
+  GenshinOptimizerSettings,
+  GenshinResult,
+  typeof artifactSearch,
+  GenshinOptimizerData
+>): OptimizerView {
+  // characters: every character for teammates and owners; usable: the ones with stat data, for the character picker
+  const { gear: artifacts, roster: characters, characters: usable, images } = data
+  const saveCharacter = useGenshinStore((s) => s.saveCharacter)
+  const { running, result, setResult, selected, setSelected } = search
+
   const {
     targetValue,
     mainStats,
@@ -372,23 +405,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
-  // The search (shared/ui/optimizer/useOptimizerRun.ts), its result kept with the target it was ranked by
-  const search = useOptimizerRun<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget }, typeof artifactSearch>(artifactSearch)
-  const { running, progress, result, setResult, selected, setSelected } = search
-  const pins = usePinnedBuilds(character?.id ?? '')
-  // Equip, Save build and Load builds (shared/ui/optimizer/useBuildActions.ts)
-  const buildActions = useBuildActions(GENSHIN_OPTIMIZER_KIND, {
-    characterId: character?.id ?? '',
-    name: character?.name ?? '',
-    gear: artifacts,
-    equip: (pieces) => character && equip(character, pieces),
-  })
-  const { savedList } = buildActions
-  // Results columns: in-combat stats (team, kit and set buffs) or the stat screen, after HSR's stat view
-  const [statView, setStatView] = useState<StatView>('combat')
-
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
-  const equip = useGenshinStore((s) => s.equip)
   const filters = useMemo(
     () => ({
       mainStats,
@@ -483,18 +500,6 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     return [...names].map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label))
   }, [artifacts])
 
-  // Every character is always there (state/roster.ts), so the page waits for artifacts instead
-  if (!character || artifacts.length === 0) {
-    return (
-      <OptimizerImportFirst
-        gearNoun='artifacts'
-        text='A GOOD file from an artifact scanner brings in your whole inventory, which the optimizer searches for the best 5-piece builds.'
-        onImport={onImport}
-        onSample={() => useGenshinStore.getState().importParsed(genshinSampleData(), 'replace')}
-      />
-    )
-  }
-
   // What the team gives this character, the same for every build
   const team = { teammates, onField, settings: teamSettings, overrides: keepOverridesFor(teammateOverrides, teammates) }
   const teamResult = teamBuffsFor(character, team, { characters, artifacts })
@@ -583,10 +588,6 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     }, (response) => ({ ...response, target }))
   }
 
-  function cancel() {
-    search.cancel()
-  }
-
   const outcome = result?.outcome
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
@@ -639,400 +640,384 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
     if (build) buildActions.saveBuildNow(build.artifacts)
   }
 
-  const sidebar = (
-    <OptimizerSidebar
-      pools={ARTIFACT_SLOTS.map((slot, i) => ({ label: SLOT_LABELS[slot], value: poolSizes[i] ?? 0 }))}
-      combinations={poolSizes.reduce((product, size) => product * size, 1)}
-      hint={poolSizes.some((size) => size === 0)
+  return {
+    form: (
+      <>
+        <FormRows>
+          <FormRow id='genshin-character' title='Character' summary={`${character.name} · ${targetLabel(target)}`}>
+            <CharacterPortrait
+              name={character.name}
+              portrait={images.characters[character.id]?.portrait}
+              accent={character.element ? ELEMENT_ACCENTS[character.element] : undefined}
+              weapon={character.weapon && { image: images.weapons[character.weapon.id], name: character.weapon.name }}
+            />
+            <FormCard title='Character'>
+              <GenshinCharacterSelect
+                characters={usable}
+                images={images}
+                value={character.id}
+                onChange={(value) => {
+                  openCharacter(value)
+                  setResult(undefined)
+                }}
+              />
+              <Text size='xs' c='dimmed'>
+                {`Level ${character.level} · ${character.weapon ? `${character.weapon.name}, level ${character.weapon.level}` : 'No weapon'}`}
+              </Text>
+              {/* Like HSR's light cone, Eidolon and Superimposition pickers, these change the saved character */}
+              <GenshinWeaponSelect
+                images={images}
+                weaponType={images.characterInfo[character.id.startsWith('Traveler') ? 'Traveler' : character.id]?.weaponType}
+                value={character.weapon?.id ?? null}
+                onChange={(id) => {
+                  if (id === (character.weapon?.id ?? null)) return
+                  const weapon = id
+                    ? {
+                      id,
+                      name: images.weaponInfo[id]?.name ?? nameFromGoodKey(id),
+                      rarity: WEAPON_RARITY[id] ?? 5,
+                      level: character.weapon?.level ?? 90,
+                      refinement: character.weapon?.refinement ?? 1,
+                    }
+                    : undefined
+                  saveCharacter({ ...character, weapon })
+                  setResult(undefined)
+                }}
+              />
+              <RankButtons
+                label='Constellation'
+                prefix='C'
+                from={0}
+                to={6}
+                value={character.constellation}
+                onChange={(constellation) => {
+                  saveCharacter({ ...character, constellation })
+                  setResult(undefined)
+                }}
+              />
+              {character.weapon && (
+                <RankButtons
+                  label='Refinement'
+                  prefix='R'
+                  from={1}
+                  to={5}
+                  value={character.weapon.refinement}
+                  onChange={(refinement) => {
+                    if (character.weapon) saveCharacter({ ...character, weapon: { ...character.weapon, refinement } })
+                    setResult(undefined)
+                  }}
+                />
+              )}
+            </FormCard>
+            <FormCard
+              title='Rank by'
+              description='Rotation damage uses the Damage row. The average hit is the scaling stat times the crit multiplier and DMG Bonus.'
+            >
+              <Select
+                aria-label='Rank by'
+                allowDeselect={false}
+                value={byDamage ? DAMAGE_TARGET : targetValue === DAMAGE_TARGET ? TARGETS[0].value : targetValue}
+                onChange={(value) => value && setTargetValue(value)}
+                data={[
+                  ...(hasTalentData(character.id) ? [{ value: DAMAGE_TARGET, label: 'Rotation damage' }] : []),
+                  ...TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) })),
+                ]}
+              />
+              <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
+            </FormCard>
+            <OptimizerOptionsCard
+              gearNoun='artifacts'
+              ownerNoun='characters'
+              rosterPage='Characters'
+              excludeWorn={excludeEquippedByOthers}
+              onExcludeWorn={setExcludeEquippedByOthers}
+              priority={priorityFilter}
+              onPriority={setPriorityFilter}
+              keep={{ checked: keepCurrent, description: `Each slot only uses the artifact ${character.name} wears now`, onChange: setKeepCurrent }}
+              levels={[0, 4, 8, 12, 16, 20]}
+              minLevel={minLevel}
+              onMinLevel={setMinLevel}
+              rarity={{
+                label: 'Minimum rarity',
+                value: String(minRarity),
+                options: [{ value: '0', label: 'Any' }, { value: '4', label: '4★' }, { value: '5', label: '5★' }],
+                onChange: (value) => setMinRarity(Number(value)),
+              }}
+              boost={boostMain}
+              boostDescription='Artifacts below max level count with their max-level main stat'
+              onBoost={setBoostMain}
+            />
+          </FormRow>
+
+          <FormRow id='genshin-filters' title='Artifact & stat filters' summary={filterSummary}>
+            <FormCard
+              title='Sets'
+              description='Only 2-piece bonuses the character screen shows are counted, not 4-piece effects, so pick the set you want to run here.'
+            >
+              <SetPicker
+                label='4-piece set'
+                max={1}
+                options={setOptions.map((o) => ({ ...o, icon: images.artifacts[o.value]?.flower }))}
+                value={fourPieceSet ? [fourPieceSet] : []}
+                onChange={(ids) => {
+                  setFourPieceSet(ids[0] ?? null)
+                  if (ids[0]) setTwoPieceSets([])
+                }}
+              />
+              <SetPicker
+                label='2-piece sets'
+                max={2}
+                placeholder={fourPieceSet ? 'Not with a 4-piece set' : 'Any'}
+                disabled={!!fourPieceSet}
+                options={setOptions.map((o) => ({ ...o, icon: images.artifacts[o.value]?.flower }))}
+                value={twoPieceSets}
+                onChange={setTwoPieceSets}
+              />
+            </FormCard>
+            <FormCard title='Main stats'>
+              {MAIN_STAT_SLOTS.map((slot) => (
+                <MultiSelect
+                  key={slot}
+                  label={SLOT_LABELS[slot]}
+                  placeholder={mainStats[slot]?.length ? undefined : 'Any'}
+                  value={mainStats[slot] ?? []}
+                  onChange={(value) => setMainStats((prev) => ({ ...prev, [slot]: value as GenshinStatKey[] }))}
+                  data={MAIN_STAT_OPTIONS[slot].map((stat) => ({ value: stat, label: statLabel(stat) }))}
+                />
+              ))}
+            </FormCard>
+            <FormCard title='Stat filters' description='Builds outside any of these are left out, e.g. Energy Recharge 200 to 250.'>
+              <StatFilters
+                rows={MIN_STATS.map((stat) => ({ key: stat, label: statLabel(stat) }))}
+                min={minStats}
+                max={maxStats}
+                onMin={(next) => setMinStats(next)}
+                onMax={(next) => setMaxStats(next)}
+              />
+            </FormCard>
+          </FormRow>
+
+          <FormRow id='genshin-team' title='Teammates' summary={teamSummary(team, teamResult, characters)}>
+            <GenshinTeamCards
+              character={character}
+              characters={characters}
+              team={team}
+              result={teamResult}
+              onTeammates={(ids) => {
+                setTeammates(ids)
+                setResult(undefined)
+              }}
+              onField={(value) => {
+                setOnField(value)
+                setResult(undefined)
+              }}
+              onSetting={(key, value) => {
+                setTeamSettings((current) => ({ ...current, [key]: value }))
+                setResult(undefined)
+              }}
+            />
+            <TeammateOverrideCard
+              rankPrefix='C'
+              weaponLabel='weapon'
+              refinementPrefix='R'
+              overrides={team.overrides}
+              onChange={(next) => {
+                setTeammateOverrides(next)
+                setResult(undefined)
+              }}
+              members={teammates.flatMap((id) => {
+                const mate = characters.find((c) => c.id === id)
+                if (!mate || id === character.id) return []
+                const wornSets = Object.values(mate.artifactIds).flatMap((artifactId) => artifacts.find((a) => a.id === artifactId)?.setId ?? [])
+                const fourPiece = fourPieceSetsOf(wornSets)[0]
+                return [{
+                  id,
+                  name: mate.name,
+                  roster: { rank: mate.constellation, weaponId: mate.weapon?.id, refinement: mate.weapon?.refinement ?? 1, fourPiece },
+                  weapons: weaponOptions(images.weaponInfo, images.characterInfo[id.startsWith('Traveler') ? 'Traveler' : id]?.weaponType),
+                  sets: [...new Set([...(fourPiece ? [fourPiece] : []), ...Object.keys(SET_4PC_BUFFS)])].map((setId) => ({
+                    value: setId,
+                    label: setName(setId),
+                  })),
+                }]
+              })}
+            />
+          </FormRow>
+
+          <FormRow
+            id='genshin-damage'
+            title='Damage'
+            summary={`Enemy level ${enemy.level}, ${enemy.res}% RES · ${Object.values(rotation.counts).reduce((sum, count) => sum + count, 0)} hits${
+              rotation.reaction !== 'none' ? ` · ${rotation.reaction}` : ''
+            }${byDamage ? '' : ' · not ranked by damage'}`}
+          >
+            <EnemyCard
+              enemy={enemy}
+              debuffs={debuffs}
+              onChange={(next) => {
+                setEnemy(next)
+                setResult(undefined)
+              }}
+            />
+            <RotationCard
+              character={character}
+              rotation={rotation}
+              talents={talents}
+              team={reactionsInTeam}
+              damage={currentDamage}
+              onChange={(next) => {
+                setRotation(next)
+                setResult(undefined)
+              }}
+            />
+            <EffectsCard
+              name={character.name}
+              fourPieceSet={fourPieceSet ? setOptions.find((o) => o.value === fourPieceSet)?.label ?? fourPieceSet : undefined}
+              applied={resolvedCombat.applied}
+              onSetting={(id, value) => {
+                setCombatSettings((current) => ({ ...current, [id]: value }))
+                setResult(undefined)
+              }}
+            />
+            <ExtraBuffsCard
+              defs={GENSHIN_EXTRA_BUFFS}
+              buffs={extraBuffs}
+              onChange={(next) => {
+                setExtraBuffs(next)
+                setResult(undefined)
+              }}
+            />
+          </FormRow>
+        </FormRows>
+        <KitDisclaimer name={character.name} effects={KIT_EFFECTS[character.id]} byDamage={byDamage} />
+      </>
+    ),
+    sidebar: {
+      pools: ARTIFACT_SLOTS.map((slot, i) => ({ label: SLOT_LABELS[slot], value: poolSizes[i] ?? 0 })),
+      combinations: poolSizes.reduce((product, size) => product * size, 1),
+      hint: poolSizes.some((size) => size === 0)
         ? { text: 'A slot has no artifacts left with these filters', warn: true }
-        : { text: 'Most combinations are ruled out without being checked one by one.' }}
-      canStart={poolSizes.every((size) => size > 0)}
-      running={running}
-      progress={progress}
-      onStart={run}
-      onCancel={cancel}
-      results={outcome?.ok && result
+        : { text: 'Most combinations are ruled out without being checked one by one.' },
+      canStart: poolSizes.every((size) => size > 0),
+      results: outcome?.ok && result
         ? {
           count: outcome.builds.length,
           seconds: result.ms / 1000,
           note: outcome.truncated ? 'Stopped at its limit: best found, maybe not the best.' : undefined,
         }
-        : undefined}
-      equip={build ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
-      statView={{ value: statView, onChange: setStatView }}
-      onReset={() => {
-        updateSettings(defaultSettings(character.id))
-        setResult(undefined)
-      }}
-      pins={{
-        onPin: build && result ? () => pins.pin(`#${selected + 1} · ${formatScore(result.target, build.score)}`, pinnedCells(analysisRows)) : undefined,
-        count: pins.pinned.length,
-        onClear: pins.clear,
-      }}
-      builds={{ onSave: build ? saveBuildNow : undefined, onLoad: buildActions.loadBuilds, count: savedList.length }}
-    />
-  )
-
-  return (
-    <OptimizerPageShell
-      description='Searches your artifacts for the 5-piece builds that score highest, with stats worked out like the Characters page. Rotation damage counts talent multipliers, the enemy, team shred and Vaporize, Melt, Aggravate or Spread; set minimums (such as Energy Recharge) for anything else the character needs.'
-      sidebar={sidebar}
-    >
-      <FormRows>
-        <FormRow id='genshin-character' title='Character' summary={`${character.name} · ${targetLabel(target)}`}>
-          <CharacterPortrait
-            name={character.name}
-            portrait={images.characters[character.id]?.portrait}
-            accent={character.element ? ELEMENT_ACCENTS[character.element] : undefined}
-            weapon={character.weapon && { image: images.weapons[character.weapon.id], name: character.weapon.name }}
-          />
-          <FormCard title='Character'>
-            <GenshinCharacterSelect
-              characters={usable}
-              images={images}
-              value={character.id}
-              onChange={(value) => {
-                setCharacterId(value)
-                setResult(undefined)
-              }}
-            />
-            <Text size='xs' c='dimmed'>
-              {`Level ${character.level} · ${character.weapon ? `${character.weapon.name}, level ${character.weapon.level}` : 'No weapon'}`}
-            </Text>
-            {/* Like HSR's light cone, Eidolon and Superimposition pickers, these change the saved character */}
-            <GenshinWeaponSelect
-              images={images}
-              weaponType={images.characterInfo[character.id.startsWith('Traveler') ? 'Traveler' : character.id]?.weaponType}
-              value={character.weapon?.id ?? null}
-              onChange={(id) => {
-                if (id === (character.weapon?.id ?? null)) return
-                const weapon = id
-                  ? {
-                    id,
-                    name: images.weaponInfo[id]?.name ?? nameFromGoodKey(id),
-                    rarity: WEAPON_RARITY[id] ?? 5,
-                    level: character.weapon?.level ?? 90,
-                    refinement: character.weapon?.refinement ?? 1,
-                  }
-                  : undefined
-                saveCharacter({ ...character, weapon })
-                setResult(undefined)
-              }}
-            />
-            <RankButtons
-              label='Constellation'
-              prefix='C'
-              from={0}
-              to={6}
-              value={character.constellation}
-              onChange={(constellation) => {
-                saveCharacter({ ...character, constellation })
-                setResult(undefined)
-              }}
-            />
-            {character.weapon && (
-              <RankButtons
-                label='Refinement'
-                prefix='R'
-                from={1}
-                to={5}
-                value={character.weapon.refinement}
-                onChange={(refinement) => {
-                  if (character.weapon) saveCharacter({ ...character, weapon: { ...character.weapon, refinement } })
-                  setResult(undefined)
-                }}
-              />
-            )}
-          </FormCard>
-          <FormCard
-            title='Rank by'
-            description='Rotation damage uses the Damage row. The average hit is the scaling stat times the crit multiplier and DMG Bonus.'
-          >
-            <Select
-              aria-label='Rank by'
-              allowDeselect={false}
-              value={byDamage ? DAMAGE_TARGET : targetValue === DAMAGE_TARGET ? TARGETS[0].value : targetValue}
-              onChange={(value) => value && setTargetValue(value)}
-              data={[
-                ...(hasTalentData(character.id) ? [{ value: DAMAGE_TARGET, label: 'Rotation damage' }] : []),
-                ...TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) })),
-              ]}
-            />
-            <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
-          </FormCard>
-          <OptimizerOptionsCard
-            gearNoun='artifacts'
-            ownerNoun='characters'
-            rosterPage='Characters'
-            excludeWorn={excludeEquippedByOthers}
-            onExcludeWorn={setExcludeEquippedByOthers}
-            priority={priorityFilter}
-            onPriority={setPriorityFilter}
-            keep={{ checked: keepCurrent, description: `Each slot only uses the artifact ${character.name} wears now`, onChange: setKeepCurrent }}
-            levels={[0, 4, 8, 12, 16, 20]}
-            minLevel={minLevel}
-            onMinLevel={setMinLevel}
-            rarity={{
-              label: 'Minimum rarity',
-              value: String(minRarity),
-              options: [{ value: '0', label: 'Any' }, { value: '4', label: '4★' }, { value: '5', label: '5★' }],
-              onChange: (value) => setMinRarity(Number(value)),
-            }}
-            boost={boostMain}
-            boostDescription='Artifacts below max level count with their max-level main stat'
-            onBoost={setBoostMain}
-          />
-        </FormRow>
-
-        <FormRow id='genshin-filters' title='Artifact & stat filters' summary={filterSummary}>
-          <FormCard
-            title='Sets'
-            description='Only 2-piece bonuses the character screen shows are counted, not 4-piece effects, so pick the set you want to run here.'
-          >
-            <SetPicker
-              label='4-piece set'
-              max={1}
-              options={setOptions.map((o) => ({ ...o, icon: images.artifacts[o.value]?.flower }))}
-              value={fourPieceSet ? [fourPieceSet] : []}
-              onChange={(ids) => {
-                setFourPieceSet(ids[0] ?? null)
-                if (ids[0]) setTwoPieceSets([])
-              }}
-            />
-            <SetPicker
-              label='2-piece sets'
-              max={2}
-              placeholder={fourPieceSet ? 'Not with a 4-piece set' : 'Any'}
-              disabled={!!fourPieceSet}
-              options={setOptions.map((o) => ({ ...o, icon: images.artifacts[o.value]?.flower }))}
-              value={twoPieceSets}
-              onChange={setTwoPieceSets}
-            />
-          </FormCard>
-          <FormCard title='Main stats'>
-            {MAIN_STAT_SLOTS.map((slot) => (
-              <MultiSelect
-                key={slot}
-                label={SLOT_LABELS[slot]}
-                placeholder={mainStats[slot]?.length ? undefined : 'Any'}
-                value={mainStats[slot] ?? []}
-                onChange={(value) => setMainStats((prev) => ({ ...prev, [slot]: value as GenshinStatKey[] }))}
-                data={MAIN_STAT_OPTIONS[slot].map((stat) => ({ value: stat, label: statLabel(stat) }))}
-              />
-            ))}
-          </FormCard>
-          <FormCard title='Stat filters' description='Builds outside any of these are left out, e.g. Energy Recharge 200 to 250.'>
-            <StatFilters
-              rows={MIN_STATS.map((stat) => ({ key: stat, label: statLabel(stat) }))}
-              min={minStats}
-              max={maxStats}
-              onMin={(next) => setMinStats(next)}
-              onMax={(next) => setMaxStats(next)}
-            />
-          </FormCard>
-        </FormRow>
-
-        <FormRow id='genshin-team' title='Teammates' summary={teamSummary(team, teamResult, characters)}>
-          <GenshinTeamCards
-            character={character}
-            characters={characters}
-            team={team}
-            result={teamResult}
-            onTeammates={(ids) => {
-              setTeammates(ids)
-              setResult(undefined)
-            }}
-            onField={(value) => {
-              setOnField(value)
-              setResult(undefined)
-            }}
-            onSetting={(key, value) => {
-              setTeamSettings((current) => ({ ...current, [key]: value }))
-              setResult(undefined)
-            }}
-          />
-          <TeammateOverrideCard
-            rankPrefix='C'
-            weaponLabel='weapon'
-            refinementPrefix='R'
-            overrides={team.overrides}
-            onChange={(next) => {
-              setTeammateOverrides(next)
-              setResult(undefined)
-            }}
-            members={teammates.flatMap((id) => {
-              const mate = characters.find((c) => c.id === id)
-              if (!mate || id === character.id) return []
-              const wornSets = Object.values(mate.artifactIds).flatMap((artifactId) => artifacts.find((a) => a.id === artifactId)?.setId ?? [])
-              const fourPiece = fourPieceSetsOf(wornSets)[0]
-              return [{
-                id,
-                name: mate.name,
-                roster: { rank: mate.constellation, weaponId: mate.weapon?.id, refinement: mate.weapon?.refinement ?? 1, fourPiece },
-                weapons: weaponOptions(images.weaponInfo, images.characterInfo[id.startsWith('Traveler') ? 'Traveler' : id]?.weaponType),
-                sets: [...new Set([...(fourPiece ? [fourPiece] : []), ...Object.keys(SET_4PC_BUFFS)])].map((setId) => ({
-                  value: setId,
-                  label: setName(setId),
-                })),
-              }]
-            })}
-          />
-        </FormRow>
-
-        <FormRow
-          id='genshin-damage'
-          title='Damage'
-          summary={`Enemy level ${enemy.level}, ${enemy.res}% RES · ${Object.values(rotation.counts).reduce((sum, count) => sum + count, 0)} hits${
-            rotation.reaction !== 'none' ? ` · ${rotation.reaction}` : ''
-          }${byDamage ? '' : ' · not ranked by damage'}`}
-        >
-          <EnemyCard
-            enemy={enemy}
-            debuffs={debuffs}
-            onChange={(next) => {
-              setEnemy(next)
-              setResult(undefined)
-            }}
-          />
-          <RotationCard
-            character={character}
-            rotation={rotation}
-            talents={talents}
-            team={reactionsInTeam}
-            damage={currentDamage}
-            onChange={(next) => {
-              setRotation(next)
-              setResult(undefined)
-            }}
-          />
-          <EffectsCard
-            name={character.name}
-            fourPieceSet={fourPieceSet ? setOptions.find((o) => o.value === fourPieceSet)?.label ?? fourPieceSet : undefined}
-            applied={resolvedCombat.applied}
-            onSetting={(id, value) => {
-              setCombatSettings((current) => ({ ...current, [id]: value }))
-              setResult(undefined)
-            }}
-          />
-          <ExtraBuffsCard
-            defs={GENSHIN_EXTRA_BUFFS}
-            buffs={extraBuffs}
-            onChange={(next) => {
-              setExtraBuffs(next)
-              setResult(undefined)
-            }}
-          />
-        </FormRow>
-      </FormRows>
-      <KitDisclaimer name={character.name} effects={KIT_EFFECTS[character.id]} byDamage={byDamage} />
-
-      <OptimizerResults
-        game='genshin'
-        gearNoun='artifacts'
-        intro={outcome ? undefined : {
-          title: `Find the best artifacts for ${character.name}`,
-          text: `Pick what to rank by and any filters, then search. The best ${
-            resultLimitOf(resultLimit)
-          } builds show up here next to ${character.name}'s current artifacts.`,
-        }}
-        emptyPool={!running && poolSizes.some((size) => size === 0) ? { causes: noResultCauses(), empty: 'slot' } : undefined}
-        failure={outcome && !outcome.ok ? outcome.reason : undefined}
-        results={outcome?.ok && result
-          ? {
-            description: `${(result.ms / 1000).toFixed(1)}s · ${formatNumber(outcome.visited)} partial and full builds checked · artifacts per slot ${
-              outcome.poolSizes.join('/')
-            }, ${outcome.prunedSizes.join('/')} after dropping ones that can't make the top ${resultLimitOf(resultLimit)}`,
-            warning: outcome.truncated
-              ? 'The search stopped at its limit, so these are the best builds it found, not necessarily the best there are. A 4-piece set or main stat filters make the search finish.'
+        : undefined,
+      equip: build ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined,
+      onStart: run,
+      pin: build && result ? { label: `#${selected + 1} · ${formatScore(result.target, build.score)}`, cells: pinnedCells(analysisRows) } : undefined,
+      onSave: build ? saveBuildNow : undefined,
+    },
+    results: {
+      intro: outcome ? undefined : {
+        title: `Find the best artifacts for ${character.name}`,
+        text: `Pick what to rank by and any filters, then search. The best ${
+          resultLimitOf(resultLimit)
+        } builds show up here next to ${character.name}'s current artifacts.`,
+      },
+      emptyPool: !running && poolSizes.some((size) => size === 0) ? { causes: noResultCauses(), empty: 'slot' } : undefined,
+      failure: outcome && !outcome.ok ? outcome.reason : undefined,
+      results: outcome?.ok && result
+        ? {
+          description: `${(result.ms / 1000).toFixed(1)}s · ${formatNumber(outcome.visited)} partial and full builds checked · artifacts per slot ${
+            outcome.poolSizes.join('/')
+          }, ${outcome.prunedSizes.join('/')} after dropping ones that can't make the top ${resultLimitOf(resultLimit)}`,
+          warning: outcome.truncated
+            ? 'The search stopped at its limit, so these are the best builds it found, not necessarily the best there are. A 4-piece set or main stat filters make the search finish.'
+            : undefined,
+          causes: noResultCauses,
+          grid: outcome.builds.length === 0 ? undefined : {
+            gridKey: `${outcome.builds.length}${result.target.kind}`,
+            columns: [
+              {
+                key: 'score',
+                label: targetLabel(result.target),
+                format: (value: number) => formatScore(result.target, value),
+                primary: true,
+                width: 110,
+              },
+              ...shown.map((stat) => ({ key: stat, label: statLabel(stat), format: (value: number) => formatStatValue(stat, value) })),
+            ],
+            rows: outcome.builds.map((b, i) => ({
+              id: String(i),
+              rank: String(i + 1),
+              values: resultValues(b.score, statView === 'basic' ? computeGenshinStats(character, b.artifacts).stats : b.stats),
+              sets: describeSets(b.artifacts),
+            })),
+            current: current
+              ? {
+                id: 'now',
+                rank: 'Now',
+                values: resultValues(current.score, statView === 'basic' ? computeGenshinStats(character, current.artifacts).stats : current.stats),
+                sets: describeSets(current.artifacts),
+              }
               : undefined,
-            causes: noResultCauses,
-            grid: outcome.builds.length === 0 ? undefined : {
-              gridKey: `${outcome.builds.length}${result.target.kind}`,
-              columns: [
-                {
-                  key: 'score',
-                  label: targetLabel(result.target),
-                  format: (value: number) => formatScore(result.target, value),
-                  primary: true,
-                  width: 110,
-                },
-                ...shown.map((stat) => ({ key: stat, label: statLabel(stat), format: (value: number) => formatStatValue(stat, value) })),
-              ],
-              rows: outcome.builds.map((b, i) => ({
-                id: String(i),
-                rank: String(i + 1),
-                values: resultValues(b.score, statView === 'basic' ? computeGenshinStats(character, b.artifacts).stats : b.stats),
-                sets: describeSets(b.artifacts),
-              })),
-              current: current
-                ? {
-                  id: 'now',
-                  rank: 'Now',
-                  values: resultValues(current.score, statView === 'basic' ? computeGenshinStats(character, current.artifacts).stats : current.stats),
-                  sets: describeSets(current.artifacts),
-                }
-                : undefined,
-              selected,
-              onSelect: setSelected,
-            },
-          }
-          : undefined}
-        pins={pins}
-        preview={
-          <>
-            {build && result && (
-              <BuildPreview
-                title={`Build #${selected + 1}`}
-                description={`${describeSets(build.artifacts)}${
-                  current ? ` · ${build.score >= current.score ? '+' : ''}${(((build.score / current.score) - 1) * 100).toFixed(1)}% vs current` : ''
-                }`}
-                name={character.name}
-                accent={character.element ? ELEMENT_ACCENTS[character.element] : undefined}
-                portrait={images.characters[character.id]?.portrait}
-                weapon={character.weapon && {
-                  image: images.weapons[character.weapon.id],
-                  name: character.weapon.name,
-                  meta: `${character.weapon.rarity}★ · Lv ${character.weapon.level} · R${character.weapon.refinement}`,
-                }}
-                heading={
-                  <Group gap={6} mt={4}>
-                    {character.element && <Badge size='sm' variant='light' color={elementColor(character.element)}>{character.element}</Badge>}
-                    <Text size='xs' c='dimmed'>
-                      {`Lv ${character.level} · C${character.constellation}${teammates.some(Boolean) ? ' · with team buffs' : ''}`}
-                    </Text>
-                  </Group>
-                }
-                rows={genshinStatRows(character, build.stats)}
-                rating={pickedDpsScore ?? genshinBuildScore(character, build.artifacts)}
-                ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Artifact score'}
-                gear={build.artifacts.map((artifact) => (
-                  <ArtifactCard
-                    key={artifact.id}
-                    artifact={artifact}
-                    icon={images.artifacts[artifact.setId]?.[artifact.slot]}
-                    owner={artifact.equippedBy ? (ownerNames.get(artifact.equippedBy) ?? artifact.equippedBy) : undefined}
-                    score={scoreArtifact(artifact, genshinArtifactWeights(character))}
-                  />
-                ))}
-              />
-            )}
-
-            {build && result && (
-              <BuildAnalysis
-                buildLabel={`Build #${selected + 1}`}
-                rows={analysisRows}
-                upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs, result.target.kind === 'damage' ? combat : undefined)}
-                breakdown={result.target.kind === 'damage' ? genshinBreakdown(result.target.setup, build.stats) : undefined}
-                scoreLabel={targetLabel(result.target)}
-                formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
-              />
-            )}
-          </>
+            selected,
+            onSelect: setSelected,
+          },
         }
-      />
-      <RememberDamageScore game='genshin' characterId={character.id} pieceIds={worn.map((a) => a.id)} score={currentDpsScore} />
-    </OptimizerPageShell>
-  )
+        : undefined,
+      preview: (
+        <>
+          {build && result && (
+            <BuildPreview
+              title={`Build #${selected + 1}`}
+              description={`${describeSets(build.artifacts)}${
+                current ? ` · ${build.score >= current.score ? '+' : ''}${(((build.score / current.score) - 1) * 100).toFixed(1)}% vs current` : ''
+              }`}
+              name={character.name}
+              accent={character.element ? ELEMENT_ACCENTS[character.element] : undefined}
+              portrait={images.characters[character.id]?.portrait}
+              weapon={character.weapon && {
+                image: images.weapons[character.weapon.id],
+                name: character.weapon.name,
+                meta: `${character.weapon.rarity}★ · Lv ${character.weapon.level} · R${character.weapon.refinement}`,
+              }}
+              heading={
+                <Group gap={6} mt={4}>
+                  {character.element && <Badge size='sm' variant='light' color={elementColor(character.element)}>{character.element}</Badge>}
+                  <Text size='xs' c='dimmed'>
+                    {`Lv ${character.level} · C${character.constellation}${teammates.some(Boolean) ? ' · with team buffs' : ''}`}
+                  </Text>
+                </Group>
+              }
+              rows={genshinStatRows(character, build.stats)}
+              rating={pickedDpsScore ?? genshinBuildScore(character, build.artifacts)}
+              ratingLabel={pickedDpsScore ? DPS_SCORE_LABEL : 'Artifact score'}
+              gear={build.artifacts.map((artifact) => (
+                <ArtifactCard
+                  key={artifact.id}
+                  artifact={artifact}
+                  icon={images.artifacts[artifact.setId]?.[artifact.slot]}
+                  owner={artifact.equippedBy ? (ownerNames.get(artifact.equippedBy) ?? artifact.equippedBy) : undefined}
+                  score={scoreArtifact(artifact, genshinArtifactWeights(character))}
+                />
+              ))}
+            />
+          )}
+
+          {build && result && (
+            <BuildAnalysis
+              buildLabel={`Build #${selected + 1}`}
+              rows={analysisRows}
+              upgrades={genshinSubstatUpgrades(character, build.artifacts, result.target, teamBuffs, result.target.kind === 'damage' ? combat : undefined)}
+              breakdown={result.target.kind === 'damage' ? genshinBreakdown(result.target.setup, build.stats) : undefined}
+              scoreLabel={targetLabel(result.target)}
+              formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
+            />
+          )}
+        </>
+      ),
+    },
+    footer: (
+      <>
+        <RememberDamageScore game='genshin' characterId={character.id} pieceIds={worn.map((a) => a.id)} score={currentDpsScore} />
+      </>
+    ),
+  }
 }
 
 // An artifact below max level with its max-level main stat (+20 for 5-star, +16 for 4-star), for Boost main stat
