@@ -955,7 +955,7 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
     confidence: 'confirmed',
   }, {
     id: 'mizuki-c2-dmg',
-    label: 'C2: in her Dreamdrifter state, Pyro, Hydro, Cryo and Electro DMG +0.04% per point of her Elemental Mastery for the other members (KQM)',
+    label: 'C2: in her Dreamdrifter state, Pyro, Hydro, Cryo and Electro DMG +0.04% per point of her Elemental Mastery for the other members',
     target: 'others',
     stage: 'premod',
     stat: (
@@ -967,7 +967,7 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
       needsConstellation(2)(c)
         ?? (['Pyro', 'Hydro', 'Cryo', 'Electro'].includes(c.receiver.element ?? '') ? undefined : 'Only for Pyro, Hydro, Cryo and Electro members'),
     toggle: { kind: 'switch', label: 'Mizuki in Dreamdrifter' },
-    confidence: 'sourced',
+    confidence: 'confirmed',
   }],
   Xilonen: [{
     id: 'xilonen-skill-shred',

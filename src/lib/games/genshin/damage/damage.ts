@@ -338,18 +338,21 @@ type ExtraHit = {
 }
 const flatAllLevels = (value: number) => Array.from({ length: 15 }, () => value)
 const EXTRA_HITS: Record<string, ExtraHit[]> = {
-  // Mizuki (KQM Mizuki quick guide, 7.0; sourced): Witch's Revelation, when she Swirls in Dreamdrifter her next
-  // periodic Anemo hit deals 1,000% of her EM more, once every 2.5s (about 4 per Skill); in Radiance: Stellar Swirl
-  // that hit is a direct Stellar Swirl instance instead. C1: up to 3 extra attacks per Skill of 1,000% EM, or 400% EM
-  // as Stellar Swirl in Radiance
+  // Mizuki, from the in-game text (the user's screenshots, Nov 7 2026; confirmed). Vast Be the Dream (her Additional
+  // Talent, Lucid Revelation): when she Swirls or Stellar Swirls in Dreamdrifter, her next periodic AoE Anemo hit deals
+  // 1,000% of her EM more, once every 2.5s (about 4 per Skill: Dreamdrifter lasts up to 10s with her A1's 2 x 2.5s); in
+  // Radiance: Stellar Swirl she also deals an extra 1,000% EM Anemo hit counted as Stellar Swirl reaction DMG. The
+  // lines keep their first names ("Witch's Revelation") so saved rotations stay valid. C1 (in-game text, the user's screenshot; confirmed): with each
+  // Twenty-Three Nights' Awaiting proc (once per 3.5s, about 3 per Skill) an extra attack of 1,000% EM Anemo DMG, or in
+  // Radiance: Stellar Swirl 400% EM counted as Stellar Swirl reaction DMG
   YumemizukiMizuki: [
     {
       label: 'Witch\'s Revelation: boosted Dreamdrifter hit',
       talent: 'skill',
       category: 'skill',
       terms: [['elementalMastery', flatAllLevels(1000)]],
+      // In every team: the extra Stellar Swirl hit comes on top of it
       defaultCount: 4,
-      stellar: 'without',
     },
     {
       label: 'Witch\'s Revelation: direct Stellar Swirl (Radiance)',

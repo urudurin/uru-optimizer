@@ -71,7 +71,9 @@ describe('Mizuki (KQM quick guide)', () => {
     const stellar = defaultRotation('YumemizukiMizuki', [], ['stellarswirl'], 2).counts
     expect(stellar[keyOf('Witch\'s Revelation: direct Stellar Swirl (Radiance)')]).toBe(4)
     expect(stellar[keyOf('C1: extra attack, direct Stellar Swirl (Radiance)')]).toBe(3)
-    expect(stellar[keyOf('Witch\'s Revelation: boosted Dreamdrifter hit')]).toBeUndefined()
+    // Vast Be the Dream: in Radiance the extra Stellar Swirl hit comes on top of the boosted hit
+    expect(stellar[keyOf('Witch\'s Revelation: boosted Dreamdrifter hit')]).toBe(4)
+    expect(stellar[keyOf('C1: extra attack')]).toBeUndefined()
     // No C1 lines before C1
     expect(defaultRotation('YumemizukiMizuki', [], [], 0).counts[keyOf('C1: extra attack')]).toBeUndefined()
   })
@@ -101,5 +103,16 @@ describe('Mizuki (KQM quick guide)', () => {
     // Same EM either way (C1 and C2 don't change stats); the gap is 3 x 1,100% EM through Swirl's multiplier, RES 10%
     expect(withoutC1.stats.elementalMastery).toBeCloseTo(em, 6)
     expect(withC1.damage - withoutC1.damage).toBeCloseTo(3 * 11 * em * 0.9 * (1 + (16 * em) / (em + 2000) + 0.0042 * em), 0)
+  })
+})
+
+describe('Mizuki C1 on Stellar Swirl (in-game text)', () => {
+  it('adds 550% EM, not 1,100%, to at most 3 Stellar Swirl Anemo hits', () => {
+    const withC1 = lineDamage(1, { 'reaction:stellarswirl': 4 }, ['stellarswirl'])
+    const withoutC1 = lineDamage(0, { 'reaction:stellarswirl': 4 }, ['stellarswirl'])
+    const em = withC1.stats.elementalMastery!
+    const crit = 1 + (withC1.stats.critRate! / 100) * (withC1.stats.critDmg! / 100)
+    // Stellar Swirl's multiplier: the Stellar EM bracket, Dreamdrifter's 0.042% per EM, CRIT; Anemo RES 10%
+    expect(withC1.damage - withoutC1.damage).toBeCloseTo(3 * 5.5 * em * 0.9 * (1 + (6 * em) / (em + 2000) + 0.00042 * em) * crit, 0)
   })
 })

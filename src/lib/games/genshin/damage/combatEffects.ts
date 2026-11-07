@@ -967,15 +967,17 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
     confidence: 'confirmed',
   }, {
     id: 'mizuki-c1',
-    label: 'C1: Swirl and Stellar Swirl (Anemo hit) DMG + 1,100% of her Elemental Mastery, up to 3 times per Dreamdrifter (KQM)',
-    reactionFlats: ({ character }) => (character.constellation >= 1 ? { swirl: { perEm: 1100, hits: 3 }, stellarswirl: { perEm: 1100, hits: 3 } } : {}),
-    confidence: 'sourced',
+    // In-game text (the user's screenshot): in Dreamdrifter, Twenty-Three Nights' Awaiting for 3s every 3.5s; a Swirl or
+    // Stellar Swirl by Anemo DMG on it uses it up and deals 1,100% / 550% of her EM more (about 3 per Dreamdrifter)
+    label: 'C1: Twenty-Three Nights\' Awaiting, a Swirl DMG + 1,100% (Stellar Swirl + 550%) of her Elemental Mastery, once per 3.5s (3 per Dreamdrifter)',
+    reactionFlats: ({ character }) => (character.constellation >= 1 ? { swirl: { perEm: 1100, hits: 3 }, stellarswirl: { perEm: 550, hits: 3 } } : {}),
+    confidence: 'confirmed',
   }, {
     id: 'mizuki-c2-shred',
-    label: 'C2: in Dreamdrifter, the enemy\'s Pyro, Hydro, Cryo, Electro and Anemo RES -20% (KQM)',
+    label: 'C2: in Dreamdrifter, the enemy\'s Pyro, Hydro, Cryo, Electro and Anemo RES -20%',
     toggle: { kind: 'switch', label: 'Dreamdrifter' },
     debuffs: ({ character }) => (character.constellation >= 2 ? { resShred: { Pyro: 20, Hydro: 20, Cryo: 20, Electro: 20, Anemo: 20 } } : {}),
-    confidence: 'sourced',
+    confidence: 'confirmed',
   }],
   Durin: [
     {
