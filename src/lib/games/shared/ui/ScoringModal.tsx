@@ -1,47 +1,50 @@
 import {
   Button,
   Group,
+  Modal,
   NumberInput,
   SimpleGrid,
   Stack,
   Text,
 } from '@mantine/core'
-import { modals } from '@mantine/modals'
 import type { GearOption } from 'lib/games/shared/gear/gearKind'
 import { saveWeightOverrides } from 'lib/games/shared/scoreWeights'
+import {
+  type ScoringModalConfig,
+  useScoringModalStore,
+} from 'lib/games/shared/ui/gameModalStores'
 import { Message } from 'lib/interactions/message'
 import { useState } from 'react'
 
 // Scoring weights for one character, after HSR's Scoring algorithm modal (lib/overlays/modals/ScoringModal.tsx): one
 // weight per substat from 0 (useless) to 1 (best), used for every gear score of that character. Reset goes back to the
 // game's own table.
-export function openScoringModal({ game, characterId, name, stats, current, defaults }: {
-  game: string,
-  characterId: string,
-  name: string,
-  // The substats, in the game's order
-  stats: GearOption[],
-  current: Record<string, number>,
-  defaults: Record<string, number>,
-}) {
-  const id = modals.open({
-    title: `Scoring weights · ${name}`,
-    centered: true,
-    size: 'lg',
-    children: (
-      <ScoringForm
-        stats={stats}
-        current={current}
-        defaults={defaults}
-        onSave={(weights) => {
-          saveWeightOverrides(game, characterId, weights)
-          modals.close(id)
-          Message.success(weights ? `Saved ${name}'s scoring weights` : `${name} is back on the default weights`)
-        }}
-        onCancel={() => modals.close(id)}
-      />
-    ),
-  })
+export function openScoringModal(config: ScoringModalConfig) {
+  useScoringModalStore.getState().openOverlay(config)
+}
+
+// Mounted once by GameModals
+export function ScoringModal() {
+  const open = useScoringModalStore((s) => s.open)
+  const config = useScoringModalStore((s) => s.config)
+  const close = useScoringModalStore((s) => s.closeOverlay)
+  return (
+    <Modal opened={open} onClose={close} title={config ? `Scoring weights · ${config.name}` : ''} centered size='lg'>
+      {open && config && (
+        <ScoringForm
+          stats={config.stats}
+          current={config.current}
+          defaults={config.defaults}
+          onSave={(weights) => {
+            saveWeightOverrides(config.game, config.characterId, weights)
+            close()
+            Message.success(weights ? `Saved ${config.name}'s scoring weights` : `${config.name} is back on the default weights`)
+          }}
+          onCancel={close}
+        />
+      )}
+    </Modal>
+  )
 }
 
 function ScoringForm({ stats, current, defaults, onSave, onCancel }: {

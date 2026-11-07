@@ -2,6 +2,7 @@ import {
   Drawer,
   Flex,
   Select,
+  type SelectProps,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import {
@@ -19,12 +20,27 @@ import {
   mergeDefinedValues,
 } from 'lib/utils/objectUtils'
 import {
+  type ReactNode,
   useEffect,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type UserSettings } from 'types/store'
 
 const SelectOptionWordWrap = (props: React.ComponentPropsWithoutRef<'span'>) => <span style={{ whiteSpace: 'wrap', wordBreak: 'break-word' }} {...props} />
+
+// One setting: its label and a select with word-wrapped options (also used by the games' Settings drawer)
+export function SettingRow({ label, ...selectProps }: { label: ReactNode } & SelectProps) {
+  return (
+    <Flex justify='space-between' align='center'>
+      <div>{label}</div>
+      <Select
+        style={{ width: 500 }}
+        renderOption={({ option }) => <SelectOptionWordWrap>{option.label}</SelectOptionWordWrap>}
+        {...selectProps}
+      />
+    </Flex>
+  )
+}
 
 export function SettingsDrawer() {
   const { close: closeSettingsDrawer, isOpen: isOpenSettingsDrawer } = useOpenClose(OpenCloseIDs.SETTINGS_DRAWER)
@@ -73,15 +89,12 @@ function SettingsDrawerContent() {
     <Flex direction='column' gap={10}>
       {(Object.keys(SettingOptions) as (keyof typeof SettingOptions)[])
         .map((option) => (
-          <Flex justify='space-between' align='center' key={option}>
-            <div>{t(`${option}.Label`)}</div>
-            <Select
-              style={{ width: 500 }}
-              data={optionsMap[option]}
-              renderOption={({ option }) => <SelectOptionWordWrap>{option.label}</SelectOptionWordWrap>}
-              {...settingsForm.getInputProps(option)}
-            />
-          </Flex>
+          <SettingRow
+            key={option}
+            label={t(`${option}.Label`)}
+            data={optionsMap[option]}
+            {...settingsForm.getInputProps(option)}
+          />
         ))}
     </Flex>
   )

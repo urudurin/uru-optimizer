@@ -1,11 +1,11 @@
 import {
   Button,
   Group,
+  Modal,
   Stack,
   Text,
   TextInput,
 } from '@mantine/core'
-import { modals } from '@mantine/modals'
 import { todayString } from 'lib/games/shared/importedPresets'
 import {
   deleteSavedBuild,
@@ -14,6 +14,12 @@ import {
   savedBuilds,
 } from 'lib/games/shared/savedBuilds'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
+import {
+  type SaveBuildModalConfig,
+  type SavedBuildsModalConfig,
+  useSaveBuildModalStore,
+  useSavedBuildsModalStore,
+} from 'lib/games/shared/ui/gameModalStores'
 import { Message } from 'lib/interactions/message'
 import {
   useMemo,
@@ -22,23 +28,31 @@ import {
 } from 'react'
 
 // The dialogs behind the sidebar's Builds group, after HSR's SaveBuildModal (name the picked build) and BuildsModal
-// (the character's saved builds, to equip or delete). Opened imperatively through Mantine modals, like HSR's.
+// (the character's saved builds, to equip or delete). Each has an overlay store (gameModalStores.ts) and is mounted once
+// by GameModals, like HSR's.
 
-export function openSaveBuildModal({ defaultName, onSave }: { defaultName: string, onSave: (name: string) => void }) {
-  const id = modals.open({
-    title: 'Save build',
-    centered: true,
-    children: (
-      <SaveBuildForm
-        defaultName={defaultName}
-        onSave={(name) => {
-          onSave(name)
-          modals.close(id)
-        }}
-        onCancel={() => modals.close(id)}
-      />
-    ),
-  })
+export function openSaveBuildModal(config: SaveBuildModalConfig) {
+  useSaveBuildModalStore.getState().openOverlay(config)
+}
+
+export function SaveBuildModal() {
+  const open = useSaveBuildModalStore((s) => s.open)
+  const config = useSaveBuildModalStore((s) => s.config)
+  const close = useSaveBuildModalStore((s) => s.closeOverlay)
+  return (
+    <Modal opened={open} onClose={close} title='Save build' centered>
+      {open && config && (
+        <SaveBuildForm
+          defaultName={config.defaultName}
+          onSave={(name) => {
+            config.onSave(name)
+            close()
+          }}
+          onCancel={close}
+        />
+      )}
+    </Modal>
+  )
 }
 
 function SaveBuildForm({ defaultName, onSave, onCancel }: { defaultName: string, onSave: (name: string) => void, onCancel: () => void }) {
@@ -64,32 +78,29 @@ function SaveBuildForm({ defaultName, onSave, onCancel }: { defaultName: string,
   )
 }
 
-export function openSavedBuildsModal({ name, builds, describe, onEquip, onDelete }: {
-  // Whose builds, for the title
-  name: string,
-  builds: SavedBuild[],
-  // A line about a build: its sets, and pieces no longer in the save
-  describe: (build: SavedBuild) => string,
-  onEquip: (build: SavedBuild) => void,
-  // Deletes it and returns the builds left
-  onDelete: (build: SavedBuild) => SavedBuild[],
-}) {
-  const id = modals.open({
-    title: `${name}'s saved builds`,
-    centered: true,
-    size: 'lg',
-    children: (
-      <SavedBuildsList
-        initial={builds}
-        describe={describe}
-        onEquip={(build) => {
-          modals.close(id)
-          onEquip(build)
-        }}
-        onDelete={onDelete}
-      />
-    ),
-  })
+export function openSavedBuildsModal(config: SavedBuildsModalConfig) {
+  useSavedBuildsModalStore.getState().openOverlay(config)
+}
+
+export function SavedBuildsModal() {
+  const open = useSavedBuildsModalStore((s) => s.open)
+  const config = useSavedBuildsModalStore((s) => s.config)
+  const close = useSavedBuildsModalStore((s) => s.closeOverlay)
+  return (
+    <Modal opened={open} onClose={close} title={config ? `${config.name}'s saved builds` : ''} centered size='lg'>
+      {open && config && (
+        <SavedBuildsList
+          initial={config.builds}
+          describe={config.describe}
+          onEquip={(build) => {
+            close()
+            config.onEquip(build)
+          }}
+          onDelete={config.onDelete}
+        />
+      )}
+    </Modal>
+  )
 }
 
 function SavedBuildsList({ initial, describe, onEquip, onDelete }: {

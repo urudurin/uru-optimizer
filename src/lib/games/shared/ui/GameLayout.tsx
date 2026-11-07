@@ -23,6 +23,7 @@ import {
   writeStorage,
 } from 'lib/games/shared/storage'
 import classes from 'lib/games/shared/ui/GameLayout.module.css'
+import { GameModals } from 'lib/games/shared/ui/GameModals'
 import { GameSettingsDrawer } from 'lib/games/shared/ui/GameSettingsDrawer'
 import {
   type ReactNode,
@@ -128,6 +129,7 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
         )}
       </nav>
 
+      <GameModals />
       {settings && <GameSettingsDrawer game={settings.game} gearNoun={settings.gearNoun} opened={settingsOpen} onClose={() => setSettingsOpen(false)} />}
 
       <main className={classes.main}>

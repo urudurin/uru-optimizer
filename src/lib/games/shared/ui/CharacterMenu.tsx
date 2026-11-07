@@ -2,10 +2,10 @@ import {
   Button,
   Group,
   Menu,
+  Modal,
   Select,
   Stack,
 } from '@mantine/core'
-import { modals } from '@mantine/modals'
 import {
   IconArrowBarToUp,
   IconArrowsExchange,
@@ -21,6 +21,10 @@ import {
 } from '@tabler/icons-react'
 import type { GearOption } from 'lib/games/shared/gear/gearKind'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
+import {
+  type SwitchGearModalConfig,
+  useSwitchGearModalStore,
+} from 'lib/games/shared/ui/gameModalStores'
 import { CharacterMenuSlot } from 'lib/games/shared/ui/Showcase'
 import { Message } from 'lib/interactions/message'
 import { useState } from 'react'
@@ -149,23 +153,31 @@ export function CharacterMenu(
   )
 }
 
-function openSwitchModal({ name, gearNoun, others, onSwitch }: { name: string, gearNoun: string, others: GearOption[], onSwitch: (otherId: string) => void }) {
-  const id = modals.open({
-    title: `Switch ${gearNoun} with`,
-    centered: true,
-    children: (
-      <SwitchForm
-        name={name}
-        others={others}
-        onSwitch={(otherId) => {
-          modals.close(id)
-          onSwitch(otherId)
-          Message.success(`Switched ${gearNoun} with ${others.find((o) => o.value === otherId)?.label ?? otherId}`)
-        }}
-        onCancel={() => modals.close(id)}
-      />
-    ),
-  })
+function openSwitchModal(config: SwitchGearModalConfig) {
+  useSwitchGearModalStore.getState().openOverlay(config)
+}
+
+// Mounted once by GameModals
+export function SwitchGearModal() {
+  const open = useSwitchGearModalStore((s) => s.open)
+  const config = useSwitchGearModalStore((s) => s.config)
+  const close = useSwitchGearModalStore((s) => s.closeOverlay)
+  return (
+    <Modal opened={open} onClose={close} title={config ? `Switch ${config.gearNoun} with` : ''} centered>
+      {open && config && (
+        <SwitchForm
+          name={config.name}
+          others={config.others}
+          onSwitch={(otherId) => {
+            close()
+            config.onSwitch(otherId)
+            Message.success(`Switched ${config.gearNoun} with ${config.others.find((o) => o.value === otherId)?.label ?? otherId}`)
+          }}
+          onCancel={close}
+        />
+      )}
+    </Modal>
+  )
 }
 
 function SwitchForm({ name, others, onSwitch, onCancel }: { name: string, others: GearOption[], onSwitch: (otherId: string) => void, onCancel: () => void }) {
