@@ -102,6 +102,15 @@ describe('Genshin damage', () => {
     expect(Object.keys(defaultRotation('Furina').counts).some((key) => key.startsWith('reaction:'))).toBe(false)
   })
 
+  it('makes Mizuki\'s default Swirls Stellar Swirls when the team can trigger them', () => {
+    const counts = defaultRotation('YumemizukiMizuki', ['Hydro'], ['stellarswirl', 'stellarconduct']).counts
+    expect(counts['reaction:stellarswirl']).toBe(4)
+    expect(counts['reaction:stellarvortex1']).toBe(4)
+    expect(Object.keys(counts).some((key) => key.startsWith('reaction:swirl'))).toBe(false)
+    // Lunar kinds don't change it
+    expect(defaultRotation('YumemizukiMizuki', ['Hydro'], ['lunarcharged']).counts['reaction:swirl:Hydro']).toBe(4)
+  })
+
   it('multiplies every factor like genshin-optimizer\'s formula', () => {
     const crit = 1 + 0.6 * 1.5
     const def = 190 / (190 + 200)

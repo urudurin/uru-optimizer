@@ -340,12 +340,23 @@ const DEFAULT_REACTIONS: Record<string, { reaction: TransformativeReaction, coun
   YumemizukiMizuki: [{ reaction: 'swirl', count: 4 }],
 }
 
+// With a Stellar Swirl enabler in the team (teamKinds has 'stellarswirl'), a default Swirl becomes Stellar Swirl: its
+// Anemo hit and a level 1 Vortex explosion per trigger (level 2 is set by hand on the Rotation card)
+function withStellar(reactions: { reaction: TransformativeReaction, count: number }[], teamKinds: SpecialKind[]) {
+  if (!teamKinds.includes('stellarswirl')) return reactions
+  return reactions.flatMap((entry) =>
+    entry.reaction === 'swirl'
+      ? [{ reaction: 'stellarswirl' as const, count: entry.count }, { reaction: 'stellarvortex1' as const, count: entry.count }]
+      : [entry]
+  )
+}
+
 // Every Elemental Skill and Burst hit once, plus the character's default reactions. Swirl takes the first teammate
-// element it can swirl (teamElements), Pyro otherwise.
-export function defaultRotation(characterId: string, teamElements: Element[] = []): Rotation {
+// element it can swirl (teamElements), Pyro otherwise; Stellar Swirl instead when the team can trigger it (teamKinds).
+export function defaultRotation(characterId: string, teamElements: Element[] = [], teamKinds: SpecialKind[] = []): Rotation {
   const counts: Record<string, number> = {}
   for (const hit of characterHits(characterId)) if (hit.talent !== 'auto') counts[hit.key] = 1
-  for (const { reaction, count } of DEFAULT_REACTIONS[characterId] ?? []) {
+  for (const { reaction, count } of withStellar(DEFAULT_REACTIONS[characterId] ?? [], teamKinds)) {
     const { variants } = TRANSFORMATIVE[reaction]
     const variant = (teamElements as DamageElement[]).find((element) => variants.includes(element)) ?? variants[0]
     counts[variants.length > 1 ? `reaction:${reaction}:${variant}` : `reaction:${reaction}`] = count
