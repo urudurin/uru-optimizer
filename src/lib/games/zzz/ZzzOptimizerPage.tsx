@@ -29,6 +29,10 @@ import {
   migrateOptimizerSettings,
 } from 'lib/games/shared/optimizerSettings'
 import {
+  rollsFromTotals,
+  type StatSimulation,
+} from 'lib/games/shared/statSimulation'
+import {
   fourPieceSetsOf,
   keepOverridesFor,
   type TeammateOverrides,
@@ -73,6 +77,7 @@ import {
   limitsSummary,
   StatFilters,
 } from 'lib/games/shared/ui/optimizer/StatFilters'
+import { StatSimulationCard } from 'lib/games/shared/ui/optimizer/StatSimulationCard'
 import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
 import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
 import {
@@ -129,7 +134,13 @@ import {
 import { zzzSampleData } from 'lib/games/zzz/data/sampleData'
 import { SETS } from 'lib/games/zzz/data/sets'
 import { W_ENGINES } from 'lib/games/zzz/data/wEngines'
+import { SUBSTAT_STATS } from 'lib/games/zzz/discStats'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
+import {
+  ZZZ_SIM_ROLLS,
+  zzzSimulatedStats,
+  zzzSubstatTotals,
+} from 'lib/games/zzz/optimizer/analysis'
 import {
   zzzDamageScore,
   zzzSubstatUpgrades,
@@ -244,6 +255,8 @@ type ZzzOptimizerSettings = {
   rotation: Rotation,
   // Toggles of the agent's own kit effects (damage/combatEffects.ts)
   combatSettings: Record<string, boolean | number>,
+  // Stat simulation (shared/statSimulation.ts)
+  simulations: StatSimulation[],
 }
 
 // The user's own W-Engine for this agent when it's supported, otherwise none
@@ -343,6 +356,7 @@ function defaultSettings(id: string, data: ZzzOptimizerData): ZzzOptimizerSettin
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(id),
     combatSettings: {},
+    simulations: [],
   }
 }
 
@@ -410,6 +424,7 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
     extraBuffs,
     enemy,
     rotation,
+    simulations,
     combatSettings,
   } = settings
   const setLoadout = fieldSetter(updateSettings, 'loadout')
@@ -440,6 +455,7 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
+  const setSimulations = fieldSetter(updateSettings, 'simulations')
   // What the squad gives this agent, the same for every build
   const team = { teammates, settings: teamSettings, overrides: keepOverridesFor(teammateOverrides, teammates) }
   const teamResult = zzzTeamBuffsFor(agent.id, team, { builds, discs }, fourPieceSet ?? undefined)
@@ -708,6 +724,29 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
     const losing = zzzPiecesTaken({ discs, builds }, agent.id, best.discs).map((id) => ownerNames.get(id) ?? AGENTS[id]?.name ?? `Agent ${id}`)
     await buildActions.equipResult(selected, best.discs, losing)
   }
+
+  // Stat simulation (shared/statSimulation.ts): each simulated build's stats and score, worked out like the results
+  const simulated = computeInput
+    ? simulations.flatMap((simulation) => {
+      const pieces = simulation.pieceIds.flatMap((id) => discs.find((d) => d.id === id) ?? [])
+      if (pieces.length < 6 || pieces.length !== simulation.pieceIds.length) return []
+      const stats = zzzSimulatedStats({ ...computeInput, discs: pieces }, simulation.rolls)
+      const display = toDisplayStats(stats)
+      const damage = byDamage ? rotationDamage(stats, damageSetup) : undefined
+      const scoreText = byDamage ? formatNumber(Math.round(damage ?? 0)) : formatStat(rankRow, display[sortBy as keyof FinalStats])
+      const mains = pieces.slice(3).map((d) => d.main.stat).join(' / ')
+      return [{ simulation, pieces, display, damage, scoreText, describe: `${describeSets(pieces)} · ${mains}` }]
+    })
+    : []
+  const simulatedOf = (simulation: StatSimulation) => simulated.find((s) => s.simulation.id === simulation.id)
+  const simSubstats = SUBSTAT_STATS.map((stat) => ({ key: stat, label: stat }))
+  const pickedForSimulation = best
+    ? {
+      label: `build #${selected + 1}`,
+      pieceIds: best.discs.map((d) => d.id),
+      rolls: rollsFromTotals(ZZZ_SIM_ROLLS, zzzSubstatTotals(best.discs)),
+    }
+    : undefined
 
   // The picked build's analysis rows, for Build analysis and Pin build
   const analysisRows: StatDiffRow[] = best
@@ -1007,6 +1046,20 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
             />
             <ExtraBuffsCard defs={ZZZ_EXTRA_BUFFS} buffs={extraBuffs} onChange={setExtraBuffs} />
           </FormRow>
+          <FormRow
+            id='zzz-simulation'
+            title='Stat simulation'
+            summary={simulations.length > 0 ? `${simulations.length} simulated build${simulations.length === 1 ? '' : 's'}` : 'No simulated builds'}
+          >
+            <StatSimulationCard
+              simulations={simulations}
+              onChange={setSimulations}
+              substats={simSubstats}
+              picked={pickedForSimulation}
+              describe={(simulation) => simulatedOf(simulation)?.describe}
+              scoreOf={(simulation) => simulatedOf(simulation)?.scoreText}
+            />
+          </FormRow>
         </FormRows>
         <KitDisclaimer name={agent.name} effects={KIT_EFFECTS[agent.id]} byDamage={byDamage} />
       </>
@@ -1072,6 +1125,15 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
                 sets: describeSets(currentDiscs),
               }
               : undefined,
+            simulated: simulated.map((s) => ({
+              id: s.simulation.id,
+              rank: 'Sim',
+              values: {
+                ...Object.fromEntries(resultColumns.map((row) => [row.key, s.display[row.key]])),
+                damage: s.damage ?? 0,
+              },
+              sets: `${s.simulation.name} · ${describeSets(s.pieces)}`,
+            })),
             selected,
             onSelect: setSelected,
           },

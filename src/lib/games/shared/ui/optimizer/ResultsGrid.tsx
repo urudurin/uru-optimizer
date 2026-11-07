@@ -49,11 +49,13 @@ export type ResultsGridProps = {
   columns: ResultColumn[],
   rows: ResultRow[],
   current?: ResultRow,
+  // Stat simulations (shared/statSimulation.ts), pinned under the current build
+  simulated?: ResultRow[],
   selected: number,
   onSelect: (index: number) => void,
 }
 
-export function ResultsGrid({ columns, rows, current, selected, onSelect }: ResultsGridProps) {
+export function ResultsGrid({ columns, rows, current, simulated, selected, onSelect }: ResultsGridProps) {
   const gridRef = useRef<AgGridReact<ResultRow>>(null)
   const { getLocaleText } = useGridLocale('optimizerTab', 'Grid')
   const navigateToNextCell = useCallback(
@@ -96,7 +98,7 @@ export function ResultsGrid({ columns, rows, current, selected, onSelect }: Resu
       <AgGridReact<ResultRow>
         ref={gridRef}
         rowData={rows}
-        pinnedTopRowData={current ? [current] : undefined}
+        pinnedTopRowData={current || simulated?.length ? [...(current ? [current] : []), ...(simulated ?? [])] : undefined}
         columnDefs={columnDefs}
         defaultColDef={{ ...(optimizerGridDefaultColDef as unknown as ColDef<ResultRow>), suppressHeaderMenuButton: true, autoHeaderHeight: true }}
         getRowId={(p) => p.data.id}

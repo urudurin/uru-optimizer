@@ -8,6 +8,11 @@ import {
   type DamageScoreParams,
 } from 'lib/games/shared/damageScore'
 import {
+  simulationExtra,
+  type SimulationRolls,
+  substatTotals,
+} from 'lib/games/shared/statSimulation'
+import {
   avgRollPct,
   maxRoll,
   SUBSTAT_KEYS,
@@ -68,4 +73,15 @@ export function wuwaDamageScore(character: CharacterState, echoes: Echo[], targe
     mains: echoes.map((echo) => echo.mainStat),
     score: scorer(character, echoes, target, teamBonus),
   }, WUWA_SCORE_PARAMS)
+}
+
+// Stat simulation (shared/statSimulation.ts): one average roll (the tiers' mean) of each echo substat
+export const WUWA_SIM_ROLLS: SimulationRolls = { stats: SUBSTAT_KEYS, roll: (stat) => maxRoll(stat as SubstatKey) * avgRollPct(stat as SubstatKey) }
+
+// The stats of these echoes' sets and main stats with these substat rolls instead of their own
+export function wuwaSimulatedStats(character: CharacterState, echoes: Echo[], rolls: Record<string, number>, teamBonus: Bonus = {}) {
+  const extra = simulationExtra(WUWA_SIM_ROLLS, substatTotals(echoes.flatMap((e) => e.substats)), rolls)
+  const total: Bonus = { ...teamBonus }
+  for (const [stat, value] of Object.entries(extra) as [keyof Bonus, number][]) total[stat] = (total[stat] ?? 0) + value
+  return computeWuwaStats(character, echoes, total).stats
 }

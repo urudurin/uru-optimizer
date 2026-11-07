@@ -23,6 +23,11 @@ import {
   migrateOptimizerSettings,
 } from 'lib/games/shared/optimizerSettings'
 import {
+  rollsFromTotals,
+  type StatSimulation,
+  substatTotals,
+} from 'lib/games/shared/statSimulation'
+import {
   keepOverridesFor,
   type TeammateOverrides,
 } from 'lib/games/shared/teammateOverrides'
@@ -61,6 +66,7 @@ import {
   limitsSummary,
   StatFilters,
 } from 'lib/games/shared/ui/optimizer/StatFilters'
+import { StatSimulationCard } from 'lib/games/shared/ui/optimizer/StatSimulationCard'
 import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
 import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
 import {
@@ -105,11 +111,17 @@ import {
 } from 'lib/games/wuwa/data/gameData'
 import { wuwaSampleData } from 'lib/games/wuwa/data/sampleData'
 import { useUserArt } from 'lib/games/wuwa/data/userArt'
+import { SUBSTAT_KEYS } from 'lib/games/wuwa/echoStats'
 import { MAIN_STAT_MAX } from 'lib/games/wuwa/echoStats'
+import {
+  WUWA_SIM_ROLLS,
+  wuwaSimulatedStats,
+} from 'lib/games/wuwa/optimizer/analysis'
 import {
   wuwaDamageScore,
   wuwaSubstatUpgrades,
 } from 'lib/games/wuwa/optimizer/analysis'
+import { scoreStats } from 'lib/games/wuwa/optimizer/echoOptimizer'
 import {
   countLoadouts,
   type EchoOutcome,
@@ -236,6 +248,8 @@ type WuwaOptimizerSettings = {
   rotation: Rotation,
   // Toggles of the Resonator's own kit effects (damage/combatEffects.ts)
   combatSettings: Record<string, boolean | number>,
+  // Stat simulation (shared/statSimulation.ts)
+  simulations: StatSimulation[],
 }
 
 // Rank by values: 'damage' plus the stat targets in optimizer/targets.ts
@@ -264,6 +278,7 @@ function defaultSettings(charId: string): WuwaOptimizerSettings {
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(charId),
     combatSettings: {},
+    simulations: [],
   }
 }
 
@@ -369,6 +384,7 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
     extraBuffs,
     enemy,
     rotation,
+    simulations,
     combatSettings,
   } = settings
   const setTargetValue = fieldSetter(updateSettings, 'targetValue')
@@ -394,6 +410,7 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
+  const setSimulations = fieldSetter(updateSettings, 'simulations')
   // What the team gives this Resonator, the same for every loadout (nothing before anything is imported)
   const teamOverrides = keepOverridesFor(teammateOverrides, teammates)
   const teamResult = character
@@ -577,6 +594,32 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
     // The "Now" row is this loadout from here on
     if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
   }
+
+  // Stat simulation (shared/statSimulation.ts): each simulated loadout's stats and score, worked out like the results
+  const simulated = simulations.flatMap((simulation) => {
+    const pieces = simulation.pieceIds.flatMap((id) => echoes.find((e) => e.id === id) ?? [])
+    if (pieces.length === 0 || pieces.length !== simulation.pieceIds.length) return []
+    const stats = wuwaSimulatedStats(character, pieces, simulation.rolls, withFullSets(combatBonus, pieces, fullSetBonus))
+    const score = scoreStats(stats, target)
+    const mains = pieces.map((e) => statLabel(e.mainStat)).join(' / ')
+    return [{
+      simulation,
+      pieces,
+      stats,
+      score,
+      scoreText: formatScore(target, score),
+      describe: `${describeSets(pieces)} · Cost ${costOf(pieces)} · ${mains}`,
+    }]
+  })
+  const simulatedOf = (simulation: StatSimulation) => simulated.find((s) => s.simulation.id === simulation.id)
+  const simSubstats = SUBSTAT_KEYS.map((stat) => ({ key: stat, label: statLabel(stat) }))
+  const pickedForSimulation = build
+    ? {
+      label: `loadout #${selected + 1}`,
+      pieceIds: build.echoes.map((e) => e.id),
+      rolls: rollsFromTotals(WUWA_SIM_ROLLS, substatTotals(build.echoes.flatMap((e) => e.substats))),
+    }
+    : undefined
 
   // The picked build's analysis rows, for Build analysis and Pin build
   const analysisRows: StatDiffRow[] = build && result
@@ -828,6 +871,20 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
               }}
             />
           </FormRow>
+          <FormRow
+            id='wuwa-simulation'
+            title='Stat simulation'
+            summary={simulations.length > 0 ? `${simulations.length} simulated build${simulations.length === 1 ? '' : 's'}` : 'No simulated builds'}
+          >
+            <StatSimulationCard
+              simulations={simulations}
+              onChange={setSimulations}
+              substats={simSubstats}
+              picked={pickedForSimulation}
+              describe={(simulation) => simulatedOf(simulation)?.describe}
+              scoreOf={(simulation) => simulatedOf(simulation)?.scoreText}
+            />
+          </FormRow>
         </FormRows>
         <KitDisclaimer name={characterName(character.charId)} effects={KIT_EFFECTS[character.charId]} byDamage={byDamage} />
       </>
@@ -883,6 +940,12 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
             ],
             rows: outcome.builds.map((b, i) => ({ id: String(i), rank: String(i + 1), values: resultValues(b), sets: describeSets(b.echoes) })),
             current: current ? { id: 'now', rank: 'Now', values: resultValues(current), sets: describeSets(current.echoes) } : undefined,
+            simulated: simulated.map((s) => ({
+              id: s.simulation.id,
+              rank: 'Sim',
+              values: resultValues({ echoes: s.pieces, stats: s.stats, score: s.score }),
+              sets: `${s.simulation.name} · ${describeSets(s.pieces)}`,
+            })),
             selected,
             onSelect: setSelected,
           },

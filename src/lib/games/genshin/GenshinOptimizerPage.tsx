@@ -42,6 +42,7 @@ import {
   teamSummary,
 } from 'lib/games/genshin/GenshinTeamCards'
 import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
+import { SUBSTAT_STATS } from 'lib/games/genshin/goodKeys'
 import { loadEnkaGenshinStore } from 'lib/games/genshin/importer/enkaClient'
 import type { EnkaGenshinStore } from 'lib/games/genshin/importer/enkaParser'
 import { mainStatValue } from 'lib/games/genshin/importer/goodParser'
@@ -50,10 +51,15 @@ import {
   genshinSubstatUpgrades,
 } from 'lib/games/genshin/optimizer/analysis'
 import {
+  GENSHIN_SIM_ROLLS,
+  genshinSimulatedStats,
+} from 'lib/games/genshin/optimizer/analysis'
+import {
   filterPools,
   type MainStatSlot,
   type OptimizerOutcome,
   type OptimizerTarget,
+  scoreStats,
   targetLabel,
 } from 'lib/games/genshin/optimizer/artifactOptimizer'
 import { artifactSearch } from 'lib/games/genshin/optimizer/optimizerClient'
@@ -129,6 +135,11 @@ import {
   migrateOptimizerSettings,
 } from 'lib/games/shared/optimizerSettings'
 import {
+  rollsFromTotals,
+  type StatSimulation,
+  substatTotals,
+} from 'lib/games/shared/statSimulation'
+import {
   fourPieceSetsOf,
   keepOverridesFor,
   type TeammateOverrides,
@@ -168,6 +179,7 @@ import {
   limitsSummary,
   StatFilters,
 } from 'lib/games/shared/ui/optimizer/StatFilters'
+import { StatSimulationCard } from 'lib/games/shared/ui/optimizer/StatSimulationCard'
 import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
 import {
   type OptimizerKind,
@@ -245,6 +257,8 @@ type GenshinOptimizerSettings = {
   rotation: Rotation,
   // Toggles of the character's own combat effects (damage/combatEffects.ts)
   combatSettings: Record<string, BuffSetting>,
+  // Stat simulation (shared/statSimulation.ts)
+  simulations: StatSimulation[],
 }
 
 // Rank by values: 'damage' plus the stat targets in optimizer/targets.ts
@@ -274,6 +288,7 @@ function defaultSettings(characterId: string): GenshinOptimizerSettings {
     enemy: DEFAULT_ENEMY,
     rotation: defaultRotation(characterId),
     combatSettings: {},
+    simulations: [],
   }
 }
 
@@ -380,6 +395,7 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
     enemy,
     rotation,
     combatSettings,
+    simulations,
   } = settings
   const setTargetValue = fieldSetter(updateSettings, 'targetValue')
   const setMainStats = fieldSetter(updateSettings, 'mainStats')
@@ -405,6 +421,7 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
   const setEnemy = fieldSetter(updateSettings, 'enemy')
   const setRotation = fieldSetter(updateSettings, 'rotation')
   const setCombatSettings = fieldSetter(updateSettings, 'combatSettings')
+  const setSimulations = fieldSetter(updateSettings, 'simulations')
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
   const filters = useMemo(
     () => ({
@@ -613,6 +630,25 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
     // The "Now" row is this build from here on
     if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
   }
+
+  // Stat simulation (shared/statSimulation.ts): each simulated build's stats and score, worked out like the results
+  const simulated = simulations.flatMap((simulation) => {
+    const pieces = simulation.pieceIds.flatMap((id) => artifacts.find((a) => a.id === id) ?? [])
+    if (pieces.length < 5 || pieces.length !== simulation.pieceIds.length) return []
+    const stats = genshinSimulatedStats(character, pieces, simulation.rolls, teamBuffs, byDamage ? combat : undefined)
+    const score = scoreStats(stats, target)
+    const mains = pieces.slice(2).map((a) => statLabel(a.main.stat)).join(' / ')
+    return [{ simulation, pieces, stats, score, scoreText: formatScore(target, score), describe: `${describeSets(pieces)} · ${mains}` }]
+  })
+  const simulatedOf = (simulation: StatSimulation) => simulated.find((s) => s.simulation.id === simulation.id)
+  const simSubstats = SUBSTAT_STATS.map((stat) => ({ key: stat, label: statLabel(stat) }))
+  const pickedForSimulation = build
+    ? {
+      label: `build #${selected + 1}`,
+      pieceIds: build.artifacts.map((a) => a.id),
+      rolls: rollsFromTotals(GENSHIN_SIM_ROLLS, substatTotals(build.artifacts.flatMap((a) => a.substats))),
+    }
+    : undefined
 
   // The picked build's analysis rows, for Build analysis and Pin build
   const analysisRows: StatDiffRow[] = build && result
@@ -888,6 +924,20 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
               }}
             />
           </FormRow>
+          <FormRow
+            id='genshin-simulation'
+            title='Stat simulation'
+            summary={simulations.length > 0 ? `${simulations.length} simulated build${simulations.length === 1 ? '' : 's'}` : 'No simulated builds'}
+          >
+            <StatSimulationCard
+              simulations={simulations}
+              onChange={setSimulations}
+              substats={simSubstats}
+              picked={pickedForSimulation}
+              describe={(simulation) => simulatedOf(simulation)?.describe}
+              scoreOf={(simulation) => simulatedOf(simulation)?.scoreText}
+            />
+          </FormRow>
         </FormRows>
         <KitDisclaimer name={character.name} effects={KIT_EFFECTS[character.id]} byDamage={byDamage} />
       </>
@@ -955,6 +1005,12 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
                 sets: describeSets(current.artifacts),
               }
               : undefined,
+            simulated: simulated.map((s) => ({
+              id: s.simulation.id,
+              rank: 'Sim',
+              values: resultValues(s.score, s.stats),
+              sets: `${s.simulation.name} · ${describeSets(s.pieces)}`,
+            })),
             selected,
             onSelect: setSelected,
           },

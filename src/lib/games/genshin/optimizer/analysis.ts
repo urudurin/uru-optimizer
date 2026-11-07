@@ -27,6 +27,11 @@ import {
   damageScore,
   type DamageScoreParams,
 } from 'lib/games/shared/damageScore'
+import {
+  simulationExtra,
+  type SimulationRolls,
+  substatTotals,
+} from 'lib/games/shared/statSimulation'
 
 // What one more average 5-star roll of each substat would add to this build's score, best first
 export function genshinSubstatUpgrades(
@@ -72,4 +77,19 @@ export function genshinDamageScore(
     mains: artifacts.map((artifact) => artifact.main.stat),
     score: (extra) => scoreStats(computeGenshinStats(character, artifacts, extra, teamBuffs, combat).stats, target),
   }, GENSHIN_SCORE_PARAMS)
+}
+
+// Stat simulation (shared/statSimulation.ts): one average roll of each artifact substat
+export const GENSHIN_SIM_ROLLS: SimulationRolls = { stats: SUBSTAT_STATS, roll: (stat) => averageRoll(stat as GenshinStatKey) }
+
+// The stats of these artifacts' sets and main stats with these substat rolls instead of their own
+export function genshinSimulatedStats(
+  character: GenshinCharacter,
+  artifacts: Artifact[],
+  rolls: Record<string, number>,
+  teamBuffs?: TeamBuffTotals,
+  combat?: CombatSetup,
+) {
+  const extra = simulationExtra(GENSHIN_SIM_ROLLS, substatTotals(artifacts.flatMap((a) => a.substats)), rolls)
+  return computeGenshinStats(character, artifacts, extra, teamBuffs, combat).stats
 }

@@ -8,6 +8,11 @@ import {
   type DamageScoreParams,
 } from 'lib/games/shared/damageScore'
 import {
+  simulationExtra,
+  type SimulationRolls,
+  substatTotals,
+} from 'lib/games/shared/statSimulation'
+import {
   type DamageSetup,
   rotationDamage,
 } from 'lib/games/zzz/damage/damage'
@@ -62,4 +67,19 @@ export function zzzDamageScore(input: ComputeInput, damage?: DamageSetup): Damag
     mains: input.discs.map((disc) => disc.main.stat),
     score: (extraStats) => rotationDamage(computeStats({ ...input, extraStats }).stats, damage),
   }, ZZZ_SCORE_PARAMS)
+}
+
+// Stat simulation (shared/statSimulation.ts): one S-rank roll of each disc substat (ZZZ rolls have one value)
+export const ZZZ_SIM_ROLLS: SimulationRolls = { stats: SUBSTAT_STATS, roll: (stat) => getSubstatValue('S', stat as ZzzStatsValues, 1) ?? 0 }
+
+// The disc substats' totals, by the value each disc's rolls are worth
+export function zzzSubstatTotals(discs: ComputeInput['discs']): Record<string, number> {
+  return substatTotals(
+    discs.flatMap((disc) => disc.substats.map((sub) => ({ stat: sub.stat, value: getSubstatValue(disc.rarity, sub.stat, sub.rolls) ?? 0 }))),
+  )
+}
+
+// The stats of these discs' sets and main stats with these substat rolls instead of their own
+export function zzzSimulatedStats(input: ComputeInput, rolls: Record<string, number>) {
+  return computeStats({ ...input, extraStats: simulationExtra(ZZZ_SIM_ROLLS, zzzSubstatTotals(input.discs), rolls) }).stats
 }
