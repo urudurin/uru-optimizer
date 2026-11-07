@@ -1,14 +1,10 @@
 import {
   Badge,
-  Button,
   Group,
   MultiSelect,
   Select,
-  Stack,
-  Switch,
   Text,
 } from '@mantine/core'
-import { IconTrendingUp } from '@tabler/icons-react'
 import {
   ranksAbove,
   usePriority,
@@ -47,7 +43,6 @@ import {
 import {
   BuildAnalysis,
   pinnedCells,
-  PreviewWithAnalysis,
   type StatDiffRow,
 } from 'lib/games/shared/ui/BuildAnalysis'
 import {
@@ -55,18 +50,8 @@ import {
   RememberDamageScore,
 } from 'lib/games/shared/ui/BuildRating'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
-import {
-  EmptyState,
-  Notices,
-  PageHeader,
-  Panel,
-} from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
-import classes from 'lib/games/shared/ui/Optimizer.module.css'
-import {
-  BuildCompare,
-  usePinnedBuilds,
-} from 'lib/games/shared/ui/optimizer/BuildCompare'
+import { usePinnedBuilds } from 'lib/games/shared/ui/optimizer/BuildCompare'
 import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
 import {
   CharacterPortrait,
@@ -74,17 +59,17 @@ import {
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
-import {
-  NoBuildPanel,
-  NoResults,
-} from 'lib/games/shared/ui/optimizer/NoResults'
 import { OptimizerOptionsCard } from 'lib/games/shared/ui/optimizer/OptimizerOptionsCard'
+import {
+  OptimizerImportFirst,
+  OptimizerPageShell,
+  OptimizerResults,
+} from 'lib/games/shared/ui/optimizer/OptimizerPage'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
   ResultLimitSelect,
 } from 'lib/games/shared/ui/optimizer/ResultLimit'
-import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
 import {
   openSaveBuildModal,
   openSavedBuildsModal,
@@ -419,23 +404,12 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   // Every Resonator is always there (state/roster.ts), so the page waits for echoes instead
   if (!character || echoes.length === 0) {
     return (
-      <Stack gap='lg'>
-        <PageHeader title='Optimizer' />
-        <Panel>
-          <EmptyState
-            icon={<IconTrendingUp size={24} />}
-            title='Import your echoes first'
-            action={
-              <Group gap='xs'>
-                <Button onClick={onImport}>Import data</Button>
-                <Button variant='light' onClick={() => useWuwaStore.getState().importParsed(wuwaSampleData(), 'replace')}>Try with sample data</Button>
-              </Group>
-            }
-          >
-            Import your WuwaEchoScorer save, then search your echoes for the best loadout under the 12-cost limit.
-          </EmptyState>
-        </Panel>
-      </Stack>
+      <OptimizerImportFirst
+        gearNoun='echoes'
+        text='Import your WuwaEchoScorer save, then search your echoes for the best loadout under the 12-cost limit.'
+        onImport={onImport}
+        onSample={() => useWuwaStore.getState().importParsed(wuwaSampleData(), 'replace')}
+      />
     )
   }
 
@@ -690,294 +664,311 @@ ${losing.join(', ')} ${
     })
   }
 
+  const sidebar = (
+    <OptimizerSidebar
+      pools={COSTS.map((cost) => ({ label: `${cost}-cost`, value: pool.filter((e) => e.cost === cost).length }))}
+      combinations={countLoadouts(pool)}
+      combinationsLabel='Loadouts'
+      hint={pool.length === 0 ? { text: 'No echoes left with these filters', warn: true } : undefined}
+      canStart={pool.length > 0}
+      running={running}
+      progress={progress}
+      onStart={run}
+      onCancel={cancel}
+      results={outcome?.ok && result
+        ? {
+          count: outcome.builds.length,
+          seconds: result.ms / 1000,
+          note: outcome.truncated ? 'Stopped at its limit: best found, maybe not the best.' : undefined,
+        }
+        : undefined}
+      equip={build ? { label: `loadout #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+      statView={{ value: statView, onChange: setStatView }}
+      onReset={() => {
+        updateSettings(defaultSettings(character.charId))
+        setResult(undefined)
+      }}
+      pins={{
+        onPin: build && result ? () => pins.pin(`#${selected + 1} · ${formatScore(result.target, build.score)}`, pinnedCells(analysisRows)) : undefined,
+        count: pins.pinned.length,
+        onClear: pins.clear,
+      }}
+      builds={{ onSave: build ? saveBuildNow : undefined, onLoad: loadBuilds, count: savedList.length }}
+    />
+  )
+
   return (
-    <Stack gap='lg'>
-      <PageHeader
-        title='Optimizer'
-        description='Searches your echoes for the loadouts (up to 5 echoes, 12 cost) that score highest, with stats worked out like the Resonators page. Rotation damage counts skill multipliers, what each hit counts as, and the enemy; set minimums (such as Energy Regen) for anything else the Resonator needs.'
-      />
-
-      <div className={classes.optimizerLayout}>
-        <Stack gap='md'>
-          <FormRows>
-            <FormRow id='wuwa-resonator' title='Resonator' summary={`${characterName(character.charId)} · ${targetLabel(target)}`}>
-              <CharacterPortrait
-                name={characterName(character.charId)}
-                portrait={art[character.charId]?.portrait}
-                accent={element && `var(--mantine-color-${elementColor(element)}-6)`}
-                weapon={weapon && { name: weapon.name }}
-              />
-              <FormCard title='Resonator'>
-                <WuwaCharacterSelect
-                  characters={characters}
-                  art={art}
-                  value={character.charId}
-                  onChange={(value) => {
-                    setCharacterId(value)
-                    setResult(undefined)
-                  }}
-                />
-                <Text size='xs' c='dimmed'>
-                  {`Level ${character.level} · ${weapon ? `${weapon.name}, level ${character.weaponLevel}` : 'No weapon'}`}
-                </Text>
-                {/* Like HSR's light cone, Eidolon and Superimposition pickers, these change the saved Resonator */}
-                <WuwaWeaponSelect
-                  weaponType={CHARACTERS[character.charId]?.weaponType}
-                  value={character.weaponId ?? null}
-                  onChange={(weaponId) => {
-                    if ((weaponId ?? undefined) === character.weaponId) return
-                    saveCharacter({ ...character, weaponId: weaponId ?? undefined })
-                    setResult(undefined)
-                  }}
-                />
-                <RankButtons
-                  label='Sequence'
-                  prefix='S'
-                  from={0}
-                  to={6}
-                  value={character.sequence}
-                  onChange={(sequence) => {
-                    saveCharacter({ ...character, sequence })
-                    setResult(undefined)
-                  }}
-                />
-                {weapon && (
-                  <RankButtons
-                    label='Rank'
-                    prefix='R'
-                    from={1}
-                    to={5}
-                    value={character.refinement}
-                    onChange={(refinement) => {
-                      saveCharacter({ ...character, refinement })
-                      setResult(undefined)
-                    }}
-                  />
-                )}
-              </FormCard>
-              <FormCard
-                title='Rank by'
-                description='Rotation damage uses the Damage row. The average hit is the scaling stat times the crit multiplier and DMG bonus.'
-              >
-                <Select
-                  aria-label='Rank by'
-                  allowDeselect={false}
-                  value={byDamage ? DAMAGE_TARGET : targetValue === DAMAGE_TARGET ? TARGETS[0].value : targetValue}
-                  onChange={(value) => value && setTargetValue(value)}
-                  data={[
-                    ...(hasSkillData(character.charId) ? [{ value: DAMAGE_TARGET, label: 'Rotation damage' }] : []),
-                    ...TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) })),
-                  ]}
-                />
-                <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
-              </FormCard>
-              <OptimizerOptionsCard
-                gearNoun='echoes'
-                ownerNoun='Resonators'
-                rosterPage='Resonators'
-                excludeWorn={excludeEquippedByOthers}
-                onExcludeWorn={setExcludeEquippedByOthers}
-                priority={priorityFilter}
-                onPriority={setPriorityFilter}
-                levels={[0, 5, 10, 15, 20, 25]}
-                minLevel={minLevel}
-                onMinLevel={setMinLevel}
-                boost={boostMain}
-                boostDescription='Echoes below +25 count with their +25 main stats'
-                onBoost={setBoostMain}
-              />
-            </FormRow>
-
-            <FormRow id='wuwa-filters' title='Echo & stat filters' summary={filterSummary}>
-              <FormCard
-                title='Sonata sets'
-                description='Only bonuses the overview screen shows are counted (2-pieces, not most 5-piece effects), so pick the set you want to run here. Two copies of one echo count once.'
-              >
-                <SetPicker
-                  label='Full set (5-piece, or 3 for three-piece sets)'
-                  max={1}
-                  options={setOptions}
-                  value={fullSet ? [fullSet] : []}
-                  onChange={(ids) => {
-                    setFullSet(ids[0] ?? null)
-                    setTwoPieceSets([])
-                  }}
-                />
-                <SetPicker
-                  label='2-piece sets'
-                  max={Math.max(maxTwoPiece, 1)}
-                  placeholder={maxTwoPiece === 0 ? 'No room with a 5-piece set' : 'Any'}
-                  disabled={maxTwoPiece === 0}
-                  options={twoPieceOptions}
-                  value={twoPieceSets}
-                  onChange={setTwoPieceSets}
-                />
-              </FormCard>
-              <FormCard title='Main stats'>
-                {COSTS.map((cost) => (
-                  <MultiSelect
-                    key={cost}
-                    label={`${cost}-cost`}
-                    placeholder={mainStats[cost]?.length ? undefined : 'Any'}
-                    value={mainStats[cost] ?? []}
-                    onChange={(value) => setMainStats((prev) => ({ ...prev, [cost]: value as StatKey[] }))}
-                    data={(Object.keys(MAIN_STAT_MAX[cost]) as StatKey[]).map((stat) => ({ value: stat, label: statLabel(stat) }))}
-                  />
-                ))}
-              </FormCard>
-              <FormCard title='Stat filters' description='Loadouts outside any of these are left out, e.g. Energy Regen 120 to 140.'>
-                <StatFilters
-                  rows={MIN_STATS.map((stat) => ({ key: stat, label: wuwaStatLabel(stat) }))}
-                  min={minStats}
-                  max={maxStats}
-                  onMin={(next) => setMinStats(next)}
-                  onMax={(next) => setMaxStats(next)}
-                />
-              </FormCard>
-            </FormRow>
-
-            <FormRow id='wuwa-team' title='Teammates' summary={wuwaTeamSummary(teammates.map(characterName), teamResult.applied)}>
-              <TeamCards
-                name={characterName(character.charId)}
-                options={teammateOptions}
-                teammates={teammates}
-                maxTeammates={2}
-                entries={wuwaTeamEntries(teamResult.applied)}
-                description='Their skills buff this Resonator. Teammates use the echoes they wear in the save.'
-                emptyText='Pick teammates to see what they give. Phase 1 covers Shorekeeper, Verina, Rebecca, Ciaccona, Denia, Buling, Suoming and Sigrika.'
-                footnote="DMG Amplification buffs (most Outros) scale every loadout the same, so they can't change the ranking and aren't listed. Echo Skill DMG isn't calculated yet."
-                onTeammates={(ids) => setTeammates(ids)}
-                onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
-              />
-              <TeammateOverrideCard
-                rankPrefix='S'
-                weaponLabel='weapon'
-                refinementPrefix='R'
-                overrides={teamOverrides}
-                onChange={setTeammateOverrides}
-                members={teammates.flatMap((id) => {
-                  const mate = characters.find((c) => c.charId === id)
-                  if (!mate || id === character.charId) return []
-                  return [{
-                    id,
-                    name: characterName(id),
-                    roster: { rank: mate.sequence, weaponId: mate.weaponId, refinement: mate.refinement },
-                    weapons: WEAPON_OPTIONS,
-                  }]
-                })}
-              />
-            </FormRow>
-
-            <FormRow
-              id='wuwa-damage'
-              title='Damage'
-              summary={`Enemy level ${enemy.level}, ${enemy.res}% RES · ${
-                Object.values(rotation.counts).reduce((sum, count) => sum + count, 0)
-              } hits · skill level ${rotation.skillLevel}${byDamage ? '' : ' · not ranked by damage'}`}
-            >
-              <EnemyCard
-                enemy={enemy}
-                onChange={(next) => {
-                  setEnemy(next)
+    <OptimizerPageShell
+      description='Searches your echoes for the loadouts (up to 5 echoes, 12 cost) that score highest, with stats worked out like the Resonators page. Rotation damage counts skill multipliers, what each hit counts as, and the enemy; set minimums (such as Energy Regen) for anything else the Resonator needs.'
+      sidebar={sidebar}
+    >
+      <FormRows>
+        <FormRow id='wuwa-resonator' title='Resonator' summary={`${characterName(character.charId)} · ${targetLabel(target)}`}>
+          <CharacterPortrait
+            name={characterName(character.charId)}
+            portrait={art[character.charId]?.portrait}
+            accent={element && `var(--mantine-color-${elementColor(element)}-6)`}
+            weapon={weapon && { name: weapon.name }}
+          />
+          <FormCard title='Resonator'>
+            <WuwaCharacterSelect
+              characters={characters}
+              art={art}
+              value={character.charId}
+              onChange={(value) => {
+                setCharacterId(value)
+                setResult(undefined)
+              }}
+            />
+            <Text size='xs' c='dimmed'>
+              {`Level ${character.level} · ${weapon ? `${weapon.name}, level ${character.weaponLevel}` : 'No weapon'}`}
+            </Text>
+            {/* Like HSR's light cone, Eidolon and Superimposition pickers, these change the saved Resonator */}
+            <WuwaWeaponSelect
+              weaponType={CHARACTERS[character.charId]?.weaponType}
+              value={character.weaponId ?? null}
+              onChange={(weaponId) => {
+                if ((weaponId ?? undefined) === character.weaponId) return
+                saveCharacter({ ...character, weaponId: weaponId ?? undefined })
+                setResult(undefined)
+              }}
+            />
+            <RankButtons
+              label='Sequence'
+              prefix='S'
+              from={0}
+              to={6}
+              value={character.sequence}
+              onChange={(sequence) => {
+                saveCharacter({ ...character, sequence })
+                setResult(undefined)
+              }}
+            />
+            {weapon && (
+              <RankButtons
+                label='Rank'
+                prefix='R'
+                from={1}
+                to={5}
+                value={character.refinement}
+                onChange={(refinement) => {
+                  saveCharacter({ ...character, refinement })
                   setResult(undefined)
                 }}
               />
-              <RotationCard
-                charId={character.charId}
-                rotation={rotation}
-                mainEcho={wornEchoes[0]?.defId}
-                damage={currentDamage}
-                onChange={(next) => {
-                  setRotation(next)
-                  setResult(undefined)
-                }}
+            )}
+          </FormCard>
+          <FormCard
+            title='Rank by'
+            description='Rotation damage uses the Damage row. The average hit is the scaling stat times the crit multiplier and DMG bonus.'
+          >
+            <Select
+              aria-label='Rank by'
+              allowDeselect={false}
+              value={byDamage ? DAMAGE_TARGET : targetValue === DAMAGE_TARGET ? TARGETS[0].value : targetValue}
+              onChange={(value) => value && setTargetValue(value)}
+              data={[
+                ...(hasSkillData(character.charId) ? [{ value: DAMAGE_TARGET, label: 'Rotation damage' }] : []),
+                ...TARGETS.map((t) => ({ value: t.value, label: targetLabel(t.target) })),
+              ]}
+            />
+            <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
+          </FormCard>
+          <OptimizerOptionsCard
+            gearNoun='echoes'
+            ownerNoun='Resonators'
+            rosterPage='Resonators'
+            excludeWorn={excludeEquippedByOthers}
+            onExcludeWorn={setExcludeEquippedByOthers}
+            priority={priorityFilter}
+            onPriority={setPriorityFilter}
+            levels={[0, 5, 10, 15, 20, 25]}
+            minLevel={minLevel}
+            onMinLevel={setMinLevel}
+            boost={boostMain}
+            boostDescription='Echoes below +25 count with their +25 main stats'
+            onBoost={setBoostMain}
+          />
+        </FormRow>
+
+        <FormRow id='wuwa-filters' title='Echo & stat filters' summary={filterSummary}>
+          <FormCard
+            title='Sonata sets'
+            description='Only bonuses the overview screen shows are counted (2-pieces, not most 5-piece effects), so pick the set you want to run here. Two copies of one echo count once.'
+          >
+            <SetPicker
+              label='Full set (5-piece, or 3 for three-piece sets)'
+              max={1}
+              options={setOptions}
+              value={fullSet ? [fullSet] : []}
+              onChange={(ids) => {
+                setFullSet(ids[0] ?? null)
+                setTwoPieceSets([])
+              }}
+            />
+            <SetPicker
+              label='2-piece sets'
+              max={Math.max(maxTwoPiece, 1)}
+              placeholder={maxTwoPiece === 0 ? 'No room with a 5-piece set' : 'Any'}
+              disabled={maxTwoPiece === 0}
+              options={twoPieceOptions}
+              value={twoPieceSets}
+              onChange={setTwoPieceSets}
+            />
+          </FormCard>
+          <FormCard title='Main stats'>
+            {COSTS.map((cost) => (
+              <MultiSelect
+                key={cost}
+                label={`${cost}-cost`}
+                placeholder={mainStats[cost]?.length ? undefined : 'Any'}
+                value={mainStats[cost] ?? []}
+                onChange={(value) => setMainStats((prev) => ({ ...prev, [cost]: value as StatKey[] }))}
+                data={(Object.keys(MAIN_STAT_MAX[cost]) as StatKey[]).map((stat) => ({ value: stat, label: statLabel(stat) }))}
               />
-              <KitEffectsCard
-                name={characterName(character.charId)}
-                applied={kit.applied}
-                onSetting={(id, value) => {
-                  setCombatSettings((current) => ({ ...current, [id]: value }))
-                  setResult(undefined)
-                }}
-              />
-              <KitEffectsCard
-                name={characterName(character.charId)}
-                title='Set effects'
-                description='Full-set Sonata effects, counted for every loadout that completes its set with different echoes, only when ranking by rotation damage. Shown for the Full set filter and the complete sets in the current and picked loadouts.'
-                emptyText='Pick a set under Full set, or a loadout with a complete set, to see its effects.'
-                applied={setEffects.applied}
-                onSetting={(id, value) => {
-                  setCombatSettings((current) => ({ ...current, [id]: value }))
-                  setResult(undefined)
-                }}
-              />
-              <ExtraBuffsCard
-                defs={WUWA_EXTRA_BUFFS}
-                buffs={extraBuffs}
-                onChange={(next) => {
-                  setExtraBuffs(next)
-                  setResult(undefined)
-                }}
-              />
-            </FormRow>
-          </FormRows>
-          <KitDisclaimer name={characterName(character.charId)} effects={KIT_EFFECTS[character.charId]} byDamage={byDamage} />
+            ))}
+          </FormCard>
+          <FormCard title='Stat filters' description='Loadouts outside any of these are left out, e.g. Energy Regen 120 to 140.'>
+            <StatFilters
+              rows={MIN_STATS.map((stat) => ({ key: stat, label: wuwaStatLabel(stat) }))}
+              min={minStats}
+              max={maxStats}
+              onMin={(next) => setMinStats(next)}
+              onMax={(next) => setMaxStats(next)}
+            />
+          </FormCard>
+        </FormRow>
 
-          {!outcome && (
-            <Panel>
-              <EmptyState icon={<IconTrendingUp size={24} />} title={`Find the best echoes for ${characterName(character.charId)}`}>
-                {`Pick what to rank by and any filters, then search. The best ${resultLimitOf(resultLimit)} loadouts show up here next to the current one.`}
-              </EmptyState>
-            </Panel>
-          )}
+        <FormRow id='wuwa-team' title='Teammates' summary={wuwaTeamSummary(teammates.map(characterName), teamResult.applied)}>
+          <TeamCards
+            name={characterName(character.charId)}
+            options={teammateOptions}
+            teammates={teammates}
+            maxTeammates={2}
+            entries={wuwaTeamEntries(teamResult.applied)}
+            description='Their skills buff this Resonator. Teammates use the echoes they wear in the save.'
+            emptyText='Pick teammates to see what they give. Phase 1 covers Shorekeeper, Verina, Rebecca, Ciaccona, Denia, Buling, Suoming and Sigrika.'
+            footnote="DMG Amplification buffs (most Outros) scale every loadout the same, so they can't change the ranking and aren't listed. Echo Skill DMG isn't calculated yet."
+            onTeammates={(ids) => setTeammates(ids)}
+            onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
+          />
+          <TeammateOverrideCard
+            rankPrefix='S'
+            weaponLabel='weapon'
+            refinementPrefix='R'
+            overrides={teamOverrides}
+            onChange={setTeammateOverrides}
+            members={teammates.flatMap((id) => {
+              const mate = characters.find((c) => c.charId === id)
+              if (!mate || id === character.charId) return []
+              return [{
+                id,
+                name: characterName(id),
+                roster: { rank: mate.sequence, weaponId: mate.weaponId, refinement: mate.refinement },
+                weapons: WEAPON_OPTIONS,
+              }]
+            })}
+          />
+        </FormRow>
 
-          {!running && pool.length === 0 && echoes.length > 0 && <NoBuildPanel causes={noResultCauses()} gearNoun='echoes' empty='pool' />}
+        <FormRow
+          id='wuwa-damage'
+          title='Damage'
+          summary={`Enemy level ${enemy.level}, ${enemy.res}% RES · ${
+            Object.values(rotation.counts).reduce((sum, count) => sum + count, 0)
+          } hits · skill level ${rotation.skillLevel}${byDamage ? '' : ' · not ranked by damage'}`}
+        >
+          <EnemyCard
+            enemy={enemy}
+            onChange={(next) => {
+              setEnemy(next)
+              setResult(undefined)
+            }}
+          />
+          <RotationCard
+            charId={character.charId}
+            rotation={rotation}
+            mainEcho={wornEchoes[0]?.defId}
+            damage={currentDamage}
+            onChange={(next) => {
+              setRotation(next)
+              setResult(undefined)
+            }}
+          />
+          <KitEffectsCard
+            name={characterName(character.charId)}
+            applied={kit.applied}
+            onSetting={(id, value) => {
+              setCombatSettings((current) => ({ ...current, [id]: value }))
+              setResult(undefined)
+            }}
+          />
+          <KitEffectsCard
+            name={characterName(character.charId)}
+            title='Set effects'
+            description='Full-set Sonata effects, counted for every loadout that completes its set with different echoes, only when ranking by rotation damage. Shown for the Full set filter and the complete sets in the current and picked loadouts.'
+            emptyText='Pick a set under Full set, or a loadout with a complete set, to see its effects.'
+            applied={setEffects.applied}
+            onSetting={(id, value) => {
+              setCombatSettings((current) => ({ ...current, [id]: value }))
+              setResult(undefined)
+            }}
+          />
+          <ExtraBuffsCard
+            defs={WUWA_EXTRA_BUFFS}
+            buffs={extraBuffs}
+            onChange={(next) => {
+              setExtraBuffs(next)
+              setResult(undefined)
+            }}
+          />
+        </FormRow>
+      </FormRows>
+      <KitDisclaimer name={characterName(character.charId)} effects={KIT_EFFECTS[character.charId]} byDamage={byDamage} />
 
-          {outcome && !outcome.ok && <Notices messages={[outcome.reason]} />}
-
-          {outcome?.ok && result && (
-            <Panel
-              title='Results'
-              description={`${(result.ms / 1000).toFixed(1)}s · ${
-                formatNumber(outcome.visited)
-              } partial and full loadouts checked · ${outcome.poolSize} echoes, ${outcome.prunedSize} after dropping ones that can't make the top ${
-                resultLimitOf(resultLimit)
-              }`}
-            >
-              <Stack gap='sm'>
-                {outcome.truncated && (
-                  <Text size='xs' c='yellow'>
-                    The search stopped at its limit, so these are the best loadouts it found, not necessarily the best there are. A full set or main stat
-                    filters make the search finish.
-                  </Text>
-                )}
-                {outcome.builds.length === 0
-                  ? <NoResults heading causes={noResultCauses()} gearNoun='echoes' />
-                  : (
-                    <ResultsGrid
-                      key={outcome.builds.length + result.target.kind}
-                      columns={[
-                        {
-                          key: 'score',
-                          label: targetLabel(result.target),
-                          format: (value: number) => formatScore(result.target, value),
-                          primary: true,
-                          width: 110,
-                        },
-                        ...SHOWN_STATS.map((stat) => ({ key: stat, label: wuwaStatLabel(stat), format: (value: number) => formatValue(stat, value) })),
-                        { key: 'cost', label: 'Cost', format: (value: number) => String(value), width: 60 },
-                      ]}
-                      rows={outcome.builds.map((b, i) => ({ id: String(i), rank: String(i + 1), values: resultValues(b), sets: describeSets(b.echoes) }))}
-                      current={current ? { id: 'now', rank: 'Now', values: resultValues(current), sets: describeSets(current.echoes) } : undefined}
-                      selected={selected}
-                      onSelect={setSelected}
-                    />
-                  )}
-              </Stack>
-            </Panel>
-          )}
-
-          <PreviewWithAnalysis game='wuwa'>
+      <OptimizerResults
+        game='wuwa'
+        gearNoun='echoes'
+        intro={outcome ? undefined : {
+          title: `Find the best echoes for ${characterName(character.charId)}`,
+          text: `Pick what to rank by and any filters, then search. The best ${resultLimitOf(resultLimit)} loadouts show up here next to the current one.`,
+        }}
+        emptyPool={!running && pool.length === 0 && echoes.length > 0 ? { causes: noResultCauses(), empty: 'pool' } : undefined}
+        failure={outcome && !outcome.ok ? outcome.reason : undefined}
+        results={outcome?.ok && result
+          ? {
+            description: `${(result.ms / 1000).toFixed(1)}s · ${
+              formatNumber(outcome.visited)
+            } partial and full loadouts checked · ${outcome.poolSize} echoes, ${outcome.prunedSize} after dropping ones that can't make the top ${
+              resultLimitOf(resultLimit)
+            }`,
+            warning: outcome.truncated
+              ? 'The search stopped at its limit, so these are the best loadouts it found, not necessarily the best there are. A full set or main stat filters make the search finish.'
+              : undefined,
+            causes: noResultCauses,
+            grid: outcome.builds.length === 0 ? undefined : {
+              gridKey: `${outcome.builds.length}${result.target.kind}`,
+              columns: [
+                {
+                  key: 'score',
+                  label: targetLabel(result.target),
+                  format: (value: number) => formatScore(result.target, value),
+                  primary: true,
+                  width: 110,
+                },
+                ...SHOWN_STATS.map((stat) => ({ key: stat, label: wuwaStatLabel(stat), format: (value: number) => formatValue(stat, value) })),
+                { key: 'cost', label: 'Cost', format: (value: number) => String(value), width: 60 },
+              ],
+              rows: outcome.builds.map((b, i) => ({ id: String(i), rank: String(i + 1), values: resultValues(b), sets: describeSets(b.echoes) })),
+              current: current ? { id: 'now', rank: 'Now', values: resultValues(current), sets: describeSets(current.echoes) } : undefined,
+              selected,
+              onSelect: setSelected,
+            },
+          }
+          : undefined}
+        pins={pins}
+        preview={
+          <>
             {build && result && (
               <BuildPreview
                 title={`Loadout #${selected + 1}`}
@@ -1024,42 +1015,10 @@ ${losing.join(', ')} ${
                 formatRoll={(upgrade) => upgrade.stat.endsWith('Flat') ? String(Math.round(upgrade.roll)) : `${upgrade.roll.toFixed(1)}%`}
               />
             )}
-          </PreviewWithAnalysis>
-          <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
-          <RememberDamageScore game='wuwa' characterId={character.charId} pieceIds={wornEchoes.map((e) => e.id)} score={currentDpsScore} />
-        </Stack>
-
-        <OptimizerSidebar
-          pools={COSTS.map((cost) => ({ label: `${cost}-cost`, value: pool.filter((e) => e.cost === cost).length }))}
-          combinations={countLoadouts(pool)}
-          combinationsLabel='Loadouts'
-          hint={pool.length === 0 ? { text: 'No echoes left with these filters', warn: true } : undefined}
-          canStart={pool.length > 0}
-          running={running}
-          progress={progress}
-          onStart={run}
-          onCancel={cancel}
-          results={outcome?.ok && result
-            ? {
-              count: outcome.builds.length,
-              seconds: result.ms / 1000,
-              note: outcome.truncated ? 'Stopped at its limit: best found, maybe not the best.' : undefined,
-            }
-            : undefined}
-          equip={build ? { label: `loadout #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
-          statView={{ value: statView, onChange: setStatView }}
-          onReset={() => {
-            updateSettings(defaultSettings(character.charId))
-            setResult(undefined)
-          }}
-          pins={{
-            onPin: build && result ? () => pins.pin(`#${selected + 1} · ${formatScore(result.target, build.score)}`, pinnedCells(analysisRows)) : undefined,
-            count: pins.pinned.length,
-            onClear: pins.clear,
-          }}
-          builds={{ onSave: build ? saveBuildNow : undefined, onLoad: loadBuilds, count: savedList.length }}
-        />
-      </div>
-    </Stack>
+          </>
+        }
+      />
+      <RememberDamageScore game='wuwa' characterId={character.charId} pieceIds={wornEchoes.map((e) => e.id)} score={currentDpsScore} />
+    </OptimizerPageShell>
   )
 }

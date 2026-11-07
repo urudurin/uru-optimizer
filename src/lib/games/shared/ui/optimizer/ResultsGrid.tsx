@@ -45,13 +45,15 @@ export type ResultRow = {
 const NEUTRAL = 0.35
 const gradient = chroma.scale(['#5A1A06', '#343127', '#38821F']).domain([0, NEUTRAL, 1])
 
-export function ResultsGrid({ columns, rows, current, selected, onSelect }: {
+export type ResultsGridProps = {
   columns: ResultColumn[],
   rows: ResultRow[],
   current?: ResultRow,
   selected: number,
   onSelect: (index: number) => void,
-}) {
+}
+
+export function ResultsGrid({ columns, rows, current, selected, onSelect }: ResultsGridProps) {
   const gridRef = useRef<AgGridReact<ResultRow>>(null)
   const { getLocaleText } = useGridLocale('optimizerTab', 'Grid')
   const navigateToNextCell = useCallback(

@@ -11,7 +11,6 @@ import {
   Switch,
   Text,
 } from '@mantine/core'
-import { IconTrendingUp } from '@tabler/icons-react'
 import {
   ranksAbove,
   usePriority,
@@ -51,7 +50,6 @@ import {
 import {
   BuildAnalysis,
   pinnedCells,
-  PreviewWithAnalysis,
   type StatDiffRow,
 } from 'lib/games/shared/ui/BuildAnalysis'
 import {
@@ -60,17 +58,11 @@ import {
 } from 'lib/games/shared/ui/BuildRating'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
 import {
-  EmptyState,
   Notices,
-  PageHeader,
   Panel,
 } from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
-import classes from 'lib/games/shared/ui/Optimizer.module.css'
-import {
-  BuildCompare,
-  usePinnedBuilds,
-} from 'lib/games/shared/ui/optimizer/BuildCompare'
+import { usePinnedBuilds } from 'lib/games/shared/ui/optimizer/BuildCompare'
 import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
 import {
   CharacterPortrait,
@@ -78,17 +70,17 @@ import {
 } from 'lib/games/shared/ui/optimizer/CharacterPanel'
 import { ExtraBuffsCard } from 'lib/games/shared/ui/optimizer/ExtraBuffsCard'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
-import {
-  NoBuildPanel,
-  NoResults,
-} from 'lib/games/shared/ui/optimizer/NoResults'
 import { OptimizerOptionsCard } from 'lib/games/shared/ui/optimizer/OptimizerOptionsCard'
+import {
+  OptimizerImportFirst,
+  OptimizerPageShell,
+  OptimizerResults,
+} from 'lib/games/shared/ui/optimizer/OptimizerPage'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
   ResultLimitSelect,
 } from 'lib/games/shared/ui/optimizer/ResultLimit'
-import { ResultsGrid } from 'lib/games/shared/ui/optimizer/ResultsGrid'
 import {
   openSaveBuildModal,
   openSavedBuildsModal,
@@ -650,23 +642,12 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
 
   if (discs.length === 0) {
     return (
-      <Stack gap='lg'>
-        <PageHeader title='Optimizer' />
-        <Panel>
-          <EmptyState
-            icon={<IconTrendingUp size={24} />}
-            title='Import your discs first'
-            action={
-              <Group gap='xs'>
-                <Button onClick={onImport}>Import data</Button>
-                <Button variant='light' onClick={() => useZzzStore.getState().importParsed(zzzSampleData(), 'replace')}>Try with sample data</Button>
-              </Group>
-            }
-          >
-            The optimizer searches every combination of the discs you own for the best build.
-          </EmptyState>
-        </Panel>
-      </Stack>
+      <OptimizerImportFirst
+        gearNoun='discs'
+        text='The optimizer searches every combination of the discs you own for the best build.'
+        onImport={onImport}
+        onSample={() => useZzzStore.getState().importParsed(zzzSampleData(), 'replace')}
+      />
     )
   }
 
@@ -794,355 +775,368 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
     })
   }
 
+  const sidebar = (
+    <OptimizerSidebar
+      pools={pools.map((pool, i) => ({ label: `Slot ${i + 1}`, value: pool.length }))}
+      combinations={combinations}
+      hint={{ text: searchHint, warn: !canSearch }}
+      canStart={canSearch}
+      running={running}
+      progress={progress}
+      onStart={run}
+      onCancel={cancel}
+      results={outcome?.ok ? { count: outcome.builds.length, seconds: (result?.ms ?? 0) / 1000 } : undefined}
+      equip={best ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
+      statView={{ value: statView, onChange: setStatView }}
+      onReset={() => {
+        updateSettings(defaultSettings(agent.id))
+        setResult(undefined)
+      }}
+      pins={{
+        onPin: best ? () => pins.pin(`#${selected + 1} · ${rankText(best)}`, pinnedCells(analysisRows)) : undefined,
+        count: pins.pinned.length,
+        onClear: pins.clear,
+      }}
+      builds={{ onSave: best ? saveBuildNow : undefined, onLoad: loadBuilds, count: savedList.length }}
+    />
+  )
+
   return (
-    <Stack gap='lg'>
-      <PageHeader
-        title='Optimizer'
-        description='Searches every combination of your discs and ranks them by rotation damage or the stat you pick. Rotation damage uses the Damage row; set minimums (such as Energy Regen) for anything else the agent needs.'
-      />
+    <OptimizerPageShell
+      description='Searches every combination of your discs and ranks them by rotation damage or the stat you pick. Rotation damage uses the Damage row; set minimums (such as Energy Regen) for anything else the agent needs.'
+      sidebar={sidebar}
+    >
+      <FormRows>
+        <FormRow id='zzz-agent' title='Agent' summary={agentSummary}>
+          <CharacterPortrait
+            name={agent.name}
+            portrait={images.agents[agent.id]?.portrait}
+            accent={images.agents[agent.id]?.accent}
+            weapon={wEngine && { image: images.wEngines[wEngine.id], name: wEngine.name }}
+          />
+          <FormCard title='Agent'>
+            <ZzzAgentSelect images={images} value={agent.id} onChange={changeAgent} />
+            <ZzzWEngineSelect
+              images={images}
+              value={loadout.wEngineId || null}
+              onChange={(value) => setLoadout((prev) => ({ ...prev, wEngineId: value ?? '' }))}
+            />
+            <RankButtons
+              label='Refinement'
+              prefix='R'
+              from={1}
+              to={5}
+              value={Number(loadout.refinement)}
+              onChange={(value) => setLoadout((prev) => ({ ...prev, refinement: String(value) }))}
+            />
+            <RankButtons
+              label='Core Skill'
+              prefix=''
+              from={1}
+              to={6}
+              names={['A', 'B', 'C', 'D', 'E', 'F']}
+              value={Number(coreSkill)}
+              onChange={(value) => setCoreSkill(String(value))}
+            />
+          </FormCard>
 
-      <div className={classes.optimizerLayout}>
-        <Stack gap='md'>
-          <FormRows>
-            <FormRow id='zzz-agent' title='Agent' summary={agentSummary}>
-              <CharacterPortrait
-                name={agent.name}
-                portrait={images.agents[agent.id]?.portrait}
-                accent={images.agents[agent.id]?.accent}
-                weapon={wEngine && { image: images.wEngines[wEngine.id], name: wEngine.name }}
-              />
-              <FormCard title='Agent'>
-                <ZzzAgentSelect images={images} value={agent.id} onChange={changeAgent} />
-                <ZzzWEngineSelect
-                  images={images}
-                  value={loadout.wEngineId || null}
-                  onChange={(value) => setLoadout((prev) => ({ ...prev, wEngineId: value ?? '' }))}
-                />
-                <RankButtons
-                  label='Refinement'
-                  prefix='R'
-                  from={1}
-                  to={5}
-                  value={Number(loadout.refinement)}
-                  onChange={(value) => setLoadout((prev) => ({ ...prev, refinement: String(value) }))}
-                />
-                <RankButtons
-                  label='Core Skill'
-                  prefix=''
-                  from={1}
-                  to={6}
-                  names={['A', 'B', 'C', 'D', 'E', 'F']}
-                  value={Number(coreSkill)}
-                  onChange={(value) => setCoreSkill(String(value))}
-                />
-              </FormCard>
-
-              <FormCard title='Recommended build' size='wide' description={`${preset.source} · ${preset.confidence}`}>
-                <Button size='xs' variant='light' onClick={applyPreset}>Apply to the filters</Button>
-                {importedPreset && (
-                  <SegmentedControl
-                    fullWidth
-                    value={presetSource}
-                    onChange={(value) => {
-                      setPresetSource(value === 'builtin' ? 'builtin' : 'imported')
-                      setPresetChoice('0')
-                    }}
-                    data={[
-                      { value: 'imported', label: `Imported: ${importedPreset.source}` },
-                      { value: 'builtin', label: 'Built-in' },
-                    ]}
-                  />
-                )}
-                {preset.sets.length > 1 && (
-                  <Select
-                    allowDeselect={false}
-                    value={presetChoice}
-                    onChange={(value) => setPresetChoice(value ?? '0')}
-                    data={preset.sets.map((choice, i) => ({ value: String(i), label: describeChoice(choice) }))}
-                  />
-                )}
-                <Stack gap={2}>
-                  {preset.sets.map((choice, i) => (
-                    <Text key={i} size='xs'>
-                      <Text span size='xs' c='dimmed'>{i === 0 ? 'Sets ' : 'Or '}</Text>
-                      {`4pc ${setName(choice.fourPiece)} (${slotsWithSet(discs, choice.fourPiece)}/6 slots)${
-                        choice.twoPiece ? ` + 2pc ${setName(choice.twoPiece)} (${slotsWithSet(discs, choice.twoPiece)}/6)` : ''
-                      }`}
-                    </Text>
-                  ))}
-                  {MAIN_STAT_SLOTS.map((slot) => (
-                    <Text key={slot} size='xs'>
-                      <Text span size='xs' c='dimmed'>{`Slot ${slot} `}</Text>
-                      {mainStatText(preset.mainStats[slot])}
-                    </Text>
-                  ))}
-                  {preset.substatPriority.length > 0 && (
-                    <Text size='xs'>
-                      <Text span size='xs' c='dimmed'>Substats</Text>
-                      {preset.substatPriority.join(' > ')}
-                    </Text>
-                  )}
-                </Stack>
-                {preset.notes && <Text size='xs' c='dimmed'>{preset.notes}</Text>}
-                {needsReview(preset, new Date()) && (
-                  <Text size='xs' c='yellow'>
-                    {preset === importedPreset
-                      ? `Not updated in ${REVIEW_INTERVAL_DAYS} days or more, import a fresh copy`
-                      : `Not reviewed in ${REVIEW_INTERVAL_DAYS} days or more`}
-                  </Text>
-                )}
-                <Text size='xs' c='dimmed'>
-                  {`Last reviewed ${preset.reviewed}${reviewAge === undefined ? '' : ` (${reviewAge} day${reviewAge === 1 ? '' : 's'} ago)`}`}
-                </Text>
-
-                <Accordion variant='contained' radius='sm'>
-                  <Accordion.Item value='own'>
-                    <Accordion.Control>
-                      <Text size='xs'>
-                        {imported ? `Your presets: ${Object.keys(imported.presets).length} from ${imported.source || 'a file'}` : 'Use your own presets file'}
-                      </Text>
-                    </Accordion.Control>
-                    <Accordion.Panel>
-                      <Stack gap='xs'>
-                        <FileInput placeholder='Choose a presets file (.json)' accept='application/json,.json' clearable onChange={handlePresetFile} />
-                        {storedImport && <Button size='xs' variant='subtle' color='red' onClick={removeImportedPresets}>Remove imported presets</Button>}
-                        <Text size='xs' c='dimmed'>
-                          Kept in this browser only. Imported presets are for personal, non-commercial use, follow the terms of wherever they came from.
-                        </Text>
-                        {imported && <Notices messages={imported.warnings} max={MAX_IMPORT_WARNINGS} />}
-                      </Stack>
-                    </Accordion.Panel>
-                  </Accordion.Item>
-                </Accordion>
-              </FormCard>
-
-              <FormCard title='Rank by'>
-                <Select
-                  label='Rank by'
-                  allowDeselect={false}
-                  value={sortBy}
-                  onChange={(value) => value && setSortBy(value as RankKey)}
-                  data={[{ value: 'damage', label: 'Rotation damage' }, ...statRows.map((row) => ({ value: row.key, label: row.label }))]}
-                />
-                <MultiSelect
-                  label='Then by (breaks ties)'
-                  placeholder={thenBy.length ? undefined : 'None'}
-                  value={thenBy}
-                  onChange={(value) => setThenBy(value as (keyof FinalStats)[])}
-                  data={statRows.filter((row) => row.key !== sortBy).map((row) => ({ value: row.key, label: row.label }))}
-                />
-                <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
-              </FormCard>
-
-              <OptimizerOptionsCard
-                gearNoun='discs'
-                ownerNoun='agents'
-                rosterPage='Agents'
-                excludeWorn={excludeEquippedByOthers}
-                onExcludeWorn={setExcludeEquippedByOthers}
-                priority={priorityFilter}
-                onPriority={setPriorityFilter}
-                keep={{ checked: keepCurrent, description: `Each slot only uses the disc in ${agent.name}'s build`, onChange: setKeepCurrent }}
-                levels={[0, 3, 6, 9, 12, 15]}
-                minLevel={minLevel}
-                onMinLevel={setMinLevel}
-                rarity={{
-                  label: 'Minimum rank',
-                  value: minRarity || 'any',
-                  options: [{ value: 'any', label: 'Any' }, { value: 'A', label: 'A-rank' }, { value: 'S', label: 'S-rank' }],
-                  onChange: (value) => setMinRarity(value === 'any' ? '' : value as DiscRarity),
+          <FormCard title='Recommended build' size='wide' description={`${preset.source} · ${preset.confidence}`}>
+            <Button size='xs' variant='light' onClick={applyPreset}>Apply to the filters</Button>
+            {importedPreset && (
+              <SegmentedControl
+                fullWidth
+                value={presetSource}
+                onChange={(value) => {
+                  setPresetSource(value === 'builtin' ? 'builtin' : 'imported')
+                  setPresetChoice('0')
                 }}
-                boost={boostMain}
-                boostDescription='S-rank discs below +15 count with their +15 main stat'
-                onBoost={setBoostMain}
+                data={[
+                  { value: 'imported', label: `Imported: ${importedPreset.source}` },
+                  { value: 'builtin', label: 'Built-in' },
+                ]}
               />
-            </FormRow>
-
-            <FormRow id='zzz-filters' title='Disc & stat filters' summary={filterSummary}>
-              <FormCard title='Sets' size='narrow'>
-                <SetPicker
-                  label='4-piece set'
-                  max={1}
-                  options={setOptions.map((o) => ({ ...o, icon: images.sets[o.value] }))}
-                  value={fourPieceSet ? [fourPieceSet] : []}
-                  onChange={(ids) => setFourPieceSet(ids[0] ?? null)}
-                />
-                <SetPicker
-                  label='2-piece set'
-                  max={1}
-                  options={setOptions.map((o) => ({ ...o, icon: images.sets[o.value] }))}
-                  value={twoPieceSet ? [twoPieceSet] : []}
-                  onChange={(ids) => setTwoPieceSet(ids[0] ?? null)}
-                />
-              </FormCard>
-              <FormCard title='Main stats' size='narrow'>
-                {MAIN_STAT_SLOTS.map((slot) => (
-                  <MultiSelect
-                    key={slot}
-                    label={`Slot ${slot}`}
-                    placeholder={mainStats[slot]?.length ? undefined : 'Any'}
-                    value={mainStats[slot] ?? []}
-                    onChange={(value) => setMainStats((prev) => ({ ...prev, [slot]: value as ZzzStatsValues[] }))}
-                    data={mainStatOptions[slot]}
-                  />
-                ))}
-              </FormCard>
-              <FormCard title='Combat conditions' size='narrow' description='All off matches the stat screen. 4-pieces and most passives need combat.'>
-                {(Object.keys(CONDITION_LABELS) as Condition[]).map((condition) => (
-                  <Switch
-                    key={condition}
-                    label={CONDITION_LABELS[condition]}
-                    checked={conditions[condition]}
-                    onChange={(event) => {
-                      const checked = event.currentTarget.checked
-                      setConditions((prev) => ({ ...prev, [condition]: checked }))
-                    }}
-                  />
-                ))}
-              </FormCard>
-              <FormCard title='Stat filters' description='Builds outside any of these are left out.'>
-                <StatFilters rows={statRows} min={minStats} max={maxStats} onMin={(next) => setMinStats(next)} onMax={(next) => setMaxStats(next)} />
-              </FormCard>
-            </FormRow>
-
-            <FormRow
-              id='zzz-team'
-              title='Teammates'
-              summary={zzzTeamSummary(teammates.map((id) => teammateOptions.find((o) => o.value === id)?.label ?? id), teamResult.applied)}
-            >
-              <TeamCards
-                name={agent.name}
-                options={teammateOptions}
-                teammates={teammates}
-                maxTeammates={2}
-                entries={zzzTeamEntries(teamResult.applied)}
-                notice={teamResult.missing.length > 0 ? `No stat screen for ${teamResult.missing.join(', ')}: save a build for them first` : undefined}
-                description='Their kits and 4-piece sets buff this agent. Teammates use the discs and W-Engine in their saved build.'
-                emptyText='Pick teammates to see what they give. Covers the squad buffs of 33 agents (Astra Yao, Caesar, Ju Fufu, Lighter, Lucia, Yuzuha, Zhao and more), squad 4-pieces (Swing Jazz, Astral Voice, Moonlight Lullaby, King of the Summit, Bunny in Wonderland) and 20 squad-buffing W-Engines.'
-                footnote="Givers are taken at skill level 12 and Core Skill F (saved builds don't record those). W-Engines count at the refinement in their build. Enemy shred and Aftershock DMG count only in rotation damage; Daze isn't counted."
-                onTeammates={(ids) => setTeammates(ids)}
-                onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
+            )}
+            {preset.sets.length > 1 && (
+              <Select
+                allowDeselect={false}
+                value={presetChoice}
+                onChange={(value) => setPresetChoice(value ?? '0')}
+                data={preset.sets.map((choice, i) => ({ value: String(i), label: describeChoice(choice) }))}
               />
-              <TeammateOverrideCard
-                rankPrefix='M'
-                weaponLabel='W-Engine'
-                refinementPrefix='R'
-                overrides={team.overrides}
-                onChange={setTeammateOverrides}
-                members={teammates.flatMap((id) => {
-                  const build = builds.find((b) => b.agentId === id)
-                  if (!build || id === agent.id) return []
-                  const fourPiece = fourPieceSetsOf(Object.values(build.discIds).flatMap((discId) => discs.find((d) => d.id === discId)?.setId ?? []))[0]
-                  return [{
-                    id,
-                    name: build.name,
-                    roster: { rank: build.mindscapeLevel, weaponId: build.wEngineId, refinement: build.wEngineRefinement ?? 1, fourPiece },
-                    weapons: Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name })),
-                    sets: [...new Set([...(fourPiece ? [fourPiece] : []), ...Object.keys(SET_4PC_BUFFS)])].map((setId) => ({
-                      value: setId,
-                      label: SETS[setId]?.name ?? setId,
-                    })),
-                  }]
-                })}
+            )}
+            <Stack gap={2}>
+              {preset.sets.map((choice, i) => (
+                <Text key={i} size='xs'>
+                  <Text span size='xs' c='dimmed'>{i === 0 ? 'Sets ' : 'Or '}</Text>
+                  {`4pc ${setName(choice.fourPiece)} (${slotsWithSet(discs, choice.fourPiece)}/6 slots)${
+                    choice.twoPiece ? ` + 2pc ${setName(choice.twoPiece)} (${slotsWithSet(discs, choice.twoPiece)}/6)` : ''
+                  }`}
+                </Text>
+              ))}
+              {MAIN_STAT_SLOTS.map((slot) => (
+                <Text key={slot} size='xs'>
+                  <Text span size='xs' c='dimmed'>{`Slot ${slot} `}</Text>
+                  {mainStatText(preset.mainStats[slot])}
+                </Text>
+              ))}
+              {preset.substatPriority.length > 0 && (
+                <Text size='xs'>
+                  <Text span size='xs' c='dimmed'>Substats</Text>
+                  {preset.substatPriority.join(' > ')}
+                </Text>
+              )}
+            </Stack>
+            {preset.notes && <Text size='xs' c='dimmed'>{preset.notes}</Text>}
+            {needsReview(preset, new Date()) && (
+              <Text size='xs' c='yellow'>
+                {preset === importedPreset
+                  ? `Not updated in ${REVIEW_INTERVAL_DAYS} days or more, import a fresh copy`
+                  : `Not reviewed in ${REVIEW_INTERVAL_DAYS} days or more`}
+              </Text>
+            )}
+            <Text size='xs' c='dimmed'>
+              {`Last reviewed ${preset.reviewed}${reviewAge === undefined ? '' : ` (${reviewAge} day${reviewAge === 1 ? '' : 's'} ago)`}`}
+            </Text>
+
+            <Accordion variant='contained' radius='sm'>
+              <Accordion.Item value='own'>
+                <Accordion.Control>
+                  <Text size='xs'>
+                    {imported ? `Your presets: ${Object.keys(imported.presets).length} from ${imported.source || 'a file'}` : 'Use your own presets file'}
+                  </Text>
+                </Accordion.Control>
+                <Accordion.Panel>
+                  <Stack gap='xs'>
+                    <FileInput placeholder='Choose a presets file (.json)' accept='application/json,.json' clearable onChange={handlePresetFile} />
+                    {storedImport && <Button size='xs' variant='subtle' color='red' onClick={removeImportedPresets}>Remove imported presets</Button>}
+                    <Text size='xs' c='dimmed'>
+                      Kept in this browser only. Imported presets are for personal, non-commercial use, follow the terms of wherever they came from.
+                    </Text>
+                    {imported && <Notices messages={imported.warnings} max={MAX_IMPORT_WARNINGS} />}
+                  </Stack>
+                </Accordion.Panel>
+              </Accordion.Item>
+            </Accordion>
+          </FormCard>
+
+          <FormCard title='Rank by'>
+            <Select
+              label='Rank by'
+              allowDeselect={false}
+              value={sortBy}
+              onChange={(value) => value && setSortBy(value as RankKey)}
+              data={[{ value: 'damage', label: 'Rotation damage' }, ...statRows.map((row) => ({ value: row.key, label: row.label }))]}
+            />
+            <MultiSelect
+              label='Then by (breaks ties)'
+              placeholder={thenBy.length ? undefined : 'None'}
+              value={thenBy}
+              onChange={(value) => setThenBy(value as (keyof FinalStats)[])}
+              data={statRows.filter((row) => row.key !== sortBy).map((row) => ({ value: row.key, label: row.label }))}
+            />
+            <ResultLimitSelect value={resultLimit} onChange={setResultLimit} />
+          </FormCard>
+
+          <OptimizerOptionsCard
+            gearNoun='discs'
+            ownerNoun='agents'
+            rosterPage='Agents'
+            excludeWorn={excludeEquippedByOthers}
+            onExcludeWorn={setExcludeEquippedByOthers}
+            priority={priorityFilter}
+            onPriority={setPriorityFilter}
+            keep={{ checked: keepCurrent, description: `Each slot only uses the disc in ${agent.name}'s build`, onChange: setKeepCurrent }}
+            levels={[0, 3, 6, 9, 12, 15]}
+            minLevel={minLevel}
+            onMinLevel={setMinLevel}
+            rarity={{
+              label: 'Minimum rank',
+              value: minRarity || 'any',
+              options: [{ value: 'any', label: 'Any' }, { value: 'A', label: 'A-rank' }, { value: 'S', label: 'S-rank' }],
+              onChange: (value) => setMinRarity(value === 'any' ? '' : value as DiscRarity),
+            }}
+            boost={boostMain}
+            boostDescription='S-rank discs below +15 count with their +15 main stat'
+            onBoost={setBoostMain}
+          />
+        </FormRow>
+
+        <FormRow id='zzz-filters' title='Disc & stat filters' summary={filterSummary}>
+          <FormCard title='Sets' size='narrow'>
+            <SetPicker
+              label='4-piece set'
+              max={1}
+              options={setOptions.map((o) => ({ ...o, icon: images.sets[o.value] }))}
+              value={fourPieceSet ? [fourPieceSet] : []}
+              onChange={(ids) => setFourPieceSet(ids[0] ?? null)}
+            />
+            <SetPicker
+              label='2-piece set'
+              max={1}
+              options={setOptions.map((o) => ({ ...o, icon: images.sets[o.value] }))}
+              value={twoPieceSet ? [twoPieceSet] : []}
+              onChange={(ids) => setTwoPieceSet(ids[0] ?? null)}
+            />
+          </FormCard>
+          <FormCard title='Main stats' size='narrow'>
+            {MAIN_STAT_SLOTS.map((slot) => (
+              <MultiSelect
+                key={slot}
+                label={`Slot ${slot}`}
+                placeholder={mainStats[slot]?.length ? undefined : 'Any'}
+                value={mainStats[slot] ?? []}
+                onChange={(value) => setMainStats((prev) => ({ ...prev, [slot]: value as ZzzStatsValues[] }))}
+                data={mainStatOptions[slot]}
               />
-            </FormRow>
-
-            <FormRow
-              id='zzz-damage'
-              title='Damage'
-              summary={`${formatNumber(Math.round(damageSetup.multiplier + (damageSetup.aftershock?.multiplier ?? 0)))}% of ATK per rotation${
-                damageSetup.anomalyMultiplier ? ` + ${formatNumber(Math.round(damageSetup.anomalyMultiplier))}% anomaly` : ''
-              } · enemy DEF ${enemy.def}${enemy.stunned ? ', stunned' : ''}`}
-            >
-              <EnemyCard enemy={enemy} debuffs={teamResult.debuffs} teamElements={teamElements} onChange={(next) => setEnemy(next)} />
-              <RotationCard
-                agentId={agent.id}
-                element={agent.element}
-                teamElements={teamElements}
-                scaling={agent.specialty === 'Rupture' ? 'Sheer Force' : agent.specialty === 'Armorer' ? 'DEF' : 'ATK'}
-                rotation={rotation}
-                damage={currentDamage}
-                onChange={(next) => setRotation(next)}
+            ))}
+          </FormCard>
+          <FormCard title='Combat conditions' size='narrow' description='All off matches the stat screen. 4-pieces and most passives need combat.'>
+            {(Object.keys(CONDITION_LABELS) as Condition[]).map((condition) => (
+              <Switch
+                key={condition}
+                label={CONDITION_LABELS[condition]}
+                checked={conditions[condition]}
+                onChange={(event) => {
+                  const checked = event.currentTarget.checked
+                  setConditions((prev) => ({ ...prev, [condition]: checked }))
+                }}
               />
-              <KitEffectsCard
-                name={agent.name}
-                applied={kit.applied}
-                onSetting={(id, value) => setCombatSettings((current) => ({ ...current, [id]: value }))}
-              />
-              <ExtraBuffsCard defs={ZZZ_EXTRA_BUFFS} buffs={extraBuffs} onChange={setExtraBuffs} />
-            </FormRow>
-          </FormRows>
-          <KitDisclaimer name={agent.name} effects={KIT_EFFECTS[agent.id]} byDamage={byDamage} />
+            ))}
+          </FormCard>
+          <FormCard title='Stat filters' description='Builds outside any of these are left out.'>
+            <StatFilters rows={statRows} min={minStats} max={maxStats} onMin={(next) => setMinStats(next)} onMax={(next) => setMaxStats(next)} />
+          </FormCard>
+        </FormRow>
 
-          {!outcome && (
-            <Panel>
-              <EmptyState icon={<IconTrendingUp size={24} />} title={`Find the best discs for ${agent.name}`}>
-                Apply the recommended build or pick your own filters, then search. The best 50 combinations show up here.
-              </EmptyState>
-            </Panel>
-          )}
+        <FormRow
+          id='zzz-team'
+          title='Teammates'
+          summary={zzzTeamSummary(teammates.map((id) => teammateOptions.find((o) => o.value === id)?.label ?? id), teamResult.applied)}
+        >
+          <TeamCards
+            name={agent.name}
+            options={teammateOptions}
+            teammates={teammates}
+            maxTeammates={2}
+            entries={zzzTeamEntries(teamResult.applied)}
+            notice={teamResult.missing.length > 0 ? `No stat screen for ${teamResult.missing.join(', ')}: save a build for them first` : undefined}
+            description='Their kits and 4-piece sets buff this agent. Teammates use the discs and W-Engine in their saved build.'
+            emptyText='Pick teammates to see what they give. Covers the squad buffs of 33 agents (Astra Yao, Caesar, Ju Fufu, Lighter, Lucia, Yuzuha, Zhao and more), squad 4-pieces (Swing Jazz, Astral Voice, Moonlight Lullaby, King of the Summit, Bunny in Wonderland) and 20 squad-buffing W-Engines.'
+            footnote="Givers are taken at skill level 12 and Core Skill F (saved builds don't record those). W-Engines count at the refinement in their build. Enemy shred and Aftershock DMG count only in rotation damage; Daze isn't counted."
+            onTeammates={(ids) => setTeammates(ids)}
+            onSetting={(key, value) => setTeamSettings((prev) => ({ ...prev, [key]: value }))}
+          />
+          <TeammateOverrideCard
+            rankPrefix='M'
+            weaponLabel='W-Engine'
+            refinementPrefix='R'
+            overrides={team.overrides}
+            onChange={setTeammateOverrides}
+            members={teammates.flatMap((id) => {
+              const build = builds.find((b) => b.agentId === id)
+              if (!build || id === agent.id) return []
+              const fourPiece = fourPieceSetsOf(Object.values(build.discIds).flatMap((discId) => discs.find((d) => d.id === discId)?.setId ?? []))[0]
+              return [{
+                id,
+                name: build.name,
+                roster: { rank: build.mindscapeLevel, weaponId: build.wEngineId, refinement: build.wEngineRefinement ?? 1, fourPiece },
+                weapons: Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name })),
+                sets: [...new Set([...(fourPiece ? [fourPiece] : []), ...Object.keys(SET_4PC_BUFFS)])].map((setId) => ({
+                  value: setId,
+                  label: SETS[setId]?.name ?? setId,
+                })),
+              }]
+            })}
+          />
+        </FormRow>
 
-          {!running && emptySlots.length > 0 && <NoBuildPanel causes={noResultCauses()} gearNoun='discs' empty='slot' />}
+        <FormRow
+          id='zzz-damage'
+          title='Damage'
+          summary={`${formatNumber(Math.round(damageSetup.multiplier + (damageSetup.aftershock?.multiplier ?? 0)))}% of ATK per rotation${
+            damageSetup.anomalyMultiplier ? ` + ${formatNumber(Math.round(damageSetup.anomalyMultiplier))}% anomaly` : ''
+          } · enemy DEF ${enemy.def}${enemy.stunned ? ', stunned' : ''}`}
+        >
+          <EnemyCard enemy={enemy} debuffs={teamResult.debuffs} teamElements={teamElements} onChange={(next) => setEnemy(next)} />
+          <RotationCard
+            agentId={agent.id}
+            element={agent.element}
+            teamElements={teamElements}
+            scaling={agent.specialty === 'Rupture' ? 'Sheer Force' : agent.specialty === 'Armorer' ? 'DEF' : 'ATK'}
+            rotation={rotation}
+            damage={currentDamage}
+            onChange={(next) => setRotation(next)}
+          />
+          <KitEffectsCard
+            name={agent.name}
+            applied={kit.applied}
+            onSetting={(id, value) => setCombatSettings((current) => ({ ...current, [id]: value }))}
+          />
+          <ExtraBuffsCard defs={ZZZ_EXTRA_BUFFS} buffs={extraBuffs} onChange={setExtraBuffs} />
+        </FormRow>
+      </FormRows>
+      <KitDisclaimer name={agent.name} effects={KIT_EFFECTS[agent.id]} byDamage={byDamage} />
 
-          {outcome && !outcome.ok && <Notices messages={[outcome.reason]} />}
-
-          {outcome?.ok && (
-            <Panel
-              title='Results'
-              description={`${formatNumber(outcome.matched)} of ${
-                formatNumber(outcome.combinations)
-              } combinations meet the filters, showing the best ${outcome.builds.length}`}
-            >
-              {outcome.builds.length === 0
-                ? <NoResults heading causes={noResultCauses()} gearNoun='discs' />
-                : (
-                  <ResultsGrid
-                    key={outcome.builds.length + sortBy}
-                    columns={[
-                      ...(byDamage
-                        ? [{ key: 'damage', label: 'Rotation damage', format: (value: number) => formatNumber(Math.round(value)), primary: true, width: 110 }]
-                        : []),
-                      ...resultColumns.map((row) => ({
-                        key: row.key,
-                        label: row.label,
-                        format: (value: number) => formatStat(row, value),
-                        primary: row.key === sortBy,
-                      })),
-                    ]}
-                    rows={outcome.builds.map((build, i) => ({
-                      id: String(i),
-                      rank: String(i + 1),
-                      values: {
-                        ...Object.fromEntries(
-                          resultColumns.map((row) => [row.key, (statView === 'basic' ? screenDisplay(build.discs) ?? build.display : build.display)[row.key]]),
-                        ),
-                        damage: build.damage ?? 0,
-                      },
-                      sets: describeSets(build.discs),
-                    }))}
-                    current={currentDisplay
-                      ? {
-                        id: 'now',
-                        rank: 'Now',
-                        values: {
-                          ...Object.fromEntries(
-                            resultColumns.map((
-                              row,
-                            ) => [row.key, (statView === 'basic' ? screenDisplay(currentDiscs) ?? currentDisplay : currentDisplay)[row.key]]),
-                          ),
-                          damage: currentDamage ?? 0,
-                        },
-                        sets: describeSets(currentDiscs),
-                      }
-                      : undefined}
-                    selected={selected}
-                    onSelect={setSelected}
-                  />
-                )}
-            </Panel>
-          )}
-
-          <PreviewWithAnalysis game='zzz'>
+      <OptimizerResults
+        game='zzz'
+        gearNoun='discs'
+        intro={outcome ? undefined : {
+          title: `Find the best discs for ${agent.name}`,
+          text: 'Apply the recommended build or pick your own filters, then search. The best 50 combinations show up here.',
+        }}
+        emptyPool={!running && emptySlots.length > 0 ? { causes: noResultCauses(), empty: 'slot' } : undefined}
+        failure={outcome && !outcome.ok ? outcome.reason : undefined}
+        results={outcome?.ok
+          ? {
+            description: `${formatNumber(outcome.matched)} of ${
+              formatNumber(outcome.combinations)
+            } combinations meet the filters, showing the best ${outcome.builds.length}`,
+            causes: noResultCauses,
+            grid: outcome.builds.length === 0 ? undefined : {
+              gridKey: `${outcome.builds.length}${sortBy}`,
+              columns: [
+                ...(byDamage
+                  ? [{ key: 'damage', label: 'Rotation damage', format: (value: number) => formatNumber(Math.round(value)), primary: true, width: 110 }]
+                  : []),
+                ...resultColumns.map((row) => ({
+                  key: row.key,
+                  label: row.label,
+                  format: (value: number) => formatStat(row, value),
+                  primary: row.key === sortBy,
+                })),
+              ],
+              rows: outcome.builds.map((build, i) => ({
+                id: String(i),
+                rank: String(i + 1),
+                values: {
+                  ...Object.fromEntries(
+                    resultColumns.map((row) => [row.key, (statView === 'basic' ? screenDisplay(build.discs) ?? build.display : build.display)[row.key]]),
+                  ),
+                  damage: build.damage ?? 0,
+                },
+                sets: describeSets(build.discs),
+              })),
+              current: currentDisplay
+                ? {
+                  id: 'now',
+                  rank: 'Now',
+                  values: {
+                    ...Object.fromEntries(
+                      resultColumns.map((row) => [row.key, (statView === 'basic' ? screenDisplay(currentDiscs) ?? currentDisplay : currentDisplay)[row.key]]),
+                    ),
+                    damage: currentDamage ?? 0,
+                  },
+                  sets: describeSets(currentDiscs),
+                }
+                : undefined,
+              selected,
+              onSelect: setSelected,
+            },
+          }
+          : undefined}
+        pins={pins}
+        preview={
+          <>
             {best && (
               <BuildPreview
                 title={`Build #${selected + 1}`}
@@ -1186,36 +1180,11 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
                 formatRoll={(upgrade) => /%|CRIT/.test(upgrade.stat) ? `${upgrade.roll}%` : String(upgrade.roll)}
               />
             )}
-          </PreviewWithAnalysis>
-          <BuildCompare pinned={pins.pinned} onUnpin={pins.unpin} />
-          <RememberDamageScore game='zzz' characterId={agent.id} pieceIds={currentDiscs.map((d) => d.id)} score={currentDpsScore} />
-        </Stack>
-
-        <OptimizerSidebar
-          pools={pools.map((pool, i) => ({ label: `Slot ${i + 1}`, value: pool.length }))}
-          combinations={combinations}
-          hint={{ text: searchHint, warn: !canSearch }}
-          canStart={canSearch}
-          running={running}
-          progress={progress}
-          onStart={run}
-          onCancel={cancel}
-          results={outcome?.ok ? { count: outcome.builds.length, seconds: (result?.ms ?? 0) / 1000 } : undefined}
-          equip={best ? { label: `build #${selected + 1}`, onEquip: equipBuild, equipped: isWorn } : undefined}
-          statView={{ value: statView, onChange: setStatView }}
-          onReset={() => {
-            updateSettings(defaultSettings(agent.id))
-            setResult(undefined)
-          }}
-          pins={{
-            onPin: best ? () => pins.pin(`#${selected + 1} · ${rankText(best)}`, pinnedCells(analysisRows)) : undefined,
-            count: pins.pinned.length,
-            onClear: pins.clear,
-          }}
-          builds={{ onSave: best ? saveBuildNow : undefined, onLoad: loadBuilds, count: savedList.length }}
-        />
-      </div>
-    </Stack>
+          </>
+        }
+      />
+      <RememberDamageScore game='zzz' characterId={agent.id} pieceIds={currentDiscs.map((d) => d.id)} score={currentDpsScore} />
+    </OptimizerPageShell>
   )
 }
 
