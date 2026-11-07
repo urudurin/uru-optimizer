@@ -12,17 +12,11 @@ import {
   Text,
 } from '@mantine/core'
 import {
-  ranksAbove,
-  usePriority,
-} from 'lib/games/shared/characterPriority'
-import {
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
 import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
 import { formatNumber } from 'lib/games/shared/format'
-import { swapsOnEquip } from 'lib/games/shared/gameSettings'
 import { scoreBuild } from 'lib/games/shared/gearScore'
-import { todayString } from 'lib/games/shared/importedPresets'
 import {
   type FilterCause,
   optionCandidates,
@@ -36,12 +30,6 @@ import {
   useActiveCharacter,
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
-import {
-  deleteSavedBuild,
-  saveBuild,
-  type SavedBuild,
-  savedBuilds,
-} from 'lib/games/shared/savedBuilds'
 import {
   fourPieceSetsOf,
   keepOverridesFor,
@@ -81,10 +69,6 @@ import {
   resultLimitOf,
   ResultLimitSelect,
 } from 'lib/games/shared/ui/optimizer/ResultLimit'
-import {
-  openSaveBuildModal,
-  openSavedBuildsModal,
-} from 'lib/games/shared/ui/optimizer/SavedBuilds'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
   limitsSummary,
@@ -92,6 +76,11 @@ import {
 } from 'lib/games/shared/ui/optimizer/StatFilters'
 import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
 import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
+import {
+  type OptimizerKind,
+  useBuildActions,
+  useExcludeOwners,
+} from 'lib/games/shared/ui/optimizer/useBuildActions'
 import { useOptimizerRun } from 'lib/games/shared/ui/optimizer/useOptimizerRun'
 import {
   FormCard,
@@ -212,7 +201,6 @@ import { Message } from 'lib/interactions/message'
 import {
   useCallback,
   useMemo,
-  useReducer,
   useState,
 } from 'react'
 
@@ -307,6 +295,14 @@ function migrateSaves() {
   )
 }
 
+// What the shared optimizer parts need to know about this game's gear (shared/ui/optimizer/useBuildActions.ts)
+const ZZZ_OPTIMIZER_KIND: OptimizerKind<Disc> = {
+  game: 'zzz',
+  buildNoun: 'build',
+  describeSets,
+  takenNote: (name, swap) => (swap ? `will get ${name}'s current discs in exchange` : 'will lose them (Settings: replace)'),
+}
+
 export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   useState(migrateSaves)
   const discs = useZzzStore((s) => s.discs)
@@ -398,11 +394,8 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const setMinRarity = fieldSetter(updateSettings, 'minRarity')
   const setBoostMain = fieldSetter(updateSettings, 'boostMain')
   // Gear worn by characters ranked above is left out when the priority filter is on (and worn gear is otherwise allowed)
-  const rankOrder = usePriority('zzz')
-  const excludeOwners = useMemo(
-    () => (priorityFilter && !excludeEquippedByOthers ? ranksAbove([...new Set(builds.map((b) => b.agentId))], rankOrder, agent.id) : undefined),
-    [priorityFilter, excludeEquippedByOthers, rankOrder, builds, agent.id],
-  )
+  const rosterIds = useMemo(() => [...new Set(builds.map((b) => b.agentId))], [builds])
+  const excludeOwners = useExcludeOwners('zzz', rosterIds, agent.id, priorityFilter, excludeEquippedByOthers)
   const setResultLimit = fieldSetter(updateSettings, 'resultLimit')
   const setTeammates = fieldSetter(updateSettings, 'teammates')
   const setTeamSettings = fieldSetter(updateSettings, 'teamSettings')
@@ -483,11 +476,16 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   const { running, progress, result, setResult, selected, setSelected } = search
   const outcome: OptimizerOutcome | null = result?.outcome ?? null
   const pins = usePinnedBuilds(agent.id)
+  // Equip, Save build and Load builds (shared/ui/optimizer/useBuildActions.ts)
+  const buildActions = useBuildActions(ZZZ_OPTIMIZER_KIND, {
+    characterId: agent.id,
+    name: agent.name,
+    gear: discs,
+    equip: (pieces) => equip(agent, { id: loadout.wEngineId, refinement: Number(loadout.refinement) }, pieces),
+  })
+  const { savedList } = buildActions
   // Results columns: in-combat stats (team, kit and set buffs) or the stat screen, after HSR's stat view
   const [statView, setStatView] = useState<StatView>('combat')
-  // Saved builds of this character; bumped after a save or delete to read them again
-  const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
-  const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('zzz', agent.id) : []), [agent.id, buildsVersion])
   const equip = useZzzStore((s) => s.equip)
 
   const storedImport = usePresetImportStore((s) => s.stored)
@@ -704,14 +702,7 @@ export function ZzzOptimizerPage({ onImport }: { onImport: () => void }) {
   async function equipBuild() {
     if (!best) return
     const losing = zzzPiecesTaken({ discs, builds }, agent.id, best.discs).map((id) => ownerNames.get(id) ?? AGENTS[id]?.name ?? `Agent ${id}`)
-    const swap = losing.length > 0
-      ? `
-
-${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current discs in exchange` : 'will lose them (Settings: replace)'}.`
-      : ''
-    if (!await confirmAction('Equip build', `Equip build #${selected + 1} on ${agent.name} in this browser's save?${swap}`, { confirmLabel: 'Equip' })) return
-    equip(agent, { id: loadout.wEngineId, refinement: Number(loadout.refinement) }, best.discs)
-    Message.success('Equipped')
+    await buildActions.equipResult(selected, best.discs, losing)
   }
 
   // The picked build's analysis rows, for Build analysis and Pin build
@@ -738,41 +729,7 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
 
   // Saved builds (the sidebar's Builds group, after HSR's), by piece id
   function saveBuildNow() {
-    if (!best) return
-    const pieceIds = best.discs.map((piece) => piece.id)
-    openSaveBuildModal({
-      defaultName: `Build ${savedList.length + 1}`,
-      onSave: (name) => {
-        saveBuild('zzz', agent.id, name, pieceIds, todayString(new Date()))
-        bumpBuilds()
-        Message.success(`Saved build ${name}`)
-      },
-    })
-  }
-  function loadBuilds() {
-    const piecesOf = (saved: SavedBuild) => saved.pieceIds.flatMap((id) => discs.find((piece) => piece.id === id) ?? [])
-    const equipPieces = (pieces: Disc[]) => equip(agent, { id: loadout.wEngineId, refinement: Number(loadout.refinement) }, pieces)
-    openSavedBuildsModal({
-      name: agent.name,
-      builds: savedList,
-      describe: (saved) => {
-        const pieces = piecesOf(saved)
-        const missing = saved.pieceIds.length - pieces.length
-        return `${describeSets(pieces)}${missing ? ` · ${missing} no longer in the save` : ''}`
-      },
-      onEquip: async (saved) => {
-        const pieces = piecesOf(saved)
-        if (pieces.length === 0) return
-        if (!await confirmAction('Equip saved build', `Equip ${saved.name} on ${agent.name} in this browser's save?`, { confirmLabel: 'Equip' })) return
-        equipPieces(pieces)
-        Message.success('Equipped')
-      },
-      onDelete: (saved) => {
-        const left = deleteSavedBuild('zzz', agent.id, saved.name)
-        bumpBuilds()
-        return left
-      },
-    })
+    if (best) buildActions.saveBuildNow(best.discs)
   }
 
   const sidebar = (
@@ -797,7 +754,7 @@ ${losing.join(', ')} ${swapsOnEquip('zzz') ? `will get ${agent.name}'s current d
         count: pins.pinned.length,
         onClear: pins.clear,
       }}
-      builds={{ onSave: best ? saveBuildNow : undefined, onLoad: loadBuilds, count: savedList.length }}
+      builds={{ onSave: best ? saveBuildNow : undefined, onLoad: buildActions.loadBuilds, count: savedList.length }}
     />
   )
 

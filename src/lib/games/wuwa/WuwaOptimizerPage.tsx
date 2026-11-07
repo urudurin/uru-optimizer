@@ -6,17 +6,11 @@ import {
   Text,
 } from '@mantine/core'
 import {
-  ranksAbove,
-  usePriority,
-} from 'lib/games/shared/characterPriority'
-import {
   type DamagePart,
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
 import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
 import { formatNumber } from 'lib/games/shared/format'
-import { swapsOnEquip } from 'lib/games/shared/gameSettings'
-import { todayString } from 'lib/games/shared/importedPresets'
 import {
   type FilterCause,
   optionCandidates,
@@ -31,12 +25,6 @@ import {
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import {
-  deleteSavedBuild,
-  saveBuild,
-  type SavedBuild,
-  savedBuilds,
-} from 'lib/games/shared/savedBuilds'
-import {
   keepOverridesFor,
   type TeammateOverrides,
 } from 'lib/games/shared/teammateOverrides'
@@ -49,7 +37,6 @@ import {
   DPS_SCORE_LABEL,
   RememberDamageScore,
 } from 'lib/games/shared/ui/BuildRating'
-import { confirmAction } from 'lib/games/shared/ui/confirm'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import { usePinnedBuilds } from 'lib/games/shared/ui/optimizer/BuildCompare'
 import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
@@ -70,10 +57,6 @@ import {
   resultLimitOf,
   ResultLimitSelect,
 } from 'lib/games/shared/ui/optimizer/ResultLimit'
-import {
-  openSaveBuildModal,
-  openSavedBuildsModal,
-} from 'lib/games/shared/ui/optimizer/SavedBuilds'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
   limitsSummary,
@@ -81,6 +64,11 @@ import {
 } from 'lib/games/shared/ui/optimizer/StatFilters'
 import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
 import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
+import {
+  type OptimizerKind,
+  useBuildActions,
+  useExcludeOwners,
+} from 'lib/games/shared/ui/optimizer/useBuildActions'
 import { useOptimizerRun } from 'lib/games/shared/ui/optimizer/useOptimizerRun'
 import {
   FormCard,
@@ -189,10 +177,8 @@ import {
 } from 'lib/games/wuwa/ui/pickers'
 import { WEAPON_OPTIONS } from 'lib/games/wuwa/ui/ResonatorForm'
 import { wuwaStatRows } from 'lib/games/wuwa/ui/resonatorStats'
-import { Message } from 'lib/interactions/message'
 import {
   useMemo,
-  useReducer,
   useState,
 } from 'react'
 
@@ -310,6 +296,15 @@ function wuwaBreakdown(setup: DamageSetup, stats: WuwaStats): DamagePart[] {
   )
 }
 
+// What the shared optimizer parts need to know about this game's gear (shared/ui/optimizer/useBuildActions.ts)
+const WUWA_OPTIMIZER_KIND: OptimizerKind<Echo> = {
+  game: 'wuwa',
+  buildNoun: 'loadout',
+  describeSets,
+  takenNote: (_, swap) =>
+    swap ? 'will get echoes of the same cost this Resonator drops, where there are some' : 'will lose the echoes this loadout takes (Settings: replace)',
+}
+
 export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   useState(migrateSaves)
   const echoes = useWuwaStore((s) => s.echoes)
@@ -360,11 +355,8 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const setMinRarity = fieldSetter(updateSettings, 'minRarity')
   const setBoostMain = fieldSetter(updateSettings, 'boostMain')
   // Gear worn by characters ranked above is left out when the priority filter is on (and worn gear is otherwise allowed)
-  const rankOrder = usePriority('wuwa')
-  const excludeOwners = useMemo(
-    () => (priorityFilter && !excludeEquippedByOthers ? ranksAbove(characters.map((c) => c.charId), rankOrder, character?.charId ?? '') : undefined),
-    [priorityFilter, excludeEquippedByOthers, rankOrder, characters, character?.charId],
-  )
+  const rosterIds = useMemo(() => characters.map((c) => c.charId), [characters])
+  const excludeOwners = useExcludeOwners('wuwa', rosterIds, character?.charId ?? '', priorityFilter, excludeEquippedByOthers)
   const setResultLimit = fieldSetter(updateSettings, 'resultLimit')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
@@ -385,11 +377,16 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   const search = useOptimizerRun<{ outcome: EchoOutcome, ms: number, target: EchoTarget }, typeof echoSearch>(echoSearch)
   const { running, progress, result, setResult, selected, setSelected } = search
   const pins = usePinnedBuilds(character?.charId ?? '')
+  // Equip, Save build and Load builds (shared/ui/optimizer/useBuildActions.ts)
+  const buildActions = useBuildActions(WUWA_OPTIMIZER_KIND, {
+    characterId: character?.charId ?? '',
+    name: character ? characterName(character.charId) : '',
+    gear: echoes,
+    equip: (pieces) => character && equip(character, pieces),
+  })
+  const { savedList } = buildActions
   // Results columns: in-combat stats (team, kit and set buffs) or the stat screen, after HSR's stat view
   const [statView, setStatView] = useState<StatView>('combat')
-  // Saved builds of this character; bumped after a save or delete to read them again
-  const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
-  const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('wuwa', character?.charId ?? '') : []), [character?.charId, buildsVersion])
 
   const ownerOf = useMemo(() => {
     const owners = new Map<string, string>()
@@ -580,22 +577,7 @@ export function WuwaOptimizerPage({ onImport }: { onImport: () => void }) {
   async function equipBuild() {
     if (!build || !result) return
     const losing = wuwaPiecesTaken({ echoes, characters, teams, priority }, character.charId, build.echoes).map(characterName)
-    const taken = losing.length > 0
-      ? `
-
-${losing.join(', ')} ${
-        swapsOnEquip('wuwa')
-          ? 'will get echoes of the same cost this Resonator drops, where there are some'
-          : 'will lose the echoes this loadout takes (Settings: replace)'
-      }.`
-      : ''
-    if (
-      !await confirmAction('Equip loadout', `Equip loadout #${selected + 1} on ${characterName(character.charId)} in this browser's save?${taken}`, {
-        confirmLabel: 'Equip',
-      })
-    ) return
-    equip(character, build.echoes)
-    Message.success('Equipped')
+    if (!await buildActions.equipResult(selected, build.echoes, losing)) return
     // The "Now" row is this loadout from here on
     if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
   }
@@ -623,45 +605,7 @@ ${losing.join(', ')} ${
 
   // Saved builds (the sidebar's Builds group, after HSR's), by piece id
   function saveBuildNow() {
-    if (!build) return
-    const pieceIds = build.echoes.map((piece) => piece.id)
-    openSaveBuildModal({
-      defaultName: `Build ${savedList.length + 1}`,
-      onSave: (name) => {
-        saveBuild('wuwa', character.charId, name, pieceIds, todayString(new Date()))
-        bumpBuilds()
-        Message.success(`Saved build ${name}`)
-      },
-    })
-  }
-  function loadBuilds() {
-    const piecesOf = (saved: SavedBuild) => saved.pieceIds.flatMap((id) => echoes.find((piece) => piece.id === id) ?? [])
-    const equipPieces = (pieces: Echo[]) => equip(character, pieces)
-    openSavedBuildsModal({
-      name: characterName(character.charId),
-      builds: savedList,
-      describe: (saved) => {
-        const pieces = piecesOf(saved)
-        const missing = saved.pieceIds.length - pieces.length
-        return `${describeSets(pieces)}${missing ? ` · ${missing} no longer in the save` : ''}`
-      },
-      onEquip: async (saved) => {
-        const pieces = piecesOf(saved)
-        if (pieces.length === 0) return
-        if (
-          !await confirmAction('Equip saved build', `Equip ${saved.name} on ${characterName(character.charId)} in this browser's save?`, {
-            confirmLabel: 'Equip',
-          })
-        ) return
-        equipPieces(pieces)
-        Message.success('Equipped')
-      },
-      onDelete: (saved) => {
-        const left = deleteSavedBuild('wuwa', character.charId, saved.name)
-        bumpBuilds()
-        return left
-      },
-    })
+    if (build) buildActions.saveBuildNow(build.echoes)
   }
 
   const sidebar = (
@@ -693,7 +637,7 @@ ${losing.join(', ')} ${
         count: pins.pinned.length,
         onClear: pins.clear,
       }}
-      builds={{ onSave: build ? saveBuildNow : undefined, onLoad: loadBuilds, count: savedList.length }}
+      builds={{ onSave: build ? saveBuildNow : undefined, onLoad: buildActions.loadBuilds, count: savedList.length }}
     />
   )
 

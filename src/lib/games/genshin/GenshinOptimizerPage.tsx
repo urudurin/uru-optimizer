@@ -109,17 +109,11 @@ import {
   GenshinWeaponSelect,
 } from 'lib/games/genshin/ui/pickers'
 import {
-  ranksAbove,
-  usePriority,
-} from 'lib/games/shared/characterPriority'
-import {
   type DamagePart,
   splitDamage,
 } from 'lib/games/shared/damageBreakdown'
 import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
 import { formatNumber } from 'lib/games/shared/format'
-import { swapsOnEquip } from 'lib/games/shared/gameSettings'
-import { todayString } from 'lib/games/shared/importedPresets'
 import {
   type FilterCause,
   optionCandidates,
@@ -134,12 +128,6 @@ import {
   useCharacterSettings,
 } from 'lib/games/shared/optimizerSettings'
 import {
-  deleteSavedBuild,
-  saveBuild,
-  type SavedBuild,
-  savedBuilds,
-} from 'lib/games/shared/savedBuilds'
-import {
   fourPieceSetsOf,
   keepOverridesFor,
   type TeammateOverrides,
@@ -153,7 +141,6 @@ import {
   DPS_SCORE_LABEL,
   RememberDamageScore,
 } from 'lib/games/shared/ui/BuildRating'
-import { confirmAction } from 'lib/games/shared/ui/confirm'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import { usePinnedBuilds } from 'lib/games/shared/ui/optimizer/BuildCompare'
 import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
@@ -174,16 +161,17 @@ import {
   resultLimitOf,
   ResultLimitSelect,
 } from 'lib/games/shared/ui/optimizer/ResultLimit'
-import {
-  openSaveBuildModal,
-  openSavedBuildsModal,
-} from 'lib/games/shared/ui/optimizer/SavedBuilds'
 import { SetPicker } from 'lib/games/shared/ui/optimizer/SetPicker'
 import {
   limitsSummary,
   StatFilters,
 } from 'lib/games/shared/ui/optimizer/StatFilters'
 import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
+import {
+  type OptimizerKind,
+  useBuildActions,
+  useExcludeOwners,
+} from 'lib/games/shared/ui/optimizer/useBuildActions'
 import { useOptimizerRun } from 'lib/games/shared/ui/optimizer/useOptimizerRun'
 import {
   FormCard,
@@ -192,11 +180,9 @@ import {
 } from 'lib/games/shared/ui/OptimizerForm'
 import type { StatView } from 'lib/games/shared/ui/OptimizerSidebar'
 import { OptimizerSidebar } from 'lib/games/shared/ui/OptimizerSidebar'
-import { Message } from 'lib/interactions/message'
 import {
   useEffect,
   useMemo,
-  useReducer,
   useState,
 } from 'react'
 
@@ -316,6 +302,14 @@ function genshinBreakdown(setup: DamageSetup, stats: Partial<Record<GenshinStatK
   )
 }
 
+// What the shared optimizer parts need to know about this game's gear (shared/ui/optimizer/useBuildActions.ts)
+const GENSHIN_OPTIMIZER_KIND: OptimizerKind<Artifact> = {
+  game: 'genshin',
+  buildNoun: 'build',
+  describeSets,
+  takenNote: (name, swap) => (swap ? `will get ${name}'s current pieces in exchange` : 'will lose them (Settings: replace)'),
+}
+
 export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   useState(migrateSaves)
   const artifacts = useGenshinStore((s) => s.artifacts)
@@ -365,11 +359,8 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const setMinRarity = fieldSetter(updateSettings, 'minRarity')
   const setBoostMain = fieldSetter(updateSettings, 'boostMain')
   // Gear worn by characters ranked above is left out when the priority filter is on (and worn gear is otherwise allowed)
-  const rankOrder = usePriority('genshin')
-  const excludeOwners = useMemo(
-    () => (priorityFilter && !excludeEquippedByOthers ? ranksAbove(characters.map((c) => c.id), rankOrder, character?.id ?? '') : undefined),
-    [priorityFilter, excludeEquippedByOthers, rankOrder, characters, character?.id],
-  )
+  const rosterIds = useMemo(() => characters.map((c) => c.id), [characters])
+  const excludeOwners = useExcludeOwners('genshin', rosterIds, character?.id ?? '', priorityFilter, excludeEquippedByOthers)
   const setResultLimit = fieldSetter(updateSettings, 'resultLimit')
   const setMinStats = fieldSetter(updateSettings, 'minStats')
   const setMaxStats = fieldSetter(updateSettings, 'maxStats')
@@ -385,11 +376,16 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   const search = useOptimizerRun<{ outcome: OptimizerOutcome, ms: number, target: OptimizerTarget }, typeof artifactSearch>(artifactSearch)
   const { running, progress, result, setResult, selected, setSelected } = search
   const pins = usePinnedBuilds(character?.id ?? '')
+  // Equip, Save build and Load builds (shared/ui/optimizer/useBuildActions.ts)
+  const buildActions = useBuildActions(GENSHIN_OPTIMIZER_KIND, {
+    characterId: character?.id ?? '',
+    name: character?.name ?? '',
+    gear: artifacts,
+    equip: (pieces) => character && equip(character, pieces),
+  })
+  const { savedList } = buildActions
   // Results columns: in-combat stats (team, kit and set buffs) or the stat screen, after HSR's stat view
   const [statView, setStatView] = useState<StatView>('combat')
-  // Saved builds of this character; bumped after a save or delete to read them again
-  const [buildsVersion, bumpBuilds] = useReducer((n: number) => n + 1, 0)
-  const savedList = useMemo(() => (buildsVersion >= 0 ? savedBuilds('genshin', character?.id ?? '') : []), [character?.id, buildsVersion])
 
   const ownerNames = useMemo(() => new Map(characters.map((c) => [c.id, c.name])), [characters])
   const equip = useGenshinStore((s) => s.equip)
@@ -612,16 +608,7 @@ export function GenshinOptimizerPage({ onImport }: { onImport: () => void }) {
   async function equipBuild() {
     if (!build || !result) return
     const losing = genshinPiecesTaken({ artifacts, characters }, character.id, build.artifacts).map((id) => ownerNames.get(id) ?? id)
-    const swap = losing.length > 0
-      ? `
-
-${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s current pieces in exchange` : 'will lose them (Settings: replace)'}.`
-      : ''
-    if (!await confirmAction('Equip build', `Equip build #${selected + 1} on ${character.name} in this browser's save?${swap}`, { confirmLabel: 'Equip' })) {
-      return
-    }
-    equip(character, build.artifacts)
-    Message.success('Equipped')
+    if (!await buildActions.equipResult(selected, build.artifacts, losing)) return
     // The "Now" row is this build from here on
     if (result.outcome.ok) setResult({ ...result, outcome: { ...result.outcome, current: build } })
   }
@@ -649,41 +636,7 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
 
   // Saved builds (the sidebar's Builds group, after HSR's), by piece id
   function saveBuildNow() {
-    if (!build) return
-    const pieceIds = build.artifacts.map((piece) => piece.id)
-    openSaveBuildModal({
-      defaultName: `Build ${savedList.length + 1}`,
-      onSave: (name) => {
-        saveBuild('genshin', character.id, name, pieceIds, todayString(new Date()))
-        bumpBuilds()
-        Message.success(`Saved build ${name}`)
-      },
-    })
-  }
-  function loadBuilds() {
-    const piecesOf = (saved: SavedBuild) => saved.pieceIds.flatMap((id) => artifacts.find((piece) => piece.id === id) ?? [])
-    const equipPieces = (pieces: Artifact[]) => equip(character, pieces)
-    openSavedBuildsModal({
-      name: character.name,
-      builds: savedList,
-      describe: (saved) => {
-        const pieces = piecesOf(saved)
-        const missing = saved.pieceIds.length - pieces.length
-        return `${describeSets(pieces)}${missing ? ` · ${missing} no longer in the save` : ''}`
-      },
-      onEquip: async (saved) => {
-        const pieces = piecesOf(saved)
-        if (pieces.length === 0) return
-        if (!await confirmAction('Equip saved build', `Equip ${saved.name} on ${character.name} in this browser's save?`, { confirmLabel: 'Equip' })) return
-        equipPieces(pieces)
-        Message.success('Equipped')
-      },
-      onDelete: (saved) => {
-        const left = deleteSavedBuild('genshin', character.id, saved.name)
-        bumpBuilds()
-        return left
-      },
-    })
+    if (build) buildActions.saveBuildNow(build.artifacts)
   }
 
   const sidebar = (
@@ -716,7 +669,7 @@ ${losing.join(', ')} ${swapsOnEquip('genshin') ? `will get ${character.name}'s c
         count: pins.pinned.length,
         onClear: pins.clear,
       }}
-      builds={{ onSave: build ? saveBuildNow : undefined, onLoad: loadBuilds, count: savedList.length }}
+      builds={{ onSave: build ? saveBuildNow : undefined, onLoad: buildActions.loadBuilds, count: savedList.length }}
     />
   )
 
