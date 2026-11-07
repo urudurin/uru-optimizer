@@ -116,7 +116,7 @@ export function RotationCard({ character, rotation, talents, damage, team, teamE
             data={Array.from({ length: 15 }, (_, i) => String(i + 1))}
           />
         ))}
-        <Button size='xs' variant='light' onClick={() => onChange(defaultRotation(character.id, teamElements, team))}>Default</Button>
+        <Button size='xs' variant='light' onClick={() => onChange(defaultRotation(character.id, teamElements, team, character.constellation))}>Default</Button>
         <Button size='xs' variant='subtle' onClick={() => onChange({ ...rotation, counts: {} })}>Clear</Button>
         <SavedRotations game='genshin' characterId={character.id} rotation={rotation} onLoad={onChange} />
       </Group>

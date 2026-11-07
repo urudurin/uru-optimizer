@@ -1,6 +1,7 @@
 import type {
   HitBuff,
   SpecialKind,
+  TransformativeReaction,
 } from 'lib/games/genshin/damage/damage'
 import type { ScreenStats } from 'lib/games/genshin/data/screenPassives'
 import type { BuffSetting } from 'lib/games/genshin/team/buffs'
@@ -74,6 +75,8 @@ export type CombatEffect = {
   elevation?: (context: CombatContext) => Partial<Record<SpecialKind, number>>,
   // Reaction DMG Bonus per point of Elemental Mastery, in percent (damage/damage.ts DamageSetup.reactionBonusPerEm)
   reactionsPerEm?: (context: CombatContext) => Partial<Record<ReactionBonusKey, number>>,
+  // Flat DMG on some reactions per point of EM, for at most a number of triggers (damage/damage.ts DamageSetup.reactionFlatPerEm)
+  reactionFlats?: (context: CombatContext) => Partial<Record<TransformativeReaction, { perEm: number, hits: number }>>,
   confidence: 'confirmed' | 'sourced' | 'unverified',
 }
 
@@ -962,6 +965,17 @@ export const KIT_EFFECTS: Record<string, CombatEffect[]> = {
       return { swirl: MIZUKI_SWIRL_PER_EM[level], stellarswirl: MIZUKI_SWIRL_PER_EM[level] / 10 }
     },
     confidence: 'confirmed',
+  }, {
+    id: 'mizuki-c1',
+    label: 'C1: Swirl and Stellar Swirl (Anemo hit) DMG + 1,100% of her Elemental Mastery, up to 3 times per Dreamdrifter (KQM)',
+    reactionFlats: ({ character }) => (character.constellation >= 1 ? { swirl: { perEm: 1100, hits: 3 }, stellarswirl: { perEm: 1100, hits: 3 } } : {}),
+    confidence: 'sourced',
+  }, {
+    id: 'mizuki-c2-shred',
+    label: 'C2: in Dreamdrifter, the enemy\'s Pyro, Hydro, Cryo, Electro and Anemo RES -20% (KQM)',
+    toggle: { kind: 'switch', label: 'Dreamdrifter' },
+    debuffs: ({ character }) => (character.constellation >= 2 ? { resShred: { Pyro: 20, Hydro: 20, Cryo: 20, Electro: 20, Anemo: 20 } } : {}),
+    confidence: 'sourced',
   }],
   Durin: [
     {
@@ -1491,6 +1505,7 @@ export type ResolvedCombat = {
   hitBuffs: HitBuff[],
   elevation: Partial<Record<SpecialKind, number>>,
   reactionsPerEm: Partial<Record<ReactionBonusKey, number>>,
+  reactionFlats: Partial<Record<TransformativeReaction, { perEm: number, hits: number }>>,
 }
 
 export function defaultEffectSetting(effect: CombatEffect): BuffSetting {
@@ -1516,6 +1531,7 @@ export function resolveCombat(character: GenshinCharacter, combat: CombatSetup, 
     hitBuffs: [],
     elevation: {},
     reactionsPerEm: {},
+    reactionFlats: {},
   }
   for (const { effect, sourceName } of candidates) {
     const setting = combat.settings[effect.id] ?? defaultEffectSetting(effect)
@@ -1534,6 +1550,10 @@ export function resolveCombat(character: GenshinCharacter, combat: CombatSetup, 
     resolved.hitBuffs.push(...(effect.hits?.(context) ?? []))
     for (const [key, value] of Object.entries(effect.reactionsPerEm?.(context) ?? {}) as [ReactionBonusKey, number][]) {
       resolved.reactionsPerEm[key] = (resolved.reactionsPerEm[key] ?? 0) + value
+    }
+    for (const [reaction, flat] of Object.entries(effect.reactionFlats?.(context) ?? {}) as [TransformativeReaction, { perEm: number, hits: number }][]) {
+      const old = resolved.reactionFlats[reaction]
+      resolved.reactionFlats[reaction] = { perEm: (old?.perEm ?? 0) + flat.perEm, hits: Math.max(old?.hits ?? 0, flat.hits) }
     }
     for (const [kind, value] of Object.entries(effect.elevation?.(context) ?? {}) as [SpecialKind, number][]) {
       resolved.elevation[kind] = (resolved.elevation[kind] ?? 0) + value

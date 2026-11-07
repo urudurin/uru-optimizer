@@ -59,6 +59,8 @@ export type TalentHit = {
   times: number,
   // Lunar or Stellar damage instead of a standard hit, from the line's name
   special?: SpecialKind,
+  // A hand-written line (EXTRA_HITS), not in the talent data: left out of "every Skill and Burst hit once"
+  extra?: boolean,
 }
 
 // Lunar and Stellar damage dealt directly by talents: the reaction it counts as, its factor and the RES it uses
@@ -212,6 +214,9 @@ export type DamageSetup = {
   hitFlats?: HitFlat[],
   // Reaction DMG Bonus per point of the character's Elemental Mastery, in percent (Mizuki's Dreamdrifter Swirl bonus)
   reactionBonusPerEm?: Partial<Record<ReactionBonusKey, number>>,
+  // Flat DMG added to some reactions per point of the character's Elemental Mastery (percent of EM), for at most a number
+  // of triggers (Mizuki C1: Swirl and Stellar Swirl + 1,100% EM, 3 times)
+  reactionFlatPerEm?: Partial<Record<TransformativeReaction, { perEm: number, hits: number }>>,
   // Per Lunar or Stellar kind: flat damage added to each hit, and CRIT Rate / CRIT DMG for it, from teammates
   specialFlat?: Partial<Record<SpecialKind, number>>,
   // How many hits of a kind get that flat DMG, when it runs out (Lauma's Pale Hymn stacks); every hit when left out
@@ -303,8 +308,10 @@ export function migrateRotationCounts(id: string, counts: Record<string, number>
 export function characterHits(characterId: string): TalentHit[] {
   const data = characterData(characterId)
   if (!data) return []
-  const keys = hitKeys(data.hits)
-  return data.hits.map((hit, i) => ({
+  const extras = EXTRA_HITS[characterId] ?? []
+  const hits = [...data.hits, ...extras.map((extra) => ({ ...extra, terms: extra.terms as (string | number[])[][], physical: false }))]
+  const keys = hitKeys(hits)
+  return hits.map((hit, i) => ({
     key: keys[i],
     label: hit.label,
     talent: hit.talent as Talent,
@@ -313,7 +320,64 @@ export function characterHits(characterId: string): TalentHit[] {
     physical: !!hit.physical && !data.catalyst,
     times: Number(/×(\d+)$/.exec(hit.label)?.[1] ?? 1),
     special: specialKind(hit.label, characterId),
+    ...(i >= data.hits.length ? { extra: true } : {}),
   }))
+}
+
+// Hits talents.json doesn't have (genshin-optimizer's sheets leave them out), written by hand from KQM's guides, with
+// how many the default rotation has: stellar 'with' only when the team can trigger Stellar Swirl (Radiance), 'without'
+// only when it can't
+type ExtraHit = {
+  label: string,
+  talent: Talent,
+  category: TalentHit['category'],
+  terms: [ScalingStat, number[]][],
+  defaultCount: number,
+  stellar?: 'with' | 'without',
+  minConstellation?: number,
+}
+const flatAllLevels = (value: number) => Array.from({ length: 15 }, () => value)
+const EXTRA_HITS: Record<string, ExtraHit[]> = {
+  // Mizuki (KQM Mizuki quick guide, 7.0; sourced): Witch's Revelation, when she Swirls in Dreamdrifter her next
+  // periodic Anemo hit deals 1,000% of her EM more, once every 2.5s (about 4 per Skill); in Radiance: Stellar Swirl
+  // that hit is a direct Stellar Swirl instance instead. C1: up to 3 extra attacks per Skill of 1,000% EM, or 400% EM
+  // as Stellar Swirl in Radiance
+  YumemizukiMizuki: [
+    {
+      label: 'Witch\'s Revelation: boosted Dreamdrifter hit',
+      talent: 'skill',
+      category: 'skill',
+      terms: [['elementalMastery', flatAllLevels(1000)]],
+      defaultCount: 4,
+      stellar: 'without',
+    },
+    {
+      label: 'Witch\'s Revelation: direct Stellar Swirl (Radiance)',
+      talent: 'skill',
+      category: 'skill',
+      terms: [['elementalMastery', flatAllLevels(1000)]],
+      defaultCount: 4,
+      stellar: 'with',
+    },
+    {
+      label: 'C1: extra attack',
+      talent: 'skill',
+      category: 'skill',
+      terms: [['elementalMastery', flatAllLevels(1000)]],
+      defaultCount: 3,
+      stellar: 'without',
+      minConstellation: 1,
+    },
+    {
+      label: 'C1: extra attack, direct Stellar Swirl (Radiance)',
+      talent: 'skill',
+      category: 'skill',
+      terms: [['elementalMastery', flatAllLevels(400)]],
+      defaultCount: 3,
+      stellar: 'with',
+      minConstellation: 1,
+    },
+  ],
 }
 
 // Talent levels with the constellations that add 3 levels (C3 to one of skill and burst, C5 to the other)
@@ -353,9 +417,18 @@ function withStellar(reactions: { reaction: TransformativeReaction, count: numbe
 
 // Every Elemental Skill and Burst hit once, plus the character's default reactions. Swirl takes the first teammate
 // element it can swirl (teamElements), Pyro otherwise; Stellar Swirl instead when the team can trigger it (teamKinds).
-export function defaultRotation(characterId: string, teamElements: Element[] = [], teamKinds: SpecialKind[] = []): Rotation {
+// Hand-written lines (EXTRA_HITS) come in with their own counts, for the team and constellation.
+export function defaultRotation(characterId: string, teamElements: Element[] = [], teamKinds: SpecialKind[] = [], constellation = 0): Rotation {
   const counts: Record<string, number> = {}
-  for (const hit of characterHits(characterId)) if (hit.talent !== 'auto') counts[hit.key] = 1
+  const stellar = teamKinds.includes('stellarswirl')
+  for (const hit of characterHits(characterId)) {
+    if (hit.extra) {
+      const extra = EXTRA_HITS[characterId]?.find((e) => e.label === hit.label)
+      if (!extra || constellation < (extra.minConstellation ?? 0)) continue
+      if ((extra.stellar === 'with' && !stellar) || (extra.stellar === 'without' && stellar)) continue
+      counts[hit.key] = extra.defaultCount
+    } else if (hit.talent !== 'auto') counts[hit.key] = 1
+  }
   for (const { reaction, count } of withStellar(DEFAULT_REACTIONS[characterId] ?? [], teamKinds)) {
     const { variants } = TRANSFORMATIVE[reaction]
     const variant = (teamElements as DamageElement[]).find((element) => variants.includes(element)) ?? variants[0]
@@ -527,8 +600,19 @@ export type PreparedDamage = {
   defWithIgnore: (ignore: number) => number,
   reactionShare: number,
   // count and res for flat damage per hit; contribution for Stellar Swirl lines
-  transformative: { base: number, bonus: number, perEm: number, special: boolean, kind?: SpecialKind, count: number, res: number, contribution: boolean }[],
-  special: { terms: [ScalingStat, number][], bonus: number, kind: SpecialKind, hits: number, res: number }[],
+  transformative: {
+    base: number,
+    // Flat DMG per point of EM, already times the triggers it reaches and RES (DamageSetup.reactionFlatPerEm)
+    flatEm: number,
+    bonus: number,
+    perEm: number,
+    special: boolean,
+    kind?: SpecialKind,
+    count: number,
+    res: number,
+    contribution: boolean,
+  }[],
+  special: { terms: [ScalingStat, number][], bonus: number, perEm: number, kind: SpecialKind, hits: number, res: number }[],
   specialFlat: Partial<Record<SpecialKind, number>>,
   specialFlatHits: Partial<Record<SpecialKind, number>>,
   specialCrit: Partial<Record<SpecialKind, { rate: number, dmg: number }>>,
@@ -706,8 +790,10 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     const base = count * transformativeBase(line.reaction, setup.characterLevel) * res
     const bonusKey = BONUS_KEY[line.reaction] ?? (line.reaction as ReactionBonusKey)
     const kind = NEEDS[line.reaction]
+    const flat = setup.reactionFlatPerEm?.[line.reaction]
     transformative.push({
       base,
+      flatEm: flat ? (flat.perEm / 100) * Math.min(count, flat.hits) * res : 0,
       bonus: reactionBonus(bonusKey),
       perEm: (setup.reactionBonusPerEm?.[bonusKey] ?? 0) / 100,
       special: !!TRANSFORMATIVE[line.reaction].special,
@@ -727,6 +813,8 @@ export function prepareDamage(setup: DamageSetup): PreparedDamage {
     return {
       terms: [...terms].map(([stat, value]): [ScalingStat, number] => [stat, value * scale]),
       bonus: reactionBonus(kind),
+      // Reaction DMG Bonus per point of EM reaches the direct hits of its kind too (Mizuki's Dreamdrifter on direct Stellar Swirl)
+      perEm: (setup.reactionBonusPerEm?.[kind as ReactionBonusKey] ?? 0) / 100,
       kind,
       hits: specialHits.get(kind) ?? 0,
       res,
@@ -827,11 +915,11 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
     const elevated = (kind: SpecialKind | undefined) => (kind ? 1 + (prepared.elevation[kind] ?? 0) / 100 : 1)
     for (const reaction of prepared.transformative) {
       if (!reaction.special) {
-        transformative += reaction.base * (1 + fromEm + reaction.bonus + reaction.perEm * em)
+        transformative += (reaction.base + reaction.flatEm * em) * (1 + fromEm + reaction.bonus + reaction.perEm * em)
         continue
       }
       const multiplier = 1 + specialFromEm + reaction.bonus + reaction.perEm * em
-      let value = (reaction.base * baseFactor(reaction.kind) + flatFor(reaction.kind) * reaction.count * reaction.res) * multiplier
+      let value = (reaction.base * baseFactor(reaction.kind) + flatFor(reaction.kind) * reaction.count * reaction.res + reaction.flatEm * em) * multiplier
         * critFor(reaction.kind) * elevated(reaction.kind)
       if (reaction.contribution && prepared.stellarContributors.length > 0) {
         // The character's share at their rank among the teammates who also contribute
@@ -844,7 +932,7 @@ export function preparedDamage(prepared: PreparedDamage, get: (stat: GenshinStat
     for (const group of prepared.special) {
       let base = 0
       for (const [stat, multiplier] of group.terms) base += multiplier / 100 * get(stat)
-      transformative += (base * baseFactor(group.kind) + flatFor(group.kind) * group.hits * group.res) * (1 + specialFromEm + group.bonus)
+      transformative += (base * baseFactor(group.kind) + flatFor(group.kind) * group.hits * group.res) * (1 + specialFromEm + group.bonus + group.perEm * em)
         * critFor(group.kind) * elevated(group.kind)
     }
   }

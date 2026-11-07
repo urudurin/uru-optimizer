@@ -108,7 +108,7 @@ export function GenshinScoring({ character, worn, roster, artifacts, images, fal
   const [setupOpen, setSetupOpen] = useState(false)
   if (!hasTalentData(character.id) || worn.length < 5) return <>{fallback}</>
 
-  const settings = mode === 'default' ? genshinDamageDefaults(character.id) : custom
+  const settings = mode === 'default' ? genshinDamageDefaults(character.id, character.constellation) : custom
   const fourPieceSet = fourPieceSetsOf(worn.map((a) => a.setId))[0]
   const setup = genshinDamageSetup(character, settings, fourPieceSet, { characters: roster, artifacts })
   const score = genshinDamageScore(character, worn, { kind: 'damage', setup: setup.damageSetup }, setup.teamBuffs, setup.combat)

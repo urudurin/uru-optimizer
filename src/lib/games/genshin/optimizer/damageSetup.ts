@@ -51,7 +51,7 @@ export type GenshinDamageSettings = {
 }
 
 // A character's damage settings before any are changed: no team, the default enemy and rotation
-export function genshinDamageDefaults(characterId: string): GenshinDamageSettings {
+export function genshinDamageDefaults(characterId: string, constellation = 0): GenshinDamageSettings {
   return {
     teammates: [],
     onField: true,
@@ -59,7 +59,7 @@ export function genshinDamageDefaults(characterId: string): GenshinDamageSetting
     teammateOverrides: {},
     extraBuffs: {},
     enemy: DEFAULT_ENEMY,
-    rotation: defaultRotation(characterId),
+    rotation: defaultRotation(characterId, [], [], constellation),
     combatSettings: {},
   }
 }
@@ -130,6 +130,7 @@ export function genshinDamageSetup(
       elevation: resolvedCombat.elevation,
       hitFlats: teamResult.hitFlats,
       reactionBonusPerEm: resolvedCombat.reactionsPerEm,
+      reactionFlatPerEm: resolvedCombat.reactionFlats,
       specialFlat: teamResult.specialFlat,
       specialFlatHits: teamResult.specialFlatHits,
       specialCrit: teamResult.specialCrit,

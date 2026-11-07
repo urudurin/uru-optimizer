@@ -953,6 +953,21 @@ export const CHARACTER_BUFFS: Record<string, TeamBuff[]> = {
     value: ({ giverStats }) => 0.1 * (giverStats.elementalMastery ?? 0),
     toggle: { kind: 'switch', label: 'Mizuki in Dreamdrifter' },
     confidence: 'confirmed',
+  }, {
+    id: 'mizuki-c2-dmg',
+    label: 'C2: in her Dreamdrifter state, Pyro, Hydro, Cryo and Electro DMG +0.04% per point of her Elemental Mastery for the other members (KQM)',
+    target: 'others',
+    stage: 'premod',
+    stat: (
+      c,
+    ) => (['Pyro', 'Hydro', 'Cryo', 'Electro'].includes(c.receiver.element ?? '') ? `${c.receiver.element!.toLowerCase()}Dmg` as GenshinStatKey : 'pyroDmg'),
+    value: ({ giver, giverStats, receiver }) =>
+      giver.constellation >= 2 && ['Pyro', 'Hydro', 'Cryo', 'Electro'].includes(receiver.element ?? '') ? 0.04 * (giverStats.elementalMastery ?? 0) : 0,
+    blockedBy: (c) =>
+      needsConstellation(2)(c)
+        ?? (['Pyro', 'Hydro', 'Cryo', 'Electro'].includes(c.receiver.element ?? '') ? undefined : 'Only for Pyro, Hydro, Cryo and Electro members'),
+    toggle: { kind: 'switch', label: 'Mizuki in Dreamdrifter' },
+    confidence: 'sourced',
   }],
   Xilonen: [{
     id: 'xilonen-skill-shred',
