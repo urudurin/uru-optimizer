@@ -27,6 +27,7 @@ import type {
   GenshinCharacter,
 } from 'lib/games/genshin/types'
 import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
+import { scoringDefaults } from 'lib/games/shared/scoringOverrides'
 import {
   keepOverridesFor,
   type TeammateOverrides,
@@ -62,6 +63,12 @@ export function genshinDamageDefaults(characterId: string, constellation = 0): G
     rotation: genshinMetadata(characterId, constellation).rotation,
     combatSettings: {},
   }
+}
+
+// The characters page's DPS score Default: the character's metadata simulation (team and rotation), the kit alone
+// without one (shared/scoringOverrides.ts scoringDefaults)
+export function genshinScoringDefaults(characterId: string, constellation = 0): GenshinDamageSettings {
+  return scoringDefaults(genshinDamageDefaults(characterId, constellation), genshinMetadata(characterId, constellation).simulation)
 }
 
 // The team buffs, combat effects and damage setup for a character with these settings. fourPieceSet: the 4-piece set

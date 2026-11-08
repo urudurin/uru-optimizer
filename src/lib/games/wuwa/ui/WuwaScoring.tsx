@@ -1,9 +1,10 @@
+import { keepOverridesFor } from 'lib/games/shared/teammateOverrides'
 import {
   CharacterScoringPanel,
-  useCustomDamageSettings,
-  useScoringMode,
+  useScoringSetup,
 } from 'lib/games/shared/ui/CharacterScoring'
 import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
+import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
 import { hasSkillData } from 'lib/games/wuwa/damage/damage'
 import {
   EnemyCard,
@@ -14,12 +15,13 @@ import {
   characterName,
   SONATA_SETS,
 } from 'lib/games/wuwa/data/gameData'
+import { wuwaMetadata } from 'lib/games/wuwa/data/metadata'
 import type { ResonatorArt } from 'lib/games/wuwa/data/userArt'
 import { wuwaDamageScore } from 'lib/games/wuwa/optimizer/analysis'
 import {
   wuwaDamageDefaults,
-  type WuwaDamageSettings,
   wuwaDamageSetup,
+  wuwaScoringDefaults,
 } from 'lib/games/wuwa/optimizer/damageSetup'
 import { withFullSets } from 'lib/games/wuwa/optimizer/echoOptimizer'
 import { setPieceCounts } from 'lib/games/wuwa/stats/computeStats'
@@ -28,10 +30,12 @@ import type {
   CharacterState,
   Echo,
 } from 'lib/games/wuwa/types'
+import { wuwaOverrideMembers } from 'lib/games/wuwa/ui/teammateOverrideMembers'
 import type { ReactNode } from 'react'
 
-// The WuWa Resonators page's DPS score (shared/ui/CharacterScoring.tsx): Custom is the Resonator's
-// wuwa-optimizer-settings damage fields, Default the kit alone; the worn main echo and complete Sonata sets count.
+// The WuWa Resonators page's DPS score (shared/ui/CharacterScoring.tsx): Default is the Resonator's metadata
+// simulation or the kit alone, Custom their own scoring setup (wuwa-scoring-overrides); the worn main echo and complete
+// Sonata sets count.
 export function WuwaScoring({ character, worn, roster, echoes, art, fallback }: {
   character: CharacterState,
   // The worn echoes; none shows the fallback
@@ -44,11 +48,10 @@ export function WuwaScoring({ character, worn, roster, echoes, art, fallback }: 
   // Shown when there's no DPS score: the gear score
   fallback: ReactNode,
 }) {
-  const [mode, setMode] = useScoringMode('wuwa', character.charId)
-  const [custom, updateCustom] = useCustomDamageSettings('wuwa-optimizer-settings', character.charId, wuwaDamageDefaults(character.charId))
+  const scoring = useScoringSetup('wuwa', character.charId, wuwaScoringDefaults(character.charId), wuwaDamageDefaults(character.charId))
   if (!hasSkillData(character.charId) || worn.length === 0) return <>{fallback}</>
 
-  const settings = mode === 'default' ? wuwaDamageDefaults(character.charId) : custom
+  const { settings, custom, edit } = scoring
   // The Sonata sets the worn echoes complete
   const completeSets = [...setPieceCounts(worn)].filter(([id, count]) => count >= (SONATA_SETS[id]?.fullPieces ?? 5)).map(([id]) => id)
   const setup = wuwaDamageSetup(character, settings, completeSets, settings.rotation.echo?.id ?? worn[0]?.defId, true, { characters: roster, echoes })
@@ -60,11 +63,6 @@ export function WuwaScoring({ character, worn, roster, echoes, art, fallback }: 
   )
   if (!score) return <>{fallback}</>
 
-  // Editing the setup scores Custom, like changing a teammate on HSR's showcase
-  const edit = (change: Partial<WuwaDamageSettings>) => {
-    updateCustom(change)
-    if (mode !== 'custom') setMode('custom')
-  }
   const name = characterName(character.charId)
   const teammateOptions = roster.filter((c) => c.charId !== character.charId).map((c) => ({ value: c.charId, label: characterName(c.charId) }))
 
@@ -72,11 +70,10 @@ export function WuwaScoring({ character, worn, roster, echoes, art, fallback }: 
     <CharacterScoringPanel
       name={name}
       score={score}
-      mode={mode}
-      onMode={setMode}
+      scoring={scoring}
       slots={2}
       teammates={settings.teammates.map((id) => ({ id, name: characterName(id), icon: art[id]?.icon ?? art[id]?.portrait }))}
-      defaultText='Default: the kit alone, no team.'
+      defaultText={wuwaMetadata(character.charId).simulation ? 'Default: our team and rotation for this Resonator.' : 'Default: the kit alone, no team.'}
       setup={
         <>
           <TeamCards
@@ -87,9 +84,17 @@ export function WuwaScoring({ character, worn, roster, echoes, art, fallback }: 
             entries={wuwaTeamEntries(setup.teamResult.applied)}
             description='Their skills buff this Resonator. Teammates use the echoes they wear in the save.'
             emptyText='Pick teammates to see what they give.'
-            footnote='The same team as the optimizer.'
+            footnote='Teammates count at their saved Sequence and weapon unless changed below.'
             onTeammates={(ids) => edit({ teammates: ids })}
             onSetting={(key, value) => edit({ teamSettings: { ...custom.teamSettings, [key]: value } })}
+          />
+          <TeammateOverrideCard
+            rankPrefix='S'
+            weaponLabel='weapon'
+            refinementPrefix='R'
+            overrides={keepOverridesFor(custom.teammateOverrides, custom.teammates)}
+            onChange={(teammateOverrides) => edit({ teammateOverrides })}
+            members={wuwaOverrideMembers(character.charId, custom.teammates, roster)}
           />
           <EnemyCard enemy={custom.enemy} onChange={(enemy) => edit({ enemy })} />
           <RotationCard

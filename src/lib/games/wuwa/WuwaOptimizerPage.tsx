@@ -170,8 +170,8 @@ import {
   WuwaCharacterSelect,
   WuwaWeaponSelect,
 } from 'lib/games/wuwa/ui/pickers'
-import { WEAPON_OPTIONS } from 'lib/games/wuwa/ui/ResonatorForm'
 import { wuwaStatRows } from 'lib/games/wuwa/ui/resonatorStats'
+import { wuwaOverrideMembers } from 'lib/games/wuwa/ui/teammateOverrideMembers'
 import { useMemo } from 'react'
 
 const COSTS: Cost[] = [4, 3, 1]
@@ -742,16 +742,7 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
               refinementPrefix='R'
               overrides={keepOverridesFor(teammateOverrides, teammates)}
               onChange={setTeammateOverrides}
-              members={teammates.flatMap((id) => {
-                const mate = characters.find((c) => c.charId === id)
-                if (!mate || id === character.charId) return []
-                return [{
-                  id,
-                  name: characterName(id),
-                  roster: { rank: mate.sequence, weaponId: mate.weaponId, refinement: mate.refinement },
-                  weapons: WEAPON_OPTIONS,
-                }]
-              })}
+              members={wuwaOverrideMembers(character.charId, teammates, characters)}
             />
           </FormRow>
 

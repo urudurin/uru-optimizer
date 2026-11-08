@@ -197,6 +197,7 @@ import {
   ZzzAgentSelect,
   ZzzWEngineSelect,
 } from 'lib/games/zzz/ui/pickers'
+import { zzzOverrideMembers } from 'lib/games/zzz/ui/teammateOverrideMembers'
 import { Message } from 'lib/interactions/message'
 import {
   useMemo,
@@ -945,21 +946,7 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
               refinementPrefix='R'
               overrides={team.overrides}
               onChange={setTeammateOverrides}
-              members={teammates.flatMap((id) => {
-                const build = builds.find((b) => b.agentId === id)
-                if (!build || id === agent.id) return []
-                const fourPiece = fourPieceSetsOf(Object.values(build.discIds).flatMap((discId) => discs.find((d) => d.id === discId)?.setId ?? []))[0]
-                return [{
-                  id,
-                  name: build.name,
-                  roster: { rank: build.mindscapeLevel, weaponId: build.wEngineId, refinement: build.wEngineRefinement ?? 1, fourPiece },
-                  weapons: Object.values(W_ENGINES).map((w) => ({ value: w.id, label: w.name })),
-                  sets: [...new Set([...(fourPiece ? [fourPiece] : []), ...Object.keys(SET_4PC_BUFFS)])].map((setId) => ({
-                    value: setId,
-                    label: SETS[setId]?.name ?? setId,
-                  })),
-                }]
-              })}
+              members={zzzOverrideMembers(agent.id, teammates, builds, discs)}
             />
           </FormRow>
 

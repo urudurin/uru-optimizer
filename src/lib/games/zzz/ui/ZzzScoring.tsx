@@ -1,9 +1,9 @@
 import {
   CharacterScoringPanel,
-  useCustomDamageSettings,
-  useScoringMode,
+  useScoringSetup,
 } from 'lib/games/shared/ui/CharacterScoring'
 import { TeamCards } from 'lib/games/shared/ui/optimizer/TeamCards'
+import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
 import {
   EnemyCard,
   KitEffectsCard,
@@ -15,15 +15,17 @@ import type {
   WEngineData,
 } from 'lib/games/zzz/data/dataTypes'
 import type { ZzzImages } from 'lib/games/zzz/data/images'
+import { zzzMetadata } from 'lib/games/zzz/data/metadata'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import { zzzDamageScore } from 'lib/games/zzz/optimizer/analysis'
 import {
   zzzDamageDefaults,
-  type ZzzDamageSettings,
   zzzDamageSetup,
+  zzzScoringDefaults,
 } from 'lib/games/zzz/optimizer/damageSetup'
 import { zzzTeamEntries } from 'lib/games/zzz/team/teamEntries'
 import type { Disc } from 'lib/games/zzz/types'
+import { zzzOverrideMembers } from 'lib/games/zzz/ui/teammateOverrideMembers'
 import type { ReactNode } from 'react'
 
 // The 4-piece and 2-piece sets some discs complete (the most pieces first)
@@ -36,8 +38,9 @@ function wornSets(discs: Disc[]): { fourPieceSet?: string, twoPieceSet?: string 
   return { fourPieceSet: four, twoPieceSet: two }
 }
 
-// The ZZZ Agents page's DPS score (shared/ui/CharacterScoring.tsx): Custom is the agent's zzz-optimizer-settings damage
-// fields, Default the kit alone (no squad, stat screen conditions); the build's W-Engine and worn sets count.
+// The ZZZ Agents page's DPS score (shared/ui/CharacterScoring.tsx): Default is the agent's metadata simulation or the
+// kit alone (no squad, stat screen conditions), Custom their own scoring setup (zzz-scoring-overrides); the build's
+// W-Engine and worn sets count.
 export function ZzzScoring({ agent, wEngine, build, worn, coreSkill, roster, discs, images, fallback }: {
   agent: AgentData,
   wEngine?: WEngineData,
@@ -52,11 +55,10 @@ export function ZzzScoring({ agent, wEngine, build, worn, coreSkill, roster, dis
   // Shown when there's no DPS score: the gear score
   fallback: ReactNode,
 }) {
-  const [mode, setMode] = useScoringMode('zzz', agent.id)
-  const [custom, updateCustom] = useCustomDamageSettings('zzz-optimizer-settings', agent.id, zzzDamageDefaults(agent.id))
+  const scoring = useScoringSetup('zzz', agent.id, zzzScoringDefaults(agent.id), zzzDamageDefaults(agent.id))
   if (worn.length < 6) return <>{fallback}</>
 
-  const settings = mode === 'default' ? zzzDamageDefaults(agent.id) : custom
+  const { settings, custom, edit } = scoring
   const gear = { wEngineId: build.wEngineId ?? '', refinement: build.wEngineRefinement ?? 1, ...wornSets(worn) }
   const setup = zzzDamageSetup(agent, settings, gear, true, { builds: roster, discs })
   const input = {
@@ -71,11 +73,6 @@ export function ZzzScoring({ agent, wEngine, build, worn, coreSkill, roster, dis
   const score = zzzDamageScore(input, setup.damageSetup)
   if (!score) return <>{fallback}</>
 
-  // Editing the setup scores Custom, like changing a teammate on HSR's showcase
-  const edit = (change: Partial<ZzzDamageSettings>) => {
-    updateCustom(change)
-    if (mode !== 'custom') setMode('custom')
-  }
   const teammateOptions = [...new Map(roster.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
     .map(([value, label]) => ({ value, label }))
   const nameOf = (id: string) => teammateOptions.find((o) => o.value === id)?.label ?? AGENTS[id]?.name ?? id
@@ -84,11 +81,10 @@ export function ZzzScoring({ agent, wEngine, build, worn, coreSkill, roster, dis
     <CharacterScoringPanel
       name={agent.name}
       score={score}
-      mode={mode}
-      onMode={setMode}
+      scoring={scoring}
       slots={2}
       teammates={settings.teammates.map((id) => ({ id, name: nameOf(id), icon: images.agents[id]?.circle }))}
-      defaultText='Default: the kit alone, no squad.'
+      defaultText={zzzMetadata(agent).simulation ? 'Default: our squad and rotation for this agent.' : 'Default: the kit alone, no squad.'}
       setup={
         <>
           <TeamCards
@@ -100,9 +96,17 @@ export function ZzzScoring({ agent, wEngine, build, worn, coreSkill, roster, dis
             notice={setup.teamResult.missing.length > 0 ? `No stat screen for ${setup.teamResult.missing.join(', ')}: save a build for them first` : undefined}
             description='Their kits and 4-piece sets buff this agent. Teammates use the discs and W-Engine in their saved build.'
             emptyText='Pick teammates to see what they give.'
-            footnote='Givers are taken at skill level 12 and Core Skill F. The same squad as the optimizer.'
+            footnote='Givers are taken at skill level 12 and Core Skill F.'
             onTeammates={(ids) => edit({ teammates: ids })}
             onSetting={(key, value) => edit({ teamSettings: { ...custom.teamSettings, [key]: value } })}
+          />
+          <TeammateOverrideCard
+            rankPrefix='M'
+            weaponLabel='W-Engine'
+            refinementPrefix='R'
+            overrides={setup.team.overrides}
+            onChange={(teammateOverrides) => edit({ teammateOverrides })}
+            members={zzzOverrideMembers(agent.id, custom.teammates, roster, discs)}
           />
           <EnemyCard enemy={custom.enemy} debuffs={setup.teamResult.debuffs} teamElements={setup.teamElements} onChange={(enemy) => edit({ enemy })} />
           <RotationCard

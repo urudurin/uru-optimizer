@@ -1,4 +1,5 @@
 import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
+import { scoringDefaults } from 'lib/games/shared/scoringOverrides'
 import {
   keepOverridesFor,
   type TeammateOverrides,
@@ -69,6 +70,12 @@ export function zzzDamageDefaults(agentId: string): ZzzDamageSettings {
 
 // The gear the setup counts: the W-Engine and the 4-piece / 2-piece sets every build has (the optimizer's loadout and
 // set filters, or the worn ones on the Agents page)
+// The Agents page's DPS score Default: the agent's metadata simulation (squad and rotation), the kit alone without one
+// (shared/scoringOverrides.ts scoringDefaults)
+export function zzzScoringDefaults(agentId: string): ZzzDamageSettings {
+  return scoringDefaults(zzzDamageDefaults(agentId), AGENTS[agentId] ? zzzMetadata(AGENTS[agentId]).simulation : undefined)
+}
+
 export type ZzzSetupGear = { wEngineId: string, refinement: number, fourPieceSet?: string, twoPieceSet?: string }
 
 // The squad buffs, kit effects and damage setup for an agent with these settings. byDamage: the kit's stat effects

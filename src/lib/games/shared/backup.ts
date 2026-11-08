@@ -1,6 +1,7 @@
 import { forgetPriority } from 'lib/games/shared/characterPriority'
 import { forgetGameSettings } from 'lib/games/shared/gameSettings'
 import { reloadOptimizerSettings } from 'lib/games/shared/optimizerSettings'
+import { reloadScoringOverrides } from 'lib/games/shared/scoringOverrides'
 import {
   readStorage,
   writeStorage,
@@ -56,7 +57,16 @@ export type BackupSettings = Record<string, unknown>
 
 const settingsKeys = (
   game: string,
-) => [`${game}-optimizer-settings`, `${game}-saved-rotations`, `${game}-saved-builds`, `${game}-settings`, `${game}-score-weights`, `${game}-priority`]
+) => [
+  `${game}-optimizer-settings`,
+  `${game}-saved-rotations`,
+  `${game}-saved-builds`,
+  `${game}-settings`,
+  `${game}-score-weights`,
+  `${game}-priority`,
+  `${game}-scoring-overrides`,
+  `${game}-scoring-mode`,
+]
 
 export function backupSettings(game: string): BackupSettings {
   const settings: BackupSettings = {}
@@ -90,6 +100,7 @@ export function restoreBackupSettings(game: string, text: string): number {
   forgetGameSettings()
   forgetPriority()
   reloadOptimizerSettings(`${game}-optimizer-settings`)
+  reloadScoringOverrides(game)
   return restored
 }
 

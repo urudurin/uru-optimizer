@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Button,
   Drawer,
   Group,
   SegmentedControl,
@@ -8,7 +9,12 @@ import {
   Tooltip,
   UnstyledButton,
 } from '@mantine/core'
-import { IconSettings } from '@tabler/icons-react'
+import {
+  IconCopy,
+  IconRefresh,
+  IconRotate,
+  IconSettings,
+} from '@tabler/icons-react'
 import type { DamageScore } from 'lib/games/shared/damageScore'
 import { formatNumber } from 'lib/games/shared/format'
 import {
@@ -16,9 +22,10 @@ import {
   optimizerSettingsStore,
 } from 'lib/games/shared/optimizerSettings'
 import {
-  readStorage,
-  writeStorage,
-} from 'lib/games/shared/storage'
+  type ScoringMode,
+  scoringStore,
+} from 'lib/games/shared/scoringOverrides'
+import type { TeammateOverrides } from 'lib/games/shared/teammateOverrides'
 import {
   BuildRating,
   DPS_SCORE_LABEL,
@@ -30,55 +37,73 @@ import {
 
 // The characters pages' DPS score, after HSR's character screen (lib/characterPreview/scoring/ShowcaseSimScore.tsx):
 // worked out on the page from a scoring setup, with the team under the score, Default / Custom and a settings button
-// that opens the setup. Custom is the character's own damage settings, the same ones their optimizer page edits
-// (<game>-optimizer-settings); Default is each game's kit alone (no team, the default enemy and rotation). Each game
+// that opens the setup. As in HSR, Custom is a scoring setup of its own (shared/scoringOverrides.ts,
+// <game>-scoring-overrides), apart from the optimizer's settings; Default is the character's metadata simulation, or
+// the kit alone (no team, the default enemy and rotation) without one, and is what a character starts on. Each game
 // (genshin/ui/GenshinScoring.tsx, zzz/ui/ZzzScoring.tsx, wuwa/ui/WuwaScoring.tsx) works the score out and passes
 // the setup's cards.
 
-export type ScoringMode = 'default' | 'custom'
+export type { ScoringMode }
 
-// Default or Custom per character, after HSR's showcase team preference: <game>-scoring-mode { [characterId]: mode }
-function readModes(game: string): Record<string, ScoringMode> {
-  try {
-    const parsed: unknown = JSON.parse(readStorage(`${game}-scoring-mode`) ?? '{}')
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, ScoringMode> : {}
-  } catch {
-    return {}
-  }
+type ScoringFields = { teammateOverrides: TeammateOverrides }
+
+export type ScoringSetup<T> = {
+  mode: ScoringMode,
+  setMode: (mode: ScoringMode) => void,
+  // The setup being scored (Default or Custom)
+  settings: T,
+  // The Custom setup: the saved one, or a copy of Default until it's edited
+  custom: T,
+  customSaved: boolean,
+  // Changes the Custom setup and scores Custom, like changing a teammate on HSR's showcase
+  edit: (change: Partial<T>) => void,
+  // HSR's sync teammates: every teammate as in the roster (their own rank, weapon and sets)
+  syncTeammates: () => void,
+  // Copies the optimizer's team, enemy, rotation and effects for this character into Custom
+  copyFromOptimizer: () => void,
+  hasOptimizerSettings: boolean,
+  // Drops the Custom setup and scores Default
+  resetCustom: () => void,
 }
 
-export function useScoringMode(game: string, characterId: string): [ScoringMode, (mode: ScoringMode) => void] {
-  const [modes, setModes] = useState(() => readModes(game))
-  const mode = modes[characterId] === 'default' ? 'default' : 'custom'
-  const set = (next: ScoringMode) => {
-    const all = { ...readModes(game), [characterId]: next }
-    writeStorage(`${game}-scoring-mode`, JSON.stringify(all))
-    setModes(all)
+// defaults: the Default setup (scoringDefaults: the simulation, or the kit alone); kitAlone: the optimizer's damage
+// defaults, under its saved settings when copying them
+export function useScoringSetup<T extends ScoringFields>(game: string, characterId: string, defaults: T, kitAlone: T): ScoringSetup<T> {
+  const store = scoringStore(game)
+  const mode = store((s) => s.modes[characterId]) ?? 'default'
+  const saved = store((s) => s.overrides.byCharacter[characterId])
+  const optimizerSaved = optimizerSettingsStore(`${game}-optimizer-settings`)((s) => s.saved.byCharacter[characterId])
+  const custom = mergeSettings(defaults, saved)
+  const { setMode, setOverride } = store.getState()
+  const edit = (change: Partial<T>) => {
+    const current = mergeSettings(defaults, store.getState().overrides.byCharacter[characterId])
+    setOverride(characterId, { ...current, ...change })
+    if (mode !== 'custom') setMode(characterId, 'custom')
   }
-  return [mode, set]
-}
-
-// A character's damage settings from their optimizer settings (Custom), and a function to change some of them; the
-// optimizer's other settings stay as they are
-export function useCustomDamageSettings<T extends object>(settingsKey: string, characterId: string, defaults: T): [T, (change: Partial<T>) => void] {
-  const store = optimizerSettingsStore(settingsKey)
-  const saved = store((s) => s.saved.byCharacter[characterId])
-  const settings = mergeSettings(defaults, saved)
-  const update = (change: Partial<T>) => {
-    const { saved: all, write } = store.getState()
-    const current = all.byCharacter[characterId] ?? {}
-    write({ ...all, byCharacter: { ...all.byCharacter, [characterId]: { ...current, ...mergeSettings(defaults, current), ...change } } })
+  return {
+    mode,
+    setMode: (next) => setMode(characterId, next),
+    settings: mode === 'default' ? defaults : custom,
+    custom,
+    customSaved: saved !== undefined,
+    edit,
+    syncTeammates: () => edit({ teammateOverrides: {} } as Partial<T>),
+    copyFromOptimizer: () => edit(mergeSettings(kitAlone, optimizerSaved)),
+    hasOptimizerSettings: optimizerSaved !== undefined,
+    resetCustom: () => {
+      setOverride(characterId, undefined)
+      setMode(characterId, 'default')
+    },
   }
-  return [settings, update]
 }
 
 export type ScoringTeammate = { id: string, name: string, icon?: string }
 
-export function CharacterScoringPanel({ name, score, mode, onMode, teammates, slots, defaultText, setup }: {
+export function CharacterScoringPanel({ name, score, scoring, teammates, slots, defaultText, setup }: {
   name: string,
   score: DamageScore,
-  mode: ScoringMode,
-  onMode: (mode: ScoringMode) => void,
+  // useScoringSetup's result (the setup's type doesn't matter here)
+  scoring: Omit<ScoringSetup<unknown>, 'settings' | 'custom' | 'edit'>,
   teammates: ScoringTeammate[],
   // Teammate slots shown (Genshin and WuWa 3, ZZZ 2)
   slots: number,
@@ -88,8 +113,9 @@ export function CharacterScoringPanel({ name, score, mode, onMode, teammates, sl
   setup: ReactNode,
 }) {
   const [open, setOpen] = useState(false)
+  const { mode, setMode } = scoring
   const openSetup = () => {
-    if (mode !== 'custom') onMode('custom')
+    if (mode !== 'custom') setMode('custom')
     setOpen(true)
   }
   return (
@@ -128,7 +154,7 @@ export function CharacterScoringPanel({ name, score, mode, onMode, teammates, sl
         <SegmentedControl
           size='xs'
           value={mode}
-          onChange={(value) => onMode(value as ScoringMode)}
+          onChange={(value) => setMode(value as ScoringMode)}
           data={[{ value: 'default', label: 'Default' }, { value: 'custom', label: 'Custom' }]}
         />
         <Tooltip label='Scoring setup: team, enemy, rotation and effects'>
@@ -138,14 +164,52 @@ export function CharacterScoringPanel({ name, score, mode, onMode, teammates, sl
         </Tooltip>
       </Group>
       <Text size='xs' c='dimmed' ta='center'>
-        {mode === 'default' ? defaultText : 'Custom: the team and rotation from the optimizer.'}
+        {mode === 'default' ? defaultText : 'Custom: your own scoring setup for this character.'}
       </Text>
 
       <Drawer opened={open} onClose={() => setOpen(false)} position='right' size={900} title={`Scoring setup · ${name}`}>
         <Stack gap='md'>
           <Text size='xs' c='dimmed'>
-            The same settings as the optimizer's team and damage rows for this character: a change here shows there too.
+            {`Custom scoring for ${name}, kept apart from the optimizer (its team and rotation don't change). ${
+              scoring.customSaved ? '' : 'It starts as a copy of Default. '
+            }${defaultText}`}
           </Text>
+          <Group gap='xs'>
+            <Tooltip label='Every teammate as in your roster: their own rank, weapon and sets'>
+              <Button size='xs' variant='default' leftSection={<IconRefresh size={14} />} onClick={scoring.syncTeammates}>
+                Sync teammates
+              </Button>
+            </Tooltip>
+            <Tooltip
+              label={scoring.hasOptimizerSettings
+                ? 'The optimizer\'s team, enemy, rotation and effects for this character'
+                : 'No optimizer settings saved for this character yet'}
+            >
+              <Button
+                size='xs'
+                variant='default'
+                leftSection={<IconCopy size={14} />}
+                disabled={!scoring.hasOptimizerSettings}
+                onClick={scoring.copyFromOptimizer}
+              >
+                Copy from optimizer
+              </Button>
+            </Tooltip>
+            <Tooltip label='Drop the Custom setup and score Default'>
+              <Button
+                size='xs'
+                variant='default'
+                leftSection={<IconRotate size={14} />}
+                disabled={!scoring.customSaved}
+                onClick={() => {
+                  scoring.resetCustom()
+                  setOpen(false)
+                }}
+              >
+                Reset to Default
+              </Button>
+            </Tooltip>
+          </Group>
           <Group align='flex-start' gap='md'>
             {setup}
           </Group>

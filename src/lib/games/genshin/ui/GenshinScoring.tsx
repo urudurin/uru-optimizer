@@ -5,27 +5,31 @@ import {
   RotationCard,
 } from 'lib/games/genshin/damage/DamageCards'
 import type { GenshinImages } from 'lib/games/genshin/data/images'
+import { genshinMetadata } from 'lib/games/genshin/data/metadata'
 import { GenshinTeamCards } from 'lib/games/genshin/GenshinTeamCards'
+import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
 import { genshinDamageScore } from 'lib/games/genshin/optimizer/analysis'
 import {
   genshinDamageDefaults,
-  type GenshinDamageSettings,
   genshinDamageSetup,
+  genshinScoringDefaults,
 } from 'lib/games/genshin/optimizer/damageSetup'
 import type {
   Artifact,
   GenshinCharacter,
 } from 'lib/games/genshin/types'
+import { genshinOverrideMembers } from 'lib/games/genshin/ui/teammateOverrideMembers'
 import { fourPieceSetsOf } from 'lib/games/shared/teammateOverrides'
 import {
   CharacterScoringPanel,
-  useCustomDamageSettings,
-  useScoringMode,
+  useScoringSetup,
 } from 'lib/games/shared/ui/CharacterScoring'
+import { TeammateOverrideCard } from 'lib/games/shared/ui/optimizer/TeammateOverrideCard'
 import type { ReactNode } from 'react'
 
-// The Genshin Characters page's DPS score (shared/ui/CharacterScoring.tsx): Custom is the character's
-// genshin-optimizer-settings damage fields, Default the kit alone; the worn 4-piece counts in combat.
+// The Genshin Characters page's DPS score (shared/ui/CharacterScoring.tsx): Default is the character's metadata
+// simulation or the kit alone, Custom their own scoring setup (genshin-scoring-overrides); the worn 4-piece counts in
+// combat.
 export function GenshinScoring({ character, worn, roster, artifacts, images, fallback }: {
   character: GenshinCharacter,
   // Five worn artifacts; fewer shows the fallback
@@ -37,32 +41,30 @@ export function GenshinScoring({ character, worn, roster, artifacts, images, fal
   // Shown when there's no DPS score (no talent data, not a full set): the gear score
   fallback: ReactNode,
 }) {
-  const [mode, setMode] = useScoringMode('genshin', character.id)
-  const [custom, updateCustom] = useCustomDamageSettings('genshin-optimizer-settings', character.id, genshinDamageDefaults(character.id))
+  const scoring = useScoringSetup(
+    'genshin',
+    character.id,
+    genshinScoringDefaults(character.id, character.constellation),
+    genshinDamageDefaults(character.id, character.constellation),
+  )
   if (!hasTalentData(character.id) || worn.length < 5) return <>{fallback}</>
 
-  const settings = mode === 'default' ? genshinDamageDefaults(character.id, character.constellation) : custom
+  const { settings, custom, edit } = scoring
   const fourPieceSet = fourPieceSetsOf(worn.map((a) => a.setId))[0]
   const setup = genshinDamageSetup(character, settings, fourPieceSet, { characters: roster, artifacts })
   const score = genshinDamageScore(character, worn, { kind: 'damage', setup: setup.damageSetup }, setup.teamBuffs, setup.combat)
   if (!score) return <>{fallback}</>
 
-  // Editing the setup scores Custom, like changing a teammate on HSR's showcase
-  const edit = (change: Partial<GenshinDamageSettings>) => {
-    updateCustom(change)
-    if (mode !== 'custom') setMode('custom')
-  }
   const iconOf = (id: string) => images.characters[id.startsWith('Traveler') ? 'Traveler' : id]?.icon ?? images.characters[id]?.icon
 
   return (
     <CharacterScoringPanel
       name={character.name}
       score={score}
-      mode={mode}
-      onMode={setMode}
+      scoring={scoring}
       slots={3}
       teammates={settings.teammates.map((id) => ({ id, name: roster.find((c) => c.id === id)?.name ?? id, icon: iconOf(id) }))}
-      defaultText='Default: the kit alone, no team.'
+      defaultText={genshinMetadata(character.id).simulation ? 'Default: our team and rotation for this character.' : 'Default: the kit alone, no team.'}
       setup={
         <>
           <GenshinTeamCards
@@ -73,6 +75,14 @@ export function GenshinScoring({ character, worn, roster, artifacts, images, fal
             onTeammates={(ids) => edit({ teammates: ids })}
             onField={(value) => edit({ onField: value })}
             onSetting={(key, value) => edit({ teamSettings: { ...custom.teamSettings, [key]: value } })}
+          />
+          <TeammateOverrideCard
+            rankPrefix='C'
+            weaponLabel='weapon'
+            refinementPrefix='R'
+            overrides={setup.team.overrides}
+            onChange={(teammateOverrides) => edit({ teammateOverrides })}
+            members={genshinOverrideMembers(character.id, custom.teammates, { characters: roster, artifacts, images, setName: nameFromGoodKey })}
           />
           <EnemyCard enemy={custom.enemy} debuffs={setup.damageSetup.debuffs} onChange={(enemy) => edit({ enemy })} />
           <RotationCard

@@ -96,10 +96,7 @@ import {
   ArtifactCard,
   elementColor,
 } from 'lib/games/genshin/ui/ArtifactCard'
-import {
-  WEAPON_RARITY,
-  weaponOptions,
-} from 'lib/games/genshin/ui/CharacterForm'
+import { WEAPON_RARITY } from 'lib/games/genshin/ui/CharacterForm'
 import {
   ELEMENT_ACCENTS,
   genshinStatRows,
@@ -108,6 +105,7 @@ import {
   GenshinCharacterSelect,
   GenshinWeaponSelect,
 } from 'lib/games/genshin/ui/pickers'
+import { genshinOverrideMembers } from 'lib/games/genshin/ui/teammateOverrideMembers'
 import {
   type DamagePart,
   splitDamage,
@@ -805,22 +803,7 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
                 setTeammateOverrides(next)
                 setResult(undefined)
               }}
-              members={teammates.flatMap((id) => {
-                const mate = characters.find((c) => c.id === id)
-                if (!mate || id === character.id) return []
-                const wornSets = Object.values(mate.artifactIds).flatMap((artifactId) => artifacts.find((a) => a.id === artifactId)?.setId ?? [])
-                const fourPiece = fourPieceSetsOf(wornSets)[0]
-                return [{
-                  id,
-                  name: mate.name,
-                  roster: { rank: mate.constellation, weaponId: mate.weapon?.id, refinement: mate.weapon?.refinement ?? 1, fourPiece },
-                  weapons: weaponOptions(images.weaponInfo, images.characterInfo[id.startsWith('Traveler') ? 'Traveler' : id]?.weaponType),
-                  sets: [...new Set([...(fourPiece ? [fourPiece] : []), ...Object.keys(SET_4PC_BUFFS)])].map((setId) => ({
-                    value: setId,
-                    label: setName(setId),
-                  })),
-                }]
-              })}
+              members={genshinOverrideMembers(character.id, teammates, { characters, artifacts, images, setName })}
             />
           </FormRow>
 

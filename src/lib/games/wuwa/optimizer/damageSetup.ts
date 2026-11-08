@@ -1,4 +1,5 @@
 import type { ExtraBuffs } from 'lib/games/shared/extraBuffs'
+import { scoringDefaults } from 'lib/games/shared/scoringOverrides'
 import {
   keepOverridesFor,
   type TeammateOverrides,
@@ -59,6 +60,12 @@ export function wuwaDamageDefaults(charId: string): WuwaDamageSettings {
 // The team buffs, kit and main-echo effects, full-set effects and damage setup for a Resonator with these settings.
 // shownSets: the full sets whose effects are worked out (setEffects.bonusBySet); mainEchoId: the main echo's id;
 // byDamage: the kit, main-echo and set bonuses count (ranking by rotation damage)
+// The Resonators page's DPS score Default: the Resonator's metadata simulation (team and rotation), the kit alone
+// without one (shared/scoringOverrides.ts scoringDefaults)
+export function wuwaScoringDefaults(charId: string): WuwaDamageSettings {
+  return scoringDefaults(wuwaDamageDefaults(charId), wuwaMetadata(charId).simulation)
+}
+
 export function wuwaDamageSetup(
   character: CharacterState,
   settings: WuwaDamageSettings,
