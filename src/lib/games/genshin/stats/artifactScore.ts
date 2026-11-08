@@ -1,7 +1,5 @@
-import {
-  type StatPriority,
-  statPriority,
-} from 'lib/games/genshin/data/statPriorities'
+import { genshinMetadata } from 'lib/games/genshin/data/metadata'
+import { weightsFromPriority } from 'lib/games/genshin/data/statPriorities'
 import { maxRoll } from 'lib/games/genshin/goodKeys'
 import {
   type Artifact,
@@ -31,34 +29,9 @@ import { withWeightOverrides } from 'lib/games/shared/scoreWeights'
 // 4 substats, then 5 upgrades by +20; a substat is never the main stat
 export const ARTIFACT_RULES: PieceRules = { substats: 4, upgrades: 5, substatCanMatchMain: false }
 
-const SCALING_STATS: Record<'atk' | 'hp' | 'def', [GenshinStatKey, GenshinStatKey]> = {
-  atk: ['atkPct', 'atk'],
-  hp: ['hpPct', 'hp'],
-  def: ['defPct', 'def'],
-}
-
-export function weightsFromPriority(priority: StatPriority): Record<string, number> {
-  const weights: Record<string, number> = {}
-  if (priority.crit) {
-    weights.critRate = 1
-    weights.critDmg = 1
-  }
-  const main = priority.crit ? 0.75 : 1
-  if (priority.scaling === 'em') {
-    weights.elementalMastery = main
-  } else {
-    const [percent, flat] = SCALING_STATS[priority.scaling]
-    weights[percent] = main
-    weights[flat] = Math.round((main / 3) * 100) / 100
-  }
-  weights.energyRecharge = priority.er ?? (priority.crit ? 0.25 : 0.5)
-  if (priority.em) weights.elementalMastery = Math.max(weights.elementalMastery ?? 0, priority.em)
-  return weights
-}
-
 // The table's weights, before the user's own (the Scoring weights modal resets to these)
 export function defaultArtifactWeights(character: GenshinCharacter): Record<string, number> {
-  return weightsFromPriority(statPriority(character.id))
+  return { ...genshinMetadata(character.id).stats }
 }
 
 export function genshinArtifactWeights(character: GenshinCharacter): Record<string, number> {
@@ -148,3 +121,6 @@ export function genshinBuildScore(character: GenshinCharacter, worn: Artifact[])
   const weights = genshinArtifactWeights(character)
   return scoreBuild(worn.map((artifact) => scoreArtifact(artifact, weights)), ARTIFACT_SLOTS.length, kqmsBenchmark(weights))
 }
+
+// Kept here for older imports; the formula lives next to the table
+export { weightsFromPriority } from 'lib/games/genshin/data/statPriorities'

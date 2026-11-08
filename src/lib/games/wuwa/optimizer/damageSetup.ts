@@ -9,12 +9,12 @@ import {
 } from 'lib/games/wuwa/damage/combatEffects'
 import {
   DEFAULT_ENEMY,
-  defaultRotation,
   type EnemySettings,
   mainEchoBonus,
   type Rotation,
 } from 'lib/games/wuwa/damage/damage'
 import { CHARACTER_INFO } from 'lib/games/wuwa/data/characters'
+import { wuwaMetadata } from 'lib/games/wuwa/data/metadata'
 import type { WuwaBuffSetting } from 'lib/games/wuwa/team/buffs'
 import {
   withWuwaExtraBuffs,
@@ -51,7 +51,7 @@ export function wuwaDamageDefaults(charId: string): WuwaDamageSettings {
     teammateOverrides: {},
     extraBuffs: {},
     enemy: DEFAULT_ENEMY,
-    rotation: defaultRotation(charId),
+    rotation: wuwaMetadata(charId).rotation,
     combatSettings: {},
   }
 }

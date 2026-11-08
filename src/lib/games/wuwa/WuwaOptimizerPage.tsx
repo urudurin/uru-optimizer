@@ -97,6 +97,7 @@ import {
   SONATA_SETS,
   WEAPONS,
 } from 'lib/games/wuwa/data/gameData'
+import { wuwaMetadata } from 'lib/games/wuwa/data/metadata'
 import { wuwaSampleData } from 'lib/games/wuwa/data/sampleData'
 import { useUserArt } from 'lib/games/wuwa/data/userArt'
 import { SUBSTAT_KEYS } from 'lib/games/wuwa/echoStats'
@@ -231,7 +232,8 @@ const DAMAGE_TARGET = 'damage'
 // What a Resonator starts with before their settings are changed (and saved)
 function defaultSettings(charId: string): WuwaOptimizerSettings {
   return {
-    targetValue: hasSkillData(charId) ? DAMAGE_TARGET : 'avg:atk',
+    // The default rank from the Resonator's metadata (data/metadata.ts)
+    targetValue: wuwaMetadata(charId).sortOption,
     mainStats: {},
     fullSet: null,
     twoPieceSets: [],

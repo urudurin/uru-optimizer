@@ -12,6 +12,8 @@
 // checked yet, review it.
 // Reviewed: 2026-10-26
 
+import type { SubstatKey } from 'lib/games/wuwa/types'
+
 export type ScalingStat = 'atk' | 'hp' | 'def'
 export type DmgType = 'basicDmg' | 'heavyDmg' | 'skillDmg' | 'libDmg'
 
@@ -103,4 +105,26 @@ export const STAT_PRIORITIES: Record<string, StatPriority> = {
 
 export function statPriority(charId: string): StatPriority {
   return STAT_PRIORITIES[charId] ?? DEFAULT_PRIORITY
+}
+
+// The substat weights an entry gives (moved from stats/*Score.ts; data/metadata.ts uses them)
+const SCALING_STATS: Record<StatPriority['scaling'], [SubstatKey, SubstatKey]> = {
+  atk: ['atkPct', 'atkFlat'],
+  hp: ['hpPct', 'hpFlat'],
+  def: ['defPct', 'defFlat'],
+}
+
+export function weightsFromPriority(priority: StatPriority): Record<string, number> {
+  const weights: Record<string, number> = {}
+  if (priority.crit) {
+    weights.critRate = 1
+    weights.critDmg = 1
+  }
+  const main = priority.crit ? 0.75 : 1
+  const [percent, flat] = SCALING_STATS[priority.scaling]
+  weights[percent] = main
+  weights[flat] = Math.round((main / 3) * 100) / 100
+  weights.energyRegen = priority.er ?? (priority.crit ? 0.25 : 0.5)
+  for (const type of priority.dmgTypes ?? []) weights[type] = 0.5
+  return weights
 }

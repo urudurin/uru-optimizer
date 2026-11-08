@@ -6,6 +6,8 @@
 // confidence: 'sourced' = read from the talent descriptions; 'unverified' = not checked against the game yet, review it.
 // Reviewed: 2026-10-26 (needs the user's review)
 
+import type { GenshinStatKey } from 'lib/games/genshin/types'
+
 export type ScalingStat = 'atk' | 'hp' | 'def' | 'em'
 
 export type StatPriority = {
@@ -116,4 +118,30 @@ export const STAT_PRIORITIES: Record<string, StatPriority> = {
 
 export function statPriority(characterId: string): StatPriority {
   return STAT_PRIORITIES[characterId] ?? DEFAULT_PRIORITY
+}
+
+// The substat weights an entry gives (moved from stats/*Score.ts; data/metadata.ts uses them)
+const SCALING_STATS: Record<'atk' | 'hp' | 'def', [GenshinStatKey, GenshinStatKey]> = {
+  atk: ['atkPct', 'atk'],
+  hp: ['hpPct', 'hp'],
+  def: ['defPct', 'def'],
+}
+
+export function weightsFromPriority(priority: StatPriority): Record<string, number> {
+  const weights: Record<string, number> = {}
+  if (priority.crit) {
+    weights.critRate = 1
+    weights.critDmg = 1
+  }
+  const main = priority.crit ? 0.75 : 1
+  if (priority.scaling === 'em') {
+    weights.elementalMastery = main
+  } else {
+    const [percent, flat] = SCALING_STATS[priority.scaling]
+    weights[percent] = main
+    weights[flat] = Math.round((main / 3) * 100) / 100
+  }
+  weights.energyRecharge = priority.er ?? (priority.crit ? 0.25 : 0.5)
+  if (priority.em) weights.elementalMastery = Math.max(weights.elementalMastery ?? 0, priority.em)
+  return weights
 }

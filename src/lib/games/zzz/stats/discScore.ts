@@ -3,11 +3,10 @@ import {
   type GearScore,
   type PieceRules,
   scoreGear,
-  weightsFromPriority,
 } from 'lib/games/shared/gearScore'
 import { withWeightOverrides } from 'lib/games/shared/scoreWeights'
 import type { AgentData } from 'lib/games/zzz/data/dataTypes'
-import { getPreset } from 'lib/games/zzz/data/presets'
+import { zzzMetadata } from 'lib/games/zzz/data/metadata'
 import { SUBSTAT_STATS } from 'lib/games/zzz/discStats'
 import type { Disc } from 'lib/games/zzz/types'
 
@@ -19,7 +18,7 @@ export const DISC_RULES: PieceRules = { substats: 4, upgrades: 5, substatCanMatc
 
 // The preset's weights, before the user's own (the Scoring weights modal resets to these)
 export function defaultDiscWeights(agent: AgentData): Record<string, number> {
-  return weightsFromPriority(getPreset(agent).substatPriority)
+  return { ...zzzMetadata(agent).stats }
 }
 
 export function zzzDiscWeights(agent: AgentData): Record<string, number> {

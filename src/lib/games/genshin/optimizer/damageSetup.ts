@@ -5,7 +5,6 @@ import {
 } from 'lib/games/genshin/damage/combatEffects'
 import {
   DEFAULT_ENEMY,
-  defaultRotation,
   type EnemySettings,
   hexereiCount,
   type Rotation,
@@ -13,6 +12,7 @@ import {
   stellarContribution,
   teamReactions,
 } from 'lib/games/genshin/damage/damage'
+import { genshinMetadata } from 'lib/games/genshin/data/metadata'
 import type { BuffSetting } from 'lib/games/genshin/team/buffs'
 import {
   withGenshinExtraBuffs,
@@ -59,7 +59,7 @@ export function genshinDamageDefaults(characterId: string, constellation = 0): G
     teammateOverrides: {},
     extraBuffs: {},
     enemy: DEFAULT_ENEMY,
-    rotation: defaultRotation(characterId, [], [], constellation),
+    rotation: genshinMetadata(characterId, constellation).rotation,
     combatSettings: {},
   }
 }

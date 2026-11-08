@@ -20,6 +20,7 @@ import type {
   ActiveConditions,
   AgentData,
 } from 'lib/games/zzz/data/dataTypes'
+import { zzzMetadata } from 'lib/games/zzz/data/metadata'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import { statScreenConditions } from 'lib/games/zzz/stats/computeStats'
 import type { ZzzBuffSetting } from 'lib/games/zzz/team/buffs'
@@ -60,7 +61,8 @@ export function zzzDamageDefaults(agentId: string): ZzzDamageSettings {
     teammateOverrides: {},
     extraBuffs: {},
     enemy: DEFAULT_ENEMY,
-    rotation: defaultRotation(agentId),
+    // The agent's metadata rotation once their data is loaded (data/metadata.ts); the same default rotation
+    rotation: AGENTS[agentId] ? zzzMetadata(AGENTS[agentId]).rotation : defaultRotation(agentId),
     combatSettings: {},
   }
 }

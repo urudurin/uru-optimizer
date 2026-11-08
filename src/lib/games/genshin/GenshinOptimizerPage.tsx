@@ -8,8 +8,6 @@ import {
 import { KIT_EFFECTS } from 'lib/games/genshin/damage/combatEffects'
 import {
   type DamageSetup,
-  DEFAULT_ENEMY,
-  defaultRotation,
   hasTalentData,
   migrateRotationCounts,
   type Rotation,
@@ -27,6 +25,7 @@ import {
   type GenshinImages,
   useGenshinImages,
 } from 'lib/games/genshin/data/images'
+import { genshinMetadata } from 'lib/games/genshin/data/metadata'
 import { genshinSampleData } from 'lib/games/genshin/data/sampleData'
 import {
   GenshinTeamCards,
@@ -249,7 +248,8 @@ const DAMAGE_TARGET = 'damage'
 // What a character starts with before their settings are changed (and saved)
 function defaultSettings(characterId: string): GenshinOptimizerSettings {
   return {
-    targetValue: hasTalentData(characterId) ? DAMAGE_TARGET : 'avg:atk',
+    // The default rank from the character's metadata (data/metadata.ts)
+    targetValue: genshinMetadata(characterId).sortOption,
     mainStats: {},
     fourPieceSet: null,
     twoPieceSets: [],

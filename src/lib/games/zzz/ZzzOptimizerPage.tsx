@@ -94,7 +94,6 @@ import {
 } from 'lib/games/shared/ui/OptimizerForm'
 import { KIT_EFFECTS } from 'lib/games/zzz/damage/combatEffects'
 import {
-  agentHits,
   type Rotation,
   rotationDamage,
   rotationLines,
@@ -116,6 +115,7 @@ import {
   type ZzzImages,
 } from 'lib/games/zzz/data/images'
 import { parseImportedZzzPresets } from 'lib/games/zzz/data/importedPresets'
+import { zzzDefaultRank } from 'lib/games/zzz/data/metadata'
 import {
   daysSinceReview,
   getPreset,
@@ -271,8 +271,9 @@ function describeSets(discs: Disc[]): string {
 }
 
 // Agents with skill data rank by rotation damage unless changed
+// The default rank from the agent's metadata (data/metadata.ts)
 function defaultRank(agentId: string): RankKey {
-  return agentHits(agentId).length > 0 ? 'damage' : 'critDmg'
+  return zzzDefaultRank(agentId)
 }
 
 // One-time change to saves from older versions: agents still on the old default (CRIT DMG) move to Rotation damage

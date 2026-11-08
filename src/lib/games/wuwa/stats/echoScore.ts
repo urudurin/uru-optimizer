@@ -6,10 +6,8 @@ import {
   scoreGear,
 } from 'lib/games/shared/gearScore'
 import { withWeightOverrides } from 'lib/games/shared/scoreWeights'
-import {
-  type StatPriority,
-  statPriority,
-} from 'lib/games/wuwa/data/statPriorities'
+import { wuwaMetadata } from 'lib/games/wuwa/data/metadata'
+import { weightsFromPriority } from 'lib/games/wuwa/data/statPriorities'
 import {
   avgRollPct,
   maxRoll,
@@ -34,30 +32,9 @@ import {
 // 5 substats rolled once each; a substat can be the same stat as the main stat
 export const ECHO_RULES: PieceRules = { substats: 5, upgrades: 0, substatCanMatchMain: true }
 
-const SCALING_STATS: Record<StatPriority['scaling'], [SubstatKey, SubstatKey]> = {
-  atk: ['atkPct', 'atkFlat'],
-  hp: ['hpPct', 'hpFlat'],
-  def: ['defPct', 'defFlat'],
-}
-
-export function weightsFromPriority(priority: StatPriority): Record<string, number> {
-  const weights: Record<string, number> = {}
-  if (priority.crit) {
-    weights.critRate = 1
-    weights.critDmg = 1
-  }
-  const main = priority.crit ? 0.75 : 1
-  const [percent, flat] = SCALING_STATS[priority.scaling]
-  weights[percent] = main
-  weights[flat] = Math.round((main / 3) * 100) / 100
-  weights.energyRegen = priority.er ?? (priority.crit ? 0.25 : 0.5)
-  for (const type of priority.dmgTypes ?? []) weights[type] = 0.5
-  return weights
-}
-
 // The table's weights, before the user's own (the Scoring weights modal resets to these)
 export function defaultEchoWeights(character: CharacterState): Record<string, number> {
-  return weightsFromPriority(statPriority(character.charId))
+  return { ...wuwaMetadata(character.charId).stats }
 }
 
 export function wuwaEchoWeights(character: CharacterState): Record<string, number> {
@@ -130,3 +107,6 @@ export function echoPotential(echo: Echo, weights: Record<string, number>): { av
     averageRoll: (stat) => avgRollPct(stat as SubstatKey),
   })
 }
+
+// Kept here for older imports; the formula lives next to the table
+export { weightsFromPriority } from 'lib/games/wuwa/data/statPriorities'
