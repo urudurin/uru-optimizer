@@ -1,13 +1,19 @@
 import {
   IconCards,
+  IconChartBar,
+  IconId,
   IconTrendingUp,
   IconUpload,
   IconUser,
+  IconUsersGroup,
 } from '@tabler/icons-react'
 import { GenshinArtifactsPage } from 'lib/games/genshin/GenshinArtifactsPage'
+import { GenshinBenchmarksPage } from 'lib/games/genshin/GenshinBenchmarksPage'
 import { GenshinCharactersPage } from 'lib/games/genshin/GenshinCharactersPage'
 import { GenshinDataPage } from 'lib/games/genshin/GenshinDataPage'
 import { GenshinOptimizerPage } from 'lib/games/genshin/GenshinOptimizerPage'
+import { GenshinShowcasePage } from 'lib/games/genshin/GenshinShowcasePage'
+import { GenshinTeamsPage } from 'lib/games/genshin/GenshinTeamsPage'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import { isSampleId } from 'lib/games/shared/sampleData'
 import { BackupReminder } from 'lib/games/shared/ui/BackupReminder'
@@ -19,7 +25,7 @@ import {
 import { SampleNotice } from 'lib/games/shared/ui/SampleNotice'
 import { useShallow } from 'zustand/react/shallow'
 
-const PAGES = ['optimizer', 'characters', 'artifacts', 'data'] as const
+const PAGES = ['optimizer', 'characters', 'artifacts', 'data', 'benchmarks', 'teams', 'showcase'] as const
 type GenshinPage = (typeof PAGES)[number]
 
 const ICON_SIZE = 18
@@ -33,6 +39,14 @@ const GROUPS: GameNavGroup<GenshinPage>[] = [
       { key: 'artifacts', label: 'Artifacts', icon: <IconCards size={ICON_SIZE} /> },
       { key: 'characters', label: 'Characters', icon: <IconUser size={ICON_SIZE} /> },
       { key: 'data', label: 'ImportSave', icon: <IconUpload size={ICON_SIZE} /> },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { key: 'benchmarks', label: 'Benchmarks', icon: <IconChartBar size={ICON_SIZE} /> },
+      { key: 'teams', label: 'Teams', icon: <IconUsersGroup size={ICON_SIZE} /> },
+      { key: 'showcase', label: 'Showcase', icon: <IconId size={ICON_SIZE} /> },
     ],
   },
 ]
@@ -61,6 +75,9 @@ export function GenshinApp() {
       {page === 'characters' && <GenshinCharactersPage />}
       {page === 'artifacts' && <GenshinArtifactsPage onImport={goToImport} />}
       {page === 'data' && <GenshinDataPage />}
+      {page === 'showcase' && <GenshinShowcasePage />}
+      {page === 'teams' && <GenshinTeamsPage />}
+      {page === 'benchmarks' && <GenshinBenchmarksPage />}
     </GameLayout>
   )
 }

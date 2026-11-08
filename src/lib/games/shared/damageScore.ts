@@ -50,6 +50,8 @@ export type DamageScore = GearScore & {
   baseline: number,
   benchmark: number,
   perfect: number,
+  // The benchmark's main stats, when they came from the character's metadata (variants); the build's own otherwise
+  benchmarkMains?: string[],
 }
 
 // The extra stats that turn the build's substats into these rolls
@@ -64,6 +66,11 @@ function extraFor(input: DamageScoreInput, rolls: Record<string, number>, kind: 
 
 // The free rolls on every substat, then the rest one at a time on whichever substat adds the most
 export function simulateBuild(input: DamageScoreInput, params: SimParams, kind: 'average' | 'max'): number {
+  return simulateRolls(input, params, kind).score
+}
+
+// The same, with where the rolls went (the Benchmarks pages show them)
+export function simulateRolls(input: DamageScoreInput, params: SimParams, kind: 'average' | 'max'): { score: number, rolls: Record<string, number> } {
   const rolls: Record<string, number> = Object.fromEntries(input.stats.map((stat) => [stat, params.free]))
   const cap = (stat: string) => params.maxPerSub - params.deductionPerMain * input.mains.filter((main) => main === stat).length
   let current = input.score(extraFor(input, rolls, kind))
@@ -82,7 +89,43 @@ export function simulateBuild(input: DamageScoreInput, params: SimParams, kind: 
     current = best.score
     left -= step
   }
-  return current
+  return { score: current, rolls }
+}
+
+export type SimulatedBuild = { score: number, rolls: Record<string, number>, extra: Record<string, number> }
+
+export type BenchmarkBuilds = {
+  // The variant the benchmark used (index into variants), undefined for the build's own sets and mains
+  variant?: number,
+  mains: string[],
+  baseline: SimulatedBuild,
+  benchmark: SimulatedBuild,
+  perfect: SimulatedBuild,
+}
+
+// The three simulated builds behind a DPS score, after HSR's Benchmarks tab: the baseline (0%), the benchmark (100%)
+// and the perfect build (200%), each with its rolls per substat and the extra stats that make them
+export function benchmarkBuilds(input: DamageScoreInput, params: DamageScoreParams, variants: DamageScoreInput[] = []): BenchmarkBuilds {
+  const candidates = variants.length > 0 ? variants : [input]
+  let best = { index: 0, benchmark: simulateRolls(candidates[0], params.benchmark, 'average') }
+  candidates.forEach((candidate, index) => {
+    if (index === 0) return
+    const benchmark = simulateRolls(candidate, params.benchmark, 'average')
+    if (benchmark.score > best.benchmark.score) best = { index, benchmark }
+  })
+  const candidate = candidates[best.index]
+  const withExtra = (simulated: { score: number, rolls: Record<string, number> }, kind: 'average' | 'max'): SimulatedBuild => ({
+    ...simulated,
+    extra: extraFor(candidate, simulated.rolls, kind),
+  })
+  const baselineParams = { ...params.benchmark, goal: params.benchmark.free * candidate.stats.length }
+  return {
+    ...(variants.length > 0 ? { variant: best.index } : {}),
+    mains: candidate.mains,
+    baseline: withExtra(simulateRolls(candidate, baselineParams, 'average'), 'average'),
+    benchmark: withExtra(best.benchmark, 'average'),
+    perfect: withExtra(simulateRolls(candidate, params.perfect, 'max'), 'max'),
+  }
 }
 
 // The pages work a score out on every render, and a full one is a few hundred damage calculations (~10-25 ms). The
@@ -91,23 +134,41 @@ export function simulateBuild(input: DamageScoreInput, params: SimParams, kind: 
 const MEMO_SIZE = 32
 const memo = new Map<string, DamageScore | undefined>()
 
-export function damageScore(input: DamageScoreInput, params: DamageScoreParams): DamageScore | undefined {
+// variants: the same build with other sets and main stats (shared/benchmarkVariants.ts, from the character's metadata
+// simulation), after HSR, whose benchmark picks its sets and mains from the curated lists. The best variant's benchmark
+// is the one the build is compared with; without variants the build's own sets and mains are kept
+export function damageScore(input: DamageScoreInput, params: DamageScoreParams, variants: DamageScoreInput[] = []): DamageScore | undefined {
   const damage = input.score({})
   const probes = input.stats.map((stat) => input.score({ [stat]: input.roll(stat, 'average') }))
-  const key = JSON.stringify([params, input.mains, input.actual, damage, probes])
+  const candidates = variants.length > 0 ? variants : [input]
+  const key = JSON.stringify([params, input.mains, input.actual, damage, probes, variants.map((v) => [v.mains, v.score({})])])
   if (memo.has(key)) return memo.get(key)
 
-  const baselineParams = { ...params.benchmark, goal: params.benchmark.free * input.stats.length }
-  const baseline = simulateBuild(input, baselineParams, 'average')
-  const benchmark = simulateBuild(input, params.benchmark, 'average')
-  const perfect = simulateBuild(input, params.perfect, 'max')
+  let best = { candidate: candidates[0], benchmark: -Infinity }
+  for (const candidate of candidates) {
+    const value = simulateBuild(candidate, params.benchmark, 'average')
+    if (value > best.benchmark) best = { candidate, benchmark: value }
+  }
+  const { candidate, benchmark } = best
+  const baselineParams = { ...params.benchmark, goal: params.benchmark.free * candidate.stats.length }
+  const baseline = simulateBuild(candidate, baselineParams, 'average')
+  const perfect = simulateBuild(candidate, params.perfect, 'max')
   let result: DamageScore | undefined
   if (damage > 0 && benchmark > baseline) {
     const percent = Math.floor(calculateScorePercent(damage, baseline, benchmark, perfect) * 1000) / 10
     // The grade stretches small damage gaps (an EM character's substats move her Swirls a few percent), so the plain
     // damage share is shown next to it
     const ofBenchmark = Math.round((damage / benchmark) * 1000) / 10
-    result = { percent, rating: benchmarkRating(percent), ofBenchmark, damage, baseline, benchmark, perfect }
+    result = {
+      percent,
+      rating: benchmarkRating(percent),
+      ofBenchmark,
+      damage,
+      baseline,
+      benchmark,
+      perfect,
+      ...(variants.length > 0 ? { benchmarkMains: candidate.mains } : {}),
+    }
   }
 
   memo.set(key, result)

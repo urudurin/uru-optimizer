@@ -18,6 +18,7 @@ import {
   restoreBackupSettings,
 } from 'lib/games/shared/backup'
 import { formatNumber } from 'lib/games/shared/format'
+import { readImportChoice } from 'lib/games/shared/importChoice'
 import { todayString } from 'lib/games/shared/importedPresets'
 import type { ImportMode } from 'lib/games/shared/storage'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
@@ -27,6 +28,7 @@ import {
   Panel,
   StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
+import { ImportChoiceControl } from 'lib/games/shared/ui/ImportChoiceControl'
 import { parseWuwaUserDataJson } from 'lib/games/wuwa/importer/userDataParser'
 import {
   createWuwaBackup,
@@ -59,7 +61,7 @@ export function WuwaDataPage() {
         `Restored a backup with ${backup.echoes.length} echoes and ${backup.characters.length} Resonators${settings ? ' and your optimizer settings' : ''}`,
       )
     } else {
-      importParsed(parseWuwaUserDataJson(text), mode)
+      importParsed(parseWuwaUserDataJson(text), mode, readImportChoice('wuwa'))
       setRestored(null)
     }
   }
@@ -89,6 +91,8 @@ export function WuwaDataPage() {
       />
 
       <SimpleGrid cols={{ base: 1, md: 2, xl: 3 }} spacing='lg'>
+        <ImportChoiceControl game='wuwa' gearNoun='Echoes' characterNoun='Resonators' />
+
         <Panel title='Import' description='The user-data file (.json) exported from WuwaEchoScorer, or a backup saved here.'>
           <Stack gap='sm'>
             <FileInput

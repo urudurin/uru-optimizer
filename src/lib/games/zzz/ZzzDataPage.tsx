@@ -18,6 +18,7 @@ import {
   restoreBackupSettings,
 } from 'lib/games/shared/backup'
 import { formatNumber } from 'lib/games/shared/format'
+import { readImportChoice } from 'lib/games/shared/importChoice'
 import { todayString } from 'lib/games/shared/importedPresets'
 import type { ImportMode } from 'lib/games/shared/storage'
 import { confirmAction } from 'lib/games/shared/ui/confirm'
@@ -27,6 +28,7 @@ import {
   Panel,
   StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
+import { ImportChoiceControl } from 'lib/games/shared/ui/ImportChoiceControl'
 import { useZzzGameData } from 'lib/games/zzz/data/enkaGameData'
 import { importEnkaZzzProfile } from 'lib/games/zzz/importer/enkaImport'
 import { isEnkaZzzResponse } from 'lib/games/zzz/importer/enkaParser'
@@ -75,7 +77,7 @@ export function ZzzDataPage() {
       const outcome = await importEnkaZzzProfile(enka)
       setRestored(outcome.ok ? outcome.data : outcome.reason)
     } else {
-      importParsed(parseZzzBuildsExportJson(text), mode)
+      importParsed(parseZzzBuildsExportJson(text), mode, readImportChoice('zzz'))
       setRestored(null)
     }
   }
@@ -105,6 +107,8 @@ export function ZzzDataPage() {
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing='lg'>
         <ZzzEnkaImportPanel />
+
+        <ImportChoiceControl game='zzz' gearNoun='Discs' characterNoun='agents' />
 
         <Panel title='Import' description='A builds export (.json) from your ZZZ optimizer tool, a saved Enka.Network profile, or a backup saved here.'>
           <Stack gap='sm'>

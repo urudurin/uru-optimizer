@@ -10,6 +10,10 @@ import { formatNumber } from 'lib/games/shared/format'
 import { useGameSettings } from 'lib/games/shared/gameSettings'
 import type { TeammateUpgrades } from 'lib/games/shared/teammateUpgrades'
 import { Panel } from 'lib/games/shared/ui/GameLayout'
+import {
+  type BuffRow,
+  BuffsAnalysis,
+} from 'lib/games/shared/ui/optimizer/BuffsAnalysis'
 import type { PinnedCell } from 'lib/games/shared/ui/optimizer/BuildCompare'
 import {
   ComboBreakdown,
@@ -66,7 +70,7 @@ export function pinnedCells(rows: StatDiffRow[]): PinnedCell[] {
   return rows.map((row) => ({ key: row.key, label: row.label, value: row.build, text: row.format(row.build) }))
 }
 
-export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRoll, breakdown, teammateUpgrades }: {
+export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRoll, breakdown, teammateUpgrades, buffs }: {
   // e.g. 'Build #2'
   buildLabel: string,
   rows: StatDiffRow[],
@@ -78,6 +82,8 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
   breakdown?: DamagePart[],
   // Other squad 4-piece sets on teammates (shared/teammateUpgrades.ts), when ranking by damage; setName names a set
   teammateUpgrades?: { ranked: TeammateUpgrades, setName: (id: string) => string },
+  // Every buff on the build (BuffsAnalysis), after HSR's buffs analysis
+  buffs?: BuffRow[],
 }) {
   const [showSwaps, setShowSwaps] = useState(false)
   const helpful = upgrades.filter((u) => u.gain > 1e-9)
@@ -210,6 +216,11 @@ export function BuildAnalysis({ buildLabel, rows, upgrades, scoreLabel, formatRo
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 'var(--mantine-spacing-lg)', alignItems: 'flex-start' }}>
           <ComboBreakdown parts={breakdown} />
           <ComboDistribution parts={breakdown} />
+        </div>
+      )}
+      {buffs && buffs.length > 0 && (
+        <div style={{ marginTop: 'var(--mantine-spacing-lg)' }}>
+          <BuffsAnalysis rows={buffs} />
         </div>
       )}
     </Panel>

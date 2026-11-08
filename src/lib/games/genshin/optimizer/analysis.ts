@@ -1,13 +1,19 @@
 import type { CombatSetup } from 'lib/games/genshin/damage/combatEffects'
 import {
+  MAIN_STAT_OPTIONS,
+  MAX_MAIN_VALUE,
+} from 'lib/games/genshin/data/mainStatOptions'
+import {
   averageRoll,
   maxRoll,
   SUBSTAT_STATS,
 } from 'lib/games/genshin/goodKeys'
+import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
 import {
   type OptimizerTarget,
   scoreStats,
 } from 'lib/games/genshin/optimizer/artifactOptimizer'
+import type { MainStatSlot } from 'lib/games/genshin/optimizer/artifactOptimizer'
 import {
   computeGenshinStats,
   type TeamBuffTotals,
@@ -22,9 +28,12 @@ import {
   rankUpgrades,
   type SubstatUpgrade,
 } from 'lib/games/shared/analysis'
+import { benchmarkVariants } from 'lib/games/shared/benchmarkVariants'
+import type { SimulationMetadata } from 'lib/games/shared/characterMetadata'
 import {
   type DamageScore,
   damageScore,
+  type DamageScoreInput,
   type DamageScoreParams,
 } from 'lib/games/shared/damageScore'
 import {
@@ -66,17 +75,53 @@ export function genshinDamageScore(
   target: OptimizerTarget,
   teamBuffs?: TeamBuffTotals,
   combat?: CombatSetup,
+  // The same artifacts with the metadata's benchmark sets and mains (genshinBenchmarkVariants)
+  variants: Artifact[][] = [],
 ): DamageScore | undefined {
+  const inputs = genshinScoreInputs(character, artifacts, target, teamBuffs, combat, variants)
+  return inputs && damageScore(inputs.input, GENSHIN_SCORE_PARAMS, inputs.variants)
+}
+
+// The DPS score's inputs (shared/damageScore.ts) for these artifacts and their benchmark variants; the Benchmarks page
+// shows the simulated builds from them
+export function genshinScoreInputs(
+  character: GenshinCharacter,
+  artifacts: Artifact[],
+  target: OptimizerTarget,
+  teamBuffs?: TeamBuffTotals,
+  combat?: CombatSetup,
+  variants: Artifact[][] = [],
+): { input: DamageScoreInput, variants: DamageScoreInput[] } | undefined {
   if (target.kind !== 'damage' || artifacts.length < 5) return undefined
   const actual: Record<string, number> = {}
   for (const artifact of artifacts) for (const sub of artifact.substats) actual[sub.stat] = (actual[sub.stat] ?? 0) + sub.value
-  return damageScore({
-    stats: SUBSTAT_STATS,
-    roll: (stat, kind) => (kind === 'max' ? maxRoll : averageRoll)(stat as GenshinStatKey),
-    actual,
-    mains: artifacts.map((artifact) => artifact.main.stat),
-    score: (extra) => scoreStats(computeGenshinStats(character, artifacts, extra, teamBuffs, combat).stats, target),
-  }, GENSHIN_SCORE_PARAMS)
+  const inputFor = (pieces: Artifact[]) => {
+    // A variant's 4-piece set counts in combat like the build's own (computeGenshinStats checks the piece counts)
+    const pieceCombat = combat && pieces !== artifacts ? { ...combat, sets: [...new Set([...combat.sets, ...pieces.map((a) => a.setId)])] } : combat
+    return {
+      stats: SUBSTAT_STATS,
+      roll: (stat: string, kind: 'average' | 'max') => (kind === 'max' ? maxRoll : averageRoll)(stat as GenshinStatKey),
+      actual,
+      mains: pieces.map((artifact) => artifact.main.stat),
+      score: (extra: Record<string, number>) => scoreStats(computeGenshinStats(character, pieces, extra, teamBuffs, pieceCombat).stats, target),
+    }
+  }
+  return { input: inputFor(artifacts), variants: variants.map(inputFor) }
+}
+
+// The DPS score's benchmark sets and mains from the character's metadata simulation (shared/benchmarkVariants.ts): a
+// 4-piece set (and the fifth piece as it is) or 2 + 2, each listed main stat at +20
+export function genshinBenchmarkVariants(artifacts: Artifact[], simulation: SimulationMetadata<unknown> | undefined): Artifact[][] {
+  return benchmarkVariants(artifacts, simulation, {
+    slotOf: (artifact) => artifact.slot,
+    withMain: (artifact, stat) => {
+      const value = MAX_MAIN_VALUE[stat as GenshinStatKey]
+      if (value === undefined || !MAIN_STAT_OPTIONS[artifact.slot as MainStatSlot]?.includes(stat as GenshinStatKey)) return undefined
+      return { ...artifact, rarity: 5, level: 20, main: { stat: stat as GenshinStatKey, value } }
+    },
+    withSet: (artifact, setId) => ({ ...artifact, setId, setName: nameFromGoodKey(setId) }),
+    setPattern: (option) => (option.length === 1 ? [4] : option.map(() => 2)),
+  })
 }
 
 // Stat simulation (shared/statSimulation.ts): one average roll of each artifact substat

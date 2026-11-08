@@ -1,8 +1,6 @@
 import {
-  Accordion,
   Badge,
   Button,
-  FileInput,
   Group,
   MultiSelect,
   SegmentedControl,
@@ -27,6 +25,7 @@ import {
   fieldSetter,
   migrateOptimizerSettings,
 } from 'lib/games/shared/optimizerSettings'
+import { presetImportStore } from 'lib/games/shared/presetImports'
 import {
   rollsFromTotals,
   type StatSimulation,
@@ -48,11 +47,6 @@ import {
   DPS_SCORE_LABEL,
   RememberDamageScore,
 } from 'lib/games/shared/ui/BuildRating'
-import { confirmAction } from 'lib/games/shared/ui/confirm'
-import {
-  Notices,
-  Panel,
-} from 'lib/games/shared/ui/GameLayout'
 import gear from 'lib/games/shared/ui/GearCard.module.css'
 import { BuildPreview } from 'lib/games/shared/ui/optimizer/BuildPreview'
 import {
@@ -67,6 +61,7 @@ import {
   type OptimizerView,
   type OptimizerViewContext,
 } from 'lib/games/shared/ui/optimizer/GameOptimizerPage'
+import { ImportedPresetsPanel } from 'lib/games/shared/ui/optimizer/ImportedPresetsPanel'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
 import { OptimizerOptionsCard } from 'lib/games/shared/ui/optimizer/OptimizerOptionsCard'
 import {
@@ -114,11 +109,14 @@ import {
   useZzzImages,
   type ZzzImages,
 } from 'lib/games/zzz/data/images'
-import { parseImportedZzzPresets } from 'lib/games/zzz/data/importedPresets'
 import { zzzDefaultRank } from 'lib/games/zzz/data/metadata'
 import {
+  importedZzzPresets,
+  zzzImports,
+  zzzMetadata,
+} from 'lib/games/zzz/data/metadata'
+import {
   daysSinceReview,
-  getPreset,
   needsReview,
   REVIEW_INTERVAL_DAYS,
   type SetChoice,
@@ -130,6 +128,7 @@ import { SUBSTAT_STATS } from 'lib/games/zzz/discStats'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
 import {
   ZZZ_SIM_ROLLS,
+  zzzBenchmarkVariants,
   zzzSimulatedStats,
   zzzSubstatTotals,
 } from 'lib/games/zzz/optimizer/analysis'
@@ -154,7 +153,6 @@ import {
 } from 'lib/games/zzz/optimizer/discOptimizer'
 import { discSearch } from 'lib/games/zzz/optimizer/optimizerClient'
 import type { DiscWorkerResponse } from 'lib/games/zzz/optimizer/optimizerWorker'
-import { usePresetImportStore } from 'lib/games/zzz/state/presetImportStore'
 import { zzzRoster } from 'lib/games/zzz/state/roster'
 import { zzzPiecesTaken } from 'lib/games/zzz/state/zzzState'
 import { useZzzStore } from 'lib/games/zzz/state/zzzStore'
@@ -198,13 +196,8 @@ import {
   ZzzWEngineSelect,
 } from 'lib/games/zzz/ui/pickers'
 import { zzzOverrideMembers } from 'lib/games/zzz/ui/teammateOverrideMembers'
-import { Message } from 'lib/interactions/message'
-import {
-  useMemo,
-  useState,
-} from 'react'
+import { useMemo } from 'react'
 
-const MAX_IMPORT_WARNINGS = 6
 const MAIN_STAT_SLOTS: MainStatSlot[] = [4, 5, 6]
 
 // wEngineId '' is no W-Engine
@@ -319,7 +312,8 @@ function defaultSettings(id: string, data: ZzzOptimizerData): ZzzOptimizerSettin
     presetChoice: '0',
     fourPieceSet: null,
     twoPieceSet: null,
-    mainStats: {},
+    // The agent's ideal main stats from their metadata (data/metadata.ts), like HSR's defaultForm
+    mainStats: AGENTS[id] ? Object.fromEntries(Object.entries(zzzMetadata(AGENTS[id]).parts).filter(([, stats]) => stats.length > 0)) : {},
     minStats: {},
     maxStats: {},
     excludeEquippedByOthers: false,
@@ -441,16 +435,14 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
   )
   const teammateOptions = [...new Map(builds.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
     .map(([value, label]) => ({ value, label }))
-  const storedImport = usePresetImportStore((s) => s.stored)
-  const importPresetText = usePresetImportStore((s) => s.importText)
-  const clearImportedPresets = usePresetImportStore((s) => s.clear)
-  const [presetSource, setPresetSource] = useState<'imported' | 'builtin'>('imported')
+  // The preset from the agent's metadata: the imported one when the user's presets file has it and is switched on
+  presetImportStore('zzz')((s) => s.stored)
+  const importsOn = presetImportStore('zzz')((s) => s.enabled)
 
   const statRows = STAT_ROWS.filter((row) => !row.ruptureOnly || agent.specialty === 'Rupture')
-  const imported = useMemo(() => storedImport ? parseImportedZzzPresets(storedImport, Object.values(AGENTS)) : undefined, [storedImport])
+  const imported = importedZzzPresets()
   const importedPreset = imported?.presets[agent.id]
-  // The imported preset wins when there is one, unless the user picks the built-in one
-  const preset = importedPreset && presetSource === 'imported' ? importedPreset : getPreset(agent)
+  const preset = zzzMetadata(agent).preset
   const reviewAge = daysSinceReview(preset, new Date())
   const ownerNames = useMemo(() => new Map(builds.map((b) => [b.agentId, b.name])), [builds])
 
@@ -553,19 +545,6 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
     setResult(undefined)
   }
 
-  async function handlePresetFile(file: File | null) {
-    if (!file) return
-    importPresetText(await file.text())
-    setPresetSource('imported')
-    setPresetChoice('0')
-  }
-
-  async function removeImportedPresets() {
-    if (!await confirmAction('Remove imported presets', 'Remove the imported presets from this browser?', { danger: true, confirmLabel: 'Remove' })) return
-    clearImportedPresets()
-    Message.success('Removed the imported presets')
-  }
-
   // The search runs in a web worker, so the page stays responsive while it works
   function run() {
     if (loadout.wEngineId && !W_ENGINES[loadout.wEngineId]) return
@@ -609,8 +588,12 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
     computeInput ? toDisplayStats(computeStats({ ...computeInput, discs: list, conditions: statScreenConditions(), teamEffects: [] }).stats) : undefined
   const currentDamage = currentStats && rotationDamage(currentStats, damageSetup)
   // DPS scores when ranking by damage (shared/damageScore.ts): the current discs' is kept for the Agents page
-  const currentDpsScore = byDamage && computeInput ? zzzDamageScore({ ...computeInput, discs: currentDiscs }, damageSetup) : undefined
-  const pickedDpsScore = byDamage && computeInput && best ? zzzDamageScore({ ...computeInput, discs: best.discs }, damageSetup) : undefined
+  const currentDpsScore = byDamage && computeInput
+    ? zzzDamageScore({ ...computeInput, discs: currentDiscs }, damageSetup, zzzBenchmarkVariants(currentDiscs, zzzMetadata(agent).simulation))
+    : undefined
+  const pickedDpsScore = byDamage && computeInput && best
+    ? zzzDamageScore({ ...computeInput, discs: best.discs }, damageSetup, zzzBenchmarkVariants(best.discs, zzzMetadata(agent).simulation))
+    : undefined
   // Teammate set upgrades (shared/teammateUpgrades.ts, after HSR's): the picked build's rotation damage with each teammate
   // on each squad 4-piece instead, through their 4-piece override
   const teammateUpgrades = byDamage && computeInput && best
@@ -756,16 +739,16 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
 
             <FormCard title='Recommended build' size='wide' description={`${preset.source} · ${preset.confidence}`}>
               <Button size='xs' variant='light' onClick={applyPreset}>Apply to the filters</Button>
-              {importedPreset && (
+              {(importedPreset || !importsOn) && (
                 <SegmentedControl
                   fullWidth
-                  value={presetSource}
+                  value={importsOn ? 'imported' : 'builtin'}
                   onChange={(value) => {
-                    setPresetSource(value === 'builtin' ? 'builtin' : 'imported')
+                    presetImportStore('zzz').getState().setEnabled(value !== 'builtin')
                     setPresetChoice('0')
                   }}
                   data={[
-                    { value: 'imported', label: `Imported: ${importedPreset.source}` },
+                    { value: 'imported', label: importedPreset ? `Imported: ${importedPreset.source}` : 'Imported' },
                     { value: 'builtin', label: 'Built-in' },
                   ]}
                 />
@@ -812,25 +795,12 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
                 {`Last reviewed ${preset.reviewed}${reviewAge === undefined ? '' : ` (${reviewAge} day${reviewAge === 1 ? '' : 's'} ago)`}`}
               </Text>
 
-              <Accordion variant='contained' radius='sm'>
-                <Accordion.Item value='own'>
-                  <Accordion.Control>
-                    <Text size='xs'>
-                      {imported ? `Your presets: ${Object.keys(imported.presets).length} from ${imported.source || 'a file'}` : 'Use your own presets file'}
-                    </Text>
-                  </Accordion.Control>
-                  <Accordion.Panel>
-                    <Stack gap='xs'>
-                      <FileInput placeholder='Choose a presets file (.json)' accept='application/json,.json' clearable onChange={handlePresetFile} />
-                      {storedImport && <Button size='xs' variant='subtle' color='red' onClick={removeImportedPresets}>Remove imported presets</Button>}
-                      <Text size='xs' c='dimmed'>
-                        Kept in this browser only. Imported presets are for personal, non-commercial use, follow the terms of wherever they came from.
-                      </Text>
-                      {imported && <Notices messages={imported.warnings} max={MAX_IMPORT_WARNINGS} />}
-                    </Stack>
-                  </Accordion.Panel>
-                </Accordion.Item>
-              </Accordion>
+              <ImportedPresetsPanel
+                game='zzz'
+                count={imported ? Object.keys(imported.presets).length : undefined}
+                source={imported?.source}
+                warnings={imported && [...imported.warnings, ...(zzzImports()?.warnings ?? []).filter((w) => !imported.warnings.includes(w))]}
+              />
             </FormCard>
 
             <FormCard title='Rank by'>
@@ -1111,6 +1081,31 @@ function useZzzOptimizerView({ character, data, settings, update: updateSettings
               breakdown={breakdown}
               scoreLabel={rankLabel}
               formatRoll={(upgrade) => /%|CRIT/.test(upgrade.stat) ? `${upgrade.roll}%` : String(upgrade.roll)}
+              buffs={[
+                ...zzzTeamEntries(teamResult.applied).map((entry) => ({
+                  group: 'Squad',
+                  source: entry.source,
+                  label: entry.label,
+                  detail: entry.detail || undefined,
+                  counted: entry.counted,
+                })),
+                ...(sortBy === 'damage'
+                  ? kit.applied.map((entry) => ({
+                    group: 'Own effects',
+                    source: agent.name,
+                    label: entry.effect.label,
+                    detail: entry.reason,
+                    counted: entry.counted,
+                  }))
+                  : []),
+                ...Object.entries(extraBuffs).filter(([, value]) => value).map(([key, value]) => ({
+                  group: 'Extra',
+                  source: 'Typed in',
+                  label: key,
+                  detail: `+${value}`,
+                  counted: true,
+                })),
+              ]}
             />
           )}
         </>

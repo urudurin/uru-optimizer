@@ -9,7 +9,9 @@ import {
 } from '@mantine/core'
 import {
   IconAlertTriangle,
+  IconHelp,
   IconInfoCircle,
+  IconNews,
   IconSettings,
 } from '@tabler/icons-react'
 import {
@@ -26,6 +28,10 @@ import classes from 'lib/games/shared/ui/GameLayout.module.css'
 import { GameModals } from 'lib/games/shared/ui/GameModals'
 import { GameSettingsDrawer } from 'lib/games/shared/ui/GameSettingsDrawer'
 import {
+  ChangelogModal,
+  GettingStartedDrawer,
+} from 'lib/games/shared/ui/GamesHelp'
+import {
   type ReactNode,
   useEffect,
   useState,
@@ -39,7 +45,20 @@ import { useTranslation } from 'react-i18next'
 // Page shell, page header and building blocks shared by the ZZZ and WuWa pages, styled after HSR's sidebar and panels
 
 // Sidebar labels, keys of the games namespace's Pages (public/locales/<language>/games.yaml)
-export type GamePageLabel = 'Optimizer' | 'Discs' | 'Agents' | 'Artifacts' | 'Characters' | 'Echoes' | 'Resonators' | 'ImportSave' | 'Optimization'
+export type GamePageLabel =
+  | 'Optimizer'
+  | 'Discs'
+  | 'Agents'
+  | 'Artifacts'
+  | 'Characters'
+  | 'Echoes'
+  | 'Resonators'
+  | 'ImportSave'
+  | 'Optimization'
+  | 'Tools'
+  | 'Showcase'
+  | 'Teams'
+  | 'Benchmarks'
 
 export type GameNavItem<K extends string> = {
   key: K,
@@ -70,6 +89,8 @@ type GameLayoutProps<K extends string> = {
 export function GameLayout<K extends string>({ gameName, tagline, groups, active, onNavigate, notice, settings, children }: GameLayoutProps<K>) {
   const items = groups.flatMap((group) => group.items)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [changelogOpen, setChangelogOpen] = useState(false)
   const { t } = useTranslation('games')
 
   return (
@@ -103,6 +124,22 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
                   {t('Layout.Settings')}
                 </UnstyledButton>
               )}
+              {settings && group === groups[groups.length - 1] && (
+                <>
+                  <UnstyledButton className={classes.item} onClick={() => setHelpOpen(true)}>
+                    <span className={classes.itemIcon}>
+                      <IconHelp size={18} />
+                    </span>
+                    Getting started
+                  </UnstyledButton>
+                  <UnstyledButton className={classes.item} onClick={() => setChangelogOpen(true)}>
+                    <span className={classes.itemIcon}>
+                      <IconNews size={18} />
+                    </span>
+                    Changelog
+                  </UnstyledButton>
+                </>
+              )}
             </div>
           ))}
           <div className={classes.asideFooter}>{t('Layout.Footer')}</div>
@@ -131,6 +168,8 @@ export function GameLayout<K extends string>({ gameName, tagline, groups, active
 
       <GameModals />
       {settings && <GameSettingsDrawer game={settings.game} gearNoun={settings.gearNoun} opened={settingsOpen} onClose={() => setSettingsOpen(false)} />}
+      {settings && <GettingStartedDrawer game={settings.game} opened={helpOpen} onClose={() => setHelpOpen(false)} />}
+      <ChangelogModal opened={changelogOpen} onClose={() => setChangelogOpen(false)} />
 
       <main className={classes.main}>
         <div className={classes.mainInner}>

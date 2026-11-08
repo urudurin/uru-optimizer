@@ -1,8 +1,10 @@
 import {
   IconCards,
+  IconChartBar,
   IconTrendingUp,
   IconUpload,
   IconUser,
+  IconUsersGroup,
 } from '@tabler/icons-react'
 import { isSampleId } from 'lib/games/shared/sampleData'
 import { BackupReminder } from 'lib/games/shared/ui/BackupReminder'
@@ -13,13 +15,15 @@ import {
 } from 'lib/games/shared/ui/GameLayout'
 import { SampleNotice } from 'lib/games/shared/ui/SampleNotice'
 import { useWuwaStore } from 'lib/games/wuwa/state/wuwaStore'
+import { WuwaBenchmarksPage } from 'lib/games/wuwa/WuwaBenchmarksPage'
 import { WuwaCharactersPage } from 'lib/games/wuwa/WuwaCharactersPage'
 import { WuwaDataPage } from 'lib/games/wuwa/WuwaDataPage'
 import { WuwaEchoesPage } from 'lib/games/wuwa/WuwaEchoesPage'
 import { WuwaOptimizerPage } from 'lib/games/wuwa/WuwaOptimizerPage'
+import { WuwaTeamsPage } from 'lib/games/wuwa/WuwaTeamsPage'
 import { useShallow } from 'zustand/react/shallow'
 
-const PAGES = ['optimizer', 'characters', 'echoes', 'data'] as const
+const PAGES = ['optimizer', 'characters', 'echoes', 'data', 'benchmarks', 'teams'] as const
 type WuwaPage = (typeof PAGES)[number]
 
 const ICON_SIZE = 18
@@ -33,6 +37,13 @@ const GROUPS: GameNavGroup<WuwaPage>[] = [
       { key: 'echoes', label: 'Echoes', icon: <IconCards size={ICON_SIZE} /> },
       { key: 'characters', label: 'Resonators', icon: <IconUser size={ICON_SIZE} /> },
       { key: 'data', label: 'ImportSave', icon: <IconUpload size={ICON_SIZE} /> },
+    ],
+  },
+  {
+    label: 'Tools',
+    items: [
+      { key: 'benchmarks', label: 'Benchmarks', icon: <IconChartBar size={ICON_SIZE} /> },
+      { key: 'teams', label: 'Teams', icon: <IconUsersGroup size={ICON_SIZE} /> },
     ],
   },
 ]
@@ -61,6 +72,8 @@ export function WuwaApp() {
       {page === 'optimizer' && <WuwaOptimizerPage onImport={goToImport} />}
       {page === 'echoes' && <WuwaEchoesPage onImport={goToImport} />}
       {page === 'data' && <WuwaDataPage />}
+      {page === 'teams' && <WuwaTeamsPage />}
+      {page === 'benchmarks' && <WuwaBenchmarksPage />}
     </GameLayout>
   )
 }

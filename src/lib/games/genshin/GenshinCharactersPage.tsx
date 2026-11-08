@@ -110,7 +110,7 @@ const infoOf = (id: string, images: GenshinImages) => images.characterInfo[id.st
 const nameOf = (id: string, images: GenshinImages) => (id === 'Traveler' ? 'Traveler' : images.characterInfo[id]?.name ?? nameFromGoodKey(id))
 
 // The Character menu's game parts (shared/ui/CharacterKind.tsx)
-const GENSHIN_CHARACTER_KIND: CharacterKind<GenshinCharacter, Artifact> = {
+export const GENSHIN_CHARACTER_KIND: CharacterKind<GenshinCharacter, Artifact> = {
   game: 'genshin',
   gearNoun: 'artifacts',
   ownerId: (character) => character.id,

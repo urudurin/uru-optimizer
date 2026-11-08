@@ -2,6 +2,7 @@ import { loadEnkaGenshinStore } from 'lib/games/genshin/importer/enkaClient'
 import { parseEnkaGenshin } from 'lib/games/genshin/importer/enkaParser'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import type { FetchResult } from 'lib/games/shared/enka'
+import { readImportChoice } from 'lib/games/shared/importChoice'
 import { todayString } from 'lib/games/shared/importedPresets'
 
 // Converts an Enka Genshin profile and merges it into the saved characters and artifacts. Always merges, an Enka
@@ -11,7 +12,7 @@ export async function importEnkaGenshinProfile(data: unknown): Promise<FetchResu
   if (!store.ok) return store
 
   const parsed = parseEnkaGenshin(data, store.data, todayString(new Date()))
-  useGenshinStore.getState().importParsed(parsed, 'merge')
+  useGenshinStore.getState().importParsed(parsed, 'merge', readImportChoice('genshin'))
   if (parsed.characters.length === 0) return { ok: false, reason: parsed.warnings[0] ?? 'Nothing to import from this profile' }
 
   const names = parsed.characters.map((c) => c.name).join(', ')

@@ -17,7 +17,10 @@ import type {
 import type { ZzzImages } from 'lib/games/zzz/data/images'
 import { zzzMetadata } from 'lib/games/zzz/data/metadata'
 import type { ImportedBuild } from 'lib/games/zzz/importer/zzzBuildsExportParser'
-import { zzzDamageScore } from 'lib/games/zzz/optimizer/analysis'
+import {
+  zzzBenchmarkVariants,
+  zzzDamageScore,
+} from 'lib/games/zzz/optimizer/analysis'
 import {
   zzzDamageDefaults,
   zzzDamageSetup,
@@ -70,7 +73,7 @@ export function ZzzScoring({ agent, wEngine, build, worn, coreSkill, roster, dis
     teamEffects: setup.combatEffects,
     discs: worn,
   }
-  const score = zzzDamageScore(input, setup.damageSetup)
+  const score = zzzDamageScore(input, setup.damageSetup, zzzBenchmarkVariants(worn, zzzMetadata(agent).simulation))
   if (!score) return <>{fallback}</>
 
   const teammateOptions = [...new Map(roster.filter((b) => b.agentId !== agent.id && AGENTS[b.agentId]).map((b) => [b.agentId, b.name]))]
@@ -84,7 +87,7 @@ export function ZzzScoring({ agent, wEngine, build, worn, coreSkill, roster, dis
       scoring={scoring}
       slots={2}
       teammates={settings.teammates.map((id) => ({ id, name: nameOf(id), icon: images.agents[id]?.circle }))}
-      defaultText={zzzMetadata(agent).simulation ? 'Default: our squad and rotation for this agent.' : 'Default: the kit alone, no squad.'}
+      defaultText={zzzMetadata(agent).simulation ? 'Default: the recommended squad and rotation.' : 'Default: the kit alone, no squad.'}
       setup={
         <>
           <TeamCards

@@ -1,4 +1,5 @@
 import { createGearStore } from 'lib/games/shared/gearStore'
+import { restrictOwners } from 'lib/games/shared/importChoice'
 import type { ParsedWuwaData } from 'lib/games/wuwa/importer/userDataParser'
 import {
   assignWuwaEcho,
@@ -39,6 +40,12 @@ export const useWuwaStore = createGearStore<WuwaData, Echo, ParsedWuwaData, stri
     deserialize: deserializeWuwaData,
     isEmptyImport: (parsed) => parsed.echoes.length === 0 && parsed.characters.length === 0,
     merge: mergeWuwaData,
+    // Kept Resonators not in the import lose the echoes a replacing import takes away
+    restrict: (data, parsed, choice, mode) => ({
+      ...parsed,
+      characters: restrictOwners(data.characters, parsed.characters, (c) => c.charId, choice, mode)
+        .map((c) => (mode === 'replace' && !parsed.characters.includes(c) ? { ...c, echoIds: c.echoIds.map(() => null) } : c)),
+    }),
     saveGear: saveWuwaEcho,
     deleteGear: deleteWuwaEchoes,
     assignGear: assignWuwaEcho,

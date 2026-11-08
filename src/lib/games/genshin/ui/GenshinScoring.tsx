@@ -8,7 +8,10 @@ import type { GenshinImages } from 'lib/games/genshin/data/images'
 import { genshinMetadata } from 'lib/games/genshin/data/metadata'
 import { GenshinTeamCards } from 'lib/games/genshin/GenshinTeamCards'
 import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
-import { genshinDamageScore } from 'lib/games/genshin/optimizer/analysis'
+import {
+  genshinBenchmarkVariants,
+  genshinDamageScore,
+} from 'lib/games/genshin/optimizer/analysis'
 import {
   genshinDamageDefaults,
   genshinDamageSetup,
@@ -52,7 +55,14 @@ export function GenshinScoring({ character, worn, roster, artifacts, images, fal
   const { settings, custom, edit } = scoring
   const fourPieceSet = fourPieceSetsOf(worn.map((a) => a.setId))[0]
   const setup = genshinDamageSetup(character, settings, fourPieceSet, { characters: roster, artifacts })
-  const score = genshinDamageScore(character, worn, { kind: 'damage', setup: setup.damageSetup }, setup.teamBuffs, setup.combat)
+  const score = genshinDamageScore(
+    character,
+    worn,
+    { kind: 'damage', setup: setup.damageSetup },
+    setup.teamBuffs,
+    setup.combat,
+    genshinBenchmarkVariants(worn, genshinMetadata(character.id).simulation),
+  )
   if (!score) return <>{fallback}</>
 
   const iconOf = (id: string) => images.characters[id.startsWith('Traveler') ? 'Traveler' : id]?.icon ?? images.characters[id]?.icon
@@ -64,7 +74,7 @@ export function GenshinScoring({ character, worn, roster, artifacts, images, fal
       scoring={scoring}
       slots={3}
       teammates={settings.teammates.map((id) => ({ id, name: roster.find((c) => c.id === id)?.name ?? id, icon: iconOf(id) }))}
-      defaultText={genshinMetadata(character.id).simulation ? 'Default: our team and rotation for this character.' : 'Default: the kit alone, no team.'}
+      defaultText={genshinMetadata(character.id).simulation ? 'Default: the recommended team and rotation.' : 'Default: the kit alone, no team.'}
       setup={
         <>
           <GenshinTeamCards

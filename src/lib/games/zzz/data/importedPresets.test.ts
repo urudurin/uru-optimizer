@@ -85,7 +85,9 @@ describe('parseImportedZzzPresets', () => {
   it('rejects files that are not ZZZ preset files', () => {
     expect(parseImportedZzzPresets({ text: 'nope', importedAt: '2026-10-25' }, agents).warnings).toEqual(['The file isn\'t valid JSON'])
     expect(importText({ ...file([]), game: 'wuwa' }).warnings).toEqual(['This file is for "wuwa", not "zzz"'])
-    expect(importText({ ...file([]), version: 2 }).warnings).toEqual(['Expected "version": 1'])
+    expect(importText({ ...file([]), version: 3 }).warnings).toEqual(['Expected "version": 1 or 2'])
+    expect(importText({ ...file([{ character: 'miyabi', sets: [['Branch & Blade Song', 'Woodpecker Electro']] }]), version: 2 }).presets['1091'].sets)
+      .toEqual([{ fourPiece: 'branch-blade-song', twoPiece: 'woodpecker-electro' }])
     expect(importText({ version: 1, game: 'zzz' }).warnings).toEqual(['Expected a "presets" list'])
   })
 

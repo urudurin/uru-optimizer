@@ -55,7 +55,8 @@ function describeStat(stat: BuffStat, value: number): string {
   return `+${formatStatValue(stat, value)} ${statLabel(stat)}`
 }
 
-function describeValue(entry: AppliedBuff): string {
+// A counted team buff's value, e.g. "+20% ATK" (the Teammates card and the buffs analysis)
+export function describeValue(entry: AppliedBuff): string {
   return entry.stat ? describeStat(entry.stat, entry.value) : ''
 }
 

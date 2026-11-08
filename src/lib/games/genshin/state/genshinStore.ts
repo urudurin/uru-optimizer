@@ -21,6 +21,7 @@ import type {
   GenshinCharacter,
 } from 'lib/games/genshin/types'
 import { createGearStore } from 'lib/games/shared/gearStore'
+import { restrictOwners } from 'lib/games/shared/importChoice'
 
 // The Genshin save in this browser (genshin-state) on the shared gear store (shared/gearStore.ts): saveGear / deleteGear
 // are artifacts, unequipOwner / switchGear / deleteOwner are characters (the Characters page's Character menu)
@@ -39,6 +40,12 @@ export const useGenshinStore = createGearStore<GenshinData, Artifact, GenshinDat
     deserialize: deserializeGenshinData,
     isEmptyImport: (parsed) => parsed.artifacts.length === 0 && parsed.characters.length === 0,
     merge: mergeGenshinData,
+    // Kept characters not in the import lose the artifacts a replacing import takes away
+    restrict: (data, parsed, choice, mode) => ({
+      ...parsed,
+      characters: restrictOwners(data.characters, parsed.characters, (c) => c.id, choice, mode)
+        .map((c) => (mode === 'replace' && !parsed.characters.includes(c) ? { ...c, artifactIds: {} } : c)),
+    }),
     saveGear: saveGenshinArtifact,
     deleteGear: deleteGenshinArtifacts,
     assignGear: assignGenshinArtifact,

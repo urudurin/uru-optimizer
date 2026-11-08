@@ -45,6 +45,7 @@ import {
   Panel,
   StatGrid,
 } from 'lib/games/shared/ui/GameLayout'
+import { ImportChoiceControl } from 'lib/games/shared/ui/ImportChoiceControl'
 import { Message } from 'lib/interactions/message'
 import { useState } from 'react'
 
@@ -123,6 +124,8 @@ export function GenshinDataPage() {
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing='lg'>
         <EnkaImportPanel config={ENKA_CONFIG} />
+
+        <ImportChoiceControl game='genshin' gearNoun='Artifacts' characterNoun='characters' />
 
         <Panel
           title='Import'

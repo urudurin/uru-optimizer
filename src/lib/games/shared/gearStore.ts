@@ -1,5 +1,6 @@
 import type { GameId } from 'lib/games/games'
 import { swapsOnEquip } from 'lib/games/shared/gameSettings'
+import type { ImportChoice } from 'lib/games/shared/importChoice'
 import {
   type ImportMode,
   readStorage,
@@ -25,6 +26,8 @@ export type GearStoreConfig<Data extends object, Gear, Parsed extends { warnings
   // An import with nothing in it, which never wipes existing data, even in replace mode
   isEmptyImport: (parsed: Parsed) => boolean,
   merge: (data: Data, parsed: Parsed, mode: ImportMode) => Data,
+  // Narrows an import to what the user chose to bring in (shared/importChoice.ts): gear only, or only saved characters
+  restrict?: (data: Data, parsed: Parsed, choice: ImportChoice, mode: ImportMode) => Parsed,
   // A piece added or edited by hand
   saveGear: (data: Data, item: Gear) => Data,
   deleteGear: (data: Data, ids: string[]) => Data,
@@ -40,7 +43,8 @@ export type GearStoreConfig<Data extends object, Gear, Parsed extends { warnings
 export type GearStoreVerbs<Gear, Parsed, Warning> = {
   // Warnings from the most recent import, not persisted
   lastWarnings: Warning[],
-  importParsed: (parsed: Parsed, mode: ImportMode) => void,
+  // choice: what to bring in (Import page imports); backups and sample data bring in everything
+  importParsed: (parsed: Parsed, mode: ImportMode, choice?: ImportChoice) => void,
   // Adds or edits a piece by hand; owner (the editor's Equipped by): a character id puts it on them, null takes it off,
   // undefined leaves it
   saveGear: (item: Gear, owner?: string | null) => void,
@@ -77,7 +81,8 @@ export function createGearStore<Data extends object, Gear, Parsed extends { warn
 
     const verbs: GearStoreVerbs<Gear, Parsed, Warning> = {
       lastWarnings: [],
-      importParsed: (parsed, mode) => {
+      importParsed: (incoming, mode, choice = 'all') => {
+        const parsed = choice !== 'all' && config.restrict ? config.restrict(dataOf(get()), incoming, choice, mode) : incoming
         if (config.isEmptyImport(parsed)) {
           set({ lastWarnings: parsed.warnings } as Partial<Store>)
           return

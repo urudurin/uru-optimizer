@@ -3,6 +3,7 @@ import { parseGood } from 'lib/games/genshin/importer/goodParser'
 import { useGenshinStore } from 'lib/games/genshin/state/genshinStore'
 import type { FetchResult } from 'lib/games/shared/enka'
 import { formatNumber } from 'lib/games/shared/format'
+import { readImportChoice } from 'lib/games/shared/importChoice'
 import { todayString } from 'lib/games/shared/importedPresets'
 
 // Converts a GOOD file and saves it. A GOOD file is the whole inventory, so it replaces the saved artifacts and
@@ -20,7 +21,7 @@ export async function importGoodFile(data: unknown): Promise<FetchResult<string>
   const characters = parsed.characters.length > 0
     ? parsed.characters
     : useGenshinStore.getState().characters.map((c) => ({ ...c, artifactIds: {} }))
-  useGenshinStore.getState().importParsed({ ...parsed, characters }, 'replace')
+  useGenshinStore.getState().importParsed({ ...parsed, characters }, 'replace', readImportChoice('genshin'))
 
   const equipped = parsed.artifacts.filter((a) => a.equippedBy).length
   return {

@@ -1,4 +1,5 @@
 import { createGearStore } from 'lib/games/shared/gearStore'
+import { restrictOwners } from 'lib/games/shared/importChoice'
 import { mergeById } from 'lib/games/shared/storage'
 import type {
   ImportedBuild,
@@ -37,6 +38,12 @@ export const useZzzStore = createGearStore<ZzzData, Disc, ParsedZzzExport, Parse
     deserialize: deserializeZzzData,
     isEmptyImport: (parsed) => parsed.discs.length === 0 && parsed.builds.length === 0,
     merge: (data, parsed, mode) => ({ discs: mergeById(data.discs, parsed.discs, mode), builds: mergeById(data.builds, parsed.builds, mode) }),
+    // Kept builds not in the import lose the discs a replacing import takes away
+    restrict: (data, parsed, choice, mode) => ({
+      ...parsed,
+      builds: restrictOwners(data.builds, parsed.builds, (b) => b.agentId, choice, mode)
+        .map((b) => (mode === 'replace' && !parsed.builds.includes(b) ? { ...b, discIds: {} } : b)),
+    }),
     saveGear: saveZzzDisc,
     deleteGear: deleteZzzDiscs,
     assignGear: assignZzzDisc,

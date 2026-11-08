@@ -17,7 +17,10 @@ import {
 } from 'lib/games/wuwa/data/gameData'
 import { wuwaMetadata } from 'lib/games/wuwa/data/metadata'
 import type { ResonatorArt } from 'lib/games/wuwa/data/userArt'
-import { wuwaDamageScore } from 'lib/games/wuwa/optimizer/analysis'
+import {
+  wuwaBenchmarkVariants,
+  wuwaDamageScore,
+} from 'lib/games/wuwa/optimizer/analysis'
 import {
   wuwaDamageDefaults,
   wuwaDamageSetup,
@@ -60,6 +63,7 @@ export function WuwaScoring({ character, worn, roster, echoes, art, fallback }: 
     worn,
     { kind: 'damage', setup: setup.damageSetup },
     withFullSets(setup.combatBonus, worn, setup.fullSetBonus),
+    wuwaBenchmarkVariants(worn, wuwaMetadata(character.charId).simulation),
   )
   if (!score) return <>{fallback}</>
 
@@ -73,7 +77,7 @@ export function WuwaScoring({ character, worn, roster, echoes, art, fallback }: 
       scoring={scoring}
       slots={2}
       teammates={settings.teammates.map((id) => ({ id, name: characterName(id), icon: art[id]?.icon ?? art[id]?.portrait }))}
-      defaultText={wuwaMetadata(character.charId).simulation ? 'Default: our team and rotation for this Resonator.' : 'Default: the kit alone, no team.'}
+      defaultText={wuwaMetadata(character.charId).simulation ? 'Default: the recommended team and rotation.' : 'Default: the kit alone, no team.'}
       setup={
         <>
           <TeamCards

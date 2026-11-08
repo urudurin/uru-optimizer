@@ -133,7 +133,7 @@ export function WuwaCharactersPage() {
 }
 
 // The Character menu's game parts (shared/ui/CharacterKind.tsx)
-const WUWA_CHARACTER_KIND: CharacterKind<CharacterState, Echo> = {
+export const WUWA_CHARACTER_KIND: CharacterKind<CharacterState, Echo> = {
   game: 'wuwa',
   gearNoun: 'echoes',
   ownerId: (character) => character.charId,

@@ -162,7 +162,7 @@ export function ZzzCharactersPage() {
 }
 
 // The Character menu's game parts (shared/ui/CharacterKind.tsx); owners are builds, an agent can have several
-const ZZZ_CHARACTER_KIND: CharacterKind<ImportedBuild, Disc> = {
+export const ZZZ_CHARACTER_KIND: CharacterKind<ImportedBuild, Disc> = {
   game: 'zzz',
   gearNoun: 'discs',
   ownerId: (build) => build.id,

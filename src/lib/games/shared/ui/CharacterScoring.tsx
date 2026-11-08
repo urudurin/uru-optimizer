@@ -15,12 +15,14 @@ import {
   IconRotate,
   IconSettings,
 } from '@tabler/icons-react'
+import type { GameId } from 'lib/games/games'
 import type { DamageScore } from 'lib/games/shared/damageScore'
 import { formatNumber } from 'lib/games/shared/format'
 import {
   mergeSettings,
   optimizerSettingsStore,
 } from 'lib/games/shared/optimizerSettings'
+import { presetImportStore } from 'lib/games/shared/presetImports'
 import {
   type ScoringMode,
   scoringStore,
@@ -70,6 +72,9 @@ export type ScoringSetup<T> = {
 // defaults, under its saved settings when copying them
 export function useScoringSetup<T extends ScoringFields>(game: string, characterId: string, defaults: T, kitAlone: T): ScoringSetup<T> {
   const store = scoringStore(game)
+  // Re-render when the user's presets file changes: it can give the character a Default team (shared/presetImports.ts)
+  presetImportStore(game as GameId)((s) => s.stored)
+  presetImportStore(game as GameId)((s) => s.enabled)
   const mode = store((s) => s.modes[characterId]) ?? 'default'
   const saved = store((s) => s.overrides.byCharacter[characterId])
   const optimizerSaved = optimizerSettingsStore(`${game}-optimizer-settings`)((s) => s.saved.byCharacter[characterId])

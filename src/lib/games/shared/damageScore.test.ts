@@ -1,4 +1,6 @@
+import { benchmarkVariants } from 'lib/games/shared/benchmarkVariants'
 import {
+  benchmarkBuilds,
   damageScore,
   type DamageScoreInput,
   simulateBuild,
@@ -90,5 +92,48 @@ describe('damageScore', () => {
 
   it('has no score without damage', () => {
     expect(damageScore({ ...toyInput({}), score: () => 0 }, params)).toBeUndefined()
+  })
+})
+
+describe('benchmark variants (sets and mains from the metadata, step 4)', () => {
+  it('compares the build with the best variant\'s benchmark and shows where its rolls went', () => {
+    const build = toyInput({ atk: 4, cr: 4, cd: 4 })
+    // A variant whose mains give +5 ATK on top: its benchmark is higher, so the same build grades lower against it
+    const better: DamageScoreInput = { ...toyInput({ atk: 4, cr: 4, cd: 4 }, ['atk']), score: (extra) => build.score({ ...extra, atk: (extra.atk ?? 0) + 5 }) }
+    const own = damageScore(build, params)!
+    const withVariants = damageScore(build, params, [toyInput({ atk: 4, cr: 4, cd: 4 }, ['hp']), better])!
+    expect(withVariants.damage).toBe(own.damage)
+    expect(withVariants.benchmark).toBeGreaterThan(own.benchmark)
+    expect(withVariants.percent).toBeLessThan(own.percent)
+    expect(withVariants.benchmarkMains).toEqual(['atk'])
+
+    const builds = benchmarkBuilds(build, params, [toyInput({ atk: 4, cr: 4, cd: 4 }, ['hp']), better])
+    expect(builds.variant).toBe(1)
+    expect(builds.benchmark.score).toBeCloseTo(withVariants.benchmark, 6)
+    expect(builds.perfect.score).toBeCloseTo(withVariants.perfect, 6)
+    expect(Object.values(builds.benchmark.rolls).reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(params.benchmark.goal)
+    expect(builds.baseline.rolls).toEqual({ atk: 2, cr: 2, cd: 2, hp: 2 })
+  })
+
+  it('builds a variant per set option and main stat combination, and none without a simulation', () => {
+    type Piece = { slot: string, main: string, set: string }
+    const pieces: Piece[] = ['a', 'b', 'c', 'd', 'e'].map((slot) => ({ slot, main: 'x', set: 'own' }))
+    const ops = {
+      slotOf: (p: Piece) => p.slot,
+      withMain: (p: Piece, stat: string) => (stat === 'bad' ? undefined : { ...p, main: stat }),
+      withSet: (p: Piece, set: string) => ({ ...p, set }),
+      setPattern: (option: string[]) => (option.length === 1 ? [4] : [2, 2]),
+    }
+    expect(benchmarkVariants(pieces, undefined, ops)).toEqual([])
+    const variants = benchmarkVariants(
+      pieces,
+      { teammates: [], rotation: {}, sets: [['A'], ['B', 'C']], parts: { c: ['m1', 'bad'], d: ['m2'] }, substats: [] },
+      ops,
+    )
+    expect(variants).toHaveLength(4)
+    expect(variants[0].map((p) => `${p.set}:${p.main}`)).toEqual(['A:x', 'A:x', 'A:m1', 'A:m2', 'own:x'])
+    // A main stat the slot can't have keeps the piece's own
+    expect(variants[1].map((p) => `${p.set}:${p.main}`)).toEqual(['A:x', 'A:x', 'A:x', 'A:m2', 'own:x'])
+    expect(variants[2].map((p) => p.set)).toEqual(['B', 'B', 'C', 'C', 'own'])
   })
 })

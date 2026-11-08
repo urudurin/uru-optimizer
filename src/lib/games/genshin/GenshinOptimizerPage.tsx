@@ -25,18 +25,25 @@ import {
   type GenshinImages,
   useGenshinImages,
 } from 'lib/games/genshin/data/images'
+import {
+  MAIN_STAT_OPTIONS,
+  MAIN_STAT_SLOTS,
+} from 'lib/games/genshin/data/mainStatOptions'
 import { genshinMetadata } from 'lib/games/genshin/data/metadata'
+import { genshinImports } from 'lib/games/genshin/data/metadata'
 import { genshinSampleData } from 'lib/games/genshin/data/sampleData'
 import {
   GenshinTeamCards,
   teamSummary,
 } from 'lib/games/genshin/GenshinTeamCards'
+import { describeValue } from 'lib/games/genshin/GenshinTeamCards'
 import { nameFromGoodKey } from 'lib/games/genshin/goodKeys'
 import { SUBSTAT_STATS } from 'lib/games/genshin/goodKeys'
 import { loadEnkaGenshinStore } from 'lib/games/genshin/importer/enkaClient'
 import type { EnkaGenshinStore } from 'lib/games/genshin/importer/enkaParser'
 import { mainStatValue } from 'lib/games/genshin/importer/goodParser'
 import {
+  genshinBenchmarkVariants,
   genshinDamageScore,
   genshinSubstatUpgrades,
 } from 'lib/games/genshin/optimizer/analysis'
@@ -122,6 +129,7 @@ import {
   fieldSetter,
   migrateOptimizerSettings,
 } from 'lib/games/shared/optimizerSettings'
+import { presetImportStore } from 'lib/games/shared/presetImports'
 import {
   rollsFromTotals,
   type StatSimulation,
@@ -160,6 +168,7 @@ import {
 } from 'lib/games/shared/ui/optimizer/GameOptimizerPage'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
 import { OptimizerOptionsCard } from 'lib/games/shared/ui/optimizer/OptimizerOptionsCard'
+import { RecommendedCard } from 'lib/games/shared/ui/optimizer/RecommendedCard'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -188,12 +197,13 @@ import {
   useState,
 } from 'react'
 
-const MAIN_STAT_OPTIONS: Record<MainStatSlot, GenshinStatKey[]> = {
-  sands: ['atkPct', 'hpPct', 'defPct', 'elementalMastery', 'energyRecharge'],
-  goblet: ['atkPct', 'hpPct', 'defPct', 'elementalMastery', 'pyroDmg', 'hydroDmg', 'anemoDmg', 'electroDmg', 'dendroDmg', 'cryoDmg', 'geoDmg', 'physicalDmg'],
-  circlet: ['critRate', 'critDmg', 'atkPct', 'hpPct', 'defPct', 'elementalMastery', 'healingBonus'],
+// The metadata's ideal main stats as the main stat filters (HSR's defaultForm fills them from metadata parts)
+function metadataMainStats(parts: Record<string, string[]>): GenshinOptimizerSettings['mainStats'] {
+  return Object.fromEntries(MAIN_STAT_SLOTS.flatMap((slot) => {
+    const stats = (parts[slot] ?? []).filter((stat) => MAIN_STAT_OPTIONS[slot].includes(stat as GenshinStatKey))
+    return stats.length > 0 ? [[slot, stats]] : []
+  }))
 }
-const MAIN_STAT_SLOTS = Object.keys(MAIN_STAT_OPTIONS) as MainStatSlot[]
 
 const MIN_STATS: GenshinStatKey[] = ['energyRecharge', 'critRate', 'critDmg', 'elementalMastery', 'atk', 'hp', 'def']
 const SHOWN_STATS: GenshinStatKey[] = ['hp', 'atk', 'def', 'elementalMastery', 'critRate', 'critDmg', 'energyRecharge']
@@ -246,9 +256,9 @@ const DAMAGE_TARGET = 'damage'
 // What a character starts with before their settings are changed (and saved)
 function defaultSettings(characterId: string): GenshinOptimizerSettings {
   return {
-    // The default rank from the character's metadata (data/metadata.ts)
+    // The default rank and main stats from the character's metadata (data/metadata.ts), like HSR's defaultForm
     targetValue: genshinMetadata(characterId).sortOption,
-    mainStats: {},
+    mainStats: metadataMainStats(genshinMetadata(characterId).parts),
     fourPieceSet: null,
     twoPieceSets: [],
     excludeEquippedByOthers: true,
@@ -409,6 +419,21 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
     }),
     [mainStats, fourPieceSet, twoPieceSets, excludeEquippedByOthers, excludeOwners, keepCurrent, character?.artifactIds, minLevel, minRarity],
   )
+  // The Recommended build card: the character's metadata (with imported presets laid over it) and the picked set option
+  presetImportStore('genshin')((s) => s.stored)
+  presetImportStore('genshin')((s) => s.enabled)
+  const metadata = genshinMetadata(character.id, character.constellation)
+  const [recommendedChoice, setRecommendedChoice] = useState(0)
+  function applyRecommended() {
+    const option = metadata.simulation?.sets[recommendedChoice]
+    updateSettings({
+      targetValue: metadata.sortOption === DAMAGE_TARGET && !hasTalentData(character.id) ? 'avg:atk' : metadata.sortOption,
+      mainStats: metadataMainStats(metadata.parts),
+      ...(option ? option.length === 1 ? { fourPieceSet: option[0], twoPieceSets: [] } : { fourPieceSet: null, twoPieceSets: option.slice(0, 2) } : {}),
+    })
+    setResult(undefined)
+  }
+
   // Boost main stat: low-level artifacts searched with their max-level main stat (values from Enka's relic levels)
   const [enkaStore, setEnkaStore] = useState<EnkaGenshinStore | undefined>()
   useEffect(() => {
@@ -505,7 +530,9 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
     ? rotationDamage(computeGenshinStats(character, worn, {}, teamBuffs, combat).stats, damageSetup)
     : undefined
   // The current artifacts' DPS score when ranking by damage (shared/damageScore.ts), kept for the Characters page
-  const currentDpsScore = byDamage ? genshinDamageScore(character, worn, target, teamBuffs, combat) : undefined
+  const currentDpsScore = byDamage
+    ? genshinDamageScore(character, worn, target, teamBuffs, combat, genshinBenchmarkVariants(worn, metadata.simulation))
+    : undefined
 
   function run() {
     void search.start({
@@ -525,7 +552,9 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
   const outcome = result?.outcome
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
-  const pickedDpsScore = build && result ? genshinDamageScore(character, build.artifacts, result.target, teamBuffs, combat) : undefined
+  const pickedDpsScore = build && result
+    ? genshinDamageScore(character, build.artifacts, result.target, teamBuffs, combat, genshinBenchmarkVariants(build.artifacts, metadata.simulation))
+    : undefined
   const shown = statsToShow(character)
   const resultValues = (score: number, stats: Partial<Record<GenshinStatKey, number>>) => ({
     score,
@@ -724,6 +753,19 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
               boost={boostMain}
               boostDescription='Artifacts below max level count with their max-level main stat'
               onBoost={setBoostMain}
+            />
+            <RecommendedCard
+              game='genshin'
+              metadata={metadata}
+              choice={recommendedChoice}
+              onChoice={setRecommendedChoice}
+              onApply={applyRecommended}
+              slots={MAIN_STAT_SLOTS.map((slot) => ({ key: slot, label: SLOT_LABELS[slot] }))}
+              statLabel={statLabel}
+              setLabel={(ids) => ids.length === 1 ? `4pc ${setName(ids[0])}` : ids.map((id) => `2pc ${setName(id)}`).join(' + ')}
+              sortLabel={(value) => value === DAMAGE_TARGET ? 'Rotation damage' : targetLabel(genshinTarget(value, character.element))}
+              characterName={(id) => characters.find((c) => c.id === id)?.name ?? nameFromGoodKey(id)}
+              imports={genshinImports()}
             />
           </FormRow>
 
@@ -992,6 +1034,30 @@ function useGenshinOptimizerView({ character, data, settings, update: updateSett
               breakdown={result.target.kind === 'damage' ? genshinBreakdown(result.target.setup, build.stats) : undefined}
               scoreLabel={targetLabel(result.target)}
               formatRoll={(upgrade) => formatStatValue(upgrade.stat as GenshinStatKey, upgrade.roll)}
+              buffs={[
+                ...teamResult.applied.map((entry) => ({
+                  group: 'Team',
+                  source: entry.sourceName,
+                  label: entry.buff.label,
+                  detail: entry.counted ? describeValue(entry) || undefined : entry.reason,
+                  counted: entry.counted,
+                })),
+                ...(result.target.kind === 'damage'
+                  ? resolvedCombat.applied.map((entry) => ({
+                    group: 'Own effects',
+                    source: entry.sourceName,
+                    label: entry.effect.label,
+                    counted: entry.counted,
+                  }))
+                  : []),
+                ...Object.entries(extraBuffs).filter(([, value]) => value).map(([key, value]) => ({
+                  group: 'Extra',
+                  source: 'Typed in',
+                  label: key,
+                  detail: `+${value}`,
+                  counted: true,
+                })),
+              ]}
             />
           )}
         </>

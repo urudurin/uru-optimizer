@@ -1,6 +1,7 @@
 import { forgetPriority } from 'lib/games/shared/characterPriority'
 import { forgetGameSettings } from 'lib/games/shared/gameSettings'
 import { reloadOptimizerSettings } from 'lib/games/shared/optimizerSettings'
+import { reloadTeams } from 'lib/games/shared/savedTeams'
 import { reloadScoringOverrides } from 'lib/games/shared/scoringOverrides'
 import {
   readStorage,
@@ -66,6 +67,7 @@ const settingsKeys = (
   `${game}-priority`,
   `${game}-scoring-overrides`,
   `${game}-scoring-mode`,
+  `${game}-teams`,
 ]
 
 export function backupSettings(game: string): BackupSettings {
@@ -101,6 +103,7 @@ export function restoreBackupSettings(game: string, text: string): number {
   forgetPriority()
   reloadOptimizerSettings(`${game}-optimizer-settings`)
   reloadScoringOverrides(game)
+  reloadTeams(game)
   return restored
 }
 

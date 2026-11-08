@@ -1,3 +1,4 @@
+import { readImportChoice } from 'lib/games/shared/importChoice'
 import {
   type FetchResult,
   loadEnkaZzzStore,
@@ -13,7 +14,7 @@ export async function importEnkaZzzProfile(data: unknown): Promise<FetchResult<s
 
   const { discs, builds, importParsed } = useZzzStore.getState()
   const parsed = parseEnkaZzz(data, store.data, { discs, builds })
-  importParsed(parsed, 'merge')
+  importParsed(parsed, 'merge', readImportChoice('zzz'))
   if (parsed.builds.length === 0) return { ok: false, reason: parsed.warnings[0]?.message ?? 'Nothing to import from this profile' }
 
   const names = parsed.builds.map((b) => b.name).join(', ')

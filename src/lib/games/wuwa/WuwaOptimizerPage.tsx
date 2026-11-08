@@ -21,6 +21,7 @@ import {
   fieldSetter,
   migrateOptimizerSettings,
 } from 'lib/games/shared/optimizerSettings'
+import { presetImportStore } from 'lib/games/shared/presetImports'
 import {
   rollsFromTotals,
   type StatSimulation,
@@ -52,6 +53,7 @@ import {
 } from 'lib/games/shared/ui/optimizer/GameOptimizerPage'
 import { KitDisclaimer } from 'lib/games/shared/ui/optimizer/KitDisclaimer'
 import { OptimizerOptionsCard } from 'lib/games/shared/ui/optimizer/OptimizerOptionsCard'
+import { RecommendedCard } from 'lib/games/shared/ui/optimizer/RecommendedCard'
 import {
   DEFAULT_RESULT_LIMIT,
   resultLimitOf,
@@ -98,12 +100,14 @@ import {
   WEAPONS,
 } from 'lib/games/wuwa/data/gameData'
 import { wuwaMetadata } from 'lib/games/wuwa/data/metadata'
+import { wuwaImports } from 'lib/games/wuwa/data/metadata'
 import { wuwaSampleData } from 'lib/games/wuwa/data/sampleData'
 import { useUserArt } from 'lib/games/wuwa/data/userArt'
 import { SUBSTAT_KEYS } from 'lib/games/wuwa/echoStats'
 import { MAIN_STAT_MAX } from 'lib/games/wuwa/echoStats'
 import {
   WUWA_SIM_ROLLS,
+  wuwaBenchmarkVariants,
   wuwaSimulatedStats,
 } from 'lib/games/wuwa/optimizer/analysis'
 import {
@@ -172,7 +176,10 @@ import {
 } from 'lib/games/wuwa/ui/pickers'
 import { wuwaStatRows } from 'lib/games/wuwa/ui/resonatorStats'
 import { wuwaOverrideMembers } from 'lib/games/wuwa/ui/teammateOverrideMembers'
-import { useMemo } from 'react'
+import {
+  useMemo,
+  useState,
+} from 'react'
 
 const COSTS: Cost[] = [4, 3, 1]
 const SHOWN_STATS: (keyof WuwaStats)[] = ['hp', 'atk', 'def', 'critRate', 'critDmg', 'energyRegen', 'elementDmg']
@@ -230,11 +237,19 @@ type WuwaOptimizerSettings = WuwaDamageSettings & {
 const DAMAGE_TARGET = 'damage'
 
 // What a Resonator starts with before their settings are changed (and saved)
+// The metadata's ideal main stats per cost as the main stat filters (HSR's defaultForm fills them from metadata parts)
+function metadataMainStats(parts: Record<string, string[]>): WuwaOptimizerSettings['mainStats'] {
+  return Object.fromEntries(COSTS.flatMap((cost) => {
+    const stats = (parts[String(cost)] ?? []).filter((stat) => MAIN_STAT_MAX[cost][stat as StatKey] !== undefined)
+    return stats.length > 0 ? [[cost, stats]] : []
+  }))
+}
+
 function defaultSettings(charId: string): WuwaOptimizerSettings {
   return {
-    // The default rank from the Resonator's metadata (data/metadata.ts)
+    // The default rank and main stats from the Resonator's metadata (data/metadata.ts), like HSR's defaultForm
     targetValue: wuwaMetadata(charId).sortOption,
-    mainStats: {},
+    mainStats: metadataMainStats(wuwaMetadata(charId).parts),
     fullSet: null,
     twoPieceSets: [],
     excludeEquippedByOthers: true,
@@ -333,6 +348,21 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
   const saveCharacter = useWuwaStore((s) => s.saveCharacter)
   const { running, result, setResult, selected, setSelected } = search
 
+  // The Recommended build card: the Resonator's metadata (with imported presets laid over it) and the picked set option
+  presetImportStore('wuwa')((s) => s.stored)
+  presetImportStore('wuwa')((s) => s.enabled)
+  const metadata = wuwaMetadata(character.charId)
+  const [recommendedChoice, setRecommendedChoice] = useState(0)
+  function applyRecommended() {
+    const option = metadata.simulation?.sets[recommendedChoice]
+    updateSettings({
+      targetValue: metadata.sortOption === DAMAGE_TARGET && !hasSkillData(character.charId) ? 'avg:atk' : metadata.sortOption,
+      mainStats: metadataMainStats(metadata.parts),
+      ...(option ? option.length === 1 ? { fullSet: option[0], twoPieceSets: [] } : { fullSet: null, twoPieceSets: option.slice(0, 2) } : {}),
+    })
+    setResult(undefined)
+  }
+
   const {
     targetValue,
     mainStats,
@@ -413,7 +443,15 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
     ? rotationDamage(computeWuwaStats(character, wornEchoes, withFullSets(combatBonus, wornEchoes, fullSetBonus)).stats, damageSetup)
     : undefined
   // The current loadout's DPS score when ranking by damage (shared/damageScore.ts), kept for the Resonators page
-  const currentDpsScore = byDamage ? wuwaDamageScore(character, wornEchoes, target, withFullSets(combatBonus, wornEchoes, fullSetBonus)) : undefined
+  const currentDpsScore = byDamage
+    ? wuwaDamageScore(
+      character,
+      wornEchoes,
+      target,
+      withFullSets(combatBonus, wornEchoes, fullSetBonus),
+      wuwaBenchmarkVariants(wornEchoes, metadata.simulation),
+    )
+    : undefined
   // A complete 5-piece set leaves no room for a 2-piece set, a 3-piece set leaves room for one
   const fullSetPieces = fullSet ? (SONATA_SETS[fullSet]?.fullPieces ?? 5) : 0
   const maxTwoPiece = fullSet ? Math.floor((5 - fullSetPieces) / 2) : 2
@@ -511,7 +549,13 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
   const build = outcome?.ok ? outcome.builds[selected] : undefined
   const current = outcome?.ok ? outcome.current : undefined
   const pickedDpsScore = build && result
-    ? wuwaDamageScore(character, build.echoes, result.target, withFullSets(combatBonus, build.echoes, fullSetBonus))
+    ? wuwaDamageScore(
+      character,
+      build.echoes,
+      result.target,
+      withFullSets(combatBonus, build.echoes, fullSetBonus),
+      wuwaBenchmarkVariants(build.echoes, metadata.simulation),
+    )
     : undefined
   const mainFilters = COSTS.filter((cost) => mainStats[cost]?.length).length
   const filterSummary = [
@@ -672,6 +716,19 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
               boost={boostMain}
               boostDescription='Echoes below +25 count with their +25 main stats'
               onBoost={setBoostMain}
+            />
+            <RecommendedCard
+              game='wuwa'
+              metadata={metadata}
+              choice={recommendedChoice}
+              onChoice={setRecommendedChoice}
+              onApply={applyRecommended}
+              slots={COSTS.map((cost) => ({ key: String(cost), label: `Cost ${cost}` }))}
+              statLabel={statLabel}
+              setLabel={(ids) => ids.length === 1 ? `Full set ${setName(ids[0])}` : ids.map((id) => `2pc ${setName(id)}`).join(' + ')}
+              sortLabel={(value) => value === DAMAGE_TARGET ? 'Rotation damage' : targetLabel(wuwaTarget(value))}
+              characterName={characterName}
+              imports={wuwaImports()}
             />
           </FormRow>
 
@@ -924,6 +981,40 @@ function useWuwaOptimizerView({ character, data, settings, update: updateSetting
               breakdown={result.target.kind === 'damage' ? wuwaBreakdown(result.target.setup, build.stats) : undefined}
               scoreLabel={targetLabel(result.target)}
               formatRoll={(upgrade) => upgrade.stat.endsWith('Flat') ? String(Math.round(upgrade.roll)) : `${upgrade.roll.toFixed(1)}%`}
+              buffs={[
+                ...wuwaTeamEntries(teamResult.applied).map((entry) => ({
+                  group: 'Team',
+                  source: entry.source,
+                  label: entry.label,
+                  detail: entry.detail || undefined,
+                  counted: entry.counted,
+                })),
+                ...(result.target.kind === 'damage'
+                  ? [
+                    ...kit.applied.map((entry) => ({
+                      group: 'Own effects',
+                      source: characterName(character.charId),
+                      label: entry.effect.label,
+                      detail: entry.reason,
+                      counted: entry.counted,
+                    })),
+                    ...setEffects.applied.map((entry) => ({
+                      group: 'Set effects',
+                      source: 'Sonata set',
+                      label: entry.effect.label,
+                      detail: entry.reason,
+                      counted: entry.counted,
+                    })),
+                  ]
+                  : []),
+                ...Object.entries(extraBuffs).filter(([, value]) => value).map(([key, value]) => ({
+                  group: 'Extra',
+                  source: 'Typed in',
+                  label: key,
+                  detail: `+${value}`,
+                  counted: true,
+                })),
+              ]}
             />
           )}
         </>

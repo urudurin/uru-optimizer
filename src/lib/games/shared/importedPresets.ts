@@ -58,7 +58,8 @@ export function parsePresetFile(text: string, game: GameId): { file?: PresetFile
     return { warnings: ['The file isn\'t valid JSON'] }
   }
   if (!isRecord(parsed)) return { warnings: ['Expected an object with "version", "game", "source" and "presets"'] }
-  if (parsed.version !== PRESET_FILE_VERSION) return { warnings: [`Expected "version": ${PRESET_FILE_VERSION}`] }
+  // Version 2 (shared/presetImports.ts) adds fields; its build preset fields read the same
+  if (parsed.version !== PRESET_FILE_VERSION && parsed.version !== 2) return { warnings: [`Expected "version": ${PRESET_FILE_VERSION} or 2`] }
   if (parsed.game !== game) return { warnings: [`This file is for "${String(parsed.game)}", not "${game}"`] }
   if (!Array.isArray(parsed.presets)) return { warnings: ['Expected a "presets" list'] }
 

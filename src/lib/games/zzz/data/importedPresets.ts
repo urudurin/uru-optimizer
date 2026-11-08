@@ -83,7 +83,9 @@ function parseEntry(raw: unknown, index: number, agents: AgentData[], source: st
   const fallback = getPreset(agent)
 
   const sets: SetChoice[] = []
-  for (const choice of Array.isArray(raw.sets) ? raw.sets : []) {
+  for (const listed of Array.isArray(raw.sets) ? raw.sets : []) {
+    // Version 2 files can write a choice as a list: [4-piece, 2-piece]
+    const choice: unknown = Array.isArray(listed) ? { fourPiece: listed[0], twoPiece: listed[1] } : listed
     const fourPiece = isRecord(choice) ? toSetId(choice.fourPiece) : undefined
     if (!fourPiece) {
       warnings.push(`${name}: a set choice has no "fourPiece", skipped`)
