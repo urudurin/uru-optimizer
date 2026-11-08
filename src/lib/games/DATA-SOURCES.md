@@ -70,6 +70,8 @@ Wuthering Waves has no image source the site can fetch: Enka doesn't cover it, t
 
 WuWa echo score weights (`wuwa/data/statPriorities.ts`): our own table from in-game skill descriptions, edited by hand, never copied from third-party guide sites; unverified entries need review. Entries marked 'guide' (Suoming, Hsin, Shorekeeper, Phoebe, Yuanwu, Chixia, Aalto, Jianxin, Roccia, Yangyang, Youhu and the three Rovers) follow the substat priority on Kuro's own guide site (wuwaguide.kurogames.com), read by hand one page at a time; each cites its guide by role_id and contributor (Void Enigma, Krow, WW Echoes). The WuWa build rating's 100% is our own standard build modelled on KQM Standards (`wuwa/stats/echoScore.ts`): there is no community standard for WuWa.
 
+Recommended main stats, sets and scoring teams (Nov 7 2026): Genshin `genshin/data/recommendations.ts` (21 characters: main stats, the sets the DPS score's benchmark may use, Default scoring teams for 13) is our own table from general game knowledge, written by hand, never copied from a guide site; every entry is unverified until the user reviews it. WuWa main stats per echo cost (`wuwa/data/metadata.ts` mainStatsFor) are our own rule worked out from `wuwa/data/statPriorities.ts`. ZZZ benchmark sets and mains come from the hand-written presets in `zzz/data/presets.ts`. Guide builds only ever come in through the user's local imported presets file, which wins over all of these.
+
 ## Imported presets (any game)
 
 Users can import a presets file of their own, for example notes taken from a guide site such as Prydwen or a community

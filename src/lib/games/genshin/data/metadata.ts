@@ -6,6 +6,10 @@ import {
 import stats from 'lib/games/genshin/data/generated/stats.json'
 import { MAIN_STAT_OPTIONS } from 'lib/games/genshin/data/mainStatOptions'
 import {
+  GENSHIN_RECOMMENDATIONS,
+  RECOMMENDATIONS_REVIEWED,
+} from 'lib/games/genshin/data/recommendations'
+import {
   STAT_PRIORITIES,
   STAT_REVIEWED,
   statPriority,
@@ -27,8 +31,8 @@ import {
 
 // Each Genshin character's metadata (shared/characterMetadata.ts, after HSR's ScoringMetadata), built from our tables:
 // substat weights from data/statPriorities.ts, the optimizer's default rank (rotation damage when the character has
-// talent data, average ATK hit otherwise) and the default rotation (damage/damage.ts). No main stats, team or benchmark
-// sets yet.
+// talent data, average ATK hit otherwise), the default rotation (damage/damage.ts), and for the characters in
+// data/recommendations.ts their main stats, benchmark sets and Default scoring team (the simulation).
 
 export type GenshinMetadata = CharacterMetadata<Rotation>
 
@@ -41,17 +45,32 @@ function baseGenshinMetadata(characterId: string, constellation: number): Genshi
   if (cached) return cached
   const priority = statPriority(characterId)
   const listed = STAT_PRIORITIES[characterId] !== undefined
+  const recommended = GENSHIN_RECOMMENDATIONS[characterId]
+  const weights = weightsFromPriority(priority)
+  const rotation = defaultRotation(characterId, [], [], constellation)
   const metadata: GenshinMetadata = {
     characterId,
-    stats: weightsFromPriority(priority),
-    parts: {},
+    stats: weights,
+    parts: recommended?.parts ?? {},
     sortOption: hasTalentData(characterId) ? 'damage' : 'avg:atk',
-    rotation: defaultRotation(characterId, [], [], constellation),
-    source: listed
+    rotation,
+    ...(recommended
+      ? {
+        simulation: {
+          teammates: recommended.teammates ?? [],
+          rotation,
+          sets: recommended.sets,
+          parts: recommended.parts,
+          substats: Object.keys(weights).filter((stat) => weights[stat] > 0),
+        },
+      }
+      : {}),
+    source: (listed
       ? 'Our own table (data/statPriorities.ts), from the in-game talent descriptions'
-      : 'Default for characters not in our table: an ATK crit damage dealer',
-    confidence: priority.confidence,
-    reviewed: STAT_REVIEWED,
+      : 'Default for characters not in our table: an ATK crit damage dealer')
+      + (recommended ? '; main stats, sets and team from our own data/recommendations.ts (unverified)' : ''),
+    confidence: recommended ? 'unverified' : priority.confidence,
+    reviewed: recommended ? RECOMMENDATIONS_REVIEWED : STAT_REVIEWED,
   }
   cache.set(key, metadata)
   return metadata

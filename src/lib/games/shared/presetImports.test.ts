@@ -85,7 +85,7 @@ describe('imported presets v2 (metadata from the user\'s own file)', () => {
 
   it('lays the import over the metadata, fills the DPS score Default, and switches off', () => {
     const before = genshinMetadata('YumemizukiMizuki', 2)
-    expect(before.simulation).toBeUndefined()
+    expect(before.simulation?.teammates ?? []).toEqual([])
     presetImportStore('genshin').getState().importText(file([mizuki]))
 
     const after = genshinMetadata('YumemizukiMizuki', 2)

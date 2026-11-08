@@ -77,7 +77,9 @@ export function WuwaScoring({ character, worn, roster, echoes, art, fallback }: 
       scoring={scoring}
       slots={2}
       teammates={settings.teammates.map((id) => ({ id, name: characterName(id), icon: art[id]?.icon ?? art[id]?.portrait }))}
-      defaultText={wuwaMetadata(character.charId).simulation ? 'Default: the recommended team and rotation.' : 'Default: the kit alone, no team.'}
+      defaultText={(wuwaMetadata(character.charId).simulation?.teammates.length ?? 0) > 0
+        ? 'Default: the recommended team and rotation.'
+        : 'Default: the kit alone, no team.'}
       setup={
         <>
           <TeamCards

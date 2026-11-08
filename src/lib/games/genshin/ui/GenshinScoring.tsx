@@ -74,7 +74,9 @@ export function GenshinScoring({ character, worn, roster, artifacts, images, fal
       scoring={scoring}
       slots={3}
       teammates={settings.teammates.map((id) => ({ id, name: roster.find((c) => c.id === id)?.name ?? id, icon: iconOf(id) }))}
-      defaultText={genshinMetadata(character.id).simulation ? 'Default: the recommended team and rotation.' : 'Default: the kit alone, no team.'}
+      defaultText={(genshinMetadata(character.id).simulation?.teammates.length ?? 0) > 0
+        ? 'Default: the recommended team and rotation.'
+        : 'Default: the kit alone, no team.'}
       setup={
         <>
           <GenshinTeamCards

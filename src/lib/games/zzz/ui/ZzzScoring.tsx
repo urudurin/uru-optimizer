@@ -87,7 +87,9 @@ export function ZzzScoring({ agent, wEngine, build, worn, coreSkill, roster, dis
       scoring={scoring}
       slots={2}
       teammates={settings.teammates.map((id) => ({ id, name: nameOf(id), icon: images.agents[id]?.circle }))}
-      defaultText={zzzMetadata(agent).simulation ? 'Default: the recommended squad and rotation.' : 'Default: the kit alone, no squad.'}
+      defaultText={(zzzMetadata(agent).simulation?.teammates.length ?? 0) > 0
+        ? 'Default: the recommended squad and rotation.'
+        : 'Default: the kit alone, no squad.'}
       setup={
         <>
           <TeamCards

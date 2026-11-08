@@ -35,7 +35,8 @@ import {
 // Each agent's metadata (shared/characterMetadata.ts, after HSR's ScoringMetadata), built from our build presets
 // (data/presets.ts): substat weights from the preset's substat priority (1, 0.8, 0.6, 0.4, 0.2), ideal main stats from
 // its main stats, the optimizer's default rank (rotation damage when the agent has skill data, CRIT DMG otherwise) and
-// the default rotation (damage/damage.ts). The preset itself rides along for the optimizer's preset picker.
+// the default rotation (damage/damage.ts). The preset itself rides along for the optimizer's preset picker. A preset
+// with sets (our hand-written ones) also gives the DPS score's benchmark its sets and mains (the simulation; no team).
 
 export type ZzzMetadata = CharacterMetadata<Rotation> & { preset: BuildPreset }
 
@@ -45,12 +46,26 @@ function baseZzzMetadata(agent: AgentData): ZzzMetadata {
   const cached = cache.get(agent.id)
   if (cached) return cached
   const preset = getPreset(agent)
+  const rotation = defaultRotation(agent.id)
+  const weights = weightsFromPriority(preset.substatPriority)
+  const parts = Object.fromEntries(Object.entries(preset.mainStats).filter(([, stats]) => stats.length > 0))
   const metadata: ZzzMetadata = {
     characterId: agent.id,
-    stats: weightsFromPriority(preset.substatPriority),
+    stats: weights,
     parts: preset.mainStats,
     sortOption: agentHits(agent.id).length > 0 ? 'damage' : 'critDmg',
-    rotation: defaultRotation(agent.id),
+    rotation,
+    ...(preset.sets.length > 0
+      ? {
+        simulation: {
+          teammates: [],
+          rotation,
+          sets: preset.sets.map((set) => set.twoPiece ? [set.fourPiece, set.twoPiece] : [set.fourPiece]),
+          parts,
+          substats: Object.keys(weights).filter((stat) => weights[stat] > 0),
+        },
+      }
+      : {}),
     source: preset.source,
     confidence: preset.confidence,
     reviewed: preset.reviewed,
